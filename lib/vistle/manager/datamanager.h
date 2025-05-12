@@ -35,8 +35,8 @@ public:
     //! request a remote object for resolving a reference to a sub-object
     bool requestObject(const std::string &referrer, const std::string &objId, int hub, int rank,
                        const ObjectCompletionHandler &handler);
-    bool requestArray(const std::string &referrer, const std::string &arrayId, int type, int hub, int rank,
-                      const ArrayCompletionHandler &handler);
+    bool requestArray(const std::string &referrer, const std::string &arrayId, int localType, int remoteType, int hub,
+                      int rank, const ArrayCompletionHandler &handler);
     bool prepareTransfer(const message::AddObject &add);
     bool completeTransfer(const message::AddObjectCompleted &complete);
     bool notifyTransferComplete(const message::AddObject &add);
@@ -82,7 +82,12 @@ private:
         m_outstandingAdds; //!< AddObject messages for which requests to retrieve objects from remote have been sent
 
     std::mutex m_requestArrayMutex;
-    std::map<std::string, std::vector<ArrayCompletionHandler>>
+    struct RequestedArray {
+        RequestedArray(int type): type(type){};
+        int type = -1;
+        std::vector<ArrayCompletionHandler> handlers;
+    };
+    std::map<std::string, RequestedArray>
         m_requestedArrays; //!< requests for (sub-)objects which have not been serviced yet
 
     struct OutstandingObject {

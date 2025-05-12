@@ -6,7 +6,7 @@
 #include <vistle/core/triangles.h>
 #include <vistle/core/vec.h>
 
-#include <vtkm/cont/DataSet.h>
+#include <viskores/cont/DataSet.h>
 
 #include "export.h"
 #include "convert.h"
@@ -14,8 +14,8 @@
 
 namespace vistle {
 
-Object::ptr vtkmGetTopology(const vtkm::cont::DataSet &dataset);
-ModuleStatusPtr vtkmSetTopology(vtkm::cont::DataSet &vtkmDataset, vistle::Object::const_ptr grid);
+Object::ptr vtkmGetTopology(const viskores::cont::DataSet &dataset);
+ModuleStatusPtr vtkmSetTopology(viskores::cont::DataSet &vtkmDataset, vistle::Object::const_ptr grid);
 } // namespace vistle
 
 #endif

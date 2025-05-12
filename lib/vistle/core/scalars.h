@@ -5,6 +5,7 @@
 #include <boost/mpl/vector.hpp>
 #include <boost/mpl/size.hpp>
 #include <array>
+#include "export.h"
 
 namespace vistle {
 
@@ -15,6 +16,8 @@ const std::array<const char *, boost::mpl::size<Scalars>::value> ScalarTypeNames
     {"char", "int8_t", "uint8_t", "int32_t", "uint32_t", "int64_t", "uint64_t", "float", "double"}};
 template<typename S>
 unsigned scalarTypeId();
+
+V_COREEXPORT const char *scalarTypeName(unsigned id);
 
 #define FOR_ALL_SCALARS(MACRO) \
     MACRO(char) \

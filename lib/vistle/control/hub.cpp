@@ -613,12 +613,13 @@ bool Hub::init(int argc, char *argv[])
         m_conferenceUrl = vm["conference"].as<std::string>();
     }
 
-    std::string url;
+    std::string file;
     ConnectionData connectionData;
     if (vm.count("url") == 1) {
-        url = vm["url"].as<std::string>();
-        if (VistleUrl::parse(url, connectionData)) {
-            url.clear();
+        file = vm["url"].as<std::string>();
+        Url url(file);
+        if (VistleUrl::parse(file, connectionData)) {
+            file.clear();
             m_isMaster = connectionData.master;
             if (m_isMaster) {
                 m_port = connectionData.port;
@@ -635,11 +636,40 @@ bool Hub::init(int argc, char *argv[])
             if (connectionData.kind == "/ui" || connectionData.kind == "/gui") {
                 std::string uipath = m_dir->bin() + uiCmd;
                 startUi(uipath, true);
+            } else if (connectionData.kind == "/open" || connectionData.kind == "/exec" ||
+                       connectionData.kind == "/execute") {
+                using boost::algorithm::ends_with;
+                auto wf = url.fragment();
+
+                file.clear();
+                for (vistle::filesystem::path dir(m_dir->prefix()); dir.has_parent_path(); dir = dir.parent_path()) {
+                    if (!vistle::filesystem::exists(dir))
+                        break;
+                    auto exts = {"", ".vsl", ".py"};
+                    for (const auto &ext: exts) {
+                        auto wf_ext = wf + ext;
+                        if (vistle::filesystem::exists(dir / wf_ext)) {
+                            file = (dir / wf_ext).string();
+                            break;
+                        }
+                    }
+                    dir = dir.parent_path();
+                }
+                if (file.empty()) {
+                    CERR << "could not locate workflow file " << wf << " in " << m_dir->prefix() << " and its parents"
+                         << std::endl;
+                    return false;
+                } else if (connectionData.kind == "/open") {
+                    CERR << "opening workflow from " << file << std::endl;
+                } else {
+                    m_barrierAfterLoad = true;
+                    m_executeModules = true;
+                    CERR << "executing workflow from " << file << std::endl;
+                }
             }
         } else {
-            Url u(url);
-            if (u.valid() && u.scheme() == "file") {
-                url = u.path();
+            if (url.valid() && url.scheme() == "file") {
+                file = url.path();
             }
         }
     }
@@ -741,10 +771,10 @@ bool Hub::init(int argc, char *argv[])
         m_masterPort = m_port;
         m_dataProxy->setHubId(m_hubId);
 
-        m_scriptPath = url;
+        m_scriptPath = file;
     } else {
-        if (!url.empty())
-            m_name = url;
+        if (!file.empty())
+            m_name = file;
 
         if (!connectToMaster(m_masterHost, m_masterPort)) {
             CERR << "failed to connect to master at " << m_masterHost << ":" << m_masterPort << std::endl;
@@ -982,7 +1012,7 @@ Hub::launchProcess(int type, const std::string &prog, const std::vector<std::str
                 obs.sendTextToUi(stream, discardCount + buf.size(), line, obs.moduleId);
             }
             buf.emplace_back(stream, line);
-            while (buf.size() > m_messageBacklog) {
+            while (m_messageBacklog >= 0 && buf.size() > size_t(m_messageBacklog)) {
                 ++discardCount;
                 buf.pop_front();
             }
@@ -1889,7 +1919,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
     }
     case message::CLOSECONNECTION: {
         auto &mm = msg.as<CloseConnection>();
-        CERR << "remote closes socket: " << mm.reason() << std::endl;
+        CERR << "remote closes socket - reason: " << mm.reason() << std::endl;
         removeSocket(sock);
         if (senderType == Identify::HUB || senderType == Identify::MANAGER) {
             CERR << "terminating." << std::endl;
@@ -4303,6 +4333,8 @@ void Hub::emergencyQuit()
         checkOutstandingDataConnections();
         lock.lock();
     }
+
+    m_stateTracker.cancel();
 
     if (m_dataProxy)
         m_dataProxy->cleanUp();

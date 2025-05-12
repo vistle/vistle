@@ -39,6 +39,7 @@ set(core_SOURCES
 set(core_SOURCES
     ${core_SOURCES}
     celltree.cpp
+    celltreenode.cpp
     coords.cpp
     database.cpp
     empty.cpp
@@ -52,11 +53,13 @@ set(core_SOURCES
     points.cpp
     polygons.cpp
     rectilineargrid.cpp
+    scalars.cpp
     structuredgrid.cpp
     structuredgridbase.cpp
     texture1d.cpp
     uniformgrid.cpp
     unstr.cpp
+    uuid.cpp
     vec.cpp
     vertexownerlist.cpp)
 
@@ -192,7 +195,7 @@ vistle_target_link_libraries(
     PUBLIC
     Boost::system
     PUBLIC
-    vtkm::cont)
+    viskores::cont)
 target_link_libraries(vistle_core PRIVATE vistle_config)
 target_link_libraries(vistle_core PUBLIC Eigen3::Eigen)
 

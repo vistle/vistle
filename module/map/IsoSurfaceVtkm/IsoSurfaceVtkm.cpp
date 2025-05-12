@@ -5,8 +5,8 @@
 #include <vistle/util/stopwatch.h>
 #include <vistle/vtkm/convert.h>
 
-#include <vtkm/cont/DataSetBuilderExplicit.h>
-#include <vtkm/filter/contour/Contour.h>
+#include <viskores/cont/DataSetBuilderExplicit.h>
+#include <viskores/filter/contour/Contour.h>
 
 #include <iomanip>
 
@@ -115,7 +115,9 @@ bool IsoSurfaceVtkm::reduce(int timestep)
         m_pointOrValue->getValue() == PointPerTimestep) {
         const int numBlocks = blocks.size();
         int found = 0;
+#ifdef _OPENMP
 #pragma omp parallel for firstprivate(value) lastprivate(value) reduction(+ : found)
+#endif
         for (int i = 0; i < numBlocks; ++i) {
             const auto &b = blocks[i];
             auto gi = b.grid->getInterface<GridInterface>();
@@ -198,7 +200,7 @@ Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBas
     }
 
     // transform vistle dataset to vtkm dataset
-    vtkm::cont::DataSet vtkmDataSet;
+    viskores::cont::DataSet vtkmDataSet;
     auto status = vtkmSetGrid(vtkmDataSet, grid);
     if (!status->continueExecution()) {
         sendText(status->messageType(), status->message());
@@ -227,7 +229,7 @@ Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBas
     }
 
     // apply vtkm isosurface filter
-    vtkm::filter::contour::Contour isosurfaceFilter;
+    viskores::filter::contour::Contour isosurfaceFilter;
     isosurfaceFilter.SetActiveField(isospecies);
     isosurfaceFilter.SetIsoValue(isoValue);
     isosurfaceFilter.SetMergeDuplicatePoints(false);

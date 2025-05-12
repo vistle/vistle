@@ -24,7 +24,7 @@ public:
 
     virtual bool config(int argc, char *argv[]);
 
-    void run();
+    bool run();
 
     void setVistleRoot(const std::string &directory, const std::string &buildtype);
 

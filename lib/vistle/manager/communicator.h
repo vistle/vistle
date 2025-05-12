@@ -37,7 +37,7 @@ public:
     static Communicator &the();
 
     void setVistleRoot(const std::string &dir, const std::string &buildtype);
-    void run();
+    bool run();
     bool dispatch(bool *work);
     void terminate();
     bool handleMessage(const message::Buffer &message, const MessagePayload &payload = MessagePayload());
@@ -56,12 +56,12 @@ public:
     bool connectHub(std::string host, unsigned short port, unsigned short dataPort);
     boost::mpi::communicator comm() const;
 
-    void lock();
-    void unlock();
 
 private:
     bool connectData();
 
+    void lock();
+    void unlock();
 
     boost::mpi::communicator m_comm;
     ClusterManager *m_clusterManager;

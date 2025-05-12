@@ -21,12 +21,6 @@ struct V_COREEXPORT ArrayLoader {
         virtual ~ArrayOwner() {}
     };
 
-    template<typename T>
-    struct Unreffer: public ArrayOwner {
-        explicit Unreffer(ShmVector<T> &ref): m_ref(ref) {}
-        ShmVector<T> m_ref;
-    };
-
     ArrayLoader(const std::string &name, int type, const vistle::iarchive &ar);
     ArrayLoader() = delete;
     ArrayLoader(const ArrayLoader &other) = delete;
@@ -59,7 +53,8 @@ public:
                        const std::map<std::string, message::CompressionMode> &compressions,
                        const std::map<std::string, size_t> &sizes);
 
-    void requestArray(const std::string &name, int type, const ArrayCompletionHandler &completeCallback) override;
+    void requestArray(const std::string &name, int localType, int remoteType,
+                      const ArrayCompletionHandler &completeCallback) override;
     void requestObject(const std::string &name, const ObjectCompletionHandler &completeCallback) override;
 
     bool renameObjects() const override;

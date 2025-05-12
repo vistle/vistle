@@ -81,7 +81,7 @@ bool ImplicitFunctionController::changeParameter(const vistle::Parameter *param)
     return false;
 }
 
-vtkm::ImplicitFunctionGeneral ImplicitFunctionController::function() const
+viskores::ImplicitFunctionGeneral ImplicitFunctionController::function() const
 {
     Vector3 pvertex = m_module->getVectorParameter("vertex");
     Vector3 ppoint = m_module->getVectorParameter("point");
@@ -89,30 +89,30 @@ vtkm::ImplicitFunctionGeneral ImplicitFunctionController::function() const
     Vector3 direction = m_module->getVectorParameter("direction");
     direction.normalize();
 
-    auto vertex = vtkm::make_Vec(pvertex[0], pvertex[1], pvertex[2]);
-    auto point = vtkm::make_Vec(ppoint[0], ppoint[1], ppoint[2]);
-    auto axis = vtkm::make_Vec(direction[0], direction[1], direction[2]);
+    auto vertex = viskores::make_Vec(pvertex[0], pvertex[1], pvertex[2]);
+    auto point = viskores::make_Vec(ppoint[0], ppoint[1], ppoint[2]);
+    auto axis = viskores::make_Vec(direction[0], direction[1], direction[2]);
 
     auto pmin =
-        vtkm::make_Vec(std::min(vertex[0], point[0]), std::min(vertex[1], point[1]), std::min(vertex[2], point[2]));
+        viskores::make_Vec(std::min(vertex[0], point[0]), std::min(vertex[1], point[1]), std::min(vertex[2], point[2]));
     auto pmax =
-        vtkm::make_Vec(std::max(vertex[0], point[0]), std::max(vertex[1], point[1]), std::max(vertex[2], point[2]));
+        viskores::make_Vec(std::max(vertex[0], point[0]), std::max(vertex[1], point[1]), std::max(vertex[2], point[2]));
 
     switch (m_option->getValue()) {
     case Plane:
-        return vtkm::Plane(point, vertex);
+        return viskores::Plane(point, vertex);
     case Sphere:
-        return vtkm::Sphere(vertex, scalar);
+        return viskores::Sphere(vertex, scalar);
     case Box:
-        return vtkm::Box(pmin, pmax);
+        return viskores::Box(pmin, pmax);
     case CylinderX:
     case CylinderY:
     case CylinderZ:
-        return vtkm::Cylinder(vertex, axis, scalar);
+        return viskores::Cylinder(vertex, axis, scalar);
     }
 
     m_module->sendError("unsupported option");
-    return vtkm::Plane(vtkm::make_Vec(0, 0, 0), vtkm::make_Vec(0, 0, 1));
+    return viskores::Plane(viskores::make_Vec(0, 0, 0), viskores::make_Vec(0, 0, 1));
 }
 
 } // namespace vistle

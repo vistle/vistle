@@ -8,31 +8,31 @@
 
 namespace vistle {
 
-template<int NumDimensions>
-struct CelltreeNode<8, NumDimensions> {
+template<typename S, int NumDimensions>
+struct CelltreeNode<S, 8, NumDimensions> {
     union {
-        Scalar Lmax; //< for inner nodes: max of left subvolume
-        Index start; //< for leaf nodes: index into cell array
+        S Lmax; //< for inner nodes: max of left subvolume
+        Index64 start; //< for leaf nodes: index into cell array
     };
     union {
-        Scalar Rmin; //< for inner nodes: min of right subvolume
-        Index size; //< for leaf nodes: index into cell array
+        S Rmin; //< for inner nodes: min of right subvolume
+        Index64 size; //< for leaf nodes: index into cell array
     };
 
-    Index dim: NumDimensions == 1 ? 1 : 2; //< split dimension, or NumDimensions for leaf nodes
-    Index child: sizeof(Index) * 8 - (NumDimensions == 1 ? 1 : 2); //< index of first child for inner nodes
+    Index64 dim: NumDimensions == 1 ? 1 : 2; //< split dimension, or NumDimensions for leaf nodes
+    Index64 child: sizeof(Index64) * 8 - (NumDimensions == 1 ? 1 : 2); //< index of first child for inner nodes
 
-    CelltreeNode(Index start = 0, Index size = 0) // leaf node
+    CelltreeNode(Index64 start = 0, Index64 size = 0) // leaf node
     : start(start), size(size), dim(NumDimensions), child(0)
     {}
 
-    CelltreeNode(int dim, Scalar Lmax, Scalar Rmin, Index children) // inner node
+    CelltreeNode(int dim, S Lmax, S Rmin, Index64 children) // inner node
     : Lmax(Lmax), Rmin(Rmin), dim(dim), child(children)
     {}
 
     bool isLeaf() const { return dim == NumDimensions; }
-    Index left() const { return child; }
-    Index right() const { return child + 1; }
+    Index64 left() const { return child; }
+    Index64 right() const { return child + 1; }
 
     ARCHIVE_ACCESS
     template<class Archive>
@@ -40,31 +40,31 @@ struct CelltreeNode<8, NumDimensions> {
     {}
 };
 
-template<int NumDimensions>
-struct CelltreeNode<4, NumDimensions> {
+template<typename S, int NumDimensions>
+struct CelltreeNode<S, 4, NumDimensions> {
     union {
-        Scalar Lmax; //< for inner nodes: max of left subvolume
-        Index start; //< for leaf nodes: index into cell array
+        S Lmax; //< for inner nodes: max of left subvolume
+        Index32 start; //< for leaf nodes: index into cell array
     };
     union {
-        Scalar Rmin; //< for inner nodes: min of right subvolume
-        Index size; //< for leaf nodes: index into cell array
+        S Rmin; //< for inner nodes: min of right subvolume
+        Index32 size; //< for leaf nodes: index into cell array
     };
 
-    Index dim; //< split dimension, or NumDimensions for leaf nodes
-    Index child; //< index of first child for inner nodes
+    Index32 dim; //< split dimension, or NumDimensions for leaf nodes
+    Index32 child; //< index of first child for inner nodes
 
-    CelltreeNode(Index start = 0, Index size = 0) // leaf node
+    CelltreeNode(Index32 start = 0, Index32 size = 0) // leaf node
     : start(start), size(size), dim(NumDimensions), child(0)
     {}
 
-    CelltreeNode(int dim, Scalar Lmax, Scalar Rmin, Index children) // inner node
+    CelltreeNode(int dim, S Lmax, S Rmin, Index32 children) // inner node
     : Lmax(Lmax), Rmin(Rmin), dim(dim), child(children)
     {}
 
     bool isLeaf() const { return dim == NumDimensions; }
-    Index left() const { return child; }
-    Index right() const { return child + 1; }
+    Index32 left() const { return child; }
+    Index32 right() const { return child + 1; }
 
     ARCHIVE_ACCESS
     template<class Archive>
@@ -72,31 +72,43 @@ struct CelltreeNode<4, NumDimensions> {
     {}
 };
 
-template<size_t IndexSize, int NumDimensions>
-bool operator<(const CelltreeNode<IndexSize, NumDimensions> &n0, const CelltreeNode<IndexSize, NumDimensions> &n1)
+template<typename S, size_t IndexSize, int NumDimensions>
+bool operator<(const CelltreeNode<S, IndexSize, NumDimensions> &n0, const CelltreeNode<S, IndexSize, NumDimensions> &n1)
 {
     return n0.start < n1.start;
 }
 
-template<size_t IndexSize, int NumDimensions>
-bool operator>=(const CelltreeNode<IndexSize, NumDimensions> &n0, const CelltreeNode<IndexSize, NumDimensions> &n1)
+template<typename S, size_t IndexSize, int NumDimensions>
+bool operator>=(const CelltreeNode<S, IndexSize, NumDimensions> &n0,
+                const CelltreeNode<S, IndexSize, NumDimensions> &n1)
 {
     return n0.start >= n1.start;
 }
 
-template<size_t IndexSize, int NumDimensions>
-bool operator!=(const CelltreeNode<IndexSize, NumDimensions> &n0, const CelltreeNode<IndexSize, NumDimensions> &n1)
+template<typename S, size_t IndexSize, int NumDimensions>
+bool operator!=(const CelltreeNode<S, IndexSize, NumDimensions> &n0,
+                const CelltreeNode<S, IndexSize, NumDimensions> &n1)
 {
     return n0.start != n1.start;
 }
 
-template<size_t IndexSize, int NumDimensions>
-std::ostream &operator<<(std::ostream &os, const CelltreeNode<IndexSize, NumDimensions> &n)
+template<typename S, size_t IndexSize, int NumDimensions>
+std::ostream &operator<<(std::ostream &os, const CelltreeNode<S, IndexSize, NumDimensions> &n)
 {
     os << "(" << n.start << "+" << n.size << "/" << n.dim << " -> " << n.child << ")";
     return os;
 }
 
-} // namespace vistle
 
+#define TD_CTN_DECL(ST, SN, IS) \
+    extern template struct V_COREEXPORT CelltreeNode<ST, IS / 8, 1>; \
+    extern template struct V_COREEXPORT CelltreeNode<ST, IS / 8, 2>; \
+    extern template struct V_COREEXPORT CelltreeNode<ST, IS / 8, 3>;
+
+TD_CTN_DECL(float, F, 32)
+TD_CTN_DECL(float, F, 64)
+TD_CTN_DECL(double, D, 32)
+TD_CTN_DECL(double, D, 64)
+
+} // namespace vistle
 #endif

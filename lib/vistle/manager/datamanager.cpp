@@ -132,7 +132,6 @@ bool DataManager::dispatch()
         if (m_size <= 1) {
             continue;
         }
-        std::unique_lock<Communicator> guard(Communicator::the());
         auto status = m_req.test();
         if (status && !status->cancelled()) {
             assert(status->tag() == Communicator::TagData);
@@ -141,11 +140,9 @@ bool DataManager::dispatch()
                 payload.resize(buf.payloadSize());
                 m_comm.recv(status->source(), Communicator::TagData, payload.data(), buf.payloadSize());
             }
-            guard.unlock();
             work = true;
             gotMsg = true;
             handle(buf, &payload);
-            guard.lock();
             m_req = m_comm.irecv(mpi::any_source, Communicator::TagData, &m_msgSize, 1);
         }
     }
@@ -161,7 +158,6 @@ void DataManager::trace(message::Type type)
 bool DataManager::send(const message::Message &message, std::shared_ptr<buffer> payload)
 {
     if (isLocal(message.destId())) {
-        std::unique_lock<Communicator> guard(Communicator::the());
         const int sz = message.size();
         m_comm.send(message.destRank(), Communicator::TagData, sz);
         m_comm.send(message.destRank(), Communicator::TagData, (const char *)&message, sz);
@@ -185,15 +181,16 @@ bool DataManager::send(const message::Message &message, std::shared_ptr<buffer> 
     }
 }
 
-bool DataManager::requestArray(const std::string &referrer, const std::string &arrayId, int type, int hub, int rank,
-                               const ArrayCompletionHandler &handler)
+bool DataManager::requestArray(const std::string &referrer, const std::string &arrayId, int localType, int remoteType,
+                               int hub, int rank, const ArrayCompletionHandler &handler)
 {
     //CERR << "requesting array: " << arrayId << " for " << referrer << std::endl;
     {
         std::lock_guard<std::mutex> lock(m_requestArrayMutex);
         auto it = m_requestedArrays.find(arrayId);
         if (it != m_requestedArrays.end()) {
-            it->second.push_back(handler);
+            assert(it->second.type == localType);
+            it->second.handlers.push_back(handler);
 #ifdef DEBUG
             CERR << "requesting array: " << arrayId << " for " << referrer << ", piggybacking..." << std::endl;
 #endif
@@ -202,10 +199,11 @@ bool DataManager::requestArray(const std::string &referrer, const std::string &a
 #ifdef DEBUG
         CERR << "requesting array: " << arrayId << " for " << referrer << ", requesting..." << std::endl;
 #endif
-        m_requestedArrays[arrayId].push_back(handler);
+        it = m_requestedArrays.emplace(arrayId, localType).first;
+        it->second.handlers.push_back(handler);
     }
 
-    message::RequestObject req(hub, rank, arrayId, type, referrer);
+    message::RequestObject req(hub, rank, arrayId, remoteType, referrer);
     req.setSenderId(Communicator::the().hubId());
     req.setRank(m_rank);
     send(req);
@@ -218,7 +216,7 @@ bool DataManager::requestObject(const message::AddObject &add, const std::string
     Object::const_ptr obj = Shm::the().getObjectFromName(objId);
     if (obj) {
 #ifdef DEBUG
-        std::lock_guard<std::mutex> lock(m_requestObjectMutex);
+        std::unique_lock<std::mutex> lock(m_requestObjectMutex);
         CERR << m_outstandingAdds[objId].size() << " outstanding adds for " << objId << ", already have!" << std::endl;
         lock.unlock();
 #endif
@@ -258,7 +256,7 @@ bool DataManager::requestObject(const std::string &referrer, const std::string &
     Object::const_ptr obj = Shm::the().getObjectFromName(objId);
     if (obj) {
 #ifdef DEBUG
-        std::lock_guard<std::mutex> lock(m_requestObjectMutex);
+        std::unique_lock<std::mutex> lock(m_requestObjectMutex);
         CERR << m_outstandingAdds[objId].size() << " outstanding adds for subobj " << objId << ", already have!"
              << std::endl;
         lock.unlock();
@@ -268,7 +266,7 @@ bool DataManager::requestObject(const std::string &referrer, const std::string &
     }
 
     {
-        std::lock_guard<std::mutex> lock(m_requestObjectMutex);
+        std::unique_lock<std::mutex> lock(m_requestObjectMutex);
         auto it = m_requestedObjects.find(objId);
         if (it != m_requestedObjects.end()) {
             it->second.completionHandlers.push_back(handler);
@@ -310,6 +308,10 @@ bool DataManager::prepareTransfer(const message::AddObject &add)
 
 bool DataManager::completeTransfer(const message::AddObjectCompleted &complete)
 {
+#ifdef DEBUG
+    CERR << "completeTransfer: releasing " << complete.objectName() << std::endl;
+#endif
+
     message::AddObject key(complete);
     auto it = m_inTransitObjects.find(key);
     if (it == m_inTransitObjects.end()) {
@@ -328,8 +330,6 @@ bool DataManager::completeTransfer(const message::AddObjectCompleted &complete)
 
 void DataManager::updateStatus()
 {
-    std::unique_lock<Communicator> guard(Communicator::the());
-
     message::DataTransferState m(m_inTransitObjects.size());
     m.setSenderId(Communicator::the().hubId());
     m.setRank(m_rank);
@@ -342,14 +342,17 @@ void DataManager::updateStatus()
 
 bool DataManager::notifyTransferComplete(const message::AddObject &addObj)
 {
-    std::unique_lock<Communicator> guard(Communicator::the());
+    //std::unique_lock<Communicator> guard(Communicator::the());
 
     //CERR << "sending completion notification for " << objName << std::endl;
     message::AddObjectCompleted complete(addObj);
     complete.setSenderId(Communicator::the().hubId());
     complete.setRank(m_rank);
     int hub = Communicator::the().clusterManager().idToHub(addObj.senderId());
-    return Communicator::the().clusterManager().sendMessage(hub, complete, addObj.rank());
+    complete.setDestId(hub);
+    complete.setDestRank(addObj.rank());
+    //return Communicator::the().clusterManager().sendMessage(hub, complete, addObj.rank());
+    return Communicator::the().sendHub(complete);
     //return send(complete);
 }
 
@@ -397,10 +400,11 @@ public:
     : m_dmgr(dmgr), m_add(nullptr), m_referrer(referrer), m_hub(hub), m_rank(rank)
     {}
 
-    void requestArray(const std::string &name, int type, const ArrayCompletionHandler &completeCallback) override
+    void requestArray(const std::string &name, int localType, int remoteType,
+                      const ArrayCompletionHandler &completeCallback) override
     {
         assert(!m_add);
-        m_dmgr->requestArray(m_referrer, name, type, m_hub, m_rank, completeCallback);
+        m_dmgr->requestArray(m_referrer, name, localType, remoteType, m_hub, m_rank, completeCallback);
     }
 
     void requestObject(const std::string &name, const ObjectCompletionHandler &completeCallback) override
@@ -418,13 +422,15 @@ bool DataManager::handlePriv(const message::RequestObject &req)
 {
 #ifdef DEBUG
     if (req.isArray()) {
-        CERR << "request for array " << req.objectId() << std::endl;
+        CERR << "request for array " << req.objectId() << ", type=" << req.arrayType()
+             << " (= " << scalarTypeName(req.arrayType()) << ")" << std::endl;
     } else {
         CERR << "request for object " << req.objectId() << std::endl;
     }
 #endif
 
     auto fut = std::async(std::launch::async, [this, req]() {
+        setThreadName("dmgr:req:" + std::string(req.objectId()));
         std::shared_ptr<message::SendObject> snd;
         vecostreambuf<buffer> buf;
         buffer &mem = buf.get_vector();
@@ -483,37 +489,46 @@ bool DataManager::handlePriv(const message::SendObject &snd, buffer *payload)
 
     auto payload2 = std::make_shared<buffer>(std::move(*payload));
     auto fut = std::async(std::launch::async, [this, snd, payload2]() {
+        setThreadName("dmgr:recv:" + std::string(snd.objectId()));
         buffer uncompressed = decompressPayload(snd, *payload2.get());
         vecistreambuf<buffer> membuf(uncompressed);
 
         if (snd.isArray()) {
+            std::unique_lock<std::mutex> lock(m_requestArrayMutex);
+            auto it = m_requestedArrays.find(snd.objectId());
+            lock.unlock();
+            if (it == m_requestedArrays.end()) {
+                CERR << "received array " << snd.objectId() << " for " << snd.referrer() << ", but did not find request"
+                     << std::endl;
+                return false;
+            }
+
             // an array was received
             vistle::iarchive memar(membuf);
-            ArrayLoader loader(snd.objectId(), snd.objectType(), memar);
+            ArrayLoader loader(snd.objectId(), it->second.type, memar);
             if (!loader.load()) {
                 CERR << "failed to restore array " << snd.objectId() << std::endl;
                 return false;
             }
 
-            std::unique_lock<std::mutex> lock(m_requestArrayMutex);
+            lock.lock();
             //CERR << "restored array " << snd.objectId() << ", dangling in memory" << std::endl;
-            auto it = m_requestedArrays.find(snd.objectId());
+            it = m_requestedArrays.find(snd.objectId());
             if (it == m_requestedArrays.end()) {
                 CERR << "restored array " << snd.objectId() << " for " << snd.referrer() << ", but did not find request"
                      << std::endl;
             }
             assert(it != m_requestedArrays.end());
             if (it != m_requestedArrays.end()) {
-                auto handlers = std::move(it->second);
-#ifdef DEBUG
-                CERR << "restored array " << snd.objectId() << ", " << handlers.size() << " completion handler"
-                     << std::endl;
-#endif
+                auto reqArr = std::move(it->second);
                 m_requestedArrays.erase(it);
                 lock.unlock();
-                for (const auto &completionHandler: handlers)
+#ifdef DEBUG
+                CERR << "restored array " << snd.objectId() << ", " << reqArr.handlers.size() << " completion handler"
+                     << std::endl;
+#endif
+                for (const auto &completionHandler: reqArr.handlers)
                     completionHandler(snd.objectId());
-                lock.lock();
             }
 
             return true;
@@ -521,52 +536,37 @@ bool DataManager::handlePriv(const message::SendObject &snd, buffer *payload)
 
         // an object was received
         std::string objName = snd.objectId();
-        {
-            std::lock_guard<std::mutex> lock(m_requestObjectMutex);
-            auto objIt = m_requestedObjects.find(objName);
-            if (objIt == m_requestedObjects.end()) {
-                CERR << "object " << objName << " unexpected" << std::endl;
-                return false;
-            }
-        }
-
         auto completionHandler = [this, objName]() mutable -> void {
             std::unique_lock<std::mutex> lock(m_requestObjectMutex);
             auto addIt = m_outstandingAdds.find(objName);
+            std::set<message::AddObject> notify;
             if (addIt == m_outstandingAdds.end()) {
                 // that's normal if a sub-object was loaded
                 //CERR << "no outstanding add for " << objName << std::endl;
             } else {
-                auto notify = std::move(addIt->second);
+                notify = std::move(addIt->second);
                 m_outstandingAdds.erase(addIt);
-                lock.unlock();
-                for (const auto &add: notify) {
-                    notifyTransferComplete(add);
-                }
-                lock.lock();
             }
 
             auto objIt = m_requestedObjects.find(objName);
             if (objIt != m_requestedObjects.end()) {
                 auto handlers = std::move(objIt->second.completionHandlers);
-                auto objref = objIt->second.obj;
+                auto obj = objIt->second.obj;
                 m_requestedObjects.erase(objIt);
                 lock.unlock();
-                auto obj = Shm::the().getObjectFromName(objName);
                 if (!obj) {
-                    if (auto incomplete = Shm::the().getObjectFromName(objName, false)) {
-                        CERR << objName << " is INCOMPLETE" << std::endl;
-                    } else {
-                        CERR << "could not retrieve " << objName << " from shmem" << std::endl;
-                    }
+                    obj = Shm::the().getObjectFromName(objName);
+                    assert(obj);
                 }
-                assert(obj);
                 for (const auto &handler: handlers) {
                     handler(obj);
                 }
-                lock.lock();
             } else {
                 CERR << "no outstanding object for " << objName << std::endl;
+            }
+
+            for (const auto &add: notify) {
+                notifyTransferComplete(add);
             }
         };
 
@@ -580,9 +580,20 @@ bool DataManager::handlePriv(const message::SendObject &snd, buffer *payload)
         }
         assert(obj);
 
+        {
+            std::lock_guard<std::mutex> lock(m_requestObjectMutex);
+            auto objIt = m_requestedObjects.find(objName);
+            if (objIt == m_requestedObjects.end()) {
+                CERR << "object " << objName << " unexpected" << std::endl;
+                return false;
+            }
+        }
+
         std::lock_guard<std::mutex> lock(m_requestObjectMutex);
         auto objIt = m_requestedObjects.find(objName);
-        if (objIt != m_requestedObjects.end()) {
+        if (objIt == m_requestedObjects.end()) {
+            CERR << "object " << objName << " unexpected" << std::endl;
+        } else {
             objIt->second.obj = obj;
         }
 

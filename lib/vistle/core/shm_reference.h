@@ -345,7 +345,7 @@ public:
     {
         return m_size;
     }
-    const vtkm::cont::ArrayHandle<handle_type> &handle() const
+    const viskores::cont::ArrayHandle<handle_type> &handle() const
     {
 #ifdef NO_SHMEM
         if (m_arr) {
@@ -384,12 +384,12 @@ private:
     }
     size_t m_size = 0;
 #ifdef NO_SHMEM
-    mutable vtkm::cont::ArrayHandle<handle_type> m_handle;
+    mutable viskores::cont::ArrayHandle<handle_type> m_handle;
 #else
-    vtkm::cont::ArrayHandle<handle_type> m_handle;
+    viskores::cont::ArrayHandle<handle_type> m_handle;
 #endif
-    static inline vtkm::cont::ArrayHandle<handle_type> s_nullHandle =
-        vtkm::cont::make_ArrayHandle<handle_type>(static_cast<handle_type *>(nullptr), 0, vtkm::CopyFlag::Off);
+    static inline viskores::cont::ArrayHandle<handle_type> s_nullHandle =
+        viskores::cont::make_ArrayHandle<handle_type>(static_cast<handle_type *>(nullptr), 0, viskores::CopyFlag::Off);
 };
 
 

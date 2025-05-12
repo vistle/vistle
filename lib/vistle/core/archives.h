@@ -223,7 +223,8 @@ public:
 class V_COREEXPORT Fetcher {
 public:
     virtual ~Fetcher();
-    virtual void requestArray(const std::string &name, int type, const ArrayCompletionHandler &completeCallback) = 0;
+    virtual void requestArray(const std::string &name, int localType, int remoteType,
+                              const ArrayCompletionHandler &completeCallback) = 0;
     virtual void requestObject(const std::string &name, const ObjectCompletionHandler &completeCallback) = 0;
 
     virtual bool renameObjects() const;
@@ -255,7 +256,7 @@ public:
     std::shared_ptr<Fetcher> fetcher() const;
 
     template<typename T>
-    void fetchArray(const std::string &arname, const ArrayCompletionHandler &completeCallback) const
+    void fetchArray(const std::string &arname, unsigned origType, const ArrayCompletionHandler &completeCallback) const
     {
         std::string name = translateArrayName(arname);
         if (!name.empty()) {
@@ -266,7 +267,7 @@ public:
             }
         }
         assert(m_fetcher);
-        m_fetcher->requestArray(arname, shm<T>::array::typeId(), completeCallback);
+        m_fetcher->requestArray(arname, shm<T>::array::typeId(), origType, completeCallback);
     }
 
     obj_const_ptr getObject(const std::string &name,
@@ -337,7 +338,7 @@ public:
     std::shared_ptr<Fetcher> fetcher() const;
 
     template<typename T>
-    void fetchArray(const std::string &arname, const ArrayCompletionHandler &completeCallback) const
+    void fetchArray(const std::string &arname, unsigned origType, const ArrayCompletionHandler &completeCallback) const
     {
         std::string name = translateArrayName(arname);
         if (!name.empty()) {
@@ -348,7 +349,7 @@ public:
             }
         }
         assert(m_fetcher);
-        m_fetcher->requestArray(arname, shm<T>::array::typeId(), completeCallback);
+        m_fetcher->requestArray(arname, shm<T>::array::typeId(), origType, completeCallback);
     }
 
     obj_const_ptr getObject(const std::string &name, const ObjectCompletionHandler &completeCallback) const;

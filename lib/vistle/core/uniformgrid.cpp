@@ -9,6 +9,7 @@
 #include "archives.h"
 #include <cassert>
 #include "validate.h"
+#include "shm_obj_ref_impl.h"
 
 namespace vistle {
 

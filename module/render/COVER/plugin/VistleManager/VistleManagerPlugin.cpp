@@ -85,7 +85,7 @@ bool VistleManagerPlugin::sendVistle(const vistle::message::Message &msg, const 
 {
     message::Buffer buf(msg);
     std::cerr << "sending " << buf << std::endl;
-    std::unique_lock<Communicator> guard(Communicator::the());
+    //std::unique_lock<Communicator> guard(Communicator::the());
     //return Communicator::the().sendMessage(vistle::message::Id::Broadcast, buf, -1, payload);
     return Communicator::the().sendHub(buf, payload);
 }

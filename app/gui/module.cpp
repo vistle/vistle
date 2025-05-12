@@ -554,6 +554,9 @@ void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
                     }
                 }
             }
+            if (baseName.endsWith("Vtkm")) {
+                baseName = baseName.left(baseName.size() - 4);
+            }
             auto add = [this](QString name) {
                 auto act = new QAction(name, this);
                 act->setStatusTip(QString("Replace with %1").arg(name));

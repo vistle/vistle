@@ -577,13 +577,14 @@ Object::const_ptr Shm::getObjectFromName(const std::string &name, bool onlyCompl
     Object::const_ptr ret;
     auto lambda = [this, &ret, onlyComplete, &name]() {
         if (auto od = getObjectDataFromName(name)) {
-            if (od->isComplete() || !onlyComplete) {
+            if (!onlyComplete || od->isComplete()) {
                 //std::cerr << "Shm::getObjectFromName: " << name << " is complete, refcount=" << od->refcount() << std::endl;
                 ret.reset(Object::create(od));
                 assert(ret->refcount() > 0);
                 return;
             }
             std::cerr << "Shm::getObjectFromName: " << name << " not complete" << std::endl;
+            od->printCompletionStatus(std::cerr);
         }
     };
     Shm::the().atomicFunc(lambda);
@@ -656,14 +657,7 @@ void Shm::deleteBarrier(const std::string &name)
 }
 #endif
 
-V_DEFINE_SHMREF(char)
-V_DEFINE_SHMREF(signed char)
-V_DEFINE_SHMREF(unsigned char)
-V_DEFINE_SHMREF(int32_t)
-V_DEFINE_SHMREF(uint32_t)
-V_DEFINE_SHMREF(int64_t)
-V_DEFINE_SHMREF(uint64_t)
-V_DEFINE_SHMREF(float)
-V_DEFINE_SHMREF(double)
+FOR_ALL_SCALARS(V_DEFINE_SHMREF)
+FOR_ALL_CELLTREE_NODES(V_DEFINE_SHMREF)
 
 } // namespace vistle

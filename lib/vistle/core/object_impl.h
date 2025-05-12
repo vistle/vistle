@@ -88,35 +88,34 @@ Object *Object::loadObject(Archive &ar)
         ar &V_NAME(ar, "object_type", type);
         if (!name.empty())
             objData = Shm::the().getObjectDataFromName(name);
+        if (!ar.currentObject())
+            ar.setCurrentObject(objData);
         if (objData && objData->isComplete()) {
-            objData->ref();
             obj = Object::create(objData);
+        } else if (objData) {
+            std::cerr << "Object::loadObject: have " << name << ", but incomplete, refcount=" << objData->refcount()
+                      << std::endl;
+            obj = Object::create(objData);
+        } else {
+            auto funcs = ObjectTypeRegistry::getType(type);
+            obj = funcs.createEmpty(name);
+            objData = obj->d();
+            assert(objData);
             if (!ar.currentObject())
                 ar.setCurrentObject(objData);
-            objData->unref();
-            assert(obj->refcount() >= 1);
-        } else {
-            if (objData) {
-                std::cerr << "Object::loadObject: have " << name << ", but incomplete, refcount=" << objData->refcount()
-                          << std::endl;
-                obj = Object::create(objData);
-            } else {
-                auto funcs = ObjectTypeRegistry::getType(type);
-                obj = funcs.createEmpty(name);
-                objData = obj->d();
-            }
-            assert(objData);
             name = obj->getName();
             ar.registerObjectNameTranslation(arname, name);
-            assert(obj->refcount() >= 1);
         }
+        assert(obj->refcount() >= 1);
     };
     try {
         Shm::the().atomicFunc(lambda);
         // lock so that only one thread restores object from archive
-        ObjectData::mutex_lock_type guard(obj->d()->attachment_mutex);
+        ObjectData::mutex_lock_type guard(obj->d()->object_mutex);
         if (!objData->isComplete() || objData->meta.creator() == -1) {
+            objData->meta.setRestoring(true);
             obj->loadFromArchive(ar);
+            objData->meta.setRestoring(false);
         }
 #ifdef USE_BOOST_ARCHIVE
     } catch (const boost::archive::archive_exception &ex) {
@@ -134,8 +133,9 @@ Object *Object::loadObject(Archive &ar)
         throw;
     }
     if (obj) {
+        assert(objData == obj->d());
         assert(obj->isComplete() || ar.currentObject() == obj->d());
-        if (obj->d()->unresolvedReferences == 0) {
+        if (obj->isComplete()) {
             obj->refresh();
             assert(obj->check(std::cerr));
             if (ar.objectCompletionHandler())

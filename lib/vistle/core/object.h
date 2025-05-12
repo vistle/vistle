@@ -105,10 +105,9 @@ public:
         QUADS = 28,
         LAYERGRID = 29,
 
+        CELLTREE = 80, // base type id for all Celltree types
+
         VERTEXOWNERLIST = 95,
-        CELLTREE1 = 96,
-        CELLTREE2 = 97,
-        CELLTREE3 = 98,
         NORMALS = 99,
 
         VEC = 100, // base type id for all Vec types
@@ -225,9 +224,9 @@ private:
     Object &operator=(const Object &) = delete;
 
 #ifdef NO_SHMEM
-    std::recursive_mutex &attachmentMutex() const;
+    std::recursive_mutex &objectMutex() const;
 #else
-    boost::interprocess::interprocess_recursive_mutex &attachmentMutex() const;
+    boost::interprocess::interprocess_recursive_mutex &objectMutex() const;
 #endif
 };
 V_COREEXPORT std::ostream &operator<<(std::ostream &os, const Object &);
@@ -238,6 +237,8 @@ struct ObjectData: public ShmData {
     Object::Type type;
 
     std::atomic<int> unresolvedReferences; //!< no. of not-yet-available arrays and referenced objects
+    std::atomic<int> unresolvedArrayReferences; //!< no. of not-yet-available arrays
+    std::atomic<int> unresolvedObjectReferences; //!< no. of not-yet-available referenced objects
 
     Meta meta;
 
@@ -262,10 +263,12 @@ struct ObjectData: public ShmData {
     V_COREEXPORT std::vector<std::string> getAttributeList() const;
 
 #ifdef NO_SHMEM
+    mutable std::recursive_mutex object_mutex;
     mutable std::recursive_mutex attachment_mutex;
     typedef std::lock_guard<std::recursive_mutex> mutex_lock_type;
     typedef const ObjectData *Attachment;
 #else
+    mutable boost::interprocess::interprocess_recursive_mutex object_mutex;
     mutable boost::interprocess::interprocess_recursive_mutex attachment_mutex; //< protects attachments
     typedef boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> mutex_lock_type;
     typedef interprocess::offset_ptr<const ObjectData> Attachment;
@@ -298,8 +301,10 @@ struct ObjectData: public ShmData {
     V_COREEXPORT int unref() const;
     static ObjectData *create(Object::Type id, const std::string &name, const Meta &m);
     V_COREEXPORT bool isComplete() const; //! check whether all references have been resolved
-    V_COREEXPORT void unresolvedReference();
-    V_COREEXPORT void referenceResolved(const std::function<void()> &completeCallback);
+    V_COREEXPORT void unresolvedReference(bool isArray, const std::string &arname, const std::string &shmname);
+    V_COREEXPORT void referenceResolved(const std::function<void()> &completeCallback, bool isArray,
+                                        const std::string &arname, const std::string &shmname);
+    V_COREEXPORT void printCompletionStatus(std::ostream &os) const;
 
     ARCHIVE_ACCESS_SPLIT
     template<class Archive>
@@ -518,6 +523,7 @@ private: \
 #ifdef USE_BOOST_ARCHIVE
 #ifdef USE_YAS
 #define V_OBJECT_DECL(ObjType) \
+    extern template class V_COREEXPORT shm_obj_ref<ObjType>; \
     extern template void V_COREEXPORT ObjType::load<yas_iarchive>(yas_iarchive & ar); \
     extern template void V_COREEXPORT ObjType::load<boost_iarchive>(boost_iarchive & ar); \
     extern template void V_COREEXPORT ObjType::save<yas_oarchive>(yas_oarchive & ar) const; \
@@ -528,39 +534,44 @@ private: \
     extern template void V_COREEXPORT ObjType::Data::serialize<boost_oarchive>(boost_oarchive & ar);
 
 #define V_OBJECT_INST(ObjType) \
-    template void V_COREEXPORT ObjType::load<yas_iarchive>(yas_iarchive & ar); \
-    template void V_COREEXPORT ObjType::load<boost_iarchive>(boost_iarchive & ar); \
-    template void V_COREEXPORT ObjType::save<yas_oarchive>(yas_oarchive & ar) const; \
-    template void V_COREEXPORT ObjType::save<boost_oarchive>(boost_oarchive & ar) const; \
-    template void V_COREEXPORT ObjType::Data::serialize<yas_iarchive>(yas_iarchive & ar); \
-    template void V_COREEXPORT ObjType::Data::serialize<boost_iarchive>(boost_iarchive & ar); \
-    template void V_COREEXPORT ObjType::Data::serialize<yas_oarchive>(yas_oarchive & ar); \
-    template void V_COREEXPORT ObjType::Data::serialize<boost_oarchive>(boost_oarchive & ar);
+    template class shm_obj_ref<ObjType>; \
+    template void ObjType::load<yas_iarchive>(yas_iarchive & ar); \
+    template void ObjType::load<boost_iarchive>(boost_iarchive & ar); \
+    template void ObjType::save<yas_oarchive>(yas_oarchive & ar) const; \
+    template void ObjType::save<boost_oarchive>(boost_oarchive & ar) const; \
+    template void ObjType::Data::serialize<yas_iarchive>(yas_iarchive & ar); \
+    template void ObjType::Data::serialize<boost_iarchive>(boost_iarchive & ar); \
+    template void ObjType::Data::serialize<yas_oarchive>(yas_oarchive & ar); \
+    template void ObjType::Data::serialize<boost_oarchive>(boost_oarchive & ar);
 #else
 #define V_OBJECT_DECL(ObjType) \
+    extern template class V_COREEXPORT shm_obj_ref<ObjType>; \
     extern template void V_COREEXPORT ObjType::load<boost_iarchive>(boost_iarchive & ar); \
     extern template void V_COREEXPORT ObjType::save<boost_oarchive>(boost_oarchive & ar) const; \
     extern template void V_COREEXPORT ObjType::Data::serialize<boost_iarchive>(boost_iarchive & ar); \
     extern template void V_COREEXPORT ObjType::Data::serialize<boost_oarchive>(boost_oarchive & ar);
 
 #define V_OBJECT_INST(ObjType) \
-    template void V_COREEXPORT ObjType::load<boost_iarchive>(boost_iarchive & ar); \
-    template void V_COREEXPORT ObjType::save<boost_oarchive>(boost_oarchive & ar) const; \
-    template void V_COREEXPORT ObjType::Data::serialize<boost_iarchive>(boost_iarchive & ar); \
-    template void V_COREEXPORT ObjType::Data::serialize<boost_oarchive>(boost_oarchive & ar);
+    template class shm_obj_ref<ObjType>; \
+    template void ObjType::load<boost_iarchive>(boost_iarchive & ar); \
+    template void ObjType::save<boost_oarchive>(boost_oarchive & ar) const; \
+    template void ObjType::Data::serialize<boost_iarchive>(boost_iarchive & ar); \
+    template void ObjType::Data::serialize<boost_oarchive>(boost_oarchive & ar);
 #endif
 #else
 #define V_OBJECT_DECL(ObjType) \
+    extern template class V_COREEXPORT shm_obj_ref<ObjType>; \
     extern template void V_COREEXPORT ObjType::load<yas_iarchive>(yas_iarchive & ar); \
     extern template void V_COREEXPORT ObjType::save<yas_oarchive>(yas_oarchive & ar) const; \
     extern template void V_COREEXPORT ObjType::Data::serialize<yas_iarchive>(yas_iarchive & ar); \
     extern template void V_COREEXPORT ObjType::Data::serialize<yas_oarchive>(yas_oarchive & ar);
 
 #define V_OBJECT_INST(ObjType) \
-    template void V_COREEXPORT ObjType::load<yas_iarchive>(yas_iarchive & ar); \
-    template void V_COREEXPORT ObjType::save<yas_oarchive>(yas_oarchive & ar) const; \
-    template void V_COREEXPORT ObjType::Data::serialize<yas_iarchive>(yas_iarchive & ar); \
-    template void V_COREEXPORT ObjType::Data::serialize<yas_oarchive>(yas_oarchive & ar);
+    template class shm_obj_ref<ObjType>; \
+    template void ObjType::load<yas_iarchive>(yas_iarchive & ar); \
+    template void ObjType::save<yas_oarchive>(yas_oarchive & ar) const; \
+    template void ObjType::Data::serialize<yas_iarchive>(yas_iarchive & ar); \
+    template void ObjType::Data::serialize<yas_oarchive>(yas_oarchive & ar);
 #endif
 
 //! register a new Object type (simple form for non-templates, symbol suffix determined automatically)

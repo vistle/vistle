@@ -115,8 +115,9 @@ void ClusterManager::Module::unblock(const message::Message &msg) const
         std::cerr << "UNBLOCK: found as frontmost of " << blockers.size() << " blockers: " << msg << std::endl;
 #endif
         blockers.pop_front();
-        assert(blockedMessages.front().buf.uuid() == msg.uuid() && blockedMessages.front().buf.type() == msg.type());
         message::Buffer buf(msg);
+        assert(blockedMessages.front().buf.type() == msg.type());
+        assert(blockedMessages.front().buf.uuid() == msg.uuid());
         blockedMessages.front().payload.ref();
         if (blockedMessages.front().payload)
             buf.setPayloadName(blockedMessages.front().payload.name());
@@ -383,7 +384,6 @@ bool ClusterManager::dispatch(bool &received)
             pq.emplace(mod);
         }
 
-        m_modulePriorityChange.reserve(pq.size());
         while (!pq.empty()) {
             m_modulePriority.emplace_back(pq.top());
             pq.pop();
@@ -1345,14 +1345,18 @@ bool ClusterManager::addObjectSource(const message::AddObject &addObj)
         auto iter = addObj.meta().iteration();
         auto &cache = m_outputObjects[key];
         if (cache.generation != gen || cache.iteration != iter) {
+#ifdef DEBUG
             CERR << "clearing cache for " << addObj.senderId() << ":" << addObj.getSenderPort() << std::endl;
+#endif
             cache.objects.clear();
         }
         cache.objects.emplace_back(addObj.objectName());
         cache.generation = gen;
         cache.iteration = iter;
+#ifdef DEBUG
         CERR << "caching " << addObj.objectName() << " for " << addObj.senderId() << ":" << addObj.getSenderPort()
              << ", port=" << port << std::endl;
+#endif
     }
 
     const Port::ConstPortSet *list = portManager().getConnectionList(port);
@@ -1469,7 +1473,6 @@ bool ClusterManager::addObjectDestination(const message::AddObject &addObj, Obje
                         // unblock receiving module
                         addObj2.setUnblocking();
 
-                        std::unique_lock<Communicator> guard(Communicator::the());
                         if (broadcast) {
                             Communicator::the().broadcastAndHandleMessage(addObj2);
                         } else {

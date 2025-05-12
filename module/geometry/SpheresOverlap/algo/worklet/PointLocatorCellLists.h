@@ -1,42 +1,24 @@
 #ifndef VISTLE_SPHERESOVERLAP_ALGO_WORKLET_POINTLOCATORCELLLISTS_H
 #define VISTLE_SPHERESOVERLAP_ALGO_WORKLET_POINTLOCATORCELLLISTS_H
 
-#include <vtkm/Version.h>
-
-// Note that the version macros are only defined if find_package is called, which is
-// not the the case if Vistle builds VTK-m, i.e., VISTLE_INTERNAL_VTKM is defined.
-#if defined(VISTLE_EXTERNAL_VTKM) && (VTKM_VERSION_MAJOR < 2 || (VTKM_VERSION_MAJOR == 2 && VTKM_VERSION_MINOR < 2) || \
-                                      (VTKM_VERSION_MAJOR == 2 && VTKM_VERSION_MINOR == 2 && VTKM_VERSION_PATCH < 90))
-#define VTKM_INTERNAL_POINTLOCATORBASE
-#endif
-
-#ifdef VTKM_INTERNAL_POINTLOCATORBASE
-#include <vtkm/cont/internal/PointLocatorBase.h>
-#else
-#include <vtkm/cont/PointLocatorBase.h>
-#endif
+#include <viskores/cont/PointLocatorBase.h>
 
 #include <vistle/core/scalar.h>
 
 #include "OverlapDetector.h"
 #include "../ThicknessDeterminer.h"
 
-#ifdef VTKM_INTERNAL_POINTLOCATORBASE
-class PointLocatorCellLists: public vtkm::cont::internal::PointLocatorBase<PointLocatorCellLists> {
-    using Superclass = vtkm::cont::internal::PointLocatorBase<PointLocatorCellLists>;
-#else
-class PointLocatorCellLists: public vtkm::cont::PointLocatorBase {
-    using Superclass = vtkm::cont::PointLocatorBase;
-#endif
+class PointLocatorCellLists: public viskores::cont::PointLocatorBase {
+    using Superclass = viskores::cont::PointLocatorBase;
 
 public:
-    void SetRadii(const vtkm::cont::UnknownArrayHandle &radii)
+    void SetRadii(const viskores::cont::UnknownArrayHandle &radii)
     {
-        assert(radii.CanConvert<vtkm::cont::ArrayHandle<vtkm::FloatDefault>>());
-        this->Radii = radii.AsArrayHandle<vtkm::cont::ArrayHandle<vtkm::FloatDefault>>();
+        assert(radii.CanConvert<viskores::cont::ArrayHandle<viskores::FloatDefault>>());
+        this->Radii = radii.AsArrayHandle<viskores::cont::ArrayHandle<viskores::FloatDefault>>();
     }
 
-    void SetSearchRadius(const vtkm::FloatDefault searchRadius)
+    void SetSearchRadius(const viskores::FloatDefault searchRadius)
     {
         if (this->SearchRadius != searchRadius) {
             assert(searchRadius > 0);
@@ -45,54 +27,39 @@ public:
         }
     }
 
-    void SetThicknessDeterminer(ThicknessDeterminer determiner)
-    {
-        this->Determiner = determiner;
-    }
+    void SetThicknessDeterminer(ThicknessDeterminer determiner) { this->Determiner = determiner; }
 
-    const vtkm::Vec3f &GetMinPoint() const
-    {
-        return this->Min;
-    }
-    const vtkm::Vec3f &GetMaxPoint() const
-    {
-        return this->Max;
-    }
-    const vtkm::Id3 &GetNumberOfBins() const
-    {
-        return this->Dims;
-    }
-    const vtkm::FloatDefault &GetSearchRadius() const
-    {
-        return this->SearchRadius;
-    }
+    const viskores::Vec3f &GetMinPoint() const { return this->Min; }
+    const viskores::Vec3f &GetMaxPoint() const { return this->Max; }
+    const viskores::Id3 &GetNumberOfBins() const { return this->Dims; }
+    const viskores::FloatDefault &GetSearchRadius() const { return this->SearchRadius; }
 
-    VTKM_CONT
-    OverlapDetector PrepareForExecution(vtkm::cont::DeviceAdapterId device, vtkm::cont::Token &token) const;
+    VISKORES_CONT
+    OverlapDetector PrepareForExecution(viskores::cont::DeviceAdapterId device, viskores::cont::Token &token) const;
 
 private:
     // Search grid properties
-    vtkm::Vec3f Min, Max;
-    vtkm::Id3 Dims;
-    vtkm::FloatDefault SearchRadius;
+    viskores::Vec3f Min, Max;
+    viskores::Id3 Dims;
+    viskores::FloatDefault SearchRadius;
 
     // Cell lists
     // a list of all point ids (grouped by the cells that contain them)
-    vtkm::cont::ArrayHandle<vtkm::Id> PointIds;
+    viskores::cont::ArrayHandle<viskores::Id> PointIds;
     // entry `i` stores the first index into `PointsIds` which corresponds to a point lying in cell `i`
-    vtkm::cont::ArrayHandle<vtkm::Id> CellLowerBounds;
+    viskores::cont::ArrayHandle<viskores::Id> CellLowerBounds;
     // entry `i` stores the last index into `PointsIds` which corresponds to a point lying in cell `i`
-    vtkm::cont::ArrayHandle<vtkm::Id> CellUpperBounds;
+    viskores::cont::ArrayHandle<viskores::Id> CellUpperBounds;
 
     // point field containing sphere radii
-    vtkm::cont::ArrayHandle<vtkm::FloatDefault> Radii;
+    viskores::cont::ArrayHandle<viskores::FloatDefault> Radii;
 
     ThicknessDeterminer Determiner = OverlapRatio;
 
-    vtkm::cont::ArrayHandle<vtkm::Int8> OffsetsToNeighbors;
+    viskores::cont::ArrayHandle<viskores::Int8> OffsetsToNeighbors;
 
     // create the search grid
-    VTKM_CONT void Build();
+    VISKORES_CONT void Build();
 
     friend Superclass;
 };

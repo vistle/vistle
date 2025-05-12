@@ -12,7 +12,7 @@
 
 #include <vistle/core/shm_array_impl.h>
 
-#include <vtkm/cont/CellSetExplicit.h>
+#include <viskores/cont/CellSetExplicit.h>
 
 
 namespace vistle {
@@ -20,9 +20,10 @@ namespace vistle {
 namespace {
 
 template<typename Obj>
-typename Obj::ptr toNgons(vtkm::cont::CellSetSingleType<> &scellset)
+typename Obj::ptr toNgons(viskores::cont::CellSetSingleType<> &scellset)
 {
-    auto connectivity = scellset.GetConnectivityArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
+    auto connectivity =
+        scellset.GetConnectivityArray(viskores::TopologyElementTagCell(), viskores::TopologyElementTagPoint());
     typename Obj::ptr ngons(new Obj(0, 0));
     ngons->d()->cl->setHandle(connectivity);
     return ngons;
@@ -38,57 +39,60 @@ typename Obj::ptr toIndexed(ConnType &connectivity, ElemType &elements)
 };
 
 template<typename Obj>
-typename Obj::ptr toIndexed(vtkm::cont::CellSetSingleType<> &scellset)
+typename Obj::ptr toIndexed(viskores::cont::CellSetSingleType<> &scellset)
 {
-    auto connectivity = scellset.GetConnectivityArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
-    auto elements = scellset.GetOffsetsArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
+    auto connectivity =
+        scellset.GetConnectivityArray(viskores::TopologyElementTagCell(), viskores::TopologyElementTagPoint());
+    auto elements = scellset.GetOffsetsArray(viskores::TopologyElementTagCell(), viskores::TopologyElementTagPoint());
     return toIndexed<Obj>(connectivity, elements);
 };
 
 } // namespace
 
-Object::ptr vtkmGetTopology(const vtkm::cont::DataSet &dataset)
+Object::ptr vtkmGetTopology(const viskores::cont::DataSet &dataset)
 {
     // get vertices that make up the dataset grid
     auto cellset = dataset.GetCellSet();
 
     // try conversion for uniform cell types first
-    if (cellset.CanConvert<vtkm::cont::CellSetSingleType<>>()) {
-        auto scellset = cellset.AsCellSet<vtkm::cont::CellSetSingleType<>>();
+    if (cellset.CanConvert<viskores::cont::CellSetSingleType<>>()) {
+        auto scellset = cellset.AsCellSet<viskores::cont::CellSetSingleType<>>();
 
-        if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_VERTEX) {
+        if (cellset.GetCellShape(0) == viskores::CELL_SHAPE_VERTEX) {
             Points::ptr points(new Points(Object::Initialized));
             return points;
-        } else if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_LINE) {
+        } else if (cellset.GetCellShape(0) == viskores::CELL_SHAPE_LINE) {
             auto numPoints = dataset.GetNumberOfPoints();
             // get connectivity array of the dataset
             auto connectivity =
-                scellset.GetConnectivityArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
+                scellset.GetConnectivityArray(viskores::TopologyElementTagCell(), viskores::TopologyElementTagPoint());
             auto numConn = connectivity.GetNumberOfValues();
             auto numElem = numConn > 0 ? numConn / 2 : numPoints / 2;
             Lines::ptr lines(new Lines(numElem, 0, 0));
             lines->d()->cl->setHandle(connectivity);
-            for (vtkm::Id index = 0; index < numElem; index++) {
+            for (viskores::Id index = 0; index < numElem; index++) {
                 lines->el()[index] = 2 * index;
             }
             lines->el()[numElem] = numConn;
             return lines;
-        } else if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_POLY_LINE) {
+        } else if (cellset.GetCellShape(0) == viskores::CELL_SHAPE_POLY_LINE) {
             return toIndexed<Lines>(scellset);
-        } else if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_TRIANGLE) {
+        } else if (cellset.GetCellShape(0) == viskores::CELL_SHAPE_TRIANGLE) {
             return toNgons<Triangles>(scellset);
-        } else if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_QUAD) {
+        } else if (cellset.GetCellShape(0) == viskores::CELL_SHAPE_QUAD) {
             return toNgons<Quads>(scellset);
-        } else if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_POLYGON) {
+        } else if (cellset.GetCellShape(0) == viskores::CELL_SHAPE_POLYGON) {
             return toIndexed<Polygons>(scellset);
         }
     }
 
-    if (cellset.CanConvert<vtkm::cont::CellSetExplicit<>>()) {
-        auto ecellset = cellset.AsCellSet<vtkm::cont::CellSetExplicit<>>();
-        auto elements = ecellset.GetOffsetsArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
-        auto eshapes = ecellset.GetShapesArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
-        auto econn = ecellset.GetConnectivityArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
+    if (cellset.CanConvert<viskores::cont::CellSetExplicit<>>()) {
+        auto ecellset = cellset.AsCellSet<viskores::cont::CellSetExplicit<>>();
+        auto elements =
+            ecellset.GetOffsetsArray(viskores::TopologyElementTagCell(), viskores::TopologyElementTagPoint());
+        auto eshapes = ecellset.GetShapesArray(viskores::TopologyElementTagCell(), viskores::TopologyElementTagPoint());
+        auto econn =
+            ecellset.GetConnectivityArray(viskores::TopologyElementTagCell(), viskores::TopologyElementTagPoint());
 
         const auto [mindim, maxdim] = getMinMaxDims(eshapes);
 
@@ -123,39 +127,40 @@ struct ToShapeId;
 
 template<>
 struct ToShapeId<Triangles> {
-    static constexpr vtkm::CellShapeIdEnum shape = vtkm::CELL_SHAPE_TRIANGLE;
+    static constexpr viskores::CellShapeIdEnum shape = viskores::CELL_SHAPE_TRIANGLE;
     static constexpr int N = 3;
 };
 template<>
 struct ToShapeId<Quads> {
-    static constexpr vtkm::CellShapeIdEnum shape = vtkm::CELL_SHAPE_QUAD;
+    static constexpr viskores::CellShapeIdEnum shape = viskores::CELL_SHAPE_QUAD;
     static constexpr int N = 4;
 };
 
 template<>
 struct ToShapeId<Lines> {
-    static constexpr vtkm::CellShapeIdEnum shape = vtkm::CELL_SHAPE_POLY_LINE;
+    static constexpr viskores::CellShapeIdEnum shape = viskores::CELL_SHAPE_POLY_LINE;
 };
 template<>
 struct ToShapeId<Polygons> {
-    static constexpr vtkm::CellShapeIdEnum shape = vtkm::CELL_SHAPE_POLYGON;
+    static constexpr viskores::CellShapeIdEnum shape = viskores::CELL_SHAPE_POLYGON;
 };
 
 template<class Ngons>
-ModuleStatusPtr fromNgons(vtkm::cont::DataSet &vtkmDataset, typename Ngons::const_ptr &ngon)
+ModuleStatusPtr fromNgons(viskores::cont::DataSet &vtkmDataset, typename Ngons::const_ptr &ngon)
 {
     auto numPoints = ngon->getNumCoords();
     auto numConn = ngon->getNumCorners();
     const auto shape = ToShapeId<Ngons>::shape;
     const auto N = ToShapeId<Ngons>::N;
     if (numConn > 0) {
-        vtkm::cont::CellSetSingleType<> cellSet;
+        viskores::cont::CellSetSingleType<> cellSet;
         auto conn = ngon->cl().handle();
         cellSet.Fill(numPoints, shape, N, conn);
         vtkmDataset.SetCellSet(cellSet);
     } else {
-        vtkm::cont::CellSetSingleType<vtkm::cont::StorageTagCounting> cellSet;
-        auto conn = vtkm::cont::make_ArrayHandleCounting(static_cast<vtkm::Id>(0), static_cast<vtkm::Id>(1), numPoints);
+        viskores::cont::CellSetSingleType<viskores::cont::StorageTagCounting> cellSet;
+        auto conn = viskores::cont::make_ArrayHandleCounting(static_cast<viskores::Id>(0), static_cast<viskores::Id>(1),
+                                                             numPoints);
         cellSet.Fill(numPoints, shape, N, conn);
         vtkmDataset.SetCellSet(cellSet);
     }
@@ -164,26 +169,26 @@ ModuleStatusPtr fromNgons(vtkm::cont::DataSet &vtkmDataset, typename Ngons::cons
 };
 
 template<class Idx>
-ModuleStatusPtr fromIndexed(vtkm::cont::DataSet &vtkmDataset, typename Idx::const_ptr &idx)
+ModuleStatusPtr fromIndexed(viskores::cont::DataSet &vtkmDataset, typename Idx::const_ptr &idx)
 {
     auto numPoints = idx->getNumCoords();
     auto numCells = idx->getNumElements();
     auto conn = idx->cl().handle();
     auto offs = idx->el().handle();
-    auto shapesc = vtkm::cont::make_ArrayHandleConstant(vtkm::UInt8{ToShapeId<Idx>::shape}, numCells);
-#ifdef VISTLE_VTKM_TYPES
-    vtkm::cont::CellSetExplicit<typename vtkm::cont::ArrayHandleConstant<vtkm::UInt8>::StorageTag> cellSet;
+    auto shapesc = viskores::cont::make_ArrayHandleConstant(viskores::UInt8{ToShapeId<Idx>::shape}, numCells);
+#ifdef VISTLE_VISKORES_TYPES
+    viskores::cont::CellSetExplicit<typename viskores::cont::ArrayHandleConstant<viskores::UInt8>::StorageTag> cellSet;
     auto &shapes = shapesc;
 #else
-    vtkm::cont::UnknownArrayHandle shapescu(shapesc);
+    viskores::cont::UnknownArrayHandle shapescu(shapesc);
     auto shapesu = shapescu.NewInstanceBasic();
     shapesu.CopyShallowIfPossible(shapescu);
-    vtkm::cont::ArrayHandleBasic<vtkm::UInt8> shapes;
-    if (!shapesu.CanConvert<vtkm::cont::ArrayHandleBasic<vtkm::UInt8>>()) {
+    viskores::cont::ArrayHandleBasic<viskores::UInt8> shapes;
+    if (!shapesu.CanConvert<viskores::cont::ArrayHandleBasic<viskores::UInt8>>()) {
         return Error("Cannot convert shapes array to basic array handle.");
     }
-    shapes = shapesu.AsArrayHandle<vtkm::cont::ArrayHandleBasic<vtkm::UInt8>>();
-    vtkm::cont::CellSetExplicit<> cellSet;
+    shapes = shapesu.AsArrayHandle<viskores::cont::ArrayHandleBasic<viskores::UInt8>>();
+    viskores::cont::CellSetExplicit<> cellSet;
 #endif
     cellSet.Fill(numPoints, shapes, conn, offs);
     vtkmDataset.SetCellSet(cellSet);
@@ -193,22 +198,22 @@ ModuleStatusPtr fromIndexed(vtkm::cont::DataSet &vtkmDataset, typename Idx::cons
 
 } // namespace
 
-ModuleStatusPtr vtkmSetTopology(vtkm::cont::DataSet &vtkmDataset, vistle::Object::const_ptr grid)
+ModuleStatusPtr vtkmSetTopology(viskores::cont::DataSet &vtkmDataset, vistle::Object::const_ptr grid)
 {
     if (auto str = grid->getInterface<StructuredGridBase>()) {
-        vtkm::Id nx = str->getNumDivisions(0);
-        vtkm::Id ny = str->getNumDivisions(1);
-        vtkm::Id nz = str->getNumDivisions(2);
+        viskores::Id nx = str->getNumDivisions(0);
+        viskores::Id ny = str->getNumDivisions(1);
+        viskores::Id nz = str->getNumDivisions(2);
         if (nz > 0) {
-            vtkm::cont::CellSetStructured<3> str3;
+            viskores::cont::CellSetStructured<3> str3;
             str3.SetPointDimensions({nx, ny, nz});
             vtkmDataset.SetCellSet(str3);
         } else if (ny > 0) {
-            vtkm::cont::CellSetStructured<2> str2;
+            viskores::cont::CellSetStructured<2> str2;
             str2.SetPointDimensions({ny, nx});
             vtkmDataset.SetCellSet(str2);
         } else {
-            vtkm::cont::CellSetStructured<1> str1;
+            viskores::cont::CellSetStructured<1> str1;
             str1.SetPointDimensions(nx);
             vtkmDataset.SetCellSet(str1);
         }
@@ -219,7 +224,7 @@ ModuleStatusPtr vtkmSetTopology(vtkm::cont::DataSet &vtkmDataset, vistle::Object
         auto offs = unstructuredGrid->el().handle();
         auto shapes = unstructuredGrid->tl().handle();
 
-        vtkm::cont::CellSetExplicit<> cellSetExplicit;
+        viskores::cont::CellSetExplicit<> cellSetExplicit;
         cellSetExplicit.Fill(numPoints, shapes, conn, offs);
 
         // create vtkm dataset
@@ -234,12 +239,12 @@ ModuleStatusPtr vtkmSetTopology(vtkm::cont::DataSet &vtkmDataset, vistle::Object
         return fromIndexed<Lines>(vtkmDataset, line);
     } else if (auto point = Points::as(grid)) {
         auto numPoints = point->getNumPoints();
-        vtkm::cont::CellSetSingleType<vtkm::cont::StorageTagIndex> cellSet;
-        auto conn = vtkm::cont::make_ArrayHandleIndex(numPoints);
-        cellSet.Fill(numPoints, vtkm::CELL_SHAPE_VERTEX, 1, conn);
+        viskores::cont::CellSetSingleType<viskores::cont::StorageTagIndex> cellSet;
+        auto conn = viskores::cont::make_ArrayHandleIndex(numPoints);
+        cellSet.Fill(numPoints, viskores::CELL_SHAPE_VERTEX, 1, conn);
         vtkmDataset.SetCellSet(cellSet);
     } else {
-        return Error("Encountered unsupported grid type while attempting to convert Vistle grid to VTK-m dataset.");
+        return Error("Encountered unsupported grid type while attempting to convert Vistle grid to Viskores dataset.");
     }
 
     return Success();

@@ -101,11 +101,11 @@ public:
     enum Verbosity {
         Quiet,
         Normal,
-        Modules,
         Manager,
+        Modules,
         DuplicateMessages,
-        Messages,
         ManagerMessages,
+        Messages,
         AllMessages,
     };
     Verbosity verbosity() const;

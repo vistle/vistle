@@ -104,19 +104,20 @@ ModuleStatusPtr VtkmModule::readInPorts(const std::shared_ptr<BlockTask> &task, 
     return Success();
 }
 
-ModuleStatusPtr VtkmModule::prepareInputGrid(const Object::const_ptr &grid, vtkm::cont::DataSet &dataset) const
+ModuleStatusPtr VtkmModule::prepareInputGrid(const Object::const_ptr &grid, viskores::cont::DataSet &dataset) const
 {
     return vtkmSetGrid(dataset, grid);
 }
 
 ModuleStatusPtr VtkmModule::prepareInputField(const Port *port, const Object::const_ptr &grid,
                                               const DataBase::const_ptr &field, std::string &fieldName,
-                                              vtkm::cont::DataSet &dataset) const
+                                              viskores::cont::DataSet &dataset) const
 {
     return vtkmAddField(dataset, field, fieldName);
 }
 
-Object::ptr VtkmModule::prepareOutputGrid(const vtkm::cont::DataSet &dataset, const Object::const_ptr &inputGrid) const
+Object::ptr VtkmModule::prepareOutputGrid(const viskores::cont::DataSet &dataset,
+                                          const Object::const_ptr &inputGrid) const
 {
     auto outputGrid = vtkmGetGeometry(dataset);
     if (!outputGrid) {
@@ -129,7 +130,7 @@ Object::ptr VtkmModule::prepareOutputGrid(const vtkm::cont::DataSet &dataset, co
     return outputGrid;
 }
 
-DataBase::ptr VtkmModule::prepareOutputField(const vtkm::cont::DataSet &dataset, const Object::const_ptr &inputGrid,
+DataBase::ptr VtkmModule::prepareOutputField(const viskores::cont::DataSet &dataset, const Object::const_ptr &inputGrid,
                                              const DataBase::const_ptr &inputField, const std::string &fieldName,
                                              const Object::ptr &outputGrid) const
 {
@@ -154,7 +155,7 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
     std::vector<DataBase::const_ptr> inputFields;
     std::vector<std::string> fieldNames;
 
-    vtkm::cont::DataSet inputDataset, outputDataset;
+    viskores::cont::DataSet inputDataset, outputDataset;
 
     // read in data from the input ports...
     auto status = readInPorts(task, inputGrid, inputFields);
@@ -163,7 +164,7 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
 
     assert(m_outputPorts.size() == inputFields.size());
 
-    // ... transform the input grid (and fields) into a VTK-m dataset ...
+    // ... transform the input grid (and fields) into a Viskores dataset ...
     status = prepareInputGrid(inputGrid, inputDataset);
     if (!isValid(status))
         return true;
@@ -197,11 +198,11 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
         if (inputDataset.HasField(activeField)) {
             filter->SetActiveField(activeField);
             /*
-                By default, VTK-m names output fields the same as input fields which causes problems
+                By default, Viskores names output fields the same as input fields which causes problems
                 if the input mapping is different from the output mapping, i.e., when converting 
                 a point field to a cell field or vice versa. To avoid having a point and a 
                 cell field of the same name in the resulting dataset, which leads to conflicts, e.g., 
-                when calling VTK-m's GetField() method, we rename the output field here.
+                when calling Viskores's GetField() method, we rename the output field here.
             */
             filter->SetOutputFieldName(getFieldName(0, true));
         }

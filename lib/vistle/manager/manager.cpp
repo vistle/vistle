@@ -262,7 +262,7 @@ bool VistleManager::run(int argc, char *argv[])
         }
     }
 #endif
-    auto t = std::thread([args, this]() {
+    auto mainthread = std::thread([args, this]() {
         setThreadName("vistle:main2");
 #endif
         try {
@@ -273,7 +273,8 @@ bool VistleManager::run(int argc, char *argv[])
             }
             executer = new Vistle(argv.size(), argv.data(), m_comm);
             std::cerr << "created Vistle executor" << std::endl;
-            executer->run();
+            bool status = executer->run();
+            std::cerr << "Vistle executor done: " << (status ? "ok" : "failure") << std::endl;
         } catch (vistle::exception &e) {
             std::cerr << "fatal exception: " << e.what() << std::endl << e.where() << std::endl;
             exit(1);
@@ -309,8 +310,8 @@ bool VistleManager::run(int argc, char *argv[])
 #endif
 
 #ifdef MODULE_THREAD
-    if (t.joinable()) {
-        t.join();
+    if (mainthread.joinable()) {
+        mainthread.join();
     }
 
     if (hubthread && hubthread->joinable()) {

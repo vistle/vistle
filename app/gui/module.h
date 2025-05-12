@@ -204,12 +204,18 @@ private:
 template<class T>
 void Module::setParameter(QString name, const T &value) const
 {
+    if (id() == vistle::message::Id::Invalid) {
+        return;
+    }
     DataFlowNetwork::setParameter<T>(id(), name, value);
 }
 
 template<class T>
 std::shared_ptr<vistle::ParameterBase<T>> Module::getParameter(QString name) const
 {
+    if (id() == vistle::message::Id::Invalid) {
+        return nullptr;
+    }
     return DataFlowNetwork::getParameter<T>(id(), name);
 }
 

@@ -1,4 +1,6 @@
 #include "object.h"
+#include "shm_obj_ref.h"
+#include "shm_obj_ref_impl.h"
 #include "object_impl.h"
 
 #include "shm.h"
@@ -18,6 +20,8 @@
 #include <vistle/util/exception.h>
 
 namespace mpl = boost::mpl;
+
+//#define REFERENCE_DEBUG
 
 #ifdef USE_BOOST_ARCHIVE
 namespace boost {
@@ -100,9 +104,6 @@ const char *Object::toString(Type v)
         V_OBJECT_CASE(LAYERGRID, LayerGrid)
 
         V_OBJECT_CASE(VERTEXOWNERLIST, VertexOwnerList)
-        V_OBJECT_CASE(CELLTREE1, Celltree1)
-        V_OBJECT_CASE(CELLTREE2, Celltree2)
-        V_OBJECT_CASE(CELLTREE3, Celltree3)
         V_OBJECT_CASE(NORMALS, Normals)
 
     default:
@@ -144,6 +145,11 @@ const char *Object::toString(Type v)
         if (std::string("uint8_t") == scalstr)
             scalstr = "Byte";
         snprintf(buf, sizeof(buf), "%s%d", scalstr, dim);
+        return buf;
+    }
+
+    if (v >= Object::CELLTREE) {
+        snprintf(buf, sizeof(buf), "Celltree");
     }
 
     return buf;
@@ -221,6 +227,8 @@ ObjectData::ObjectData(const Object::Type type, const std::string &n, const Meta
 : ShmData(ShmData::OBJECT, n)
 , type(type)
 , unresolvedReferences(0)
+, unresolvedArrayReferences(0)
+, unresolvedObjectReferences(0)
 , meta(m)
 , attributes(std::less<Key>(), Shm::the().allocator())
 , attachments(std::less<Key>(), Shm::the().allocator())
@@ -230,6 +238,8 @@ ObjectData::ObjectData(const Object::Data &o, const std::string &name, Object::T
 : ShmData(ShmData::OBJECT, name)
 , type(id == Object::UNKNOWN ? o.type : id)
 , unresolvedReferences(0)
+, unresolvedArrayReferences(0)
+, unresolvedObjectReferences(0)
 , meta(o.meta)
 , attributes(std::less<Key>(), Shm::the().allocator())
 , attachments(std::less<Key>(), Shm::the().allocator())
@@ -255,16 +265,70 @@ bool Object::Data::isComplete() const
     // a reference is only established upon return from Object::load
     //assert(unresolvedReferences==0 || refcount==0);
     //return refcount>0 && unresolvedReferences==0;
-    return unresolvedReferences == 0;
+#ifdef REFERENCE_DEBUG
+    std::cerr << "CHKREF"
+              << " in " << this->name << " (" << unresolvedReferences << "=" << unresolvedArrayReferences << "a+"
+              << unresolvedObjectReferences << "o)" << std::endl;
+#endif
+    return unresolvedReferences == 0 && !meta.isRestoring();
 }
 
-void ObjectData::referenceResolved(const std::function<void()> &completeCallback)
+void ObjectData::unresolvedReference(bool isArray, const std::string &arname, const std::string &shmname)
 {
-    //std::cerr << "reference (from " << unresolvedReferences << ") resolved in " << name << std::endl;
-    assert(unresolvedReferences > 0);
-    if (unresolvedReferences.fetch_sub(1) == 1 && completeCallback) {
-        completeCallback();
+    if (isArray) {
+        ++unresolvedArrayReferences;
+    } else {
+        ++unresolvedObjectReferences;
     }
+    ++unresolvedReferences;
+#ifdef REFERENCE_DEBUG
+    std::cerr << (isArray ? "ARRREF" : "OBJREF") << "++ in " << this->name << " (now " << unresolvedReferences << "="
+              << unresolvedArrayReferences << "a+" << unresolvedObjectReferences << "o) to " << arname << "->"
+              << shmname << std::endl;
+#endif
+}
+
+void ObjectData::referenceResolved(const std::function<void()> &completeCallback, bool isArray,
+                                   const std::string &arname, const std::string &shmname)
+{
+#ifdef REFERENCE_DEBUG
+    std::cerr << (isArray ? "ARRREF" : "OBJREF") << "-- in " << this->name << " (from " << unresolvedReferences << "="
+              << unresolvedArrayReferences << "a+" << unresolvedObjectReferences << "o) resolved by " << arname << "->"
+              << shmname << std::endl;
+#endif
+    if (isArray) {
+        assert(unresolvedArrayReferences > 0);
+        --unresolvedArrayReferences;
+    } else {
+        assert(unresolvedObjectReferences > 0);
+        --unresolvedObjectReferences;
+    }
+    assert(unresolvedReferences > 0);
+    //mutex_lock_type guard(object_mutex);
+    if (unresolvedReferences.fetch_sub(1) == 1) {
+        if (meta.isRestoring()) {
+#ifdef REFERENCE_DEBUG
+            std::cerr << "COMPLETED " << this->name << " by " << name << ", but still restoring" << std::endl;
+#endif
+        } else if (completeCallback) {
+#ifdef REFERENCE_DEBUG
+            std::cerr << "COMPLETED " << this->name << " with handler by " << name << std::endl;
+#endif
+            completeCallback();
+        } else {
+#ifdef REFERENCE_DEBUG
+            std::cerr << "COMPLETED " << this->name << " WITHOUT handler by " << name << std::endl;
+#endif
+        }
+    }
+}
+
+void ObjectData::printCompletionStatus(std::ostream &os) const
+{
+    bool complete = isComplete();
+    os << (complete ? "" : "NOT ") << "COMPLETE: " << this->name << " (unresolved=" << unresolvedReferences << "="
+       << unresolvedArrayReferences << "a+" << unresolvedObjectReferences << "o) "
+       << ", #ref=" << m_refcount << (meta.isRestoring() ? " (restoring)" : "") << std::endl;
 }
 
 #ifndef NO_SHMEM
@@ -355,11 +419,10 @@ bool isAttachment(Object::Type type)
 {
     switch (type) {
     case Object::VERTEXOWNERLIST:
-    case Object::CELLTREE1:
-    case Object::CELLTREE2:
-    case Object::CELLTREE3:
         return true;
     default:
+        if (type >= Object::CELLTREE && type < Object::VERTEXOWNERLIST)
+            return true;
         return false;
     }
 }
@@ -399,6 +462,7 @@ bool Object::check(std::ostream &os, bool quick) const
         VALIDATE(d()->meta.numBlocks() == -1 || (d()->meta.block() >= 0 && d()->meta.block() < d()->meta.numBlocks()));
 
         VALIDATE(d()->meta.generation() >= -1);
+        VALIDATE(!d()->meta.isRestoring());
     }
 
     if (quick)
@@ -447,7 +511,7 @@ int ObjectData::unref() const
     int ref = 0;
     auto lambda = [this, &ref]() {
         ref = ShmData::unref();
-        if (ref == 0) {
+        if (ref == 0 && isComplete()) {
             ObjectTypeRegistry::getDestroyer(type)(name);
         }
     };
@@ -713,12 +777,12 @@ std::vector<std::string> Object::Data::getAttributeList() const
 }
 
 #ifdef NO_SHMEM
-std::recursive_mutex &Object::attachmentMutex() const
+std::recursive_mutex &Object::objectMutex() const
 #else
-boost::interprocess::interprocess_recursive_mutex &Object::attachmentMutex() const
+boost::interprocess::interprocess_recursive_mutex &Object::objectMutex() const
 #endif
 {
-    return d()->attachment_mutex;
+    return d()->object_mutex;
 }
 
 bool Object::addAttachment(const std::string &key, Object::const_ptr obj) const
@@ -817,11 +881,6 @@ bool Object::Data::removeAttachment(const std::string &key)
     attachments.erase(it);
 
     return true;
-}
-
-void ObjectData::unresolvedReference()
-{
-    ++unresolvedReferences;
 }
 
 const struct ObjectTypeRegistry::FunctionTable &ObjectTypeRegistry::getType(int id)

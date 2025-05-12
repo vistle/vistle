@@ -26,12 +26,6 @@ shm_obj_ref<T>::shm_obj_ref(const shm_obj_ref<T> &other): m_name(other.m_name), 
 }
 
 template<class T>
-shm_obj_ref<T>::shm_obj_ref(const shm_name_t name): m_name(name), m_d(shm<T>::find(name))
-{
-    ref();
-}
-
-template<class T>
 shm_obj_ref<T>::~shm_obj_ref()
 {
     unref();
@@ -80,7 +74,7 @@ const shm_obj_ref<T> &shm_obj_ref<T>::operator=(const shm_obj_ref<T> &rhs)
 }
 
 template<class T>
-const shm_obj_ref<T> &shm_obj_ref<T>::operator=(typename shm_obj_ref<T>::ObjType::const_ptr rhs)
+const shm_obj_ref<T> &shm_obj_ref<T>::operator=(const typename shm_obj_ref<T>::ObjType::const_ptr &rhs)
 {
     unref();
     if (rhs) {
@@ -95,9 +89,9 @@ const shm_obj_ref<T> &shm_obj_ref<T>::operator=(typename shm_obj_ref<T>::ObjType
 }
 
 template<class T>
-const shm_obj_ref<T> &shm_obj_ref<T>::operator=(typename shm_obj_ref<T>::ObjType::ptr rhs)
+const shm_obj_ref<T> &shm_obj_ref<T>::operator=(const typename shm_obj_ref<T>::ObjType::ptr &rhs)
 {
-    // reuse operator fo ObjType::const_ptr
+    // reuse operator for ObjType::const_ptr
     *this = std::const_pointer_cast<const ObjType>(rhs);
     return *this;
 }
@@ -191,48 +185,48 @@ void shm_obj_ref<T>::load(Archive &ar)
     ar &V_NAME(ar, "obj_name", shmname);
     std::string arname = shmname;
 
-    std::string name = ar.translateObjectName(arname);
-    //std::cerr << "shm_obj_ref: loading " << arname << ", translates to " << name << std::endl;
-    m_name = name;
+    m_name = ar.translateObjectName(arname);
+    //std::cerr << "shm_obj_ref: loading " << arname << ", translates to " << m_name << std::endl;
 
     unref();
     m_d = nullptr;
 
-    if (arname.empty() && m_name.empty())
+    if (arname.empty() && m_name.empty()) {
+        // null reference
         return;
+    }
 
-    auto obj = ar.currentObject();
-    auto handler = ar.objectCompletionHandler();
-    auto ref0 = Shm::the().getObjectFromName(name);
+    auto ref0 = Shm::the().getObjectFromName(m_name);
     auto ref1 = T::as(ref0);
     assert(ref0 || !ref1);
     if (ref1) {
+        // found, and types do match
         *this = ref1;
         return;
     }
 
+    //
+    auto obj = ar.currentObject();
     if (obj)
-        obj->unresolvedReference();
+        obj->unresolvedReference(false, arname, m_name.str());
+    auto handler = ar.objectCompletionHandler();
     auto fetcher = ar.fetcher();
-    ref0 = ar.getObject(arname, [this, fetcher, arname, name, obj, handler](Object::const_ptr newobj) -> void {
-        //std::cerr << "object completion handler: " << name << std::endl;
+    ref0 = ar.getObject(arname, [this, fetcher, arname, obj, handler](Object::const_ptr newobj) -> void {
         assert(newobj);
         auto ref2 = T::as(newobj);
         assert(ref2);
         *this = ref2;
         m_name = newobj->getName();
+        //std::cerr << "object completion handler: " << m_name << " (in archive as " << arname << ")" << std::endl;
         if (fetcher)
             fetcher->registerObjectNameTranslation(arname, m_name);
         if (obj) {
-            obj->referenceResolved(handler);
+            obj->referenceResolved(handler, false, arname, m_name.str());
         }
     });
     ref1 = T::as(ref0);
-    assert(ref0 || !ref1);
     if (ref1) {
-        m_name = ref1->getName();
-        ar.registerObjectNameTranslation(arname, m_name);
-        // object already present: don't mess with count of outstanding references
+        // loaded, and types do match
         *this = ref1;
     }
 }

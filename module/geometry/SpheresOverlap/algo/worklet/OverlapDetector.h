@@ -1,8 +1,8 @@
 #ifndef VISTLE_SPHERESOVERLAP_ALGO_WORKLET_OVERLAPDETECTOR_H
 #define VISTLE_SPHERESOVERLAP_ALGO_WORKLET_OVERLAPDETECTOR_H
 
-#include <vtkm/cont/ArrayHandle.h>
-#include <vtkm/cont/CoordinateSystem.h>
+#include <viskores/cont/ArrayHandle.h>
+#include <viskores/cont/CoordinateSystem.h>
 
 #include "../ThicknessDeterminer.h"
 
@@ -11,15 +11,16 @@
 */
 class OverlapDetector {
 public:
-    using CoordPortalType = typename vtkm::cont::CoordinateSystem::MultiplexerArrayType::ReadPortalType;
-    using IdPortalType = typename vtkm::cont::ArrayHandle<vtkm::Id>::ReadPortalType;
-    using FloatPortalType = typename vtkm::cont::ArrayHandle<vtkm::FloatDefault>::ReadPortalType;
+    using CoordPortalType = typename viskores::cont::CoordinateSystem::MultiplexerArrayType::ReadPortalType;
+    using IdPortalType = typename viskores::cont::ArrayHandle<viskores::Id>::ReadPortalType;
+    using FloatPortalType = typename viskores::cont::ArrayHandle<viskores::FloatDefault>::ReadPortalType;
 
 
-    OverlapDetector(const vtkm::Vec3f &min, const vtkm::Vec3f &max, const vtkm::Id3 &nrBins,
+    OverlapDetector(const viskores::Vec3f &min, const viskores::Vec3f &max, const viskores::Id3 &nrBins,
                     const CoordPortalType &coords, const FloatPortalType &radii, const IdPortalType &pointIds,
                     const IdPortalType &cellLowerBounds, const IdPortalType &cellUpperBounds,
-                    ThicknessDeterminer determiner, const vtkm::cont::ArrayHandle<vtkm::Int8>::ReadPortalType &offsets)
+                    ThicknessDeterminer determiner,
+                    const viskores::cont::ArrayHandle<viskores::Int8>::ReadPortalType &offsets)
     : Min(min)
     , Dims(nrBins)
     , Dxdydz((max - min) / Dims)
@@ -32,19 +33,20 @@ public:
     , OffsetsToNeighbors(offsets)
     {}
 
-    VTKM_EXEC void CountOverlaps(const vtkm::Id pointId, const vtkm::Vec3f &point, vtkm::Id &nrOverlaps) const;
-    VTKM_EXEC void CreateConnectionLines(const vtkm::Id pointId, const vtkm::Vec3f &point,
-                                         const vtkm::IdComponent visitId, vtkm::Id2 &connectivity,
-                                         vtkm::FloatDefault &thickness) const;
+    VISKORES_EXEC void CountOverlaps(const viskores::Id pointId, const viskores::Vec3f &point,
+                                     viskores::Id &nrOverlaps) const;
+    VISKORES_EXEC void CreateConnectionLines(const viskores::Id pointId, const viskores::Vec3f &point,
+                                             const viskores::IdComponent visitId, viskores::Id2 &connectivity,
+                                             viskores::FloatDefault &thickness) const;
 
-    VTKM_EXEC vtkm::Id3 DetermineCellId(const vtkm::Vec3f &point) const;
-    VTKM_EXEC vtkm::Id FlattenCellId(const vtkm::Id3 &cellId) const;
-    VTKM_EXEC bool CellExists(const vtkm::Id3 &cellId) const;
+    VISKORES_EXEC viskores::Id3 DetermineCellId(const viskores::Vec3f &point) const;
+    VISKORES_EXEC viskores::Id FlattenCellId(const viskores::Id3 &cellId) const;
+    VISKORES_EXEC bool CellExists(const viskores::Id3 &cellId) const;
 
 private:
-    vtkm::Vec3f Min;
-    vtkm::Id3 Dims;
-    vtkm::Vec3f Dxdydz;
+    viskores::Vec3f Min;
+    viskores::Id3 Dims;
+    viskores::Vec3f Dxdydz;
 
     CoordPortalType Coords;
     FloatPortalType Radii;
@@ -55,7 +57,7 @@ private:
 
     ThicknessDeterminer Determiner = OverlapRatio;
 
-    vtkm::cont::ArrayHandle<vtkm::Int8>::ReadPortalType OffsetsToNeighbors;
+    viskores::cont::ArrayHandle<viskores::Int8>::ReadPortalType OffsetsToNeighbors;
 };
 
 #endif

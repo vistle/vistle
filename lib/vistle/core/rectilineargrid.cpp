@@ -10,6 +10,7 @@
 #include "cellalgorithm.h"
 #include "unstr.h"
 #include "validate.h"
+#include "shm_obj_ref_impl.h"
 #include <cassert>
 
 namespace vistle {

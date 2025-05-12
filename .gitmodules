@@ -6,10 +6,6 @@
 	path = lib/3rdparty/qt-solutions
 	url = https://github.com/vistle/qt-solutions.git
 	branch = master
-[submodule "3rdparty/thrust"]
-	path = lib/3rdparty/thrust
-	url = https://github.com/nvidia/thrust.git
-	branch = main
 [submodule "3rdparty/boost-mpi"]
 	path = lib/3rdparty/boost-mpi
 	url = https://github.com/boostorg/mpi.git
@@ -64,9 +60,9 @@
 [submodule "module/geometry/DelaunayTriangulator/tetgen"]
 	path = module/geometry/DelaunayTriangulator/tetgen
 	url = https://github.com/vistle/tetgen.git
-[submodule "lib/3rdparty/vtk-m"]
-	path = lib/3rdparty/vtk-m
-	url = https://gitlab.kitware.com/vtk/vtk-m.git
+[submodule "lib/3rdparty/viskores"]
+	path = lib/3rdparty/viskores
+	url = https://github.com/Viskores/viskores.git
 [submodule "lib/3rdparty/mpi-serial"]
 	path = lib/3rdparty/mpi-serial
 	url = https://github.com/vistle/mpi-serial.git
@@ -82,3 +78,6 @@
 [submodule "lib/3rdparty/BigWhoop"]
 	path = lib/3rdparty/BigWhoop
 	url = https://github.com/ptvogler/BigWhoop.git
+[submodule "module/map/IsoSurface/cccl"]
+	path = module/map/IsoSurface/cccl
+	url = https://github.com/NVIDIA/cccl

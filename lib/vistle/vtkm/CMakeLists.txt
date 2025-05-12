@@ -9,16 +9,16 @@ set(HEADERS
     implicit_function_controller.h
     vtkm_module.h)
 
-vistle_add_library(vistle_vtkm EXPORT ${SOURCES} ${HEADERS})
-target_include_directories(vistle_vtkm SYSTEM PUBLIC ${VTKM_INCLUDE_DIRS})
-vtkm_add_target_information(vistle_vtkm MODIFY_CUDA_FLAGS DEVICE_SOURCES convert_worklets.cpp)
+vistle_add_library(vistle_viskores EXPORT ${SOURCES} ${HEADERS})
+target_include_directories(vistle_viskores SYSTEM PUBLIC ${VISKORES_INCLUDE_DIRS})
+viskores_add_target_information(vistle_viskores MODIFY_CUDA_FLAGS DEVICE_SOURCES convert_worklets.cpp)
 
 vistle_target_link_libraries(
-    vistle_vtkm
+    vistle_viskores
     PUBLIC
     ${VTK_LIBRARIES}
     PRIVATE
     vistle_core
     vistle_module
-    vtkm::cont
-    vtkm::filter)
+    viskores::cont
+    viskores::filter)

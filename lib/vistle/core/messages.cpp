@@ -1910,9 +1910,15 @@ const Meta &SendObject::meta() const
 
 Object::Type SendObject::objectType() const
 {
+    assert(!isArray());
     return static_cast<Object::Type>(m_objectType);
 }
 
+int SendObject::arrayType() const
+{
+    assert(isArray());
+    return m_objectType;
+}
 
 Meta SendObject::objectMeta() const
 {
@@ -2183,6 +2189,11 @@ std::ostream &operator<<(std::ostream &s, const Message &m)
         auto &mm = static_cast<const Cover &>(m);
         s << ", mirror: " << mm.mirrorId() << ", sender: " << mm.sender() << ", sender type: " << mm.senderType()
           << ", subtype: " << mm.subType();
+        break;
+    }
+    case LOCKUI: {
+        auto &mm = static_cast<const LockUi &>(m);
+        s << ", locked: " << mm.locked();
         break;
     }
     default:

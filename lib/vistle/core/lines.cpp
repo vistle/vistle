@@ -2,6 +2,7 @@
 #include "lines_impl.h"
 #include "archives.h"
 #include "validate.h"
+#include "shm_obj_ref_impl.h"
 
 namespace vistle {
 

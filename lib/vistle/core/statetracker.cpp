@@ -60,6 +60,13 @@ StateTracker::StateTracker(int id, const std::string &name, std::shared_ptr<Port
     runningMap.emplace(Id::Config, config);
 }
 
+void StateTracker::cancel()
+{
+    m_cancelling = true;
+    m_replyCondition.notify_all();
+    m_slaveCondition.notify_all();
+}
+
 void StateTracker::setVerbose(bool verbose)
 {
     m_verbose = verbose;
@@ -1812,6 +1819,8 @@ std::shared_ptr<message::Buffer> StateTracker::waitForReply(const message::uuid_
     std::shared_ptr<message::Buffer> ret = removeRequest(uuid);
     while (!ret && !m_quitting) {
         m_replyCondition.wait(locker);
+        if (m_cancelling)
+            break;
         ret = removeRequest(uuid);
     }
     return ret;
@@ -1858,6 +1867,8 @@ std::vector<int> StateTracker::waitForSlaveHubs(size_t count)
     auto hubIds = getSlaveHubs();
     while (hubIds.size() < count) {
         m_slaveCondition.wait(locker);
+        if (m_cancelling)
+            break;
         hubIds = getSlaveHubs();
     }
     return hubIds;

@@ -42,6 +42,8 @@ template<class Archive>
 void shm_array_ref<T>::save(Archive &ar) const
 {
     ar &V_NAME(ar, "shm_name", m_name);
+    uint32_t type = *this ? (*this)->typeId() : 0xbadbad;
+    ar &V_NAME(ar, "array_type", type);
     ar.template saveArray<typename T::value_type>(*this);
 }
 
@@ -51,10 +53,12 @@ void shm_array_ref<T>::load(Archive &ar)
 {
     shm_name_t shmname;
     ar &V_NAME(ar, "shm_name", shmname);
+    uint32_t origType;
+    ar &V_NAME(ar, "array_type", origType);
 
     std::string arname = shmname.str();
     std::string name = ar.translateArrayName(arname);
-    //std::cerr << "shm_array_ref: loading " << shmname << " for " << m_name << "/" << name << ", valid=" << valid() << std::endl;
+    //std::cerr << "shm_array_ref: loading " << shmname << " for " << m_name << "/" << name << ", valid=" << valid() << ", origType=" << origType << std::endl;
     if (name.empty() || m_name.str() != name) {
         unref();
         m_name.clear();
@@ -63,25 +67,28 @@ void shm_array_ref<T>::load(Archive &ar)
     ObjectData *obj = ar.currentObject();
     if (obj) {
         //std::cerr << "obj " << obj->name << ": unresolved: " << name << std::endl;
-        obj->unresolvedReference();
+        obj->unresolvedReference(true, arname, name);
     }
 
     auto handler = ar.objectCompletionHandler();
-    ar.template fetchArray<typename T::value_type>(arname, [this, obj, handler](const std::string &name) -> void {
-        auto ref = Shm::the().getArrayFromName<typename T::value_type>(name);
-        //std::cerr << "shm_array: array completion handler: " << arname << " -> " << name << "/" << m_name << ", ref=" << ref << std::endl;
-        if (!ref) {
-            std::cerr << "shm_array: NOT COMPLETE: array completion handler: " << name << ", ref=" << ref << std::endl;
-        }
-        assert(ref);
-        *this = ref;
-        if (obj) {
-            //std::cerr << "obj " << obj->name << ": RESOLVED: " << name << std::endl;
-            obj->referenceResolved(handler);
-        } else {
-            std::cerr << "shm_array RESOLVED: " << name << ", but no handler" << std::endl;
-        }
-    });
+    ar.template fetchArray<typename T::value_type>(
+        arname, origType, [this, obj, handler, arname, origType](const std::string &name) -> void {
+            auto ref = Shm::the().getArrayFromName<typename T::value_type>(name);
+            //std::cerr << "shm_array: array completion handler: " << arname << " -> " << name << "/" << m_name << ", ref=" << ref << std::endl;
+            if (!ref) {
+                typedef typename T::value_type VT;
+                std::cerr << "shm_array: NOT COMPLETE: array completion handler: " << name << ", ref=" << ref
+                          << ", type=" << shm<VT>::array::typeId() << ", origType=" << origType << std::endl;
+            }
+            assert(ref);
+            *this = ref;
+            if (obj) {
+                //std::cerr << "obj " << obj->name << ": RESOLVED: " << name << std::endl;
+                obj->referenceResolved(handler, true, arname, name);
+            } else {
+                std::cerr << "shm_array RESOLVED: " << name << ", but no handler" << std::endl;
+            }
+        });
     //std::cerr << "shm_array: first try: this=" << *this << ", ref=" << ref << std::endl;
 }
 
