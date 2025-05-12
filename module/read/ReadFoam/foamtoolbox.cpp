@@ -1163,7 +1163,7 @@ bool readArrayChunkBinary(std::istream &stream, D *buf, const size_t num)
     return true;
 }
 
-static const size_t bufsiz = 16384;
+static const size_t bufsiz = 1UL << 12;
 
 template <typename T, typename D>
 bool readVectorArrayBinary(std::istream &stream, T *x, T *y, T *z, const size_t lines)
