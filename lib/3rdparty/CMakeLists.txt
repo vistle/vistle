@@ -45,6 +45,7 @@ if(NOT VISTLE_USE_MPI)
         mpi-serial/info.c)
     target_compile_definitions(vistle_mpi PRIVATE FORTRAN_SAME)
     target_compile_definitions(vistle_mpi PRIVATE MPI_NO_FORTRAN)
+    target_compile_definitions(vistle_mpi PRIVATE _XOPEN_SOURCE=600) # for gethostname on Linux despite -std=c99
     target_include_directories(vistle_mpi PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/mpi-serial> $<INSTALL_INTERFACE:include>)
     if(WIN32)
         target_link_libraries(vistle_mpi PRIVATE ws2_32)
