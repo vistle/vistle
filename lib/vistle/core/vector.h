@@ -60,31 +60,61 @@ namespace boost {
 namespace serialization {
 
 template<class Archive>
-void serialize(Archive &ar, vistle::Vector1 &v, const unsigned int version)
+void serialize(Archive &ar, vistle::Vector1f &v, const unsigned int version)
 {
     vistle::serializeMatrix(ar, v, version);
 }
 
 template<class Archive>
-void serialize(Archive &ar, vistle::Vector2 &v, const unsigned int version)
+void serialize(Archive &ar, vistle::Vector2f &v, const unsigned int version)
 {
     vistle::serializeMatrix(ar, v, version);
 }
 
 template<class Archive>
-void serialize(Archive &ar, vistle::Vector3 &v, const unsigned int version)
+void serialize(Archive &ar, vistle::Vector3f &v, const unsigned int version)
 {
     vistle::serializeMatrix(ar, v, version);
 }
 
 template<class Archive>
-void serialize(Archive &ar, vistle::Vector4 &v, const unsigned int version)
+void serialize(Archive &ar, vistle::Vector4f &v, const unsigned int version)
 {
     vistle::serializeMatrix(ar, v, version);
 }
 
 template<class Archive>
-void serialize(Archive &ar, vistle::Matrix4 &m, const unsigned int version)
+void serialize(Archive &ar, vistle::Matrix4f &m, const unsigned int version)
+{
+    vistle::serializeMatrix(ar, m, version);
+}
+
+template<class Archive>
+void serialize(Archive &ar, vistle::Vector1d &v, const unsigned int version)
+{
+    vistle::serializeMatrix(ar, v, version);
+}
+
+template<class Archive>
+void serialize(Archive &ar, vistle::Vector2d &v, const unsigned int version)
+{
+    vistle::serializeMatrix(ar, v, version);
+}
+
+template<class Archive>
+void serialize(Archive &ar, vistle::Vector3d &v, const unsigned int version)
+{
+    vistle::serializeMatrix(ar, v, version);
+}
+
+template<class Archive>
+void serialize(Archive &ar, vistle::Vector4d &v, const unsigned int version)
+{
+    vistle::serializeMatrix(ar, v, version);
+}
+
+template<class Archive>
+void serialize(Archive &ar, vistle::Matrix4d &m, const unsigned int version)
 {
     vistle::serializeMatrix(ar, m, version);
 }
