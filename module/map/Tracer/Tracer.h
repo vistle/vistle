@@ -20,11 +20,17 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(TraceType,
 
 class BlockData;
 class Tracer;
+template<typename S>
+class Particle;
+template<typename S>
+class Integrator;
 
 class GlobalData {
-    friend class Particle;
+    friend class Particle<float>;
+    friend class Particle<double>;
+    friend class Integrator<float>;
+    friend class Integrator<double>;
     friend class Tracer;
-    friend class Integrator;
 
 public:
 private:

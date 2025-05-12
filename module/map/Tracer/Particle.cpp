@@ -12,8 +12,9 @@
 
 using namespace vistle;
 
-Particle::Particle(Index id, int rank, Index startId, const Vector3 &pos, bool forward, GlobalData &global,
-                   Index timestep)
+template<class S>
+Particle<S>::Particle(Index id, int rank, Index startId, const Vector3 &pos, bool forward, GlobalData &global,
+                      Index timestep)
 : m_global(global)
 , m_id(id)
 , m_startId(startId)
@@ -22,8 +23,8 @@ Particle::Particle(Index id, int rank, Index startId, const Vector3 &pos, bool f
 , m_progress(false)
 , m_tracing(false)
 , m_forward(forward)
-, m_x(pos)
-, m_xold(pos)
+, m_x(VI(pos))
+, m_xold(VI(pos))
 , m_v(Vector3(std::numeric_limits<Scalar>::max(), 0, 0))
 // keep large enough so that particle moves initially
 , m_p(0)
@@ -45,31 +46,37 @@ Particle::Particle(Index id, int rank, Index startId, const Vector3 &pos, bool f
         m_time = global.blocks[timestep][0]->m_grid->getRealTime();
 }
 
-Particle::~Particle()
+template<class S>
+Particle<S>::~Particle()
 {}
 
-Index Particle::id() const
+template<class S>
+Index Particle<S>::id() const
 {
     return m_id;
 }
 
-int Particle::rank()
+template<class S>
+int Particle<S>::rank()
 {
     return m_rank;
 }
 
-Particle::StopReason Particle::stopReason() const
+template<class S>
+StopReason Particle<S>::stopReason() const
 {
     return m_stopReason;
 }
 
-void Particle::enableCelltree(bool value)
+template<class S>
+void Particle<S>::enableCelltree(bool value)
 {
     m_useCelltree = value;
     m_integrator.enableCelltree(value);
 }
 
-int Particle::searchRank(boost::mpi::communicator mpi_comm)
+template<class S>
+int Particle<S>::searchRank(boost::mpi::communicator mpi_comm)
 {
     assert(!m_tracing);
     assert(!m_currentSegment);
@@ -90,7 +97,8 @@ int Particle::searchRank(boost::mpi::communicator mpi_comm)
     return rank;
 }
 
-void Particle::startTracing()
+template<class S>
+void Particle<S>::startTracing()
 {
     assert(inGrid());
     m_tracing = true;
@@ -102,17 +110,20 @@ void Particle::startTracing()
     });
 }
 
-bool Particle::isActive() const
+template<class S>
+bool Particle<S>::isActive() const
 {
     return m_ingrid && (m_tracing || m_progress || m_block);
 }
 
-bool Particle::inGrid() const
+template<class S>
+bool Particle<S>::inGrid() const
 {
     return m_ingrid;
 }
 
-bool Particle::isMoving()
+template<class S>
+bool Particle<S>::isMoving()
 {
     if (!m_ingrid) {
         return false;
@@ -136,12 +147,14 @@ bool Particle::isMoving()
     return true;
 }
 
-bool Particle::isForward() const
+template<class S>
+bool Particle<S>::isForward() const
 {
     return m_forward;
 }
 
-bool Particle::findCell(double time)
+template<class S>
+bool Particle<S>::findCell(double time)
 {
     if (!m_ingrid) {
         return false;
@@ -152,14 +165,14 @@ bool Particle::findCell(double time)
         if (m_global.int_mode == ConstantVelocity) {
             const auto neigh = grid->getNeighborElements(m_el);
             for (auto el: neigh) {
-                if (grid->inside(el, m_x)) {
+                if (grid->inside(el, VV(m_x))) {
                     m_el = el;
                     assert(m_currentSegment);
                     return true;
                 }
             }
         } else {
-            m_el = grid->findCell(m_x, m_el, m_useCelltree ? GridInterface::NoFlags : GridInterface::NoCelltree);
+            m_el = grid->findCell(VV(m_x), m_el, m_useCelltree ? GridInterface::NoFlags : GridInterface::NoCelltree);
         }
         if (m_el != InvalidIndex) {
             assert(m_currentSegment);
@@ -174,7 +187,7 @@ bool Particle::findCell(double time)
             continue;
         }
         auto grid = block->getGrid();
-        m_el = grid->findCell(transformPoint(block->invTransform(), m_x), InvalidIndex,
+        m_el = grid->findCell(transformPoint(block->invTransform(), VV(m_x)), InvalidIndex,
                               m_useCelltree ? GridInterface::NoFlags : GridInterface::NoCelltree);
         if (m_el != InvalidIndex) {
             if (!m_currentSegment) {
@@ -199,9 +212,10 @@ bool Particle::findCell(double time)
     return false;
 }
 
-void Particle::EmitData()
+template<class S>
+void Particle<S>::EmitData()
 {
-    m_currentSegment->m_xhist.push_back(transformPoint(m_block->transform(), m_xold));
+    m_currentSegment->m_xhist.push_back(transformPoint(m_block->transform(), VV(m_xold)));
     m_currentSegment->m_vhist.push_back(m_block->velocityTransform() * m_v);
     m_currentSegment->m_times.push_back(m_time);
     if (m_global.computeStep)
@@ -222,7 +236,8 @@ void Particle::EmitData()
     }
 }
 
-void Particle::Deactivate(StopReason reason)
+template<class S>
+void Particle<S>::Deactivate(StopReason reason)
 {
     if (m_stopReason == StillActive)
         m_stopReason = reason;
@@ -230,17 +245,18 @@ void Particle::Deactivate(StopReason reason)
     m_ingrid = false;
 }
 
-bool Particle::Step()
+template<class S>
+bool Particle<S>::Step()
 {
     const auto &grid = m_block->getGrid();
-    auto inter = grid->getInterpolator(m_el, m_x, m_block->m_vecmap);
+    auto inter = grid->getInterpolator(m_el, VV(m_x), m_block->m_vecmap);
     m_v = inter(m_block->m_vx, m_block->m_vy, m_block->m_vz);
     if (m_block->m_p) {
         if (m_block->m_scamap != m_block->m_vecmap)
-            inter = grid->getInterpolator(m_el, m_x, m_block->m_scamap);
+            inter = grid->getInterpolator(m_el, VV(m_x), m_block->m_scamap);
         m_p = inter(m_block->m_p);
     }
-    Scalar ddist = (m_x - m_xold).norm();
+    Scal ddist = (m_x - m_xold).norm();
     m_xold = m_x;
 
     EmitData();
@@ -258,7 +274,8 @@ bool Particle::Step()
     return ret;
 }
 
-bool Particle::isTracing(bool wait)
+template<class S>
+bool Particle<S>::isTracing(bool wait)
 {
     if (!m_tracing) {
         return false;
@@ -284,7 +301,8 @@ bool Particle::isTracing(bool wait)
     return false;
 }
 
-bool Particle::madeProgress() const
+template<class S>
+bool Particle<S>::madeProgress() const
 {
     assert(!m_tracing);
     if (m_progress && !m_currentSegment) {
@@ -293,7 +311,8 @@ bool Particle::madeProgress() const
     return m_progress;
 }
 
-bool Particle::trace()
+template<class S>
+bool Particle<S>::trace()
 {
     assert(m_tracing);
 
@@ -306,7 +325,8 @@ bool Particle::trace()
     return traced;
 }
 
-void Particle::finishSegment()
+template<class S>
+void Particle<S>::finishSegment()
 {
     if (m_currentSegment) {
         m_currentSegment->simplify(m_global.simplification_error);
@@ -316,7 +336,8 @@ void Particle::finishSegment()
     UpdateBlock(nullptr);
 }
 
-void Particle::fetchSegments(Particle &other)
+template<class S>
+void Particle<S>::fetchSegments(Particle &other)
 {
     assert(m_rank == other.m_rank);
     assert(!m_currentSegment);
@@ -340,7 +361,8 @@ inline Scalar interp(Scalar f, const Scalar f0, const Scalar f1)
     return clamp(d0 / diff, Scalar(0), Scalar(1));
 }
 
-void Particle::addToOutput()
+template<class S>
+void Particle<S>::addToOutput()
 {
     const bool second_order = true;
 
@@ -378,7 +400,7 @@ void Particle::addToOutput()
                     const auto pos0 = prevSeg->m_xhist[prevIdx];
                     Vector3 pos;
                     if (second_order) {
-                        Scalar dt0 = time - prevTime, dt1 = nextTime - time;
+                        Scal dt0 = time - prevTime, dt1 = nextTime - time;
                         const Vector3 pos0p = pos0 + dt0 * vel0;
                         const Vector3 pos1p = pos1 - dt1 * vel1;
                         pos = lerp(pos0p, pos1p, t);
@@ -573,13 +595,15 @@ void Particle::addToOutput()
     m_segments.clear();
 }
 
-Scalar Particle::time() const
+template<class S>
+Scalar Particle<S>::time() const
 {
     return m_time;
 }
 
 
-void Particle::broadcast(boost::mpi::communicator mpi_comm, int root)
+template<class S>
+void Particle<S>::broadcast(boost::mpi::communicator mpi_comm, int root)
 {
     boost::mpi::broadcast(mpi_comm, *this, root);
     m_integrator.m_hact = m_integrator.m_h;
@@ -590,7 +614,7 @@ namespace boost {
 namespace serialization {
 
 template<class Archive>
-void save(Archive &ar, const Particle::SegmentMap &segments, const unsigned int version)
+void save(Archive &ar, const SegmentMap &segments, const unsigned int version)
 {
     int numsegs = segments.size();
     ar &numsegs;
@@ -599,36 +623,39 @@ void save(Archive &ar, const Particle::SegmentMap &segments, const unsigned int 
 }
 
 template<class Archive>
-void load(Archive &ar, Particle::SegmentMap &segments, const unsigned int version)
+void load(Archive &ar, SegmentMap &segments, const unsigned int version)
 {
     int numsegs = 0;
     ar &numsegs;
     for (int i = 0; i < numsegs; ++i) {
-        Particle::Segment seg;
+        Segment seg;
         ar &seg;
-        segments.emplace(seg.m_num, std::make_shared<Particle::Segment>(std::move(seg)));
+        segments.emplace(seg.m_num, std::make_shared<Segment>(std::move(seg)));
     }
 }
 
 } // namespace serialization
 } // namespace boost
 
-BOOST_SERIALIZATION_SPLIT_FREE(Particle::SegmentMap)
+BOOST_SERIALIZATION_SPLIT_FREE(SegmentMap)
 
-void Particle::startSendData(boost::mpi::communicator mpi_comm)
+template<class S>
+void Particle<S>::startSendData(boost::mpi::communicator mpi_comm)
 {
     assert(rank() != mpi_comm.rank());
     m_requests.emplace_back(mpi_comm.isend(rank(), id(), m_segments));
 }
 
-void Particle::finishSendData()
+template<class S>
+void Particle<S>::finishSendData()
 {
     mpi::wait_all(m_requests.begin(), m_requests.end());
     m_requests.clear();
     m_segments.clear();
 }
 
-void Particle::receiveData(boost::mpi::communicator mpi_comm, int rank)
+template<class S>
+void Particle<S>::receiveData(boost::mpi::communicator mpi_comm, int rank)
 {
     SegmentMap segments;
     mpi_comm.recv(rank, id(), segments);
@@ -643,25 +670,26 @@ void Particle::receiveData(boost::mpi::communicator mpi_comm, int rank)
     }
 }
 
-void Particle::UpdateBlock(BlockData *block)
+template<class S>
+void Particle<S>::UpdateBlock(BlockData *block)
 {
     if (m_block) {
-        m_x = transformPoint(m_block->transform(), m_x);
-        m_xold = transformPoint(m_block->transform(), m_xold);
+        m_x = VI(transformPoint(m_block->transform(), VV(m_x)));
+        m_xold = VI(transformPoint(m_block->transform(), VV(m_xold)));
     }
 
     m_block = block;
 
     if (m_block) {
-        m_x = transformPoint(m_block->invTransform(), m_x);
-        m_xold = transformPoint(m_block->invTransform(), m_xold);
+        m_x = VI(transformPoint(m_block->invTransform(), VV(m_x)));
+        m_xold = VI(transformPoint(m_block->invTransform(), VV(m_xold)));
     }
 
     m_integrator.UpdateBlock();
 }
 
-template<typename S>
-static void skipVector(std::vector<S> &v, const std::vector<Index> &use)
+template<typename T>
+static void skipVector(std::vector<T> &v, const std::vector<Index> &use)
 {
     if (use.empty()) {
         v.clear();
@@ -671,14 +699,14 @@ static void skipVector(std::vector<S> &v, const std::vector<Index> &use)
     if (use.back() >= v.size())
         return;
 
-    std::vector<S> vv;
+    std::vector<T> vv;
     for (auto i: use) {
         vv.emplace_back(v[i]);
     }
     std::swap(v, vv);
 }
 
-Scalar Particle::Segment::cosAngle(Index i) const
+Scalar Segment::cosAngle(Index i) const
 {
     assert(i > 0);
     assert(i + 1 < m_xhist.size());
@@ -687,7 +715,7 @@ Scalar Particle::Segment::cosAngle(Index i) const
     return (x - x0).normalized().dot((x1 - x).normalized());
 }
 
-double Particle::Segment::interpolationError(Index i0, Index i1, Index i) const
+double Segment::interpolationError(Index i0, Index i1, Index i) const
 {
     assert(i0 < i);
     assert(i < i1);
@@ -732,7 +760,7 @@ double Particle::Segment::interpolationError(Index i0, Index i1, Index i) const
     return err;
 }
 
-void Particle::Segment::simplify(double relerr)
+void Segment::simplify(double relerr)
 {
     // no error allowed
     if (relerr <= 0.)
@@ -792,3 +820,6 @@ void Particle::Segment::simplify(double relerr)
         skipVector(m_cellIndex, use);
     }
 }
+
+template class Particle<float>;
+template class Particle<double>;
