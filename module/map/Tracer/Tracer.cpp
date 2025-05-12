@@ -35,6 +35,8 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(TraceDirection, (Both)(Forward)(Backward))
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(ParticlePlacement, (InitialRank)(RankById)(RankByTimestep)(Rank0))
 
+typedef Particle<double> ParticleT;
+
 template<class Value>
 bool agree(const boost::mpi::communicator &comm, const Value &value)
 {
@@ -495,9 +497,9 @@ bool Tracer::reduce(int timestep)
     global.computeDist = isConnected("distance");
     global.computeStepWidth = isConnected("stepwidth");
 
-    std::vector<Index> stopReasonCount(Particle::NumStopReasons, 0);
-    std::vector<std::shared_ptr<Particle>> allParticles;
-    std::set<std::shared_ptr<Particle>> localParticles, activeParticles;
+    std::vector<Index> stopReasonCount(NumStopReasons, 0);
+    std::vector<std::shared_ptr<ParticleT>> allParticles;
+    std::set<std::shared_ptr<ParticleT>> localParticles, activeParticles;
 
     Index numconstant = grid_in.size() ? grid_in[0].size() : 0;
     for (Index i = 0; i < numconstant; ++i) {
@@ -549,10 +551,10 @@ bool Tracer::reduce(int timestep)
             if (rankById)
                 rank = i % size();
             if (traceDirection != Backward) {
-                allParticles.emplace_back(new Particle(id++, rank, i, startpoints[i], true, global, t));
+                allParticles.emplace_back(new ParticleT(id++, rank, i, startpoints[i], true, global, t));
             }
             if (traceDirection != Forward) {
-                allParticles.emplace_back(new Particle(id++, rank, i, startpoints[i], false, global, t));
+                allParticles.emplace_back(new ParticleT(id++, rank, i, startpoints[i], false, global, t));
             }
         }
     }
@@ -580,7 +582,7 @@ bool Tracer::reduce(int timestep)
                     }
                 }
             } else {
-                particle->Deactivate(Particle::InitiallyOutOfDomain);
+                particle->Deactivate(InitiallyOutOfDomain);
             }
         }
         return started;
@@ -608,7 +610,7 @@ bool Tracer::reduce(int timestep)
             first = false;
             if (!particle->isTracing(wait)) {
                 if (mpisize == 1) {
-                    particle->Deactivate(Particle::OutOfDomain);
+                    particle->Deactivate(OutOfDomain);
                 } else if (particle->madeProgress()) {
                     sendlist.push_back(particle->id());
                 }
@@ -652,7 +654,7 @@ bool Tracer::reduce(int timestep)
                     p->finishSegment();
                     int r = p->searchRank(comm());
                     if (r < 0) {
-                        p->Deactivate(Particle::OutOfDomain);
+                        p->Deactivate(OutOfDomain);
                     } else if (r == rank()) {
                         if (activeParticles.size() < maxNumActive) {
                             activeParticles.emplace(p);
@@ -935,7 +937,7 @@ bool Tracer::reduce(int timestep)
         std::stringstream str;
         str << "Stop stats for " << allParticles.size() << " particles:";
         for (size_t i = 0; i < stopReasonCount.size(); ++i) {
-            str << " " << Particle::toString((Particle::StopReason)i) << ":" << stopReasonCount[i];
+            str << " " << toString((StopReason)i) << ":" << stopReasonCount[i];
         }
         if (m_verbose->getValue() == false) {
             std::cerr << str.str() << std::endl;

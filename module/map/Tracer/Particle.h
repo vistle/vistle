@@ -19,18 +19,84 @@
 class BlockData;
 class GlobalData;
 
+// clang-format off
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(
+    StopReason,
+    (StillActive)(InitiallyOutOfDomain)(OutOfDomain)(NotMoving)(StepLimitReached)(DistanceLimitReached)(TimeLimitReached)
+    (NumStopReasons) // keep last
+)
+// clang-format on
+struct Segment {
+    vistle::Index m_id = vistle::InvalidIndex; //! id of particle that was traced
+    int m_rank;
+    int m_num; // >= 0: forward, < 0: backward
+    vistle::Index m_blockIndex; //!< index of current block
+    vistle::Index m_startStep;
+    std::vector<vistle::Vector3> m_xhist; //!< trajectory
+    std::vector<vistle::Vector3> m_vhist; //!< previous velocities
+    std::vector<vistle::Scalar> m_stepWidth; //!< previous integration stepwidths
+    std::vector<vistle::Scalar> m_pressures; //!< previous pressures
+    std::vector<vistle::Index> m_steps; //!< previous steps
+    std::vector<vistle::Scalar> m_times; //!< previous times
+    std::vector<vistle::Scalar> m_dists; //!< previous times
+    std::vector<vistle::Index> m_cellIndex; //!< previous cell/element indices
+
+    Segment(int num = 0): m_rank(-1), m_num(num), m_blockIndex(vistle::InvalidIndex), m_startStep(vistle::InvalidIndex)
+    {}
+
+    void simplify(double relerr);
+    //! compute relative error when interpolating for index i from i0 and i1
+    double interpolationError(vistle::Index i0, vistle::Index i1, vistle::Index i) const;
+    vistle::Scalar cosAngle(vistle::Index i) const;
+
+    // just for Boost.MPI
+    template<class Archive>
+    void serialize(Archive &ar, const unsigned int version)
+    {
+        ar &m_id;
+        ar &m_rank;
+        ar &m_num;
+        ar &m_blockIndex;
+        ar &m_xhist;
+        ar &m_vhist;
+        ar &m_stepWidth;
+        ar &m_pressures;
+        ar &m_steps;
+        ar &m_times;
+        ar &m_dists;
+        ar &m_cellIndex;
+    }
+
+    void clear()
+    {
+        m_id = vistle::InvalidIndex;
+        m_rank = -1;
+        m_num = 0;
+        m_xhist.clear();
+        m_vhist.clear();
+        m_stepWidth.clear();
+        m_pressures.clear();
+        m_steps.clear();
+        m_times.clear();
+        m_dists.clear();
+        m_cellIndex.clear();
+    }
+};
+
+typedef std::map<int, std::shared_ptr<Segment>> SegmentMap;
+
+
+template<class S>
 class Particle {
-    friend class Integrator;
+    friend class Integrator<S>;
     friend class boost::serialization::access;
 
 public:
-    // clang-format off
-    DEFINE_ENUM_WITH_STRING_CONVERSIONS(
-        StopReason,
-        (StillActive)(InitiallyOutOfDomain)(OutOfDomain)(NotMoving)(StepLimitReached)(DistanceLimitReached)(TimeLimitReached)
-        (NumStopReasons) // keep last
-    )
-    // clang-format on
+    typedef typename Integrator<S>::Scal Scal;
+    typedef typename Integrator<S>::Vect3 Vect3;
+    static vistle::Vector3 VV(const Vect3 &v) { return Integrator<S>::VV(v); }
+    static Vect3 VI(const vistle::Vector3 &v) { return Integrator<S>::VI(v); }
+
     Particle(vistle::Index id, int rank, vistle::Index startId, const vistle::Vector3 &pos, bool forward,
              GlobalData &global, vistle::Index timestep);
     ~Particle();
@@ -60,66 +126,6 @@ public:
     void addToOutput();
     vistle::Scalar time() const;
 
-    struct Segment {
-        vistle::Index m_id = vistle::InvalidIndex; //! id of particle that was traced
-        int m_rank;
-        int m_num; // >= 0: forward, < 0: backward
-        vistle::Index m_blockIndex; //!< index of current block
-        vistle::Index m_startStep;
-        std::vector<vistle::Vector3> m_xhist; //!< trajectory
-        std::vector<vistle::Vector3> m_vhist; //!< previous velocities
-        std::vector<vistle::Scalar> m_stepWidth; //!< previous integration stepwidths
-        std::vector<vistle::Scalar> m_pressures; //!< previous pressures
-        std::vector<vistle::Index> m_steps; //!< previous steps
-        std::vector<vistle::Scalar> m_times; //!< previous times
-        std::vector<vistle::Scalar> m_dists; //!< previous times
-        std::vector<vistle::Index> m_cellIndex; //!< previous cell/element indices
-
-        Segment(int num = 0)
-        : m_rank(-1), m_num(num), m_blockIndex(vistle::InvalidIndex), m_startStep(vistle::InvalidIndex)
-        {}
-
-        void simplify(double relerr);
-        //! compute relative error when interpolating for index i from i0 and i1
-        double interpolationError(vistle::Index i0, vistle::Index i1, vistle::Index i) const;
-        vistle::Scalar cosAngle(vistle::Index i) const;
-
-        // just for Boost.MPI
-        template<class Archive>
-        void serialize(Archive &ar, const unsigned int version)
-        {
-            ar &m_id;
-            ar &m_rank;
-            ar &m_num;
-            ar &m_blockIndex;
-            ar &m_xhist;
-            ar &m_vhist;
-            ar &m_stepWidth;
-            ar &m_pressures;
-            ar &m_steps;
-            ar &m_times;
-            ar &m_dists;
-            ar &m_cellIndex;
-        }
-
-        void clear()
-        {
-            m_id = vistle::InvalidIndex;
-            m_rank = -1;
-            m_num = 0;
-            m_xhist.clear();
-            m_vhist.clear();
-            m_stepWidth.clear();
-            m_pressures.clear();
-            m_steps.clear();
-            m_times.clear();
-            m_dists.clear();
-            m_cellIndex.clear();
-        }
-    };
-
-    typedef std::map<int, std::shared_ptr<Segment>> SegmentMap;
-
 private:
     bool findCell(double time);
 
@@ -132,13 +138,13 @@ private:
     bool m_progress;
     bool m_tracing; //!< particle is currently tracing on this node
     bool m_forward; //!< trace direction
-    vistle::Vector3 m_x; //!< current position
-    vistle::Vector3 m_xold; //!< previous position
+    Vect3 m_x; //!< current position
+    Vect3 m_xold; //!< previous position
     vistle::Vector3 m_v; //!< current velocity
     vistle::Scalar m_p; //!< current pressure
     vistle::Index m_stp; //!< current integration step
     vistle::Scalar m_time; //! current time
-    vistle::Scalar m_dist; //!< total distance travelled
+    vistle::Scalar m_dist; //!< total distance traveled
     int m_segment; //!< number of segment being traced on this rank
     vistle::Index m_segmentStart; //! number of step where this segment started
 
@@ -148,7 +154,7 @@ private:
     BlockData *m_block; //!< current block for current particle position
     vistle::Index m_el; //!< index of cell for current particle position
     bool m_ingrid; //!< particle still within domain on some rank
-    Integrator m_integrator;
+    Integrator<S> m_integrator;
     StopReason m_stopReason; //! reason why particle was deactivated
     bool m_useCelltree; //! whether to use celltree for acceleration
 
@@ -171,4 +177,7 @@ private:
 
     std::vector<boost::mpi::request> m_requests;
 };
+
+extern template class Particle<double>;
+extern template class Particle<float>;
 #endif
