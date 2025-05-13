@@ -51,6 +51,8 @@ bool EnableTransparency::compute()
 
         if (p_transparency->getValue()) {
             out->addAttribute("_transparent", "true");
+        } else {
+            out->addAttribute("_transparent", "false");
         }
 
         if (p_numPrimitives->getValue() != 0) {

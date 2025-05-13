@@ -880,8 +880,10 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
     osg::ref_ptr<osg::StateSet> state;
 
     bool transparent = false;
+    bool forceOpaque = false;
     if (m_geo && m_geo->hasAttribute("_transparent")) {
         transparent = m_geo->getAttribute("_transparent") != "false";
+        forceOpaque = !transparent;
     }
 
     size_t numPrimitives = m_options.numPrimitives;
@@ -902,6 +904,9 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
         material->setColorMode(osg::Material::AMBIENT_AND_DIFFUSE);
         if (c[3] > 0.f && c[3] < 1.f)
             transparent = true;
+    }
+    if (forceOpaque) {
+        transparent = false;
     }
 
     if (defaultState) {
