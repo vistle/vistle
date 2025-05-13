@@ -135,6 +135,9 @@ ModuleStatusPtr vtkmGetNormals(const viskores::cont::DataSet &dataset, Object::p
 {
     auto normals = vtkmGetField(dataset, "normals");
     if (!normals) {
+        normals = vtkmGetField(dataset, "Normals");
+    }
+    if (!normals) {
         return Success();
     }
     auto nvec = vistle::Vec<vistle::Scalar, 3>::as(normals);
