@@ -106,6 +106,9 @@ private:
 
     bool m_haveTimeSteps = false;
 
+    std::vector<vistle::Index> m_stopReasonCount;
+    vistle::Index m_numTotalParticles = 0;
+    bool m_stopStatsPrinted = false;
     bool m_numStartpointsPrinted = false;
 };
 #endif
