@@ -181,6 +181,11 @@ bool Tracer::prepare()
     m_data0Time.clear();
     m_data1Time.clear();
 
+    m_stopReasonCount.clear();
+    m_stopReasonCount.resize(NumStopReasons, 0);
+    m_numTotalParticles = 0;
+    m_stopStatsPrinted = false;
+
     m_numStartpointsPrinted = false;
 
     return true;
@@ -313,6 +318,23 @@ void applyAttributes(vistle::Object::ptr obj, const Tracer::AttributeMap &attrs)
 
 bool Tracer::reduce(int timestep)
 {
+    auto printGlobalStopStats = [this, timestep]() {
+        if (rank() == 0 && timestep == -1 && !m_stopStatsPrinted) {
+            std::stringstream str;
+            str << "Stop stats for " << m_numTotalParticles << " particles in " << numTimesteps() << " timesteps:";
+            for (size_t i = 0; i < m_stopReasonCount.size(); ++i) {
+                str << " " << toString((StopReason)i) << ":" << m_stopReasonCount[i];
+            }
+            std::string s = str.str();
+            if (m_verbose->getValue() || m_stopReasonCount[InitiallyOutOfDomain] > 0) {
+                sendInfo("%s", s.c_str());
+            } else {
+                std::cerr << s << std::endl;
+            }
+        }
+    };
+    printGlobalStopStats();
+
     if (timestep == -1 && numTimesteps() > 0 && reducePolicy() == message::ReducePolicy::PerTimestep) {
         // all the work for stream lines has already be done per timestep
         return true;
@@ -544,7 +566,7 @@ bool Tracer::reduce(int timestep)
                 new BlockData(i + numconstant, grid_in[t + 1][i], data_in0[t + 1][i], data_in1[t + 1][i]));
         }
 
-        //create particle objects, 2 if traceDirecton==Both
+        //create particle objects, 2 if traceDirection==Both
         allParticles.reserve(allParticles.size() + numparticles);
         Index i = 0;
         for (; i < numpoints; i++) {
@@ -552,9 +574,11 @@ bool Tracer::reduce(int timestep)
                 rank = i % size();
             if (traceDirection != Backward) {
                 allParticles.emplace_back(new ParticleT(id++, rank, i, startpoints[i], true, global, t));
+                ++m_numTotalParticles;
             }
             if (traceDirection != Forward) {
                 allParticles.emplace_back(new ParticleT(id++, rank, i, startpoints[i], false, global, t));
+                ++m_numTotalParticles;
             }
         }
     }
@@ -934,6 +958,10 @@ bool Tracer::reduce(int timestep)
     }
 
     if (rank() == 0) {
+        for (size_t i = 0; i < stopReasonCount.size(); ++i) {
+            m_stopReasonCount[i] += stopReasonCount[i];
+        }
+
         std::stringstream str;
         str << "Stop stats for " << allParticles.size() << " particles:";
         for (size_t i = 0; i < stopReasonCount.size(); ++i) {
@@ -942,11 +970,13 @@ bool Tracer::reduce(int timestep)
         if (m_verbose->getValue() == false) {
             std::cerr << str.str() << std::endl;
         } else {
+            m_stopStatsPrinted = true;
             std::string s = str.str();
             sendInfo("%s", s.c_str());
         }
     }
 
+    printGlobalStopStats();
     return true;
 }
 
