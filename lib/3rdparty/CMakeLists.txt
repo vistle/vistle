@@ -77,6 +77,7 @@ endif()
 
 if(USE_BIGWHOOP)
     include_directories(${BIGWHOOP_INCLUDE_DIRS})
+
     add_subdirectory(BigWhoop)
 
     # we must call this command (taken from BigWhoop/src/library/CMakeLists.txt)
@@ -88,6 +89,13 @@ if(USE_BIGWHOOP)
         ERROR_VARIABLE error_output)
     # enable POSIX features required by BigWhoop
     target_compile_definitions(bwclib PRIVATE _POSIX_C_SOURCE=200809L)
+
+    if(CMAKE_BUILD_TYPE STREQUAL "Release" OR "${BIGWHOOP_WITH_OPENMP}")
+        find_package(OpenMP REQUIRED)
+        if(OpenMP_CXX_FOUND)
+            target_link_libraries(bwclib PRIVATE OpenMP::OpenMP_CXX)
+        endif()
+    endif()
 endif()
 
 if(VISTLE_INTERNAL_ZFP)
