@@ -90,8 +90,8 @@ if(USE_BIGWHOOP)
     # enable POSIX features required by BigWhoop
     target_compile_definitions(bwclib PRIVATE _POSIX_C_SOURCE=200809L)
 
-    if(CMAKE_BUILD_TYPE STREQUAL "Release" OR "${BIGWHOOP_WITH_OPENMP}")
-        find_package(OpenMP REQUIRED)
+    if(CMAKE_BUILD_TYPE STREQUAL "Release")
+        find_package(OpenMP)
         if(OpenMP_CXX_FOUND)
             target_link_libraries(bwclib PRIVATE OpenMP::OpenMP_CXX)
         endif()
