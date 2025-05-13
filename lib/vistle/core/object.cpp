@@ -450,7 +450,7 @@ bool Object::check(std::ostream &os, bool quick) const
         VALIDATE(d()->meta.numTimesteps() >= -1);
         VALIDATE(d()->meta.timeStep() >= -1);
         VALIDATE(d()->meta.numTimesteps() == -1 ||
-                 (d()->meta.timeStep() >= 0 && d()->meta.timeStep() < d()->meta.numTimesteps()));
+                 (d()->meta.timeStep() >= -1 && d()->meta.timeStep() < d()->meta.numTimesteps()));
 
         VALIDATE(d()->meta.animationStep() >= -1);
         VALIDATE(d()->meta.animationStep() < d()->meta.numAnimationSteps() || d()->meta.numAnimationSteps() == -1);
