@@ -53,7 +53,7 @@ ModuleStatusPtr vtkmGetGhosts(const viskores::cont::DataSet &dataset, Object::pt
 
     auto ghostname = dataset.GetGhostCellFieldName();
     std::cerr << "vtkm: has ghost cells: " << ghostname << std::endl;
-    if (auto ghosts = vtkmGetField(dataset, ghostname)) {
+    if (auto ghosts = vtkmGetField(dataset, ghostname, DataBase::Element)) {
         std::cerr << "vtkm: got ghost cells: #" << ghosts->getSize() << std::endl;
         if (auto bvec = vistle::Vec<vistle::Byte>::as(ghosts)) {
             if (auto indexed = Indexed::as(result)) {
@@ -360,13 +360,27 @@ struct GetArrayContents {
 };
 } // namespace
 
-vistle::DataBase::ptr vtkmGetField(const viskores::cont::DataSet &vtkmDataSet, const std::string &name)
+vistle::DataBase::ptr vtkmGetField(const viskores::cont::DataSet &vtkmDataSet, const std::string &name,
+                                   vistle::DataBase::Mapping mapping)
 {
     vistle::DataBase::ptr result;
     if (!vtkmDataSet.HasField(name))
         return result;
 
-    auto field = vtkmDataSet.GetField(name);
+    viskores::cont::Field::Association assoc = viskores::cont::Field::Association::Any;
+    switch (mapping) {
+    case vistle::DataBase::Vertex:
+        assoc = viskores::cont::Field::Association::Points;
+        break;
+    case vistle::DataBase::Element:
+        assoc = viskores::cont::Field::Association::Cells;
+        break;
+    default:
+        assert("Invalid mapping type" == nullptr);
+        break;
+    }
+
+    auto field = vtkmDataSet.GetField(name, assoc);
     if (!field.IsCellField() && !field.IsPointField()) {
         std::cerr << "Viskores field " << name << " is neither point nor cell field" << std::endl;
         return result;

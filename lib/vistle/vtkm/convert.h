@@ -26,7 +26,8 @@ ModuleStatusPtr V_VTKM_EXPORT vtkmAddField(viskores::cont::DataSet &vtkmDataSet,
 vistle::Object::ptr V_VTKM_EXPORT vtkmGetGeometry(const viskores::cont::DataSet &dataset);
 
 // retrieve field 'name' from a vtkm dataset in vistle format
-vistle::DataBase::ptr V_VTKM_EXPORT vtkmGetField(const viskores::cont::DataSet &vtkmDataSet, const std::string &name);
+vistle::DataBase::ptr V_VTKM_EXPORT vtkmGetField(const viskores::cont::DataSet &vtkmDataSet, const std::string &name,
+                                                 vistle::DataBase::Mapping mapping = vistle::DataBase::Unspecified);
 
 
 } // namespace vistle
