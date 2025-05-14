@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cstring>
 #include <limits>
+#include <sstream>
 
 namespace std {
 std::string to_string(const std::vector<std::string> &v)
@@ -240,7 +241,18 @@ ParameterVector<S> ParameterVector<S>::maximum() const {
 template<typename S>
 std::string ParameterVector<S>::str() const
 {
-    return std::to_string(*this);
+    if (dim == 1) {
+        return std::to_string(*this);
+    }
+    std::stringstream str;
+    str << "(";
+    for (auto i = 0; i < dim; ++i) {
+        if (i > 0)
+            str << " ";
+        str << v[i];
+    }
+    str << ")";
+    return str.str();
 }
 
 template<typename S>
