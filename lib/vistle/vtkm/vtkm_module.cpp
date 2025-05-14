@@ -118,8 +118,8 @@ ModuleStatusPtr VtkmModule::prepareInputField(const Port *port, const Object::co
     return vtkmAddField(dataset, field, fieldName);
 }
 
-Object::ptr VtkmModule::prepareOutputGrid(const viskores::cont::DataSet &dataset,
-                                          const Object::const_ptr &inputGrid) const
+Object::const_ptr VtkmModule::prepareOutputGrid(const viskores::cont::DataSet &dataset,
+                                                const Object::const_ptr &inputGrid) const
 {
     auto outputGrid = vtkmGetGeometry(dataset);
     if (!outputGrid) {
@@ -134,7 +134,7 @@ Object::ptr VtkmModule::prepareOutputGrid(const viskores::cont::DataSet &dataset
 
 DataBase::ptr VtkmModule::prepareOutputField(const viskores::cont::DataSet &dataset, const Object::const_ptr &inputGrid,
                                              const DataBase::const_ptr &inputField, const std::string &fieldName,
-                                             const Object::ptr &outputGrid) const
+                                             const Object::const_ptr &outputGrid) const
 {
     if (auto mapped = vtkmGetField(dataset, fieldName)) {
         std::cerr << "mapped data: " << *mapped << std::endl;
