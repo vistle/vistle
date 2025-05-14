@@ -912,7 +912,7 @@ bool Tracer::reduce(int timestep)
         auto addField = [this, geo, meta](const char *name, DataBase::ptr field) {
             field->setGrid(geo);
             field->setMeta(meta);
-            field->addAttribute("_species", name);
+            field->addAttribute(attribute::Species, name);
             updateMeta(field);
             addObject(name, field);
         };

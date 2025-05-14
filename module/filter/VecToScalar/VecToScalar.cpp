@@ -30,7 +30,7 @@ bool VecToScalar::compute()
         return true;
     }
 
-    std::string spec = data_in->getAttribute("_species");
+    std::string spec = data_in->getAttribute(attribute::Species);
     if (!spec.empty())
         spec += "_";
 
@@ -62,7 +62,7 @@ bool VecToScalar::compute()
     }
 
     out->copyAttributes(data_in);
-    out->addAttribute("_species", spec);
+    out->addAttribute(attribute::Species, spec);
     out->setGrid(data_in->grid());
     updateMeta(out);
     addObject("data_out", out);

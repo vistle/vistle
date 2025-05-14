@@ -535,7 +535,7 @@ std::shared_ptr<vistle::RenderObject> COVER::addObject(int senderId, const std::
     for (const auto &obj: {container, geometry, normals, texture}) {
         if (!obj)
             continue;
-        std::string plugin = obj->getAttribute("_plugin");
+        std::string plugin = obj->getAttribute(attribute::Plugin);
         if (!plugin.empty())
             cover->addPlugin(plugin.c_str());
     }
@@ -583,7 +583,7 @@ std::shared_ptr<vistle::RenderObject> COVER::addObject(int senderId, const std::
     if (geometry) {
         transform = makeTransform(geometry);
 
-        const char *filename = pro->coverRenderObject->getAttribute("_model_file");
+        const char *filename = pro->coverRenderObject->getAttribute(attribute::ModelFile);
         if (filename) {
             osg::Node *filenode = nullptr;
             if (!pro->coverRenderObject->isPlaceHolder()) {
@@ -706,11 +706,11 @@ bool COVER::addColorMap(const std::string &species, Object::const_ptr colormap)
                              const_cast<unsigned char *>(&texture->pixels()[0]), osg::Image::NO_DELETE);
         cmap.image->dirty();
 
-        cmap.setBlendWithMaterial(texture->hasAttribute("_blend_with_material"));
+        cmap.setBlendWithMaterial(texture->hasAttribute(attribute::BlendWithMaterial));
         VistleGeometryGenerator::unlock();
     }
 
-    std::string plugin = colormap->getAttribute("_plugin");
+    std::string plugin = colormap->getAttribute(attribute::Plugin);
     if (!plugin.empty())
         cover->addPlugin(plugin.c_str());
 
@@ -735,7 +735,7 @@ bool COVER::addColorMap(const std::string &species, Object::const_ptr colormap)
         return true;
     }
 
-    auto att = colormap->getAttribute("_colormap");
+    auto att = colormap->getAttribute(attribute::ColorMap);
     if (att.empty()) {
         ro->removeAttribute("COLORMAP");
     } else {

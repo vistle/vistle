@@ -324,7 +324,7 @@ void ReadCovise::applyAttributes(Token &token, Object::ptr obj, const Element &e
         if (att.first == "TIMESTEP") {
             isTimestep = true;
         } else if (att.first == "COLOR") {
-            obj->addAttribute("_color", att.second);
+            obj->addAttribute(attribute::Color, att.second);
         } else {
             obj->addAttribute(att.first, att.second);
         }
@@ -349,13 +349,13 @@ void ReadCovise::applyAttributes(Token &token, Object::ptr obj, const Element &e
         token.applyMeta(obj);
 
         if (!isTimestep) {
-            std::string set = obj->getAttribute("_part_of");
+            std::string set = obj->getAttribute(attribute::PartOf);
             if (!set.empty())
                 set = set + "_";
             std::stringstream idx;
             idx << index;
             set = set + idx.str();
-            obj->addAttribute("_part_of", set);
+            obj->addAttribute(attribute::PartOf, set);
         }
     }
 }
@@ -1189,7 +1189,7 @@ bool ReadCovise::readRecursive(Token &token, int fd[], Element *elem[], int time
         for (unsigned port = 0; port < NumPorts; ++port) {
             if (m_out[port] && obj[port]) {
                 if (port > 1 || !gridOnPort0)
-                    obj[port]->addAttribute("_species", m_species[port]);
+                    obj[port]->addAttribute(attribute::Species, m_species[port]);
                 updateMeta(obj[port]);
                 addObject(m_out[port], obj[port]);
             }

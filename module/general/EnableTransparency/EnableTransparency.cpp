@@ -50,13 +50,13 @@ bool EnableTransparency::compute()
         out = obj->clone();
 
         if (p_transparency->getValue()) {
-            out->addAttribute("_transparent", "true");
+            out->addAttribute(attribute::Transparent, "true");
         } else {
-            out->addAttribute("_transparent", "false");
+            out->addAttribute(attribute::Transparent, "false");
         }
 
         if (p_numPrimitives->getValue() != 0) {
-            out->addAttribute("_bin_num_primitives", std::to_string(p_numPrimitives->getValue()));
+            out->addAttribute(attribute::BinNumPrimitives, std::to_string(p_numPrimitives->getValue()));
         }
         updateMeta(out);
         m_cache.storeAndUnlock(ent, out);

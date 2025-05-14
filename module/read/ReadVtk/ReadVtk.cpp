@@ -545,7 +545,7 @@ bool ReadVtk::load(Token &token, const std::string &filename, const vistle::Meta
     auto grid = vistle::vtk::toGrid(dobj, &diagnostics);
     if (grid) {
         if (!part.empty())
-            grid->addAttribute("_part", part);
+            grid->addAttribute(vistle::attribute::Part, part);
     }
     token.applyMeta(grid);
     token.addObject("grid_out", grid);
@@ -570,11 +570,11 @@ bool ReadVtk::load(Token &token, const std::string &filename, const vistle::Meta
                 diagnostics.clear();
             }
             if (field) {
-                field->addAttribute("_species", name);
+                field->addAttribute(vistle::attribute::Species, name);
                 field->setMapping(vistle::DataBase::Element);
                 field->setGrid(grid);
                 if (!part.empty())
-                    field->addAttribute("_part", part);
+                    field->addAttribute(vistle::attribute::Part, part);
             }
             token.applyMeta(field);
             token.addObject(m_cellPort[i], field);
@@ -595,11 +595,11 @@ bool ReadVtk::load(Token &token, const std::string &filename, const vistle::Meta
                 }
             }
             if (field) {
-                field->addAttribute("_species", name);
+                field->addAttribute(vistle::attribute::Species, name);
                 field->setMapping(vistle::DataBase::Vertex);
                 field->setGrid(grid);
                 if (!part.empty())
-                    field->addAttribute("_part", part);
+                    field->addAttribute(vistle::attribute::Part, part);
             }
             token.applyMeta(field);
             token.addObject(m_pointPort[i], field);

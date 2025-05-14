@@ -678,7 +678,7 @@ std::shared_ptr<RenderObject> Anari::addObject(int sender, const std::string &se
                                                vistle::Object::const_ptr normals, vistle::Object::const_ptr texture)
 {
     auto ro = std::make_shared<AnariRenderObject>(m_device, sender, senderPort, container, geometry, normals, texture);
-    std::string species = container->getAttribute("_species");
+    std::string species = container->getAttribute(attribute::Species);
     if (!species.empty()) {
         CERR << "add object: species=" << species << ", " << *container << std::endl;
         // make sure that colormap exists on current device

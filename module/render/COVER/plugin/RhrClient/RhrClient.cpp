@@ -657,7 +657,7 @@ void RhrClient::addObject(const opencover::RenderObject *baseObj, osg::Group *pa
 {
     if (!baseObj)
         return;
-    auto attr = baseObj->getAttribute("_rhr_config");
+    auto attr = baseObj->getAttribute(attribute::RhrConfig);
     if (!attr)
         return;
     //CERR << "connection config string=" << attr << std::endl;
@@ -676,7 +676,7 @@ void RhrClient::addObject(const opencover::RenderObject *baseObj, osg::Group *pa
     int senderId = vistle::message::Id::Invalid;
     std::string senderOutput;
     std::string serverKey;
-    if (const auto *attr = baseObj->getAttribute("_sender")) {
+    if (const auto *attr = baseObj->getAttribute(attribute::Sender)) {
         std::stringstream sender(attr);
         sender >> senderId;
         sender.ignore(256, ':');

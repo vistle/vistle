@@ -1454,7 +1454,7 @@ bool ReadCFX::loadFields(UnstructuredGrid::ptr grid, int area3d, int setMetaTime
                 setMeta(obj, area3d, setMetaTimestep, timestep, numTimesteps, numSel3dArea, readTransientFile, t);
                 obj->setGrid(grid);
             }
-            obj->addAttribute("_species", field);
+            obj->addAttribute(attribute::Species, field);
             m_currentVolumedata[i] = obj;
         }
     }
@@ -1493,7 +1493,7 @@ bool ReadCFX::load2dFields(Polygons::ptr polyg, int area2d, int setMetaTimestep,
                 obj->setMapping(DataBase::Vertex);
                 obj->setGrid(polyg);
             }
-            obj->addAttribute("_species", area2dField);
+            obj->addAttribute(attribute::Species, area2dField);
             m_current2dData[i] = obj;
         }
     }

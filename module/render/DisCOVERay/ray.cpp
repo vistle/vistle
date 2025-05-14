@@ -211,7 +211,7 @@ bool DisCOVERay::addColorMap(const std::string &species, Object::const_ptr cmap)
         cmap.cmap->max = texture->getMax();
         cmap.cmap->texWidth = texture->getWidth();
         cmap.cmap->texData = texture->pixels().data();
-        cmap.cmap->blendWithMaterial = texture->hasAttribute("_blend_with_material") ? 1 : 0;
+        cmap.cmap->blendWithMaterial = texture->hasAttribute(attribute::BlendWithMaterial) ? 1 : 0;
 
         m_renderManager.setModified();
     }
@@ -617,7 +617,7 @@ std::shared_ptr<RenderObject> DisCOVERay::addObject(int sender, const std::strin
 {
     auto ro = std::make_shared<RayRenderObject>(m_device, sender, senderPort, container, geometry, normals, texture);
 
-    std::string species = container->getAttribute("_species");
+    std::string species = container->getAttribute(attribute::Species);
     if (!species.empty() && !ro->data->cmap) {
         std::cerr << "applying colormap for " << species << std::endl;
         auto &cmap = m_colormaps[species];

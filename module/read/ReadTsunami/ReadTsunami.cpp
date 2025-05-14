@@ -48,7 +48,6 @@ constexpr auto ETA{"eta"};
 /* constexpr auto fault_lat{"lat_barycenter"}; */
 /* constexpr auto fault_lon{"lon_barycenter"}; */
 /* constexpr auto fault_slip{"slip"}; */
-constexpr auto _species{"_species"};
 constexpr auto fillValue{"fillValue"};
 constexpr auto fillValueNew{"fillValueNew"};
 constexpr auto NONE{"None"};
@@ -491,7 +490,7 @@ void ReadTsunami::initScalarDepLatLon(VisVecScalarPtr &scalarPtr, const NcVar &v
     var.getVar_all(vecScalarStart, vecScalarCount, vecScalarStride, vecScalarImap, scalarPtr->x().begin());
 
     //set some meta data
-    scalarPtr->addAttribute(_species, var.getName());
+    scalarPtr->addAttribute(attribute::Species, var.getName());
     scalarPtr->setBlock(block);
 }
 
@@ -824,7 +823,7 @@ bool ReadTsunami::computeTimestep(Token &token, const int block, const int times
         auto scalarPtr = vecScalarPtr->clone();
 
         scalarPtr->setGrid(gridPtr);
-        scalarPtr->addAttribute(_species, vecScalarPtr->getAttribute(_species));
+        scalarPtr->addAttribute(attribute::Species, vecScalarPtr->getAttribute(attribute::Species));
 
         token.applyMeta(scalarPtr);
         token.addObject(m_scalarsOut[i], scalarPtr);

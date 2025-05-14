@@ -744,7 +744,7 @@ std::vector<DataBase::ptr> ReadFOAM::loadBoundaryField(const std::string &meshdi
                 x[i] = fullX[dataMapping[idx][i]];
             }
             if (asVariants)
-                s->addAttribute("_variant", patchNames[idx]);
+                s->addAttribute(attribute::Variant, patchNames[idx]);
             updateMeta(s);
             result.push_back(s);
 
@@ -759,7 +759,7 @@ std::vector<DataBase::ptr> ReadFOAM::loadBoundaryField(const std::string &meshdi
                 z[i] = fullZ[dataMapping[idx][i]];
             }
             if (asVariants)
-                v->addAttribute("_variant", patchNames[idx]);
+                v->addAttribute(attribute::Variant, patchNames[idx]);
             updateMeta(v);
             result.push_back(v);
         }
@@ -803,7 +803,7 @@ bool ReadFOAM::loadFields(const std::string &meshdir, const std::map<std::string
         DataBase::ptr obj = loadField(meshdir, field);
         if (obj) {
             setMeta(obj, processor, timestep);
-            obj->addAttribute("_species", field);
+            obj->addAttribute(attribute::Species, field);
         }
         m_currentvolumedata[processor][i] = obj;
     }
@@ -851,7 +851,7 @@ bool ReadFOAM::loadFields(const std::string &meshdir, const std::map<std::string
             assert(obj);
             if (obj) {
                 setMeta(obj, processor, timestep);
-                obj->addAttribute("_species", field);
+                obj->addAttribute(attribute::Species, field);
                 obj->setMapping(DataBase::Element);
                 obj->setGrid(m_currentbound[processor][j]);
                 addObject(m_boundaryDataOut[i], obj);

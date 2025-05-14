@@ -178,7 +178,7 @@ bool Transversalflussmaschine::read(Token &token, int timestep, int block)
 
         obj->setMapping(vistle::DataBase::Vertex);
         obj->setGrid(m_grid);
-        obj->addAttribute("_species", m_species);
+        obj->addAttribute(attribute::Species, m_species);
         obj->setTimestep(timestep);
         token.applyMeta(obj);
         token.addObject(m_dataPort, obj);

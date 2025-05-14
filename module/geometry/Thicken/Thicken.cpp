@@ -153,7 +153,7 @@ bool Thicken::compute()
         spheres = points->clone();
         numRad = spheres->getNumCoords();
         cwr = spheres;
-        spheres->addAttribute("_approximate_depth", m_correctDepth->getValue() ? "false" : "true");
+        spheres->addAttribute(attribute::ApproximateDepth, m_correctDepth->getValue() ? "false" : "true");
     }
 
     assert(cwr);

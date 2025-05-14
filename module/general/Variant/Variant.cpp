@@ -40,7 +40,7 @@ Variant::Variant(const std::string &name, int moduleID, mpi::communicator comm):
 
     p_fromAttribute =
         addIntParameter("from_attribute", "use another attribute as variant name", false, Parameter::Boolean);
-    p_attribute = addStringParameter("attribute", "name of attribute to copy to variant", "_part");
+    p_attribute = addStringParameter("attribute", "name of attribute to copy to variant", attribute::Part);
 
     addResultCache(m_cache);
 }
@@ -86,8 +86,8 @@ bool Variant::compute()
                 break;
             }
 
-            nobj->addAttribute("_variant", variant);
-            nobj->addAttribute("_plugin", "Variant");
+            nobj->addAttribute(attribute::Variant, variant);
+            nobj->addAttribute(attribute::Plugin, "Variant");
         }
         updateMeta(nobj);
         m_cache.storeAndUnlock(entry, nobj);

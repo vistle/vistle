@@ -30,6 +30,7 @@
 #include "vectortypes.h"
 
 #include "archives_config.h"
+#include "standardattributes.h"
 
 
 namespace vistle {
@@ -45,7 +46,6 @@ class Shm;
 
 struct ObjectData;
 class Object;
-
 
 class V_COREEXPORT ObjectInterfaceBase {
 public:

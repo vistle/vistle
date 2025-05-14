@@ -2204,8 +2204,8 @@ void Dyna3DReader<wordsize, INTEGER, REAL>::createGeometry(Reader::Token &token,
             continue;
 
         UnstructuredGrid::ptr grid_out(new UnstructuredGrid(numelem[ID], numcon[ID], numcoo[ID]));
-        grid_out->addAttribute("_id", std::to_string(ID + 1));
-        grid_out->addAttribute("_part", std::to_string(Materials[ID]));
+        grid_out->addAttribute(attribute::Id, std::to_string(ID + 1));
+        grid_out->addAttribute(attribute::Part, std::to_string(Materials[ID]));
         auto el = &grid_out->el()[0];
         auto cl = &grid_out->cl()[0];
         auto tl = &grid_out->tl()[0];
@@ -2408,8 +2408,8 @@ void Dyna3DReader<wordsize, INTEGER, REAL>::createStateObjects(vistle::Reader::T
         auto y_c = &grid_out->y()[0];
         auto z_c = &grid_out->z()[0];
 
-        grid_out->addAttribute("_id", std::to_string(ID + 1));
-        grid_out->addAttribute("_part", std::to_string(Materials[ID]));
+        grid_out->addAttribute(attribute::Id, std::to_string(ID + 1));
+        grid_out->addAttribute(attribute::Part, std::to_string(Materials[ID]));
 
         Vec<Scalar, 3>::ptr Vertex_out;
         Scalar *vx_out = nullptr, *vy_out = nullptr, *vz_out = nullptr;
@@ -2741,7 +2741,7 @@ void Dyna3DReader<wordsize, INTEGER, REAL>::createStateObjects(vistle::Reader::T
             Vertex_out->setRealTime(m_currentTime);
             Vertex_out->setMapping(DataBase::Vertex);
             Vertex_out->setGrid(grid_out);
-            Vertex_out->addAttribute("_species", toString(nodalDataType));
+            Vertex_out->addAttribute(attribute::Species, toString(nodalDataType));
             token.applyMeta(Vertex_out);
             token.addObject(vectorPort, Vertex_out);
         }
@@ -2751,7 +2751,7 @@ void Dyna3DReader<wordsize, INTEGER, REAL>::createStateObjects(vistle::Reader::T
             Scalar_out->setRealTime(m_currentTime);
             Scalar_out->setMapping(DataBase::Element);
             Scalar_out->setGrid(grid_out);
-            Scalar_out->addAttribute("_species", toString(elementDataType));
+            Scalar_out->addAttribute(attribute::Species, toString(elementDataType));
             token.applyMeta(Scalar_out);
             token.addObject(scalarPort, Scalar_out);
         }

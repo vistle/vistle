@@ -754,54 +754,6 @@ void Color::computeMap()
     sendColorMap();
 }
 
-void Color::sendColorMap()
-{
-    if (m_colorMapSent)
-        return;
-
-    setParameter(m_speciesPara, m_species);
-    setItemInfo(m_species);
-
-    if (m_colorOut->isConnected() && !m_species.empty()) {
-#ifdef COLOR_RANDOM
-        vistle::Texture1D::ptr tex(new vistle::Texture1D(m_colors->width, m_min - 0.5, m_max + 0.5));
-#else
-        vistle::Texture1D::ptr tex(new vistle::Texture1D(m_colors->width, m_min, m_max));
-#endif
-        unsigned char *pix = &tex->pixels()[0];
-        for (size_t index = 0; index < m_colors->width * 4; index++)
-            pix[index] = m_colors->data[index];
-        tex->addAttribute("_species", m_species);
-        if (m_blendWithMaterialPara->getValue())
-            tex->addAttribute("_blend_with_material", "true");
-        updateMeta(tex);
-        addObject(m_colorOut, tex);
-
-        std::stringstream buffer;
-        buffer << tex->getName() << '\n'
-               << m_species << '\n'
-#ifdef COLOR_RANDOM
-               << (m_reverse ? m_max : m_min) - 0.5 << '\n'
-               << (m_reverse ? m_min : m_max) + 0.5 << '\n'
-#else
-               << (m_reverse ? m_max : m_min) << '\n'
-               << (m_reverse ? m_min : m_max) << '\n'
-#endif
-               << m_colors->width << '\n'
-               << '0';
-
-        buffer.precision(4);
-        buffer << std::fixed;
-        for (size_t index = 0; index < m_colors->width * 4; index++)
-            buffer << "\n" << int(pix[index]) / 255.f;
-
-        tex->addAttribute("_colormap", buffer.str());
-        tex->addAttribute("_plugin", "ColorBars");
-
-        m_colorMapSent = true;
-    }
-}
-
 bool Color::prepare()
 {
     m_species.clear();
@@ -971,7 +923,7 @@ void Color::connectionAdded(const Port *from, const Port *to)
 
 void Color::process(const DataBase::const_ptr data)
 {
-    m_species = data->getAttribute("_species");
+    m_species = data->getAttribute(attribute::Species);
     sendColorMap();
 
     if (m_dataOut->isConnected()) {
@@ -987,5 +939,56 @@ void Color::process(const DataBase::const_ptr data)
         }
 
         addObject(m_dataOut, nobj);
+    }
+}
+
+void Color::sendColorMap()
+{
+    if (m_colorMapSent)
+        return;
+
+    setParameter(m_speciesPara, m_species);
+    setItemInfo(m_species);
+
+    if (m_colorOut->isConnected() && !m_species.empty()) {
+#ifdef COLOR_RANDOM
+        vistle::Texture1D::ptr tex(new vistle::Texture1D(m_colors->width, m_min - 0.5, m_max + 0.5));
+#else
+        vistle::Texture1D::ptr tex(new vistle::Texture1D(m_colors->width, m_min, m_max));
+#endif
+        unsigned char *pix = &tex->pixels()[0];
+        for (size_t index = 0; index < m_colors->width * 4; index++)
+            pix[index] = m_colors->data[index];
+        tex->addAttribute(attribute::Species, m_species);
+        if (m_blendWithMaterialPara->getValue())
+            tex->addAttribute(attribute::BlendWithMaterial, "true");
+        updateMeta(tex);
+        addObject(m_colorOut, tex);
+
+        std::stringstream buffer;
+        buffer << tex->getName() << '\n'
+               << m_species << '\n'
+#ifdef COLOR_RANDOM
+               << (m_reverse ? m_max : m_min) - 0.5 << '\n'
+               << (m_reverse ? m_min : m_max) + 0.5 << '\n'
+#else
+               << (m_reverse ? m_max : m_min) << '\n'
+               << (m_reverse ? m_min : m_max) << '\n'
+#endif
+               << m_colors->width << '\n'
+               << '0';
+
+        buffer.precision(4);
+        buffer << std::fixed;
+        for (size_t index = 0; index < m_colors->width * 4; index++)
+            buffer << "\n" << int(pix[index]) / 255.f;
+
+#ifdef ColorMap
+#undef ColorMap
+#endif
+        tex->addAttribute(attribute::ColorMap, buffer.str());
+        tex->addAttribute(attribute::Plugin, "ColorBars");
+
+        m_colorMapSent = true;
     }
 }
