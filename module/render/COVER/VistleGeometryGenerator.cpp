@@ -311,7 +311,7 @@ struct DataAdapter<Geometry, osg::Vec3Array, Mapped, normalize> {
 };
 
 template<class Geometry, bool normalize>
-struct DataAdapter<Geometry, osg::FloatArray, typename vistle::Vec<Scalar, 3>::const_ptr, normalize> {
+struct DataAdapter<Geometry, osg::FloatArray, const vistle::Vec<Scalar, 3>, normalize> {
     DataAdapter(typename Geometry::const_ptr tri, typename vistle::Vec<Scalar, 3>::const_ptr mapped)
     : size(mapped->getSize())
     , x(size > 0 ? &mapped->x()[0] : nullptr)
@@ -319,14 +319,14 @@ struct DataAdapter<Geometry, osg::FloatArray, typename vistle::Vec<Scalar, 3>::c
     , z(size > 0 ? &mapped->z()[0] : nullptr)
     , mapping(mapped->guessMapping(tri))
     {}
-    float getValue(Index idx) { return sqrt(x[idx] * x[idx] + y[idx] * y[idx] + z[idx] * z[idx]); }
+    float getValue(Index idx) { return Vector3(x[idx], y[idx], z[idx]).norm(); }
     vistle::Index size = 0;
     const Scalar *x = nullptr, *y = nullptr, *z = nullptr;
     vistle::DataBase::Mapping mapping = vistle::DataBase::Unspecified;
 };
 
 template<class Geometry, bool normalize>
-struct DataAdapter<Geometry, osg::FloatArray, typename vistle::Vec<Index>::const_ptr, normalize> {
+struct DataAdapter<Geometry, osg::FloatArray, const vistle::Vec<Index>, normalize> {
     DataAdapter(typename Geometry::const_ptr tri, typename vistle::Vec<Index>::const_ptr mapped)
     : size(mapped->getSize()), x(size > 0 ? &mapped->x()[0] : nullptr), mapping(mapped->guessMapping(tri))
     {}
