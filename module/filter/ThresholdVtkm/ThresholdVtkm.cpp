@@ -16,7 +16,7 @@ ThresholdVtkm::ThresholdVtkm(const std::string &name, int moduleID, mpi::communi
     m_invert = addIntParameter("invert_selection", "invert selection", false, Parameter::Boolean);
 
     m_operation = addIntParameter("operation", "selection operation", AnyLess, Parameter::Choice);
-    V_ENUM_SET_CHOICES(m_operation, Operation);
+    V_ENUM_SET_CHOICES_SCOPE(m_operation, Operation, );
 
     m_threshold = addFloatParameter("threshold", "selection threshold", 0);
 }
