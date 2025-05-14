@@ -4,7 +4,7 @@
 using namespace vistle;
 
 VertexClusteringVtkm::VertexClusteringVtkm(const std::string &name, int moduleID, mpi::communicator comm)
-: VtkmModule(name, moduleID, comm, 3, false)
+: VtkmModule(name, moduleID, comm, 3, MappedDataHandling::Use)
 {
     m_numDivisionsParam =
         addIntVectorParameter("num_divisions", "number of divisions in each dimension", IntParamVector{32, 32, 32});
