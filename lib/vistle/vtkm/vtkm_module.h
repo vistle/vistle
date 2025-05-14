@@ -48,6 +48,8 @@ protected:
 
     std::vector<vistle::Port *> m_inputPorts, m_outputPorts;
 
+    virtual std::string getFieldName(int i, bool output = false) const;
+
     /*
         Implement to create and parameterize the Viskores filter to be executed.
     */
