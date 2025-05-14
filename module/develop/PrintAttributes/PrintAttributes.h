@@ -9,8 +9,13 @@ public:
     ~PrintAttributes();
 
 private:
-    virtual bool compute();
+    bool compute() override;
     void print(vistle::Object::const_ptr obj);
+
+    vistle::IntParameter *m_mode = nullptr;
+    vistle::StringParameter *m_blocks = nullptr;
+    vistle::StringParameter *m_timesteps = nullptr;
+    vistle::StringParameter *m_iterations = nullptr;
 };
 
 #endif
