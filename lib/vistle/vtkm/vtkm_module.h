@@ -76,8 +76,8 @@ protected:
         attributes from `inputGrid`. The returned grid will be added to the output port in `compute` if
         no output field is defined.
     */
-    virtual vistle::Object::ptr prepareOutputGrid(const viskores::cont::DataSet &dataset,
-                                                  const vistle::Object::const_ptr &inputGrid) const;
+    virtual vistle::Object::const_ptr prepareOutputGrid(const viskores::cont::DataSet &dataset,
+                                                        const vistle::Object::const_ptr &inputGrid) const;
     /*
         Transform the field named `fieldName` in `dataset` to a Vistle data object and updates its metadata by
         copying the attributes from `ìnputField` and, if defined, setting its grid to `outputGrid`. The returned
@@ -87,7 +87,7 @@ protected:
                                                      const vistle::Object::const_ptr &inputGrid,
                                                      const vistle::DataBase::const_ptr &inputField,
                                                      const std::string &fieldName,
-                                                     const vistle::Object::ptr &outputGrid) const;
+                                                     const vistle::Object::const_ptr &outputGrid) const;
 
     /* 
         Initial sanity check for the connected input and output ports.

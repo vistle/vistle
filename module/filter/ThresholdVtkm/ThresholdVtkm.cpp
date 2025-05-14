@@ -54,8 +54,8 @@ std::unique_ptr<viskores::filter::Filter> ThresholdVtkm::setUpFilter() const
     return filter;
 }
 
-Object::ptr ThresholdVtkm::prepareOutputGrid(const viskores::cont::DataSet &dataset,
-                                             const Object::const_ptr &inputGrid) const
+Object::const_ptr ThresholdVtkm::prepareOutputGrid(const viskores::cont::DataSet &dataset,
+                                                   const Object::const_ptr &inputGrid) const
 {
     // overriding this method because it should not be treated as error if the output grid is empty
     auto outputGrid = vtkmGetGeometry(dataset);
@@ -69,7 +69,7 @@ Object::ptr ThresholdVtkm::prepareOutputGrid(const viskores::cont::DataSet &data
 DataBase::ptr ThresholdVtkm::prepareOutputField(const viskores::cont::DataSet &dataset,
                                                 const Object::const_ptr &inputGrid,
                                                 const DataBase::const_ptr &inputField, const std::string &fieldName,
-                                                const Object::ptr &outputGrid) const
+                                                const Object::const_ptr &outputGrid) const
 {
     // only prepare the output field if the output grid exists
     if (outputGrid) {

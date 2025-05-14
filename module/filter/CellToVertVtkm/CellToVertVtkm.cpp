@@ -57,8 +57,8 @@ std::unique_ptr<viskores::filter::Filter> CellToVertVtkm::setUpFilter() const
     return filter;
 }
 
-Object::ptr CellToVertVtkm::prepareOutputGrid(const viskores::cont::DataSet &dataset,
-                                              const Object::const_ptr &inputGrid) const
+Object::const_ptr CellToVertVtkm::prepareOutputGrid(const viskores::cont::DataSet &dataset,
+                                                    const Object::const_ptr &inputGrid) const
 {
     return nullptr;
 }
@@ -66,7 +66,7 @@ Object::ptr CellToVertVtkm::prepareOutputGrid(const viskores::cont::DataSet &dat
 DataBase::ptr CellToVertVtkm::prepareOutputField(const viskores::cont::DataSet &dataset,
                                                  const Object::const_ptr &inputGrid,
                                                  const DataBase::const_ptr &inputField, const std::string &fieldName,
-                                                 const Object::ptr &outputGrid) const
+                                                 const Object::const_ptr &outputGrid) const
 {
     if (dataset.HasField(fieldName)) {
         auto outputField = VtkmModule::prepareOutputField(dataset, inputGrid, inputField, fieldName, outputGrid);
