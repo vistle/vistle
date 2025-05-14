@@ -236,6 +236,9 @@ void Port::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWid
             if (text.startsWith("Scalar")) {
                 text = text.right(1);
             }
+            if (text.startsWith("Index")) {
+                text = "x";
+            }
             return text;
         };
 
