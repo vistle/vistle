@@ -104,13 +104,13 @@ bool ColorMetapostPart::compute()
     if (!obj)
         return true;
 
-    auto part = obj->getAttribute("_part");
+    auto part = obj->getAttribute(attribute::Part);
 
     auto db = DataBase::as(obj);
     if (db) {
         if (part.empty()) {
             auto grid = db->grid();
-            part = grid->getAttribute("_part");
+            part = grid->getAttribute(attribute::Part);
         }
     }
 
@@ -125,7 +125,7 @@ bool ColorMetapostPart::compute()
     else
         color = it->second.str();
 
-    out->addAttribute("_color", color);
+    out->addAttribute(attribute::Color, color);
     updateMeta(out);
     addObject("data_out", out);
 

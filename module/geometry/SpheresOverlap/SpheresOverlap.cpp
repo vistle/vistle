@@ -115,7 +115,7 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
         lineThicknesses->copyAttributes(lines);
         lineThicknesses->setMapping(DataBase::Element);
         lineThicknesses->setGrid(lines);
-        lineThicknesses->addAttribute("_species", "line thickness");
+        lineThicknesses->addAttribute(attribute::Species, "line thickness");
         updateMeta(lineThicknesses);
         task->addObject(m_dataOut, lineThicknesses);
     }

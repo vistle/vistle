@@ -202,7 +202,7 @@ bool Sample::reduce(int timestep)
                 outData->setBlock(blockIdx.at(n));
                 outData->setMapping(DataBase::Vertex);
                 outData->setGrid(outGrid);
-                outData->addAttribute("_species", "scalar");
+                outData->addAttribute(attribute::Species, "scalar");
                 updateMeta(outData);
                 addObject(m_out, outData);
             } else {

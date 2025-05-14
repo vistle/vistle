@@ -889,7 +889,7 @@ bool ReadSeisSol::readXdmfHDF5Data(Token &token, int timestep, int block)
             vatt_ptr->setMapping(DataBase::Element);
             vatt_ptr->setGrid(vugrid_ptr);
             vatt_ptr->setBlock(block);
-            vatt_ptr->addAttribute("_species", xatt->getName());
+            vatt_ptr->addAttribute(attribute::Species, xatt->getName());
             vatt_ptr->setTimestep(timestep);
             token.applyMeta(vatt_ptr);
             token.addObject(att_port, vatt_ptr);

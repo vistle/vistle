@@ -402,10 +402,10 @@ Object::ptr RhrController::getConfigObject() const
     CERR << "creating config object: " << conf << std::endl;
 
     Points::ptr points(new Points(size_t(0)));
-    points->addAttribute("_rhr_config", conf);
+    points->addAttribute(attribute::RhrConfig, conf);
     std::string sender = std::to_string(m_module->id()) + ":" + m_imageOutPort->getName();
-    points->addAttribute("_sender", sender);
-    points->addAttribute("_plugin", "RhrClient");
+    points->addAttribute(attribute::Sender, sender);
+    points->addAttribute(attribute::Plugin, "RhrClient");
     return points;
 }
 

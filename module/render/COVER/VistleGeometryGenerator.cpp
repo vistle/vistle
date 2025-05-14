@@ -236,7 +236,7 @@ VistleGeometryGenerator::VistleGeometryGenerator(std::shared_ptr<vistle::RenderO
 : m_ro(ro), m_geo(geo), m_normal(normal), m_mapped(mapped)
 {
     if (m_mapped) {
-        m_species = m_mapped->getAttribute("_species");
+        m_species = m_mapped->getAttribute(attribute::Species);
     }
 }
 
@@ -881,14 +881,14 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
 
     bool transparent = false;
     bool forceOpaque = false;
-    if (m_geo && m_geo->hasAttribute("_transparent")) {
-        transparent = m_geo->getAttribute("_transparent") != "false";
+    if (m_geo && m_geo->hasAttribute(attribute::Transparent)) {
+        transparent = m_geo->getAttribute(attribute::Transparent) != "false";
         forceOpaque = !transparent;
     }
 
     size_t numPrimitives = m_options.numPrimitives;
-    if (m_geo && m_geo->hasAttribute("_bin_num_primitives")) {
-        auto np = m_geo->getAttribute("_bin_num_primitives");
+    if (m_geo && m_geo->hasAttribute(attribute::BinNumPrimitives)) {
+        auto np = m_geo->getAttribute(attribute::BinNumPrimitives);
         numPrimitives = atol(np.c_str());
     }
     vistle::Points::const_ptr points = vistle::Points::as(m_geo);
@@ -946,8 +946,8 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
     const OsgColorMap *colormap = nullptr;
     bool haveSpheres = false;
     bool correctDepth = true;
-    if (m_geo && m_geo->hasAttribute("_approximate_depth")) {
-        correctDepth = m_geo->getAttribute("_approximate_depth") != "true";
+    if (m_geo && m_geo->hasAttribute(attribute::ApproximateDepth)) {
+        correctDepth = m_geo->getAttribute(attribute::ApproximateDepth) != "true";
     }
 #endif
     vistle::DataBase::const_ptr database = vistle::DataBase::as(m_mapped);
@@ -1460,8 +1460,8 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
 
     // set shader parameters
     std::map<std::string, std::string> parammap;
-    std::string shadername = m_geo->getAttribute("shader");
-    std::string shaderparams = m_geo->getAttribute("shader_params");
+    std::string shadername = m_geo->getAttribute(attribute::Shader);
+    std::string shaderparams = m_geo->getAttribute(attribute::ShaderParams);
     // format has to be '"key=value" "key=value1 value2"'
     bool escaped = false;
     std::string::size_type keyvaluestart = std::string::npos;

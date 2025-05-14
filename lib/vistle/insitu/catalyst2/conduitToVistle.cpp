@@ -213,7 +213,7 @@ vistle::DataBase::ptr conduitDataToVistle(const conduit_cpp::Node &field)
                 std::make_shared<vistle::Vec<vistle::Scalar, 3>>((size_t)values["x"].dtype().number_of_elements());
             getCoords(field, vec->x().data(), vec->y().data(), vec->z().data());
             vec->setMapping(mapping);
-            vec->addAttribute("_species", field.name());
+            vec->addAttribute(attribute::Species, field.name());
             return vec;
         } else {
             std::cerr << "conduitToVistle: 2D fieldss are not supported" << std::endl;
@@ -223,7 +223,7 @@ vistle::DataBase::ptr conduitDataToVistle(const conduit_cpp::Node &field)
         auto vec = std::make_shared<vistle::Vec<vistle::Scalar, 1>>((size_t)values["x"].dtype().number_of_elements());
         getCoord(values, vec->x().data());
         vec->setMapping(mapping);
-        vec->addAttribute("_species", field.name());
+        vec->addAttribute(attribute::Species, field.name());
         return vec;
     }
 

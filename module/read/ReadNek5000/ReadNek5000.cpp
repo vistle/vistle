@@ -121,7 +121,7 @@ Object::ptr ReadNek::generateBlockNumbers(nek5000::PartitionReader &partitionRea
     blockNumbers->setGrid(grid);
     blockNumbers->setBlock(partitionReader.partition());
     blockNumbers->setMapping(DataBase::Vertex);
-    blockNumbers->addAttribute("_species", "blockBumber");
+    blockNumbers->addAttribute(attribute::Species, "blockBumber");
     return blockNumbers;
 }
 
@@ -197,7 +197,7 @@ bool ReadNek::ReadVelocity(Reader::Token &token, vistle::Port *p, int timestep,
     velocity->setGrid(grid);
     velocity->setTimestep(timestep);
     velocity->setBlock(partitionReader.partition());
-    velocity->addAttribute("_species", "velocity");
+    velocity->addAttribute(attribute::Species, "velocity");
     partitionReader.fillVelocity(timestep, {velocity->x().data(), velocity->y().data(), velocity->z().data()});
     token.applyMeta(velocity);
     token.addObject(m_velocityPort, velocity);
@@ -223,7 +223,7 @@ bool ReadNek::ReadScalarData(Reader::Token &token, vistle::Port *p, const std::s
     scal->setGrid(grid);
     scal->setTimestep(timestep);
     scal->setBlock(partitionReader.partition());
-    scal->addAttribute("_species", varname);
+    scal->addAttribute(attribute::Species, varname);
     token.applyMeta(scal);
     token.addObject(p, scal);
     return true;

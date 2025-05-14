@@ -57,7 +57,7 @@ bool GridElementStatistics::compute()
     highlight->setGrid(grid);
 
     highlight->setMapping(DataBase::Element);
-    highlight->addAttribute("_species", "highlight");
+    highlight->addAttribute(attribute::Species, "highlight");
     updateMeta(highlight);
     addObject("data_out", highlight);
 

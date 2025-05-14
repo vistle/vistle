@@ -15,7 +15,7 @@ AttachShader::AttachShader(const std::string &name, int moduleID, mpi::communica
 
     m_shader = addStringParameter("shader", "name of shader to apply to geometry", "");
     m_shaderParams =
-        addStringParameter("shader_params", "shader parameters (as \"key=value\" \"key=value1 value2\"", "");
+        addStringParameter(attribute::ShaderParams, "shader parameters (as \"key=value\" \"key=value1 value2\"", "");
 
     addResultCache(m_cache);
 }
@@ -32,9 +32,9 @@ bool AttachShader::compute()
     Object::ptr nobj;
     if (auto *entry = m_cache.getOrLock(obj->getName(), nobj)) {
         nobj = obj->clone();
-        nobj->addAttribute("shader", m_shader->getValue());
+        nobj->addAttribute(attribute::Shader, m_shader->getValue());
         if (!m_shaderParams->getValue().empty()) {
-            nobj->addAttribute("shader_params", m_shaderParams->getValue());
+            nobj->addAttribute(attribute::ShaderParams, m_shaderParams->getValue());
         }
         updateMeta(nobj);
         m_cache.storeAndUnlock(entry, nobj);

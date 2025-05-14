@@ -293,7 +293,7 @@ vistle::Object::ptr DataTransmitter::makeVariable(const VariableInfo &varInfo, i
 void DataTransmitter::sendVarableToModule(vistle::Object::ptr variable, int block, const char *name)
 {
     variable->setBlock(block);
-    variable->addAttribute("_species", name);
+    variable->addAttribute(attribute::Species, name);
     m_sender.addObject(name, variable);
 }
 

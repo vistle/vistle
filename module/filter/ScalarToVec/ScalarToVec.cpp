@@ -34,7 +34,7 @@ bool ScalarToVec::compute()
         if (m_scalarIn[i]->isConnected()) {
             found = i;
             data_in[i] = expect<Vec<Scalar>>(m_scalarIn[i]);
-            names.push_back(data_in[i]->getAttribute("_species"));
+            names.push_back(data_in[i]->getAttribute(attribute::Species));
             if (size == InvalidIndex) {
                 size = data_in[i]->getSize();
             } else {
@@ -88,7 +88,7 @@ bool ScalarToVec::compute()
     }
     out->setGrid(data_in[found]->grid());
     updateMeta(out);
-    out->addAttribute("_species", spec);
+    out->addAttribute(attribute::Species, spec);
     addObject(m_vecOut, out);
 
     return true;

@@ -97,10 +97,10 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort, Object::
 , solidColor(0., 0., 0., 0.)
 {
     std::string color;
-    if (geometry && geometry->hasAttribute("_color")) {
-        color = geometry->getAttribute("_color");
-    } else if (container && container->hasAttribute("_color")) {
-        color = container->getAttribute("_color");
+    if (geometry && geometry->hasAttribute(attribute::Color)) {
+        color = geometry->getAttribute(attribute::Color);
+    } else if (container && container->hasAttribute(attribute::Color)) {
+        color = container->getAttribute(attribute::Color);
     }
 
     if (!color.empty()) {
@@ -145,9 +145,9 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort, Object::
     }
 
     if (container)
-        variant = container->getAttribute("_variant");
+        variant = container->getAttribute(attribute::Variant);
     if (geometry && variant.empty())
-        variant = geometry->getAttribute("_variant");
+        variant = geometry->getAttribute(attribute::Variant);
 
     if (boost::algorithm::ends_with(variant, "_on")) {
         variant = variant.substr(0, variant.length() - 3);

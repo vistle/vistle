@@ -473,7 +473,7 @@ bool ReadIagNetcdf::read(Token &token, int timestep, int block)
                         sendWarning("could not read surface markers");
                     }
                     UNLOCK_NETCDF(comm());
-                    markerData->addAttribute("_species", "marker");
+                    markerData->addAttribute(attribute::Species, "marker");
                     markerData->setGrid(boundary);
                     token.applyMeta(markerData);
                     if (m_boundaryOut->isConnected())
@@ -559,7 +559,7 @@ bool ReadIagNetcdf::read(Token &token, int timestep, int block)
             }
             dataObj = scalObj;
         }
-        dataObj->addAttribute("_species", varName.c_str());
+        dataObj->addAttribute(attribute::Species, varName.c_str());
         dataObj->setMapping(DataBase::Vertex);
         return dataObj;
     };

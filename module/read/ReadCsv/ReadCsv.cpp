@@ -284,7 +284,7 @@ bool ReadCsv::readFile(Token &token, int timestep, int block)
             dataObjects[i]->setBlock(block);
             dataObjects[i]->setTimestep(timestep);
 
-            dataObjects[i]->addAttribute("_species", m_choices[getDataSelection(i)]);
+            dataObjects[i]->addAttribute(attribute::Species, m_choices[getDataSelection(i)]);
             token.applyMeta(dataObjects[i]);
             token.addObject("data_out" + std::to_string(i), dataObjects[i]);
         }

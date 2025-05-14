@@ -933,7 +933,7 @@ bool Module::addObject(Port *port, vistle::Object::const_ptr object)
     sendMessage(message);
 
     std::string info;
-    std::string species = object->getAttribute("_species");
+    std::string species = object->getAttribute(attribute::Species);
     std::string mapped, geometry, mapping;
     if (!species.empty()) {
         info += species + " - ";
@@ -1105,8 +1105,8 @@ bool Module::addInputObject(int sender, const std::string &senderPort, const std
 
     assert(object->check(std::cerr));
 
-    if (object->hasAttribute("_species")) {
-        std::string species = object->getAttribute("_species");
+    if (object->hasAttribute(attribute::Species)) {
+        std::string species = object->getAttribute(attribute::Species);
         if (m_inputSpecies != species) {
             m_inputSpecies = species;
             setInputSpecies(m_inputSpecies);

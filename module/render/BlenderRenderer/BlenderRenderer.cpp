@@ -431,9 +431,9 @@ bool BlenderRenderer::addColorMap(const std::string &species, Object::const_ptr 
     //    cmap.image->setImage(texture->getWidth(), 1, 1, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, &texture->pixels()[0], osg::Image::NO_DELETE);
     //    cmap.image->dirty();
     //
-    //    cmap.setBlendWithMaterial(texture->hasAttribute("_blend_with_material"));
+    //    cmap.setBlendWithMaterial(texture->hasAttribute(attribute::BlendWithMaterial));
     //
-    //    std::string plugin = texture->getAttribute("_plugin");
+    //    std::string plugin = texture->getAttribute(attribute::Plugin);
     //    if (!plugin.empty())
     //        cover->addPlugin(plugin.c_str());
     //
@@ -455,7 +455,7 @@ bool BlenderRenderer::addColorMap(const std::string &species, Object::const_ptr 
     //        return true;
     //    }
     //
-    //    auto att = texture->getAttribute("_colormap");
+    //    auto att = texture->getAttribute(attribute::ColorMap);
     //    if (att.empty()) {
     //        ro->removeAttribute("COLORMAP");
     //    } else {

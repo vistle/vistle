@@ -345,7 +345,7 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
     auto geo_norm_tex = splitObject(object);
 
     if (!geo_norm_tex[0]) {
-        std::string species = object->getAttribute("_species");
+        std::string species = object->getAttribute(attribute::Species);
         if (auto tex = vistle::Texture1D::as(object)) {
             auto &cmap = m_colormaps[species];
             cmap.texture = tex;

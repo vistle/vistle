@@ -376,7 +376,7 @@ bool ReadEnsight::read(Reader::Token &token, int timestep, int block)
     }
 
     token.applyMeta(grid);
-    grid->addAttribute("_part", curPart.comment());
+    grid->addAttribute(attribute::Part, curPart.comment());
     if (auto unstr = UnstructuredGrid::as(grid)) {
         token.addObject(m_grid, unstr);
         what = EnFile::VOLUME;
@@ -403,9 +403,9 @@ bool ReadEnsight::read(Reader::Token &token, int timestep, int block)
         auto data = file->read(timestep, block, &curPart);
         file.reset();
         if (data) {
-            data->addAttribute("_part", curPart.comment());
+            data->addAttribute(attribute::Part, curPart.comment());
             token.applyMeta(data);
-            data->addAttribute("_species", field);
+            data->addAttribute(attribute::Species, field);
             if (auto db = DataBase::as(data)) {
                 db->setGrid(grid);
                 token.addObject(port, db);

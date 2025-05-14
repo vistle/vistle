@@ -207,7 +207,7 @@ Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBas
         return Object::ptr();
     }
 
-    std::string isospecies = isoField->getAttribute("_species");
+    std::string isospecies = isoField->getAttribute(attribute::Species);
     if (isospecies.empty())
         isospecies = "isodata";
     status = vtkmAddField(vtkmDataSet, isoField, isospecies);
@@ -218,7 +218,7 @@ Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBas
 
     std::string mapspecies;
     if (mapField) {
-        mapspecies = mapField->getAttribute("_species");
+        mapspecies = mapField->getAttribute(attribute::Species);
         if (mapspecies.empty())
             mapspecies = "mapped";
         status = vtkmAddField(vtkmDataSet, mapField, mapspecies);

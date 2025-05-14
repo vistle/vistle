@@ -190,7 +190,7 @@ bool WritePointsCsv::compute()
         }
         for (int i = 0; i < NumPorts; ++i) {
             if (data[i]) {
-                std::string name = data[i]->getAttribute("_species");
+                std::string name = data[i]->getAttribute(attribute::Species);
                 if (name.empty()) {
                     name = "data" + std::to_string(i);
                 }
