@@ -1,12 +1,12 @@
-#ifndef VISTLE_PRINTATTRIBUTES_PRINTATTRIBUTES_H
-#define VISTLE_PRINTATTRIBUTES_PRINTATTRIBUTES_H
+#ifndef VISTLE_PRINTOBJECTS_PRINTOBJECTS_H
+#define VISTLE_PRINTOBJECTS_PRINTOBJECTS_H
 
 #include <vistle/module/module.h>
 
-class PrintAttributes: public vistle::Module {
+class PrintObjects: public vistle::Module {
 public:
-    PrintAttributes(const std::string &name, int moduleID, mpi::communicator comm);
-    ~PrintAttributes();
+    PrintObjects(const std::string &name, int moduleID, mpi::communicator comm);
+    ~PrintObjects();
 
 private:
     bool compute() override;

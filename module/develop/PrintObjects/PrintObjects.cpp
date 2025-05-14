@@ -3,16 +3,15 @@
 #include <vistle/core/message.h>
 #include <vistle/util/enum.h>
 #include <vistle/util/coRestraint.h>
-#include "PrintAttributes.h"
+#include "PrintObjects.h"
 
-MODULE_MAIN(PrintAttributes)
+MODULE_MAIN(PrintObjects)
 
 using namespace vistle;
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(Mode, (Attributes)(MetaData)(Data))
 
-PrintAttributes::PrintAttributes(const std::string &name, int moduleID, mpi::communicator comm)
-: Module(name, moduleID, comm)
+PrintObjects::PrintObjects(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
     createInputPort("data_in", "data");
     m_mode = addIntParameter("mode", "print mode", Attributes, Parameter::Choice);
@@ -23,10 +22,10 @@ PrintAttributes::PrintAttributes(const std::string &name, int moduleID, mpi::com
     m_iterations = addStringParameter("iterations", "iterations ranges", "all", Parameter::Restraint);
 }
 
-PrintAttributes::~PrintAttributes()
+PrintObjects::~PrintObjects()
 {}
 
-bool PrintAttributes::compute()
+bool PrintObjects::compute()
 {
     Object::const_ptr obj = expect<Object>("data_in");
     if (!obj)
@@ -75,7 +74,7 @@ bool PrintAttributes::compute()
     return true;
 }
 
-void PrintAttributes::print(Object::const_ptr obj)
+void PrintObjects::print(Object::const_ptr obj)
 {
     std::stringstream str;
     int t = obj->getTimestep();
