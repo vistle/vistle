@@ -7,7 +7,7 @@ using namespace vistle;
 MODULE_MAIN(ClipVtkm)
 
 ClipVtkm::ClipVtkm(const std::string &name, int moduleID, mpi::communicator comm)
-: VtkmModule(name, moduleID, comm, 3, false), m_implFuncControl(this)
+: VtkmModule(name, moduleID, comm, 3, MappedDataHandling::Use), m_implFuncControl(this)
 {
     m_implFuncControl.init();
     m_flip = addIntParameter("flip", "flip inside out", false, Parameter::Boolean);

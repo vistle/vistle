@@ -6,7 +6,8 @@
 #include <viskores/filter/Filter.h>
 
 #include <vistle/alg/objalg.h>
-#include "vistle/module/module.h"
+#include <vistle/module/module.h>
+#include <vistle/util/enum.h>
 
 #include "export.h"
 #include "module_status.h"
@@ -38,13 +39,15 @@ namespace vistle {
  */
 class V_VTKM_EXPORT VtkmModule: public Module {
 public:
+    DEFINE_ENUM_WITH_STRING_CONVERSIONS(MappedDataHandling, (Use)(Require)(Discard)(Generate))
+
     VtkmModule(const std::string &name, int moduleID, mpi::communicator comm, int numPorts = 1,
-               bool requireMappedData = true);
+               MappedDataHandling mode = MappedDataHandling::Require);
     ~VtkmModule();
 
 protected:
     const int m_numPorts;
-    const bool m_requireMappedData;
+    const MappedDataHandling m_mappedDataHandling;
 
     std::vector<vistle::Port *> m_inputPorts, m_outputPorts;
 

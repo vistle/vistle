@@ -6,10 +6,13 @@ using namespace vistle;
 
 
 VtkmModule::VtkmModule(const std::string &name, int moduleID, mpi::communicator comm, int numPorts,
-                       bool requireMappedData)
-: Module(name, moduleID, comm), m_numPorts(numPorts), m_requireMappedData(requireMappedData)
+                       MappedDataHandling mode)
+: Module(name, moduleID, comm), m_numPorts(numPorts), m_mappedDataHandling(mode)
 {
     assert(m_numPorts > 0);
+    bool dataInput =
+        m_mappedDataHandling != MappedDataHandling::Discard && m_mappedDataHandling != MappedDataHandling::Generate;
+    bool dataOutput = m_mappedDataHandling != MappedDataHandling::Discard;
 
     for (int i = 0; i < m_numPorts; ++i) {
         std::string in("data_in");
@@ -18,9 +21,8 @@ VtkmModule::VtkmModule(const std::string &name, int moduleID, mpi::communicator 
             in += std::to_string(i);
             out += std::to_string(i);
         }
-        m_inputPorts.push_back(createInputPort(in, m_requireMappedData ? "input grid with mapped data" : "input grid"));
-        m_outputPorts.push_back(
-            createOutputPort(out, m_requireMappedData ? "output grid with mapped data" : "output grid"));
+        m_inputPorts.push_back(createInputPort(in, dataInput ? "input grid with mapped data" : "input grid"));
+        m_outputPorts.push_back(createOutputPort(out, dataOutput ? "output grid with mapped data" : "output grid"));
     }
 }
 
@@ -173,7 +175,7 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
         if (i > 0 && !m_outputPorts[i]->isConnected())
             continue;
 
-        if (m_requireMappedData) {
+        if (m_mappedDataHandling == MappedDataHandling::Require) {
             if (!inputFields[i]) {
                 std::stringstream msg;
                 msg << "No mapped data on input port " << m_inputPorts[i]->getName();
@@ -190,8 +192,10 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
     }
 
     // ... run filter on the active field ...
-    auto activeField = fieldNames[0];
-    if (!m_requireMappedData || inputDataset.HasField(activeField)) {
+    bool useInputData =
+        m_mappedDataHandling != MappedDataHandling::Discard && m_mappedDataHandling != MappedDataHandling::Generate;
+    auto activeField = useInputData ? fieldNames[0] : "";
+    if (m_mappedDataHandling != MappedDataHandling::Require || inputDataset.HasField(activeField)) {
         auto filter = setUpFilter();
         if (inputDataset.HasField(activeField)) {
             filter->SetActiveField(activeField);
@@ -202,8 +206,8 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
                 cell field of the same name in the resulting dataset, which leads to conflicts, e.g., 
                 when calling Viskores's GetField() method, we rename the output field here.
             */
-            filter->SetOutputFieldName(getFieldName(0, true));
         }
+        filter->SetOutputFieldName(getFieldName(0, true));
         outputDataset = filter->Execute(inputDataset);
     }
 
@@ -214,17 +218,19 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
         if (!m_outputPorts[i]->isConnected())
             continue;
 
-        if (inputFields[i]) {
-            std::string name = fieldNames[i];
-            if (i == 0 && outputDataset.HasField(getFieldName(i, true))) {
-                // if filter has created a dedicated output field, use it
-                name = getFieldName(i, true);
-            }
+        //if (inputFields[i]) {
+        std::string name = fieldNames[i];
+        if (i == 0 && outputDataset.HasField(getFieldName(i, true))) {
+            // if filter has created a dedicated output field, use it
+            name = getFieldName(i, true);
+        }
+
+        if (m_mappedDataHandling != MappedDataHandling::Use || inputFields[i]) {
             outputField = prepareOutputField(outputDataset, inputGrid, inputFields[i], name, outputGrid);
         }
 
         // ... and write the result to the output ports
-        if (outputField) {
+        if (outputField || m_mappedDataHandling == MappedDataHandling::Generate) {
             task->addObject(m_outputPorts[i], outputField);
         } else if (outputGrid) {
             task->addObject(m_outputPorts[i], outputGrid);
