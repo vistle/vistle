@@ -112,6 +112,9 @@ protected:
         Checks if `status` allows module to continue execution and (if available) prints a message to the GUI.
     */
     bool isValid(const ModuleStatusPtr &status) const;
+
+private:
+    vistle::IntParameter *m_printObjectInfo = nullptr;
 };
 } // namespace vistle
 #endif

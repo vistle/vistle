@@ -24,6 +24,8 @@ VtkmModule::VtkmModule(const std::string &name, int moduleID, mpi::communicator 
         m_inputPorts.push_back(createInputPort(in, dataInput ? "input grid with mapped data" : "input grid"));
         m_outputPorts.push_back(createOutputPort(out, dataOutput ? "output grid with mapped data" : "output grid"));
     }
+
+    m_printObjectInfo = addIntParameter("_print_object_info", "print object info", false, Parameter::Boolean);
 }
 
 VtkmModule::~VtkmModule()
@@ -157,6 +159,8 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
 
     viskores::cont::DataSet inputDataset, outputDataset;
 
+    bool printInfo = m_printObjectInfo->getValue() != 0;
+
     // read in data from the input ports...
     auto status = readInPorts(task, inputGrid, inputFields);
     if (!isValid(status))
@@ -211,6 +215,36 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
         filter->SetFieldsToPass("", viskores::cont::Field::Association::Any,
                                 viskores::filter::FieldSelection::Mode::All);
         outputDataset = filter->Execute(inputDataset);
+        if (printInfo) {
+            {
+                std::stringstream str;
+                str << "<pre>Input ";
+                inputDataset.PrintSummary(str);
+                inputDataset.PrintSummary(std::cout);
+                str << "</pre>" << std::endl;
+                auto msg = str.str();
+                std::cout << msg << std::endl;
+                //sendInfo("%s", msg.c_str());
+            }
+
+            {
+                std::stringstream str;
+                str << "Filter: " << typeid(decltype(*filter)).name() << std::endl;
+                auto msg = str.str();
+                std::cout << msg << std::endl;
+                //sendInfo("%s", msg.c_str());
+            }
+
+            {
+                std::stringstream str;
+                str << "<pre>Output ";
+                outputDataset.PrintSummary(str);
+                str << "</pre>" << std::endl;
+                auto msg = str.str();
+                std::cout << msg << std::endl;
+                //sendInfo("%s", msg.c_str());
+            }
+        }
     }
 
     // ... transform filter output, i.e., grid and data fields, to Vistle objects ...
