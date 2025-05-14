@@ -773,7 +773,7 @@ void ReadFOAM::setMeta(Object::ptr obj, int processor, int timestep) const
         Index skipfactor = timeIncrement();
         obj->setTimestep(timestep);
         obj->setNumTimesteps((m_case.timedirs.size() + skipfactor - 1) / skipfactor);
-        obj->setBlock(processor);
+        obj->setBlock(processor == -1 ? 0 : processor);
         obj->setNumBlocks(m_case.numblocks == 0 ? 1 : m_case.numblocks);
 
         if (timestep >= 0) {
