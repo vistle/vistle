@@ -1,16 +1,26 @@
 #include <vistle/core/object.h>
 #include <vistle/core/unstr.h>
 #include <vistle/core/message.h>
+#include <vistle/util/enum.h>
+#include <vistle/util/coRestraint.h>
 #include "PrintAttributes.h"
 
 MODULE_MAIN(PrintAttributes)
 
 using namespace vistle;
 
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(Mode, (Attributes)(MetaData)(Data))
+
 PrintAttributes::PrintAttributes(const std::string &name, int moduleID, mpi::communicator comm)
 : Module(name, moduleID, comm)
 {
     createInputPort("data_in", "data");
+    m_mode = addIntParameter("mode", "print mode", Attributes, Parameter::Choice);
+    V_ENUM_SET_CHOICES(m_mode, Mode);
+
+    m_blocks = addStringParameter("blocks", "block ranges", "all", Parameter::Restraint);
+    m_timesteps = addStringParameter("timesteps", "timestep ranges", "all", Parameter::Restraint);
+    m_iterations = addStringParameter("iterations", "iterations ranges", "all", Parameter::Restraint);
 }
 
 PrintAttributes::~PrintAttributes()
@@ -22,13 +32,44 @@ bool PrintAttributes::compute()
     if (!obj)
         return true;
 
-    print(obj);
-    if (auto db = DataBase::as(obj)) {
-        if (auto grid = db->grid()) {
-            sendInfo("grid attributes begin");
-            print(grid);
-            sendInfo("grid attributes end");
+    auto matches = [&](const std::string &s, int value) {
+        coRestraint restr;
+        restr.add(s);
+        if (restr(value)) {
+            return true;
         }
+        return false;
+    };
+
+    auto b = getBlock(obj);
+    if (!matches(m_blocks->getValue(), b)) {
+        return true;
+    }
+
+    auto t = getTimestep(obj);
+    if (!matches(m_timesteps->getValue(), t)) {
+        return true;
+    }
+
+    auto i = getIteration(obj);
+    if (!matches(m_iterations->getValue(), i)) {
+        return true;
+    }
+
+    if (m_mode->getValue() == Attributes) {
+        print(obj);
+        if (auto db = DataBase::as(obj)) {
+            if (auto grid = db->grid()) {
+                sendInfo("grid attributes begin");
+                print(grid);
+                sendInfo("grid attributes end");
+            }
+        }
+    } else {
+        bool verbose = m_mode->getValue() == Data;
+        std::stringstream str;
+        obj->print(str, verbose);
+        sendInfo(str.str());
     }
 
     return true;
