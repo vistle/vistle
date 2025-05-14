@@ -57,21 +57,62 @@ bool VectorField::compute()
         sendError("grid does not contain coordinates");
         return true;
     }
-    if (vecs->guessMapping() != DataBase::Vertex) {
-        sendError("no per-vertex mapping");
+    bool perElement = false;
+    if (vecs->guessMapping() == DataBase::Element) {
+        perElement = true;
+    } else if (vecs->guessMapping() != DataBase::Vertex) {
+        sendError("unknown mapping for vectors");
         return true;
     }
     Index numCoords = coords->getNumCoords();
+    auto elements = grid->getInterface<ElementInterface>();
+    if (perElement) {
+        if (!elements) {
+            sendError("vectors are mapped per element, but grid does not contain elements");
+            return true;
+        }
+        numCoords = elements->getNumElements();
+    }
     if (vecs->getSize() != numCoords) {
         sendError("geometry size does not match array size: #points=%lu, but #vecs=%lu", (unsigned long)numCoords,
                   (unsigned long)vecs->getSize());
         return true;
     }
 
+    DataBase::ptr mapped;
+    DataBase::const_ptr data;
+    if (isConnected("data_in")) {
+        data = expect<DataBase>("data_in");
+        if (data) {
+            if (data->guessMapping() == DataBase::Element) {
+                if (!perElement) {
+                    sendError("vectors are per-element, but mapped data is per-vertex");
+                    return true;
+                }
+            } else if (data->guessMapping() == DataBase::Vertex) {
+                if (perElement) {
+                    sendError("vectors are per-vertex, but mapped data is per-element");
+                    return true;
+                }
+            } else {
+                sendError("unknown mapping for data");
+                return true;
+            }
+
+            if (data->getSize() != numCoords) {
+                sendError("geometry size does not match data array size: #vecs=%lu, but #data=%lu",
+                          (unsigned long)numCoords, (unsigned long)data->getSize());
+                return true;
+            }
+
+            mapped = data->cloneType();
+        }
+    }
+
     bool indexed = false;
     Index numPoints = numCoords;
     std::vector<Index> verts;
-    if (!m_allCoordinates->getValue()) {
+    if (!perElement && !m_allCoordinates->getValue()) {
         Index nconn = 0;
         const Index *cl = nullptr;
         if (auto tri = Triangles::as(split.geometry)) {
@@ -93,24 +134,6 @@ bool VectorField::compute()
             auto end = std::unique(verts.begin(), verts.end());
             verts.resize(end - verts.begin());
             numPoints = verts.size();
-        }
-    }
-
-    DataBase::ptr mapped;
-    DataBase::const_ptr data;
-    if (isConnected("data_in")) {
-        data = expect<DataBase>("data_in");
-        if (data) {
-            if (data->guessMapping() != DataBase::Vertex) {
-                sendError("no per-vertex mapping for data");
-                return true;
-            }
-            if (data->getSize() != numCoords) {
-                sendError("geometry size does not match data array size: #points=%lu, but #vecs=%lu",
-                          (unsigned long)numCoords, (unsigned long)data->getSize());
-                return true;
-            }
-            mapped = data->cloneType();
         }
     }
 
@@ -138,7 +161,12 @@ bool VectorField::compute()
         }
         v *= scale;
 
-        Vector3 p(px[ii], py[ii], pz[ii]);
+        Vector3 p;
+        if (perElement) {
+            p = elements->cellCenter(ii);
+        } else {
+            p = Vector3(px[ii], py[ii], pz[ii]);
+        }
         Vector3 p0, p1;
         switch (att) {
         case Bottom:
