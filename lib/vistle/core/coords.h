@@ -19,6 +19,8 @@ public:
     typedef Vec<Scalar, 3> Base;
 
     Coords(const size_t numVertices, const Meta &meta = Meta());
+    Mapping
+    guessMapping(Object::const_ptr grid) const override; //< make sure that coordinates are always mapped to vertices
 
     void resetCoords(); //< remove reference to coordinates and create empty ones
     std::set<Object::const_ptr> referencedObjects() const override;

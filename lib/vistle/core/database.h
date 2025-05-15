@@ -25,7 +25,7 @@ public:
     virtual void applyDimensionHint(Object::const_ptr grid);
     Object::const_ptr grid() const;
     void setGrid(Object::const_ptr grid);
-    Mapping guessMapping(Object::const_ptr grid = Object::const_ptr())
+    virtual Mapping guessMapping(Object::const_ptr grid = Object::const_ptr())
         const; //< if Unspecified, try to derive a mapping based on array and grid size
     Mapping mapping() const;
     void setMapping(Mapping m);
