@@ -7,6 +7,8 @@ Vistle - A Modular Data-Parallel Visualization System
 > **vistle**:
 >	very smooth and elegant, nicely put together ([Urban Dictionary](https://www.urbandictionary.com/define.php?term=vistle))
 
+[Vistle](https://vistle.io) is an extensible software environment that integrates simulations on supercomputers, post-processing and parallel interactive visualization in immersive virtual environments. Vistle development is driven by [HLRS](https://www.hlrs.de) since 2012.
+
 
 License
 -------
