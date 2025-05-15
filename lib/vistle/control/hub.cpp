@@ -11,6 +11,8 @@
 #include <future>
 #include <condition_variable>
 #include <signal.h>
+#include <string>
+#include <limits>
 #ifdef VISTLE_USE_FMT
 #include <fmt/format.h>
 #include <fmt/args.h>
@@ -1796,6 +1798,15 @@ bool Hub::hubReady()
             session.addFloatParameter(CompressionSettings::p_szL2Error, "SZ3 L2 norm error tolerance", cs.szL2Error);
         session.setParameterMinimum(szL2, Float(0.));
 
+        session.setCurrentParameterGroup("BigWhoop");
+        auto bwNPar = session.addIntParameter(CompressionSettings::p_bigWhoopNPar,
+                                              "BigWhoop number of independent parameters", cs.bigWhoopNPar);
+        session.setParameterRange(bwNPar, Integer(1), Integer(std::numeric_limits<uint8_t>::max()));
+
+        auto bwRate = session.addFloatParameter(CompressionSettings::p_bigWhoopRate, "BigWhoop compression rate",
+                                                std::stof(cs.bigWhoopRate));
+        session.setParameterMinimum(bwRate, Float(0.));
+
         session.setCurrentParameterGroup("");
 
         for (auto s: m_slavesToConnect) {
@@ -3518,7 +3529,7 @@ bool Hub::startUi(const std::string &uipath, bool replace)
 
 bool Hub::startPythonUi()
 {
-    std::vector<std::string> python_shells{"ipython", "ipython3", "python", "python3"};
+    std::vector<std::string> python_shells{"ipython", "ipython3", "python", "${Python_EXECUTABLE}"};
     std::string port = std::to_string(this->m_masterPort);
 
     std::string ipython = "ipython";

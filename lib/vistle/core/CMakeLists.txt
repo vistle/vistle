@@ -9,6 +9,7 @@ set(core_SOURCES
     archives.cpp
     archives_compress.cpp
     archives_compress_sz3.cpp
+    archives_compress_bigwhoop.cpp
     cellalgorithm.cpp
     filequery.cpp
     geometry.cpp
@@ -68,6 +69,7 @@ set(core_HEADERS
     archives.h
     archives_compress.h
     archives_compress_sz3.h
+    archives_compress_bigwhoop.h
     archives_config.h
     archives_impl.h
     availablemodule.h
@@ -207,6 +209,12 @@ if(SZ3_FOUND)
     target_compile_definitions(vistle_core PRIVATE HAVE_SZ3)
     target_include_directories(vistle_core SYSTEM PRIVATE ${SZ3_INCLUDE_DIRS})
     vistle_target_link_libraries(vistle_core PRIVATE ${SZ3_LIBRARIES})
+endif()
+
+if(BIGWHOOP_FOUND)
+    target_compile_definitions(vistle_core PRIVATE HAVE_BIGWHOOP)
+    target_include_directories(vistle_core SYSTEM PRIVATE ${BIGWHOOP_INCLUDE_DIRS})
+    vistle_target_link_libraries(vistle_core PRIVATE bwclib)
 endif()
 
 if(ZSTD_FOUND)

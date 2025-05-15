@@ -1,13 +1,14 @@
 #ifndef VISTLE_CORE_ARCHIVES_COMPRESSION_SETTINGS_H
 #define VISTLE_CORE_ARCHIVES_COMPRESSION_SETTINGS_H
 
+#include <string>
 #include <vistle/util/enum.h>
 
 #include "export.h"
 
 namespace vistle {
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(FieldCompressionMode, (Uncompressed)(Predict)(Zfp)(SZ))
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(FieldCompressionMode, (Uncompressed)(Predict)(Zfp)(SZ)(BigWhoop))
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(FieldCompressionZfpMode, (ZfpFixedRate)(ZfpPrecision)(ZfpAccuracy))
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(FieldCompressionSzAlgo, (SzInterpLorenzo)(SzInterp)(SzLorenzoReg))
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(FieldCompressionSzError, (SzRel)(SzAbs)(SzAbsAndRel)(SzAbsOrRel)(SzPsnr)(SzL2))
@@ -37,6 +38,11 @@ struct CompressionSettings {
     double szPsnrError = 80;
     static constexpr const char *p_szL2Error = "sz_l2_error";
     double szL2Error = 1e-1;
+
+    static constexpr const char *p_bigWhoopNPar = "bigwhoop_npar";
+    uint8_t bigWhoopNPar = 1;
+    static constexpr const char *p_bigWhoopRate = "bigwhoop_rate";
+    std::string bigWhoopRate = "1";
 };
 
 } // namespace vistle

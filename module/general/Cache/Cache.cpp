@@ -1,3 +1,5 @@
+#include <string>
+
 #include <vistle/module/module.h>
 
 #include <vistle/core/archive_saver.h>
@@ -42,6 +44,8 @@ private:
     FloatParameter *m_zfpRate = nullptr;
     IntParameter *m_zfpPrecision = nullptr;
     FloatParameter *m_zfpAccuracy = nullptr;
+    IntParameter *m_bigWhoopNPar = nullptr;
+    FloatParameter *m_bigWhoopRate = nullptr;
     IntParameter *m_archiveCompression = nullptr;
     IntParameter *m_archiveCompressionSpeed = nullptr;
 
@@ -88,6 +92,12 @@ Cache::Cache(const std::string &name, int moduleID, mpi::communicator comm): Mod
     setParameterRange(m_zfpPrecision, Integer(1), Integer(64));
     m_zfpAccuracy = addFloatParameter("zfp_accuracy", "ZFP compression error tolerance", 1e-10);
     setParameterRange(m_zfpAccuracy, Float(0.), Float(1e10));
+
+    m_bigWhoopNPar = addIntParameter("bigWhoop_nPar", "BigWhoop number of independent parameters", 1);
+    setParameterRange(m_bigWhoopNPar, Integer(1), Integer(std::numeric_limits<uint8_t>::max()));
+    m_bigWhoopRate = addFloatParameter("bigWhoop_rate", "BigWhoop compression rate", 1.);
+    setParameterMinimum(m_bigWhoopRate, Float(0.));
+
     m_archiveCompression = addIntParameter("archive_compression", "compression mode for archives",
                                            message::CompressionZstd, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_archiveCompression, message::CompressionMode);
@@ -180,6 +190,8 @@ bool Cache::prepare()
     m_compressionSettings.zfpRate = m_zfpRate->getValue();
     m_compressionSettings.zfpAccuracy = m_zfpAccuracy->getValue();
     m_compressionSettings.zfpPrecision = m_zfpPrecision->getValue();
+    m_compressionSettings.bigWhoopNPar = m_bigWhoopNPar->getValue();
+    m_compressionSettings.bigWhoopRate = std::to_string(m_bigWhoopRate->getValue());
 
     std::string file = p_file->getValue();
 
@@ -200,6 +212,7 @@ bool Cache::prepare()
     file += ".";
     file += std::to_string(rank());
     file += ".vsld";
+
     m_file = file;
 
     auto checkFd = [&]() {
