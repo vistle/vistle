@@ -895,7 +895,6 @@ Leveller::Leveller(const IsoController &isocontrol, Object::const_ptr grid, cons
 , m_isoValue(isovalue)
 , gmin(std::numeric_limits<Scalar>::max())
 , gmax(-std::numeric_limits<Scalar>::max())
-, m_objectTransform(grid->getTransform())
 {
     if (m_strbase || m_unstr) {
         m_triangles = Triangles::ptr(new Triangles(Object::Initialized));

@@ -103,10 +103,10 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
     }
 
     if (lines->getNumCoords()) {
+        lines->copyAttributes(geo);
         if (mappedData) {
             lines->copyAttributes(mappedData);
-        } else {
-            lines->copyAttributes(geo);
+            lines->setTransform(geo->getTransform());
         }
 
         updateMeta(lines);

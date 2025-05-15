@@ -173,6 +173,7 @@ bool VectorField::compute()
     lines->setTimestep(split.timestep);
     lines->copyAttributes(coords);
     lines->copyAttributes(vecs);
+    lines->setTransform(coords->getTransform());
     updateMeta(lines);
 
     if (mapped) {
@@ -183,7 +184,6 @@ bool VectorField::compute()
             mapped->copyEntry(i * 2 + 1, data, ii);
         }
         mapped->setMeta(data->meta());
-        mapped->copyAttributes(coords);
         mapped->copyAttributes(data);
 
         mapped->setGrid(lines);

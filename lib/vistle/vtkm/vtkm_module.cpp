@@ -4,16 +4,6 @@
 
 using namespace vistle;
 
-namespace {
-std::string getFieldName(int i, bool output = false)
-{
-    std::string name = "data_at_port_" + std::to_string(i);
-    if (i == 0 && output)
-        name += "_out";
-    return name;
-}
-} // namespace
-
 
 VtkmModule::VtkmModule(const std::string &name, int moduleID, mpi::communicator comm, int numPorts,
                        bool requireMappedData)
@@ -36,6 +26,14 @@ VtkmModule::VtkmModule(const std::string &name, int moduleID, mpi::communicator 
 
 VtkmModule::~VtkmModule()
 {}
+
+std::string VtkmModule::getFieldName(int i, bool output) const
+{
+    std::string name = "data_at_port_" + std::to_string(i);
+    if (i == 0 && output)
+        name += "_out";
+    return name;
+}
 
 bool VtkmModule::prepare()
 {
@@ -137,7 +135,7 @@ DataBase::ptr VtkmModule::prepareOutputField(const viskores::cont::DataSet &data
     if (auto mapped = vtkmGetField(dataset, fieldName)) {
         std::cerr << "mapped data: " << *mapped << std::endl;
         updateMeta(mapped);
-        mapped->copyAttributes(inputField);
+        mapped->copyAttributes(inputField, false /* do not replace existing attributes and retain *mapping* */);
         if (outputGrid)
             mapped->setGrid(outputGrid);
         return mapped;
