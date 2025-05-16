@@ -1,0 +1,58 @@
+import os
+covisedir = os.getenv("COVISEDIR")
+
+
+MasterHub=getMasterHub()
+VistleSession=getVistleSession()
+WorkflowConfig=getWorkflowConfig()
+uuids = {}
+
+
+
+umReadCoviseDirectory1 = spawnAsync(MasterHub, 'ReadCoviseDirectory')
+umCOVER2 = spawnAsync(MasterHub, 'COVER')
+umShowGrid3 = spawnAsync(MasterHub, 'ShowGrid')
+umDomainSurface4 = spawnAsync(MasterHub, 'DomainSurface')
+umClipVtkm5 = spawnAsync(MasterHub, 'ClipVtkm')
+umCutGeometry6 = spawnAsync(MasterHub, 'CutGeometry')
+
+mReadCoviseDirectory1 = waitForSpawn(umReadCoviseDirectory1)
+setVectorParam(VistleSession, f'position[{mReadCoviseDirectory1}]', -0.0, 17.0)
+setStringParam(mReadCoviseDirectory1, 'directory', covisedir + '/share/covise/example-data/tutorial', True)
+setStringParam(mReadCoviseDirectory1, 'grid', 'tiny_geo', True)
+applyParameters(mReadCoviseDirectory1)
+
+mCOVER2 = waitForSpawn(umCOVER2)
+setVectorParam(VistleSession, f'position[{mCOVER2}]', 0.0, 357.0)
+setIntParam(mCOVER2, 'render_mode', 4, True)
+applyParameters(mCOVER2)
+
+mShowGrid3 = waitForSpawn(umShowGrid3)
+setVectorParam(VistleSession, f'position[{mShowGrid3}]', 0.0, 272.0)
+
+mDomainSurface4 = waitForSpawn(umDomainSurface4)
+setVectorParam(VistleSession, f'position[{mDomainSurface4}]', -102.0, 102.0)
+
+mClipVtkm5 = waitForSpawn(umClipVtkm5)
+setVectorParam(VistleSession, f'position[{mClipVtkm5}]', 0.0, 187.0)
+setVectorParam(mClipVtkm5, 'point', 0.23069071769714355, -0.6221717000007629, 0.05553800240159035, True)
+setVectorParam(mClipVtkm5, 'vertex', 0.3464447557926178, -0.33412784337997437, 0.03631118685007095, True)
+setFloatParam(mClipVtkm5, 'scalar', 0.2, True)
+setIntParam(mClipVtkm5, 'option', 1, True)
+setIntParam(mClipVtkm5, 'flip', 1, True)
+applyParameters(mClipVtkm5)
+
+mCutGeometry6 = waitForSpawn(umCutGeometry6)
+setVectorParam(VistleSession, f'position[{mCutGeometry6}]', -102.0, 187.0)
+setVectorParam(mCutGeometry6, 'point', 0.009750273078680038, -0.00717993313446641, 0.02191287651658058, True)
+setVectorParam(mCutGeometry6, 'vertex', 0.0, 6.123234262925839e-17, 1.0, True)
+setFloatParam(mCutGeometry6, 'scalar', 0.02191287651658058, True)
+applyParameters(mCutGeometry6)
+
+connect(mReadCoviseDirectory1,'grid_out', mDomainSurface4,'data_in')
+connect(mReadCoviseDirectory1,'grid_out', mClipVtkm5,'data_in')
+connect(mShowGrid3,'grid_out', mCOVER2,'data_in')
+connect(mDomainSurface4,'data_out', mCutGeometry6,'grid_in')
+connect(mDomainSurface4,'lines_out', mCOVER2,'data_in')
+connect(mClipVtkm5,'data_out', mShowGrid3,'grid_in')
+connect(mCutGeometry6,'grid_out', mCOVER2,'data_in')
