@@ -5,6 +5,7 @@
 #include <vistle/core/polygons.h>
 #include <vistle/core/triangles.h>
 #include <vistle/util/math.h>
+#include <vistle/alg/objalg.h>
 
 #include "CutGeometry.h"
 #include "PlaneClip.h"
@@ -64,11 +65,17 @@ bool CutGeometry::compute(const std::shared_ptr<BlockTask> &task) const
 {
     Object::const_ptr oin = task->expect<Object>("grid_in");
     if (!oin)
-        return false;
+        return true;
 
-    Object::ptr object = cutGeometry(oin);
+    auto split = splitContainerObject(oin);
+    if (!split.geometry) {
+        sendError("did not receive a geometry input object");
+        return true;
+    }
+
+    Object::ptr object = cutGeometry(split.geometry);
     if (object) {
-        object->copyAttributes(oin);
+        object->copyAttributes(split.geometry);
         updateMeta(object);
         task->addObject("grid_out", object);
     }
