@@ -378,6 +378,9 @@ vistle::DataBase::ptr vtkmGetField(const viskores::cont::DataSet &vtkmDataSet, c
     case vistle::DataBase::Element:
         assoc = viskores::cont::Field::Association::Cells;
         break;
+    case vistle::DataBase::Unspecified:
+        // leave it at Any
+        break;
     default:
         assert("Invalid mapping type" == nullptr);
         break;
