@@ -476,6 +476,9 @@ Port *Module::createInputPort(const std::string &name, const std::string &descri
         return nullptr;
     }
 
+    m_portNumber[name] = m_portCounter;
+    ++m_portCounter;
+
     auto itp = inputPorts.emplace(name, Port(id(), name, Port::INPUT, flags));
     auto &p = itp.first->second;
     p.setDescription(description);
@@ -493,6 +496,9 @@ Port *Module::createOutputPort(const std::string &name, const std::string &descr
         CERR << "createOutputPort: already have port/parameter with name " << name << std::endl;
         return nullptr;
     }
+
+    m_portNumber[name] = m_portCounter;
+    ++m_portCounter;
 
     auto itp = outputPorts.emplace(name, Port(id(), name, Port::OUTPUT, flags));
     auto &p = itp.first->second;
@@ -575,6 +581,9 @@ const Port *Module::findOutputPort(const std::string &name) const
 
 Parameter *Module::addParameterGeneric(const std::string &name, std::shared_ptr<Parameter> param)
 {
+    m_portNumber[name] = m_portCounter;
+    ++m_portCounter;
+
     assert(!havePort(name));
     if (havePort(name)) {
         CERR << "addParameterGeneric: already have port/parameter with name " << name << std::endl;
@@ -1107,7 +1116,15 @@ bool Module::addInputObject(int sender, const std::string &senderPort, const std
 
     if (object->hasAttribute(attribute::Species)) {
         std::string species = object->getAttribute(attribute::Species);
-        if (m_inputSpecies != species) {
+        int portNum = -1;
+        auto it = m_portNumber.find(portName);
+        if (it != m_portNumber.end()) {
+            portNum = it->second;
+        }
+        if (m_inputSpecies.empty() || (portNum >= 0 && portNum <= m_inputSpeciesPort && m_inputSpecies != species)) {
+            if (portNum >= 0) {
+                m_inputSpeciesPort = portNum;
+            }
             m_inputSpecies = species;
             setInputSpecies(m_inputSpecies);
         }
