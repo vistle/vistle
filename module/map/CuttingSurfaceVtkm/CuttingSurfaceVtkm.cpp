@@ -7,7 +7,7 @@ MODULE_MAIN(CuttingSurfaceVtkm)
 using namespace vistle;
 
 CuttingSurfaceVtkm::CuttingSurfaceVtkm(const std::string &name, int moduleID, mpi::communicator comm)
-: VtkmModule(name, moduleID, comm), m_implFuncControl(this)
+: VtkmModule(name, moduleID, comm, 3, MappedDataHandling::Require), m_implFuncControl(this)
 {
     m_implFuncControl.init();
     m_computeNormals =
