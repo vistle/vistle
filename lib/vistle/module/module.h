@@ -362,6 +362,8 @@ private:
 
     std::map<std::string, Port> outputPorts;
     std::map<std::string, Port> inputPorts;
+    std::map<std::string, int> m_portNumber;
+    int m_portCounter = 0;
 
     ObjectCache m_cache;
     ObjectCache::CacheMode m_defaultCacheMode;
@@ -410,6 +412,7 @@ private:
     };
     std::map<InfoKey, std::string> m_currentItemInfo;
     std::string m_inputSpecies;
+    int m_inputSpeciesPort = -1;
 
 #ifdef NDEBUG
     int m_validateObjects = 0; // Disable
