@@ -28,7 +28,10 @@ public:
     void setCacheMode(CacheMode mode);
 
     void addObject(const std::string &portname, Object::const_ptr object);
-    std::pair<ObjectList, bool> getObjects(const std::string &portname) const;
+    std::pair<std::map<std::string, ObjectList>, bool> getObjects() const;
+    // keep track of connected ports
+    void addPort(const std::string &portname);
+    void removePort(const std::string &portname);
 
 private:
     CacheMode m_cacheMode;
@@ -47,6 +50,7 @@ private:
     std::map<std::string, EntryList> m_cache, m_oldCache;
 
     std::map<std::string, Meta> m_meta;
+    std::set<std::string> m_connectedPorts;
 };
 
 V_ENUM_OUTPUT_OP(CacheMode, ObjectCache)

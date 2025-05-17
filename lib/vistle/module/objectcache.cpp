@@ -10,6 +10,17 @@ ObjectCache::ObjectCache(): m_cacheMode(ObjectCache::CacheByName)
 ObjectCache::~ObjectCache()
 {}
 
+void ObjectCache::addPort(const std::string &portname)
+{
+    m_connectedPorts.insert(portname);
+}
+
+void ObjectCache::removePort(const std::string &portname)
+{
+    m_connectedPorts.erase(portname);
+    clear(portname);
+}
+
 int ObjectCache::generation() const
 {
     return m_generation;
@@ -108,25 +119,31 @@ void ObjectCache::addObject(const std::string &portname, Object::const_ptr objec
     cache.emplace_back(object, m_cacheMode == CacheByName);
 }
 
-std::pair<ObjectList, bool> ObjectCache::getObjects(const std::string &portname) const
+std::pair<std::map<std::string, ObjectList>, bool> ObjectCache::getObjects() const
 {
-    auto it = m_cache.find(portname);
-    if (it == m_cache.end()) {
-        return std::make_pair(ObjectList{}, false);
-    }
-    const auto &cache = it->second;
-
-    ObjectList objs;
-    for (const auto &e: cache) {
-        if (e.object) {
-            objs.push_back(e.object);
-        } else if (auto o = Shm::the().getObjectFromName(e.name)) {
-            objs.push_back(o);
-        } else {
-            return std::make_pair(ObjectList{}, false);
+    std::map<std::string, ObjectList> objLists;
+    for (const auto &portname: m_connectedPorts) {
+        auto it = m_cache.find(portname);
+        if (it == m_cache.end()) {
+            objLists.clear();
+            return std::make_pair(objLists, false);
         }
-    }
-    return std::make_pair(objs, true);
-}
 
+        const auto &cache = it->second;
+        ObjectList objs;
+        for (const auto &e: cache) {
+            if (e.object) {
+                objs.push_back(e.object);
+            } else if (auto o = Shm::the().getObjectFromName(e.name)) {
+                objs.push_back(o);
+            } else {
+                objLists.clear();
+                return std::make_pair(objLists, false);
+            }
+        }
+        objLists[portname] = objs;
+    }
+
+    return std::make_pair(objLists, true);
+}
 } // namespace vistle
