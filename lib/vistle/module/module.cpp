@@ -1595,10 +1595,12 @@ bool Module::handleMessage(const vistle::message::Message *message, const Messag
         if (ports && port && other) {
             if (ports->find(other) == ports->end()) {
                 added = port->addConnection(other);
-                if (inputConnection)
+                if (inputConnection) {
                     connectionAdded(other, port);
-                else
+                    m_cache.addPort(port->getName());
+                } else {
                     connectionAdded(port, other);
+                }
             }
         } else {
             if (!findParameter(ownPortName))
@@ -1635,7 +1637,7 @@ bool Module::handleMessage(const vistle::message::Message *message, const Messag
         if (ports && port && other) {
             if (inputConnection) {
                 connectionRemoved(other, port);
-                m_cache.clear(port->getName());
+                m_cache.removePort(port->getName());
             } else {
                 connectionRemoved(port, other);
             }
@@ -1816,16 +1818,16 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
             // Compute not triggered by adding an object, get objects from cache and determine no. of objects to process
             numObject = 0;
 
+            auto cache = m_cache.getObjects();
+            cache.second = mpi::all_reduce(comm(), cache.second, std::logical_and<bool>());
+            if (!cache.second)
+                cache.first.clear();
             for (auto &port: inputPorts) {
                 ObjectList received;
                 std::swap(received, port.second.objects());
                 if (!isConnected(port.second))
                     continue;
-                auto cache = m_cache.getObjects(port.first);
-                cache.second = mpi::all_reduce(comm(), cache.second, std::logical_and<bool>());
-                if (!cache.second)
-                    cache.first.clear();
-                port.second.objects() = cache.first;
+                port.second.objects() = cache.first[port.first];
                 received.clear();
                 auto srcPort = *port.second.connections().begin();
                 for (const auto &o: port.second.objects()) {
@@ -1982,6 +1984,13 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
                 if (reordered) {
                     const int step = direction < 0 ? -1 : 1;
                     // add objects to port queue in processing order
+                    auto cache = m_cache.getObjects();
+                    cache.second = mpi::all_reduce(comm(), cache.second, std::logical_and<bool>());
+                    if (!cache.second) {
+                        // FIXME: should collectively ignore cache
+                        CERR << "failed to retrieve objects from input cache" << std::endl;
+                        cache.first.clear();
+                    }
                     for (auto &port: inputPorts) {
                         if (port.second.flags() & Port::NOCOMPUTE)
                             continue;
@@ -1989,13 +1998,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
                         std::swap(received, port.second.objects());
                         if (!isConnected(port.second))
                             continue;
-                        auto cache = m_cache.getObjects(port.first);
-                        if (!cache.second) {
-                            // FIXME: should collectively ignore cache
-                            CERR << "failed to retrieve objects from input cache on port " << port.first << std::endl;
-                            cache.first.clear();
-                        }
-                        auto objs = cache.first;
+                        auto objs = cache.first[port.first];
                         received.clear();
                         // objects without timestep
                         ssize_t cur = step < 0 ? numObject - 1 : 0;
