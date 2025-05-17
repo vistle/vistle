@@ -208,6 +208,8 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
             */
         }
         filter->SetOutputFieldName(getFieldName(0, true));
+        filter->SetFieldsToPass("", viskores::cont::Field::Association::Any,
+                                viskores::filter::FieldSelection::Mode::All);
         outputDataset = filter->Execute(inputDataset);
     }
 
