@@ -749,6 +749,7 @@ void UiController::screenshot(QString imageFile, bool quit)
     if (quit) {
         vistle::message::Quit q;
         m_vistleConnection->sendMessage(q);
+        exit(0);
     }
 }
 void UiController::lockUi(bool locked)
