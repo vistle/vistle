@@ -357,8 +357,8 @@ def snapshotCover(modId, file):
         msg = coGRMsg.coGRSnapshotMsg(file, "snapOnce")
         sendCoverMessage(msg, modId)
 
-def snapshotGui(file):
-   _vistle.snapshotGui(file)
+def snapshotGui(file, quitAfter = False):
+   _vistle.snapshotGui(file, quitAfter)
 
 class PythonStateObserver(_vistle.StateObserver):
     def __init__(self):
