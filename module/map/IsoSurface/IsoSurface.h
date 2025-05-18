@@ -11,6 +11,14 @@
 #endif
 
 class IsoSurface: public vistle::Module {
+#if defined(CUTTINGSURFACE)
+    constexpr static int NumPorts = 3;
+#elif defined(ISOHEIGHTSURFACE)
+    constexpr static int NumPorts = 1;
+#else
+    constexpr static int NumPorts = 1;
+#endif
+
 public:
     IsoSurface(const std::string &name, int moduleID, mpi::communicator comm);
     ~IsoSurface();
@@ -21,13 +29,14 @@ private:
                        vistle::Object::const_ptr mapdata, const vistle::Scalar isoValue, int processorType);
 
     struct BlockData {
-        BlockData(vistle::Object::const_ptr g, vistle::Vec<vistle::Scalar>::const_ptr d, vistle::DataBase::const_ptr m)
+        BlockData(vistle::Object::const_ptr g, vistle::Vec<vistle::Scalar>::const_ptr d,
+                  const std::vector<vistle::DataBase::const_ptr> &m)
         : grid(g), datas(d), mapdata(m)
         {}
         int getTimestep() const;
         vistle::Object::const_ptr grid;
         vistle::Vec<vistle::Scalar>::const_ptr datas;
-        vistle::DataBase::const_ptr mapdata;
+        std::vector<vistle::DataBase::const_ptr> mapdata;
 
         bool operator<(const BlockData &rhs)
         {
@@ -47,8 +56,9 @@ private:
     vistle::Object::ptr createHeightCut(vistle::Object::const_ptr grid, vistle::Vec<vistle::Scalar>::const_ptr data,
                                         vistle::DataBase::const_ptr mapdata) const;
 
-    vistle::Object::ptr work(vistle::Object::const_ptr grid, vistle::Vec<vistle::Scalar>::const_ptr data,
-                             vistle::DataBase::const_ptr mapdata, vistle::Scalar isoValue = 0.) const;
+    std::vector<vistle::Object::ptr> work(vistle::Object::const_ptr grid, vistle::Vec<vistle::Scalar>::const_ptr data,
+                                          std::vector<vistle::DataBase::const_ptr> mapdata,
+                                          vistle::Scalar isoValue = 0.) const;
     bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
     //bool compute() override;
     bool prepare() override;
@@ -64,7 +74,8 @@ private:
     vistle::IntParameter *m_computeNormals;
 
     vistle::StringParameter *m_heightmap;
-    vistle::Port *m_mapDataIn, *m_dataOut;
+    vistle::Port *m_dataIn[NumPorts], *m_dataOut[NumPorts];
+    vistle::Port *&m_mapDataIn = m_dataIn[0];
 
     mutable vistle::Scalar m_min, m_max;
     vistle::Float m_paraMin, m_paraMax;

@@ -64,10 +64,14 @@ IsoSurface::IsoSurface(const std::string &name, int moduleID, mpi::communicator 
     V_ENUM_SET_CHOICES(m_pointOrValue, PointOrValue);
 #endif
     setReducePolicy(message::ReducePolicy::OverAll);
-    createInputPort("data_in", "input gird or geometry with scalar data");
+    createInputPort("data_in", "input grid or geometry with scalar data");
     m_mapDataIn = createInputPort("mapdata_in", "additional mapped field");
 #endif
-    m_dataOut = createOutputPort("data_out", "surface with mapped data");
+    m_dataOut[0] = createOutputPort("data_out", "surface with mapped data");
+    for (int i = 1; i < NumPorts; ++i) {
+        m_dataIn[i] = createInputPort("data_in" + std::to_string(i), "input data");
+        m_dataOut[i] = createOutputPort("data_out" + std::to_string(i), "output data");
+    }
 
     m_computeNormals =
         addIntParameter("compute_normals", "compute normals (structured grids only)", 1, Parameter::Boolean);
@@ -198,8 +202,11 @@ bool IsoSurface::reduce(int timestep)
 
     if (m_foundPoint) {
         for (const auto &b: blocks) {
-            auto obj = work(b.grid, b.datas, b.mapdata, value);
-            addObject(m_dataOut, obj);
+            auto results = work(b.grid, b.datas, b.mapdata, value);
+            for (unsigned i = 0; i < results.size() && i < NumPorts; ++i) {
+                const auto &obj = results[i];
+                addObject(m_dataOut[i], obj);
+            }
         }
     }
 
@@ -226,6 +233,7 @@ Object::ptr IsoSurface::createHeightCut(vistle::Object::const_ptr grid, vistle::
                                         vistle::DataBase::const_ptr mapdata) const
 {
     Object::ptr returnObj;
+    std::vector<vistle::DataBase::const_ptr> mapdataVec{mapdata};
 
     if (auto coordsIn = Coords::as(grid)) {
         MapHeight heightField;
@@ -242,17 +250,19 @@ Object::ptr IsoSurface::createHeightCut(vistle::Object::const_ptr grid, vistle::
         heightField.closeImage();
 
         float val = m_isovalue->getValue();
-        returnObj = work(grid, newData, mapdata, val);
+        auto results = work(grid, newData, mapdataVec, val);
+        returnObj = results[0];
     } else {
         sendInfo("No Coords object was found");
-        returnObj = work(grid, dataS, mapdata, m_isovalue->getValue());
+        auto results = work(grid, dataS, mapdataVec, m_isovalue->getValue());
+        returnObj = results[0];
     }
     return returnObj;
 }
 #endif
 
-Object::ptr IsoSurface::work(vistle::Object::const_ptr grid, vistle::Vec<vistle::Scalar>::const_ptr dataS,
-                             vistle::DataBase::const_ptr mapdata, Scalar isoValue) const
+std::vector<Object::ptr> IsoSurface::work(vistle::Object::const_ptr grid, vistle::Vec<vistle::Scalar>::const_ptr dataS,
+                                          std::vector<vistle::DataBase::const_ptr> mapdata, Scalar isoValue) const
 {
     Leveller l(isocontrol, grid, isoValue);
     l.setComputeNormals(m_computeNormals->getValue());
@@ -266,8 +276,8 @@ Object::ptr IsoSurface::work(vistle::Object::const_ptr grid, vistle::Vec<vistle:
 #else
     l.setIsoData(dataS);
 #endif
-    if (mapdata) {
-        l.addMappedData(mapdata);
+    for (auto &m: mapdata) {
+        l.addMappedData(m);
     }
     l.process();
 
@@ -282,12 +292,16 @@ Object::ptr IsoSurface::work(vistle::Object::const_ptr grid, vistle::Vec<vistle:
     }
 #endif
 
+    std::vector<Object::ptr> results;
     Coords::ptr result = l.result();
     updateMeta(result);
     Normals::ptr normals = l.normresult();
     updateMeta(normals);
-    DataBase::ptr mapresult = l.mapresult();
-    updateMeta(mapresult);
+    std::vector<DataBase::ptr> mapresult;
+    for (int i = 0; i < NumPorts; ++i) {
+        mapresult.push_back(l.mapresult(i));
+        updateMeta(mapresult[i]);
+    }
     if (result) {
 #ifndef CUTTINGSURFACE
         result->copyAttributes(dataS);
@@ -312,15 +326,26 @@ Object::ptr IsoSurface::work(vistle::Object::const_ptr grid, vistle::Vec<vistle:
     }
     result = cachedResult.grid;
 #endif
-    if (result && !result->isEmpty()) {
-        if (mapdata && mapresult) {
-            mapresult->copyAttributes(mapdata);
-            mapresult->setGrid(result);
-            return mapresult;
+    for (int i = 0; i < mapresult.size(); ++i) {
+        if (!result || result->isEmpty()) {
+            results.push_back(Object::ptr());
+            continue;
         }
-        return result;
+        auto &m = mapresult[i];
+        if (!m) {
+#ifdef ISOSURFACE
+            results.push_back(result);
+#else
+            results.push_back(Object::ptr());
+#endif
+            continue;
+        }
+        if (mapdata[i])
+            m->copyAttributes(mapdata[i]);
+        m->setGrid(result);
+        results.push_back(m);
     }
-    return Object::ptr();
+    return results;
 }
 
 
@@ -382,28 +407,47 @@ bool IsoSurface::compute(const std::shared_ptr<BlockTask> &task) const
         return true;
     }
 
+    std::vector<DataBase::const_ptr> mapdataVec{mapdata};
+    for (int i = 1; i < NumPorts; ++i) {
+        auto container = task->accept<Object>(m_dataIn[i]);
+        auto split = splitContainerObject(container);
+        if (split.geometry && grid) {
+            if (split.geometry->getHandle() != grid->getHandle()) {
+                sendError("grids on data received do not match");
+                return true;
+            }
+        }
+        mapdataVec.push_back(split.mapped);
+    }
+
 #ifdef CUTTINGSURFACE
-    auto obj = work(grid, nullptr, mapdata);
-    task->addObject(m_dataOut, obj);
+    auto results = work(grid, nullptr, mapdataVec);
+    for (unsigned i = 0; i < results.size() && i < NumPorts; ++i) {
+        const auto &obj = results[i];
+        task->addObject(m_dataOut[i], obj);
+    }
     return true;
 #elif defined(ISOHEIGHTSURFACE)
     std::string mapFile = m_heightmap->getValue();
     if (mapFile.empty()) {
-        sendInfo("No geotiff was found fo height mapping");
+        sendInfo("No geotiff was found for height mapping");
         return true;
     } else {
         auto obj = createHeightCut(grid, dataS, mapdata);
-        task->addObject(m_dataOut, obj);
+        task->addObject(m_dataOut[0], obj);
         return true;
     }
 #else
     if (m_pointOrValue->getValue() == Value) {
-        auto obj = work(grid, dataS, mapdata, m_isovalue->getValue());
-        task->addObject(m_dataOut, obj);
+        auto results = work(grid, dataS, mapdataVec, m_isovalue->getValue());
+        for (unsigned i = 0; i < results.size() && i < NumPorts; ++i) {
+            const auto &obj = results[i];
+            task->addObject(m_dataOut[i], obj);
+        }
         return true;
     } else {
         std::lock_guard<std::mutex> guard(m_mutex);
-        BlockData b(grid, dataS, mapdata);
+        BlockData b(grid, dataS, mapdataVec);
         int t = b.getTimestep();
         m_blocksForTime[t].emplace_back(b);
         return true;
@@ -417,6 +461,6 @@ int IsoSurface::BlockData::getTimestep() const
     if (t < 0)
         t = vistle::getTimestep(grid);
     if (t < 0)
-        t = vistle::getTimestep(mapdata);
+        t = vistle::getTimestep(mapdata[0]);
     return t;
 }

@@ -57,6 +57,11 @@ class Leveller {
 
     template<class Data, class pol>
     vistle::Index calculateSurface(Data &data);
+    struct Field {
+        int idx = -1;
+        vistle::DataBase::Mapping mapping = vistle::DataBase::Unspecified;
+    };
+    std::vector<Field> m_fields;
 
 public:
     Leveller(const IsoController &isocontrol, vistle::Object::const_ptr grid, const vistle::Scalar isovalue);
@@ -72,8 +77,7 @@ public:
 #endif
     vistle::Coords::ptr result();
     vistle::Normals::ptr normresult();
-    vistle::DataBase::ptr mapresult() const;
-    vistle::DataBase::ptr cellresult() const;
+    vistle::DataBase::ptr mapresult(int i = 0) const;
     std::pair<vistle::Scalar, vistle::Scalar> range();
 };
 

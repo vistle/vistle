@@ -1270,10 +1270,19 @@ void Leveller::setComputeNormals(bool value)
 
 void Leveller::addMappedData(DataBase::const_ptr mapobj)
 {
-    if (mapobj->mapping() == DataBase::Element)
-        m_celldata.push_back(mapobj);
-    else
-        m_vertexdata.push_back(mapobj);
+    Field f;
+    if (mapobj) {
+        if (mapobj->guessMapping(m_grid) == DataBase::Element) {
+            f.mapping = vistle::DataBase::Element;
+            f.idx = m_celldata.size();
+            m_celldata.push_back(mapobj);
+        } else {
+            f.mapping = vistle::DataBase::Vertex;
+            f.idx = m_vertexdata.size();
+            m_vertexdata.push_back(mapobj);
+        }
+    }
+    m_fields.push_back(f);
 }
 
 Coords::ptr Leveller::result()
@@ -1288,22 +1297,22 @@ Normals::ptr Leveller::normresult()
     return m_normals;
 }
 
-DataBase::ptr Leveller::mapresult() const
+DataBase::ptr Leveller::mapresult(int i) const
 {
-    if (m_outvertData.size())
-        return m_outvertData[0];
-    else if (m_outcellData.size())
-        return m_outcellData[0];
-    else
+    if (i < 0)
         return DataBase::ptr();
-}
+    if (i >= m_fields.size())
+        return DataBase::ptr();
 
-DataBase::ptr Leveller::cellresult() const
-{
-    if (m_outcellData.size())
-        return m_outcellData[0];
-    else
-        return DataBase::ptr();
+    const Field &f = m_fields[i];
+    if (f.mapping == DataBase::Vertex) {
+        if (f.idx < m_outvertData.size())
+            return m_outvertData[f.idx];
+    } else if (f.mapping == DataBase::Element) {
+        if (f.idx < m_outcellData.size())
+            return m_outcellData[f.idx];
+    }
+    return DataBase::ptr();
 }
 
 std::pair<Scalar, Scalar> Leveller::range()
