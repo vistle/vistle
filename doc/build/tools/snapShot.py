@@ -22,6 +22,7 @@ if result:
     time.sleep(5) #needed until we can wait for cover to finish rendering
     sendCoverMessage(coGRSetViewpointFile(sourceDir + "/" + imageName + ".vwp", 0))
     sendCoverMessage(coGRShowViewpointMsg(0))
+    sendCoverMessage(coGRColorBarPluginMsg(coGRColorBarPluginMsg.ShowColormap))
 
     time.sleep(3) #needed until we can wait for cover to finish rendering
     snapshotCover(findFirstModule("COVER"), targetDir + "/" + imageName +  "_result.png")
