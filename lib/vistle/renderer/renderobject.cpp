@@ -63,7 +63,6 @@ bool rgb_txt_init_from_file()
             break;
         }
     }
-    rgb_name["white"] = Vector4(150 / 255.f, 150 / 255.f, 150 / 255.f, 1.f);
 
     return rgb_name.size() > 1;
 }
