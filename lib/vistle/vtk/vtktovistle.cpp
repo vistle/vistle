@@ -440,17 +440,11 @@ Object::ptr vtkSGrid2Vistle(vtkStructuredGrid *vsgrid)
     Scalar *yc = csgrid->y().data();
     Scalar *zc = csgrid->z().data();
 
-    Index l = 0;
-    for (Index i = 0; i < Index(dim[0]); ++i) {
-        for (Index j = 0; j < Index(dim[1]); ++j) {
-            for (Index k = 0; k < Index(dim[2]); ++k) {
-                Index idx = k * (dim[0] * dim[1]) + j * dim[0] + i;
-                xc[l] = vsgrid->GetPoint(idx)[0];
-                yc[l] = vsgrid->GetPoint(idx)[1];
-                zc[l] = vsgrid->GetPoint(idx)[2];
-                ++l;
-            }
-        }
+    auto size = Index(dim[0]) * Index(dim[1]) * Index(dim[2]);
+    for (Index l = 0; l < size; ++l) {
+        xc[l] = vsgrid->GetPoint(l)[0];
+        yc[l] = vsgrid->GetPoint(l)[1];
+        zc[l] = vsgrid->GetPoint(l)[2];
     }
 
     return csgrid;
