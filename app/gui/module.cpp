@@ -28,6 +28,7 @@
 #include "dataflowview.h"
 #include "modulebrowser.h"
 #include "parameterconnectionwidgets.h"
+#include "ui_setnamedialog.h"
 
 #include <vistle/config/file.h>
 #include <vistle/config/array.h>
@@ -277,6 +278,10 @@ void Module::createGeometry()
  */
 void Module::createActions()
 {
+    m_changeNameAct = new QAction("Rename", this);
+    m_changeNameAct->setStatusTip("Change the display name of this module");
+    connect(m_changeNameAct, &QAction::triggered, [this]() { emit changeDisplayName(); });
+
     m_selectUpstreamAct = new QAction("Select Upstream", this);
     m_selectUpstreamAct->setStatusTip("Select all modules feeding data to this one");
     connect(m_selectUpstreamAct, &QAction::triggered, [this]() { emit selectConnected(SelectUpstream, m_id); });
@@ -337,6 +342,31 @@ void Module::createActions()
     connect(m_cloneModuleLinked, &QAction::triggered, this, &Module::cloneModuleLinked);
 }
 
+void Module::changeDisplayName()
+{
+    QDialog *dialog = new QDialog;
+    ::Ui::SetNameDialog *ui = new ::Ui::SetNameDialog;
+    ui->setupUi(dialog);
+    connect(ui->buttonBox->button(QDialogButtonBox::Reset), SIGNAL(clicked()), ui->lineEdit, SLOT(clear()));
+    dialog->setFocusProxy(ui->lineEdit);
+    ui->lineEdit->setFocus();
+
+    ui->lineEdit->setText(m_displayName);
+    dialog->exec();
+
+    switch (dialog->result()) {
+    case QDialog::Rejected:
+        return;
+
+    case QDialog::Accepted:
+        break;
+    }
+
+    QString name = ui->lineEdit->text();
+    vistle::message::SetName m(m_id, name.toStdString());
+    vistle::VistleConnection::the().sendMessage(m);
+}
+
 /*!
  * \brief Module::createMenus
  */
@@ -345,6 +375,7 @@ void Module::createMenus()
     m_moduleMenu = new QMenu();
     m_moduleMenu->addAction(m_execAct);
     m_moduleMenu->addAction(m_cancelExecAct);
+    m_moduleMenu->addAction(m_changeNameAct);
     m_moduleMenu->addSeparator();
     m_layerMenu = m_moduleMenu->addMenu("To Layer...");
     m_moduleMenu->addSeparator();
@@ -374,7 +405,7 @@ void Module::doLayout()
     // get the pixel width of the string
     QFont font;
     QFontMetrics fm(font);
-    QRect nameRect = fm.boundingRect(m_displayName);
+    QRect nameRect = fm.boundingRect(m_visibleName);
     m_fontHeight = nameRect.height() + 4 * portDistance;
 
     double w = nameRect.width() + 2 * portDistance;
@@ -473,7 +504,7 @@ void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
     painter->drawRoundedRect(rect(), portDistance, portDistance);
 
     painter->setPen(Qt::black);
-    painter->drawText(QPointF(portDistance, Port::portSize + m_fontHeight / 2.), m_displayName);
+    painter->drawText(QPointF(portDistance, Port::portSize + m_fontHeight / 2.), m_visibleName);
 
     QFont font;
     QFontMetrics fm(font);
@@ -805,33 +836,41 @@ void Module::setName(QString name)
     updateText();
 }
 
+void Module::setDisplayName(QString name)
+{
+    m_displayName = name;
+    updateText();
+}
+
 void Module::updateText()
 {
-    //m_displayName = QString("%1_%2").arg(name, QString::number(m_id));
-    m_displayName = m_name;
-    if (m_inPorts.isEmpty()) {
+    //m_visibleName = QString("%1_%2").arg(name, QString::number(m_id));
+    m_visibleName = m_name;
+    if (!m_displayName.isEmpty()) {
+        m_visibleName = m_displayName;
+    } else if (m_inPorts.isEmpty()) {
     } else {
         if (!m_info.isEmpty()) {
-            m_displayName = m_name;
+            m_visibleName = m_name;
             if (m_name == "IndexManifolds")
-                m_displayName = "Index";
+                m_visibleName = "Index";
             if (m_name.startsWith("IsoSurface"))
-                m_displayName = "Iso";
+                m_visibleName = "Iso";
             if (m_name.startsWith("CuttingSurface"))
-                m_displayName = "Cut";
+                m_visibleName = "Cut";
             if (m_name.startsWith("AddAttribute"))
-                m_displayName = "Attr";
+                m_visibleName = "Attr";
             if (m_name.startsWith("Variant"))
-                m_displayName = "Var";
+                m_visibleName = "Var";
             if (m_name.startsWith("Transform"))
-                m_displayName = "X";
+                m_visibleName = "X";
             if (m_name.startsWith("Thicken"))
-                m_displayName = "Th";
+                m_visibleName = "Th";
             if (m_name.startsWith("VortexCriteria"))
-                m_displayName = "Vortex";
-            m_displayName += ":" + m_info;
-            if (m_displayName.length() > 21) {
-                m_displayName = m_displayName.left(20) + "…";
+                m_visibleName = "Vortex";
+            m_visibleName += ":" + m_info;
+            if (m_visibleName.length() > 21) {
+                m_visibleName = m_visibleName.left(20) + "…";
             }
         }
     }

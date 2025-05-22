@@ -179,6 +179,7 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
             SLOT(addModule(int, boost::uuids::uuid, QString)));
     connect(&m_observer, SIGNAL(deleteModule_s(int)), m_scene, SLOT(deleteModule(int)));
     connect(&m_observer, SIGNAL(moduleStateChanged_s(int, int)), m_scene, SLOT(moduleStateChanged(int, int)));
+    connect(&m_observer, SIGNAL(setName_s(int, QString)), m_scene, SLOT(setDisplayName(int, QString)));
     connect(&m_observer, &VistleObserver::message_s, [this](int senderId, int type, QString text) {
         if (m_scene)
             m_scene->moduleMessage(senderId, type, text);

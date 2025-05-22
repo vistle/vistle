@@ -126,6 +126,7 @@ private:
     bool addObjectDestination(const message::AddObject &addObj, Object::const_ptr obj);
 
     bool handlePriv(const message::Trace &trace);
+    bool handlePriv(const message::SetName &setname);
     bool handlePriv(const message::Quit &quit);
     bool handlePriv(const message::Spawn &spawn);
     bool handlePriv(const message::Connect &connect);

@@ -2196,6 +2196,11 @@ std::ostream &operator<<(std::ostream &s, const Message &m)
         s << ", locked: " << mm.locked();
         break;
     }
+    case SETNAME: {
+        auto &mm = static_cast<const SetName &>(m);
+        s << ", module: " << mm.module() << ", name: " << mm.name();
+        break;
+    }
     default:
         break;
     }

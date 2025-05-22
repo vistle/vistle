@@ -2002,6 +2002,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
 
             if (m_hubId == Id::MasterHub) {
                 auto master = addHubForSelf();
+                master.setDestId(Id::Broadcast);
                 if (m_verbose >= Verbosity::Manager) {
                     CERR << "principal hub: " << master << std::endl;
                 }
@@ -2242,6 +2243,12 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
         case message::SPAWN: {
             auto &spawn = static_cast<const Spawn &>(msg);
             handlePriv(spawn);
+            break;
+        }
+
+        case message::SETNAME: {
+            auto &setname = static_cast<const SetName &>(msg);
+            handlePriv(setname);
             break;
         }
 
@@ -2857,6 +2864,22 @@ bool Hub::handlePriv(const message::Spawn &spawnRecv)
     return true;
 }
 
+bool Hub::handlePriv(const message::SetName &setname)
+{
+    if (m_isMaster || setname.destId() == Id::Broadcast) {
+        m_stateTracker.handle(setname, nullptr);
+        sendUi(setname);
+        sendManager(setname, Id::LocalHub);
+    } else if (m_isMaster) {
+        auto buf = setname;
+        buf.setDestId(Id::Broadcast);
+        sendUi(setname);
+        sendManager(setname, Id::LocalHub);
+        sendSlaves(buf, true);
+    }
+    return true;
+}
+
 template<typename ConnMsg>
 bool Hub::handleConnectOrDisconnect(const ConnMsg &mm)
 {
@@ -3051,7 +3074,7 @@ void Hub::cacheParameters(int oldModuleId, int newModuleId, bool clone)
     for (const auto &pn: paramNames) {
         auto p = m_stateTracker.getParameter(oldModuleId, pn);
         if (!p->isDefault()) {
-            auto pm = message::SetParameter(newModuleId, p->getName(), p);
+            auto pm = make.message<message::SetParameter>(newModuleId, p->getName(), p);
             pm.setDelayed();
             pm.setDestId(newModuleId);
             m_sendAfterSpawn[newModuleId].emplace_back(pm);
@@ -3148,6 +3171,10 @@ bool Hub::editDelayedConnects(int oldModuleId, int newModuleId)
 
 bool Hub::cacheModuleValues(int oldModuleId, int newModuleId)
 {
+    if (!stateTracker().getModuleDisplayName(oldModuleId).empty()) {
+        auto setname = make.message<message::SetName>(newModuleId, stateTracker().getModuleDisplayName(oldModuleId));
+        m_sendAfterSpawn[newModuleId].emplace_back(setname);
+    }
     if (!copyModuleParams(oldModuleId, newModuleId))
         return false;
     cachePortConnections(oldModuleId, newModuleId);
@@ -4426,7 +4453,7 @@ void Hub::updateLinkedParameters(const message::SetParameter &setParam)
                     // don't update parameter which was set originally again
                     continue;
                 }
-                message::SetParameter set(p->module(), p->getName(), appliedParam);
+                auto set = make.message<message::SetParameter>(p->module(), p->getName(), appliedParam);
                 set.setDestId(p->module());
                 set.setUuid(setParam.uuid());
                 sendAll(set);

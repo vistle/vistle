@@ -2,6 +2,7 @@ vistle_find_package(LZ4)
 #vistle_find_package(ZSTD)
 
 set(core_SOURCES
+    message/setname.cpp
     allobjects.cpp # just one file including all the others for faster compilation
     availablemodule.cpp
     archive_loader.cpp
@@ -64,6 +65,7 @@ set(core_SOURCES
     vertexownerlist.cpp)
 
 set(core_HEADERS
+    message/setname.h
     archive_loader.h
     archive_saver.h
     archives.h

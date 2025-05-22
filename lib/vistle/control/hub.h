@@ -291,6 +291,7 @@ private:
     bool handlePriv(const message::ModuleExit &exit);
     bool handlePriv(const message::Kill &kill);
     bool handlePriv(const message::Spawn &spawn);
+    bool handlePriv(const message::SetName &setname);
     bool handlePriv(const message::LoadWorkflow &load);
     bool handlePriv(const message::SaveWorkflow &save);
 

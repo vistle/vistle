@@ -352,6 +352,29 @@ static void kill(int id)
     }
 }
 
+static void setModuleDisplayName(int id, const std::string &name)
+{
+#ifdef DEBUG
+    std::cerr << "Python: setModuleDisplayName of " << id << " to " << name << std::endl;
+#endif
+    if (message::Id::isModule(id)) {
+        message::SetName m(id, name);
+        m.setDestId(message::Id::Broadcast); // to master for serialization with Spawn
+        sendMessage(m);
+    }
+}
+
+static std::string getModuleDisplayName(int id)
+{
+#ifdef DEBUG
+    std::cerr << "Python: getModuleDisplayName of " << id << std::endl;
+#endif
+    if (message::Id::isModule(id)) {
+        return state().getModuleDisplayName(id);
+    }
+    return "";
+}
+
 static std::string hubName(int id)
 {
     return state().hubName(id);
@@ -1504,6 +1527,8 @@ PY_MODULE(_vistle, m)
           "id"_a, "hub"_a, "modulename"_a = "");
     m.def("waitForSpawn", waitForSpawn, "wait for asynchronously spawned module with uuid `arg1` and return its ID");
     m.def("kill", kill, "kill module with ID `arg1`");
+    m.def("setModuleDisplayName", setModuleDisplayName, "id"_a, "name"_a, "set name of module with ID `id` to `name`");
+    m.def("getModuleDisplayName", getModuleDisplayName, "id"_a, "get name of module with ID `id`");
     m.def("connect", connect,
           "connect output `arg2` of module with ID `arg1` to input `arg4` of module with ID `arg3`");
     m.def("disconnect", disconnect,

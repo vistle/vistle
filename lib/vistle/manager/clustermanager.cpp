@@ -827,6 +827,12 @@ bool ClusterManager::handle(const message::Buffer &message, const MessagePayload
         break;
     }
 
+    case message::SETNAME: {
+        const message::SetName &m = message.as<SetName>();
+        result = handlePriv(m);
+        break;
+    }
+
     case message::REMOVEHUB:
     case message::STARTED:
     case message::ADDPORT:
@@ -884,6 +890,11 @@ bool ClusterManager::handlePriv(const message::Trace &trace)
     Communicator::the().dataManager().trace(m_traceMessages);
 
     return true;
+}
+
+bool ClusterManager::handlePriv(const message::SetName &setname)
+{
+    return sendAllLocal(setname);
 }
 
 bool ClusterManager::handlePriv(const message::Quit &quit)

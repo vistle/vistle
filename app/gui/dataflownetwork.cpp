@@ -185,6 +185,7 @@ void DataFlowNetwork::addModule(int moduleId, const boost::uuids::uuid &spawnUui
         auto pos = getModulePosition(moduleId);
         moveModule(moduleId, pos.x(), pos.y());
     }
+    mod->setDisplayName(QString::fromStdString(m_state.getModuleDisplayName(moduleId)));
 }
 
 void DataFlowNetwork::deleteModule(int moduleId)
@@ -366,6 +367,13 @@ void DataFlowNetwork::itemInfoChanged(QString text, int type, int id, QString po
                 gp->setInfo(text, type);
             }
         }
+    }
+}
+
+void DataFlowNetwork::setDisplayName(int id, QString text)
+{
+    if (Module *m = findModule(id)) {
+        m->setDisplayName(text);
     }
 }
 

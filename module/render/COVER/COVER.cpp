@@ -17,6 +17,7 @@
 #include <vistle/core/messages.h>
 #include <vistle/core/object.h>
 #include <vistle/core/placeholder.h>
+#include <vistle/core/statetracker.h>
 #include <vistle/util/threadname.h>
 
 #include <osg/Node>
@@ -306,6 +307,8 @@ bool COVER::parameterAdded(const int senderId, const std::string &name, const me
 
         m_interactorMap[senderId] = new VistleInteractor(this, moduleName, senderId);
         m_interactorMap[senderId]->setPluginName(plugin);
+        auto dn = this->state().getModuleDisplayName(senderId);
+        m_interactorMap[senderId]->setDisplayName(dn);
         it = m_interactorMap.find(senderId);
         std::cerr << "created interactor for " << moduleName << ":" << senderId << std::endl;
         auto inter = it->second;
@@ -993,6 +996,17 @@ bool COVER::handleMessage(const message::Message *message, const MessagePayload 
         msg.send_type = cmsg.senderType();
         coVRCommunication::instance()->handleVRB(msg);
         return true;
+    }
+    case vistle::message::SETNAME: {
+        auto ret = Renderer::handleMessage(message, payload);
+        auto &setname = message->as<const message::SetName>();
+        InteractorMap::iterator it = m_interactorMap.find(setname.module());
+        if (it != m_interactorMap.end()) {
+            auto inter = it->second;
+            inter->setDisplayName(setname.name());
+            coVRPluginList::instance()->newInteractor(inter->getObject(), inter);
+        }
+        return ret;
     }
     default:
         break;

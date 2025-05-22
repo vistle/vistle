@@ -143,6 +143,7 @@ public slots:
     void setParameterDefaults();
     void showError();
     void highlightModule(int moduleId);
+    void setDisplayName(QString name);
 
 private:
     void createGeometry();
@@ -153,8 +154,10 @@ private:
     void sendSpawn(int hub, const std::string &module, vistle::message::Spawn::ReferenceType type);
     void setToolTip(QString text);
     void createParameterPopup();
+    void changeDisplayName();
 
     QMenu *m_moduleMenu = nullptr;
+    QAction *m_changeNameAct = nullptr;
     QAction *m_selectUpstreamAct = nullptr, *m_selectDownstreamAct = nullptr, *m_selectConnectedAct = nullptr;
     QAction *m_deleteThisAct = nullptr, *m_deleteSelAct = nullptr;
     QAction *m_attachDebugger = nullptr;
@@ -182,6 +185,7 @@ private:
     ///\todo add data structure for the module information
     QString m_name;
     QString m_displayName;
+    QString m_visibleName;
     Module::Status m_Status;
     QString m_statusText;
     QString m_info;

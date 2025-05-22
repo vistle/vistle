@@ -82,6 +82,7 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(
     (REMOTERENDERING)
     (COVER)
     (INSITU)
+    (SETNAME)
     (NumMessageTypes) // keep last
 )
 V_ENUM_OUTPUT_OP(Type, ::vistle::message)

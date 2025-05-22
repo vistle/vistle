@@ -30,6 +30,7 @@ signals:
     void deleteConnection_s(int fromId, QString fromName, int toId, QString toName);
     void modified(bool state);
 
+    void setName_s(int moduleId, QString name);
     void info_s(QString msg, int type);
     void message_s(int senderId, int type, QString msg);
     void itemInfo_s(QString info, int type, int senderId, QString portName);
@@ -67,6 +68,7 @@ public:
                   const std::string &port) override;
     void status(int id, const std::string &text, vistle::message::UpdateStatus::Importance priority) override;
     void updateStatus(int id, const std::string &text, vistle::message::UpdateStatus::Importance priority) override;
+    void setName(int moduleId, const std::string &name) override;
 
     void quitRequested() override;
 
