@@ -24,7 +24,7 @@ public:
     void applyParam(const std::string &name, const vistle::message::SetParameter &msg);
     bool hasParams() const;
 
-    /// returns true, if Interactor comes from same Module as intteractor i;
+    /// returns true, if Interactor comes from same Module as interactor i;
     bool isSameModule(coInteractor *i) const override;
 
     /// returns true, if Interactor is exactly the same as interactor i;
