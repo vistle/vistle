@@ -1094,4 +1094,6 @@ private:
 } // namespace vistle
 
 #pragma pack(pop)
+
+#include "message/setname.h"
 #endif

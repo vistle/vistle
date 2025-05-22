@@ -74,6 +74,7 @@ void Router::initRoutingTable()
     rt[FILEQUERYRESULT] = Special;
     rt[COVER] = Special;
     rt[INSITU] = Special;
+    rt[SETNAME] = Track | HandleOnMaster;
 
     for (int i = ANY + 1; i < NumMessageTypes; ++i) {
         if (rt[i] == 0) {

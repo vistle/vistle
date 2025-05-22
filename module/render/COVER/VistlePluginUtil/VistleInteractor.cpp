@@ -30,6 +30,20 @@ VistleInteractor::~VistleInteractor()
     }
 }
 
+const char *VistleInteractor::getModuleDisplayName() const
+{
+    return m_moduleDisplayName.c_str();
+}
+
+void VistleInteractor::setDisplayName(const std::string &name)
+{
+    if (name.empty()) {
+        m_moduleDisplayName.clear();
+        return;
+    }
+    m_moduleDisplayName = name + "_" + std::to_string(m_moduleId);
+}
+
 void VistleInteractor::setPluginName(const std::string &plugin)
 {
     m_pluginName = plugin;

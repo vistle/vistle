@@ -45,7 +45,7 @@ set(gui_HEADERS
     vistleobserver.h
     qconsole/qconsole.h)
 
-set(gui_FORMS mainwindow.ui about.ui modulebrowser.ui moduleview.ui modifieddialog.ui)
+set(gui_FORMS mainwindow.ui about.ui modulebrowser.ui moduleview.ui modifieddialog.ui setnamedialog.ui)
 
 if(APPLE)
     add_custom_target(

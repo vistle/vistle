@@ -255,6 +255,18 @@ std::string StateTracker::getModuleName(int id) const
     return std::string();
 }
 
+std::string StateTracker::getModuleDisplayName(int id) const
+{
+    mutex_locker guard(m_stateMutex);
+    RunningMap::const_iterator it = runningMap.find(id);
+    if (it != runningMap.end())
+        return it->second.displayName;
+    it = quitMap.find(id);
+    if (it != quitMap.end())
+        return it->second.displayName;
+    return std::string();
+}
+
 std::string StateTracker::getModuleDescription(int id) const
 {
     AvailableModule::Key key{getHub(id), getModuleName(id)};
@@ -335,6 +347,11 @@ void StateTracker::appendModuleState(VistleState &state, const StateTracker::Mod
     spawn.setMirroringId(m.mirrorOfId);
     //CERR << "id " << id << " mirrors " << m.mirrorOfId << std::endl;
     appendMessage(state, spawn);
+
+    if (!m.displayName.empty()) {
+        SetName setname(m.id, m.displayName);
+        appendMessage(state, setname);
+    }
 
     if (m.initialized) {
         Started s(m.name);
@@ -692,6 +709,11 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
     case DEBUG: {
         const auto &debug = msg.as<Debug>();
         handled = handlePriv(debug);
+        break;
+    }
+    case SETNAME: {
+        const auto &setname = msg.as<SetName>();
+        handled = handlePriv(setname);
         break;
     }
     case QUIT: {
@@ -1053,6 +1075,26 @@ bool StateTracker::handlePriv(const message::LoadWorkflow &load)
 
 bool StateTracker::handlePriv(const message::SaveWorkflow &save)
 {
+    return true;
+}
+
+bool StateTracker::handlePriv(const message::SetName &setname)
+{
+    mutex_locker guard(m_stateMutex);
+    auto it = runningMap.find(setname.module());
+    if (it == runningMap.end()) {
+        CERR << "module " << setname.module() << " not found" << std::endl;
+        return false;
+    }
+
+    auto &mod = it->second;
+    mod.displayName = setname.name();
+
+    for (StateObserver *o: m_observers) {
+        o->setName(mod.id, mod.displayName);
+    }
+    setModified("setname " + std::to_string(mod.id));
+
     return true;
 }
 
@@ -2301,6 +2343,12 @@ void StateObserver::message(const vistle::message::Message &msg, vistle::buffer 
 {
     (void)msg;
     (void)payload;
+}
+
+void StateObserver::setName(int id, const std::string &name)
+{
+    (void)id;
+    (void)name;
 }
 
 } // namespace vistle

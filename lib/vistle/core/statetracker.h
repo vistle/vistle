@@ -46,6 +46,7 @@ public:
         Crashed = 64,
     };
     virtual void moduleStateChanged(int moduleId, int stateBits);
+    virtual void setName(int moduleId, const std::string &name);
 
     virtual void newParameter(int moduleId, const std::string &parameterName);
     virtual void parameterValueChanged(int moduleId, const std::string &parameterName);
@@ -138,6 +139,7 @@ public:
     int getHub(int id) const;
     const HubData &getHubData(int id) const;
     std::string getModuleName(int id) const;
+    std::string getModuleDisplayName(int id) const;
     std::string getModuleDescription(int id) const;
     bool isCompound(int id);
 
@@ -236,6 +238,7 @@ protected:
         ParameterMap parameters;
         ParameterOrder paramOrder;
         int height = 0; //< length of shortest path to a sink
+        std::string displayName;
         std::string statusText;
         message::UpdateStatus::Importance statusImportance = message::UpdateStatus::Bulk;
         unsigned long statusTime = 0;
@@ -295,6 +298,7 @@ private:
     bool handlePriv(const message::Trace &trace);
     bool handlePriv(const message::Debug &debug);
     bool handlePriv(const message::Spawn &spawn);
+    bool handlePriv(const message::SetName &SetName);
     bool handlePriv(const message::LoadWorkflow &load);
     bool handlePriv(const message::SaveWorkflow &save);
     bool handlePriv(const message::Started &started);

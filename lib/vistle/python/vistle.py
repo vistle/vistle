@@ -228,6 +228,8 @@ def saveWorkflow(f, mods, numSlaves, remote):
       if (remote and hub==_vistle.getMasterHub()) or (not remote and hub!=_vistle.getMasterHub()):
             continue
       f.write(modvar(m)+" = waitForSpawn(u"+modvar(m)+")\n")
+      if _vistle.getModuleDisplayName(m) != "":
+         f.write("setModuleDisplayName(" + modvar(m) + ", '" +_vistle.getModuleDisplayName(m)+"')\n")
       saveParameters(f, m)
 
    if remote:
@@ -393,6 +395,8 @@ class PythonStateObserver(_vistle.StateObserver):
         super(PythonStateObserver, self).status(moduleId, text, prio)
     def updateStatus(self, moduleId, text, prio):
         super(PythonStateObserver, self).updateStatus(moduleId, text, prio)
+    def setName(self, moduleId, name):
+        super(PythonStateObserver, self).setName(moduleId, name)
 
 
 # re-export functions from _vistle
@@ -424,6 +428,8 @@ setStatus = _vistle.setStatus
 clearStatus = _vistle.clearStatus
 setLoadedFile = _vistle.setLoadedFile
 getLoadedFile = _vistle.getLoadedFile
+setModuleDisplayName = _vistle.setModuleDisplayName
+getModuleDisplayName = _vistle.getModuleDisplayName
 setParam = _vistle.setParam
 setIntParam = _vistle.setIntParam
 setFloatParam = _vistle.setFloatParam

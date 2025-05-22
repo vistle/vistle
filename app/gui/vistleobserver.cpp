@@ -218,6 +218,11 @@ void VistleObserver::status(int id, const std::string &text, vistle::message::Up
     emit moduleStatus_s(id, QString::fromStdString(text), priority);
 }
 
+void VistleObserver::setName(int moduleId, const std::string &name)
+{
+    emit setName_s(moduleId, QString::fromStdString(name));
+}
+
 void VistleObserver::quitRequested()
 {
     emit quit_s();

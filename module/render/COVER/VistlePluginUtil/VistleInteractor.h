@@ -18,6 +18,9 @@ public:
     VistleInteractor(const vistle::MessageSender *sender, const std::string &moduleName, int moduleId);
     ~VistleInteractor();
     void setPluginName(const std::string &plugin);
+    void setDisplayName(const std::string &name);
+
+    const char *getModuleDisplayName() const override;
 
     void addParam(const std::string &name, const vistle::message::AddParameter &msg);
     void removeParam(const std::string &name, const vistle::message::RemoveParameter &msg);
@@ -125,6 +128,7 @@ public:
 private:
     const vistle::MessageSender *m_sender;
     std::string m_moduleName;
+    std::string m_moduleDisplayName;
     std::string m_pluginName;
     std::string m_hubName;
     int m_moduleId;

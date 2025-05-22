@@ -1729,6 +1729,7 @@ bool Module::handleMessage(const vistle::message::Message *message, const Messag
 
     case message::MODULEEXIT:
     case message::SPAWN:
+    case message::SETNAME:
     case message::STARTED:
     case message::MODULEAVAILABLE:
     case message::REPLAYFINISHED:
