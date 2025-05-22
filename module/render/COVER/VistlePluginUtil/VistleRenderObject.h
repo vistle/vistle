@@ -13,10 +13,6 @@
 #include <vistle/renderer/renderobject.h>
 #include <memory>
 
-namespace opencover {
-class coInteractor;
-}
-
 class V_PLUGINUTILEXPORT BaseRenderObject: public opencover::RenderObject {
 public:
     BaseRenderObject();
