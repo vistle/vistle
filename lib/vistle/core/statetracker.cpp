@@ -520,6 +520,15 @@ StateTracker::VistleState StateTracker::getState() const
     return state;
 }
 
+StateTracker::VistleLockedState StateTracker::getLockedState() const
+{
+    mutex_locker guard(m_stateMutex);
+    auto state = getState();
+    VistleLockedState lockedState(m_stateMutex);
+    lockedState.messages = std::move(state);
+    return lockedState;
+}
+
 void StateTracker::printModules(bool withConnections) const
 {
     mutex_locker guard(m_stateMutex);
