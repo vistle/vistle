@@ -58,6 +58,8 @@ StateTracker::StateTracker(int id, const std::string &name, std::shared_ptr<Port
     Module config(Id::Config, Id::MasterHub); // for settings tied to currently loaded workflow
     config.name = "Workflow Configuration";
     runningMap.emplace(Id::Config, config);
+
+    m_numMessagesByType.resize(message::NumMessageTypes + 1, 0);
 }
 
 void StateTracker::cancel()
@@ -585,6 +587,10 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
 
     ++m_numMessages;
     m_aggregatedPayload += msg.payloadSize();
+    {
+        auto t = std::min(message::NumMessageTypes, msg.type());
+        ++m_numMessagesByType[t];
+    }
 
 #ifndef NDEBUG
     switch (msg.type()) {
