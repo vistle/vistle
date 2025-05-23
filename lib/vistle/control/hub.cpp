@@ -1325,8 +1325,8 @@ void Hub::slaveReady(Slave &slave)
 
     startIoThread();
 
-    auto state = m_stateTracker.getState();
-    for (auto &m: state) {
+    auto state = m_stateTracker.getLockedState();
+    for (auto &m: state.messages) {
         sendMessage(slave.sock, m.message, m.payload.get());
     }
     slave.ready = true;
@@ -2013,8 +2013,8 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                 auto set = make.message<message::SetId>(m_hubId);
                 sendMessage(sock, set);
                 if (message::Id::isHub(m_hubId)) {
-                    auto state = m_stateTracker.getState();
-                    for (auto &m: state) {
+                    auto state = m_stateTracker.getLockedState();
+                    for (auto &m: state.messages) {
                         sendMessage(sock, m.message, m.payload.get());
                     }
                 }
@@ -2556,8 +2556,8 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             }
             if (m_managerConnected) {
 #if 0
-               auto state = m_stateTracker.getState();
-               for (auto &m: state) {
+               auto state = m_stateTracker.getLockedState();
+               for (auto &m: state.messages) {
                   sendMessage(sock, m);
                }
 #endif

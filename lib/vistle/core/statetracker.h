@@ -171,8 +171,15 @@ public:
         std::shared_ptr<const buffer> payload;
     };
     typedef std::vector<MessageWithPayload> VistleState;
+    struct VistleLockedState {
+        VistleLockedState(mutex &mutex): guard(mutex) {}
+
+        std::unique_lock<mutex> guard;
+        VistleState messages;
+    };
 
     VistleState getState() const;
+    VistleLockedState getLockedState() const;
 
     const std::map<AvailableModule::Key, AvailableModule> &availableModules() const;
 

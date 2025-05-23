@@ -1056,8 +1056,8 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn)
         sendHub(prep);
 
     // inform newly started module about current parameter values of other modules
-    auto state = m_stateTracker.getState();
-    for (const auto &m: state) {
+    auto state = m_stateTracker.getLockedState();
+    for (const auto &m: state.messages) {
         MessagePayload pl;
         message::Buffer buf(m.message);
         if (m.payload) {
