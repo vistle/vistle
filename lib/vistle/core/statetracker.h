@@ -346,6 +346,7 @@ private:
     message::UpdateStatus::Importance m_currentStatusImportance = message::UpdateStatus::Bulk;
 
     size_t m_numMessages = 0;
+    std::vector<size_t> m_numMessagesByType;
     size_t m_numObjects = 0;
     size_t m_aggregatedPayload = 0;
 
