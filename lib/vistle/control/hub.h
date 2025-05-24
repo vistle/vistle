@@ -81,7 +81,8 @@ public:
     std::shared_ptr<process::child> launchMpiProcess(int type, const std::vector<std::string> &argv);
     const std::string &name() const;
 
-    bool handleMessage(const message::Message &msg, socket_ptr sock = socket_ptr(), const buffer *payload = nullptr);
+    bool handleMessage(const message::Message &msg, socket_ptr sock = socket_ptr(), const buffer *payload = nullptr,
+                       message::Identify::Identity senderType = message::Identify::UNKNOWN);
     bool sendManager(const message::Message &msg, int hub = message::Id::LocalHub, const buffer *payload = nullptr);
     bool sendMaster(const message::Message &msg, const buffer *payload = nullptr);
     bool sendSlaves(const message::Message &msg, bool returnToSender = false, const buffer *payload = nullptr);

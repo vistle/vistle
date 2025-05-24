@@ -1869,7 +1869,8 @@ bool Hub::hubReady()
     return true;
 }
 
-bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, const buffer *payload)
+bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, const buffer *payload,
+                        message::Identify::Identity senderType)
 {
     using namespace vistle::message;
 
@@ -1890,7 +1891,6 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
 
     message::Buffer buf(recv);
     Message &msg = buf;
-    message::Identify::Identity senderType = message::Identify::UNKNOWN;
     {
         std::unique_lock<std::mutex> lock(m_socketMutex);
         auto it = m_sockets.find(sock);

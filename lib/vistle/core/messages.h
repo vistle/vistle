@@ -46,6 +46,7 @@ public:
                                         (RENDERCLIENT) //< remote render client
                                         (VRB) //< COVISE/OpenCOVER request broker for collaborative VR
                                         (TUNNEL) //< initiate rendezvous tunnel connection
+                                        (SCRIPT) //< sent from a Python script
     )
     DEFINE_ENUM_WITH_STRING_CONVERSIONS(TunnelRole, (Client)(Server))
 
