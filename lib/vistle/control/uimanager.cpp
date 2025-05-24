@@ -13,6 +13,8 @@
 
 namespace vistle {
 
+#define CERR std::cerr << "UiManager: "
+
 UiManager::UiManager(Hub &hub, StateTracker &stateTracker)
 : m_hub(hub)
 , m_stateTracker(stateTracker)
@@ -35,7 +37,7 @@ bool UiManager::handleMessage(std::shared_ptr<boost::asio::ip::tcp::socket> sock
     auto it = m_clients.find(sock);
     if (it == m_clients.end()) {
         if (m_hub.verbosity() >= Hub::Verbosity::Manager) {
-            std::cerr << "UiManager: message from unknown UI" << std::endl;
+            CERR << "message from unknown UI" << std::endl;
         }
     } else {
         sender = it->second;
@@ -46,7 +48,7 @@ bool UiManager::handleMessage(std::shared_ptr<boost::asio::ip::tcp::socket> sock
         if (!sender) {
             auto &exit = msg.as<ModuleExit>();
             if (m_hub.verbosity() >= Hub::Verbosity::Manager) {
-                std::cerr << "UiManager: unknown UI on hub " << exit.senderId() << " quit" << std::endl;
+                CERR << "unknown UI on hub " << exit.senderId() << " quit" << std::endl;
             }
         } else {
             sender->cancel();
@@ -58,7 +60,7 @@ bool UiManager::handleMessage(std::shared_ptr<boost::asio::ip::tcp::socket> sock
         auto quit = msg.as<Quit>();
         if (quit.id() == Id::Broadcast) {
             if (!sender) {
-                std::cerr << "UiManager: unknown UI quit" << std::endl;
+                CERR << "unknown UI quit" << std::endl;
             } else {
                 sender->cancel();
                 removeClient(sender);
@@ -136,8 +138,7 @@ void UiManager::addClient(std::shared_ptr<boost::asio::ip::tcp::socket> sock)
     m_clients.insert(std::make_pair(sock, c));
 
     if (m_hub.verbosity() >= Hub::Verbosity::Manager) {
-        std::cerr << "UiManager: new UI " << m_uiCount << " connected, now have " << m_clients.size() << " connections"
-                  << std::endl;
+        CERR << "new UI " << m_uiCount << " connected, now have " << m_clients.size() << " connections" << std::endl;
     }
     ++m_uiCount;
 
@@ -160,7 +161,7 @@ void UiManager::addClient(std::shared_ptr<boost::asio::ip::tcp::socket> sock)
 bool UiManager::removeClient(std::shared_ptr<UiClient> c) const
 {
     if (m_hub.verbosity() >= Hub::Verbosity::Manager) {
-        std::cerr << "UiManager: removing client " << c->id() << std::endl;
+        CERR << "removing client " << c->id() << std::endl;
     }
 
     std::unique_lock lock(m_mutex);
