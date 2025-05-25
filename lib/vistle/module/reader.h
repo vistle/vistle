@@ -23,6 +23,8 @@ class V_MODULEEXPORT Reader: public Module {
     friend class Token;
 
 public:
+    static const std::string InvalidChoice;
+
     class V_MODULEEXPORT Token {
         friend class vistle::Reader;
         friend V_MODULEEXPORT std::ostream &operator<<(std::ostream &os, const Token &tok);
@@ -103,6 +105,7 @@ public:
     int numPartitions() const;
 
 protected:
+    void initDone() override;
     Parameter *addParameterGeneric(const std::string &name, std::shared_ptr<Parameter> parameter) override;
     bool removeParameter(const std::string &name) override;
 
@@ -160,6 +163,16 @@ protected:
     bool changeParameters(std::map<std::string, const Parameter *> params) override;
     bool changeParameter(const Parameter *param) override;
     void prepareQuit() override;
+
+    void linkPortAndParameter(Port *port, Parameter *param, std::function<bool(const Parameter *)> check = nullptr);
+
+    struct PortUpdater {
+        explicit PortUpdater(const Port *port, std::function<bool(const Parameter *)> check = nullptr)
+        : port(port), check(check){};
+        const Port *port = nullptr;
+        std::function<bool(const Parameter *)> check = nullptr;
+    };
+    std::map<const Parameter *, std::vector<PortUpdater>> m_portUpdaters;
 
     IntParameter *m_first = nullptr;
     IntParameter *m_last = nullptr;

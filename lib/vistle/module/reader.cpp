@@ -3,6 +3,8 @@
 
 namespace vistle {
 
+const std::string Reader::InvalidChoice("(NONE)");
+
 Reader::Reader(const std::string &name, const int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
     setCurrentParameterGroup("Reader");
@@ -27,6 +29,26 @@ Reader::Reader(const std::string &name, const int moduleID, mpi::communicator co
 Reader::~Reader()
 {}
 
+void Reader::initDone()
+{
+    for (const auto &p: m_portUpdaters) {
+        auto param = p.first;
+        for (auto &portUpdater: p.second) {
+            auto port = portUpdater.port;
+            if (port) {
+                if (portUpdater.check(param)) {
+                    setPortState(port, message::ItemInfo::Enabled);
+                } else {
+                    setPortState(port, message::ItemInfo::Disabled);
+                }
+            } else {
+                std::cerr << "Reader::changeParameter: port is null for parameter " << param->getName() << std::endl;
+            }
+        }
+    }
+    return Module::initDone();
+}
+
 Parameter *Reader::addParameterGeneric(const std::string &name, std::shared_ptr<Parameter> parameter)
 {
     auto param = std::dynamic_pointer_cast<StringParameter>(parameter);
@@ -44,6 +66,25 @@ bool Reader::removeParameter(const std::string &name)
     if (m_firstFileBrowser && m_firstFileBrowser->getName() == m_firstFileBrowser->getName())
         m_firstFileBrowser.reset();
     return Module::removeParameter(name);
+}
+
+void Reader::linkPortAndParameter(Port *port, Parameter *param, std::function<bool(const Parameter *)> check)
+{
+    if (!check) {
+        check = [](const Parameter *p) -> bool {
+            if (auto *sp = dynamic_cast<const StringParameter *>(p)) {
+                auto val = sp->getValue();
+                if (val.empty() || val == Reader::InvalidChoice)
+                    return false;
+                return true;
+            } else if (auto *ip = dynamic_cast<const IntParameter *>(p)) {
+                return ip->getValue() != 0;
+            }
+            return true;
+        };
+    }
+
+    m_portUpdaters[param].emplace_back(port, check);
 }
 
 void Reader::prepareQuit()
@@ -466,6 +507,22 @@ bool Reader::changeParameter(const Parameter *param)
         if (it != m_observedParameters.end()) {
             m_readyForRead = examine(param);
             ret &= m_readyForRead;
+        }
+    }
+
+    auto it = m_portUpdaters.find(param);
+    if (it != m_portUpdaters.end()) {
+        for (auto &portUpdater: it->second) {
+            auto port = portUpdater.port;
+            if (port) {
+                if (portUpdater.check(param)) {
+                    setPortState(port, message::ItemInfo::Enabled);
+                } else {
+                    setPortState(port, message::ItemInfo::Disabled);
+                }
+            } else {
+                std::cerr << "Reader::changeParameter: port is null for parameter " << param->getName() << std::endl;
+            }
         }
     }
 
