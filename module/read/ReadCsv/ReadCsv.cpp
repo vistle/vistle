@@ -41,7 +41,9 @@ ReadCsv::ReadCsv(const std::string &name, int moduleID, mpi::communicator comm):
         m_selectionParams[i + NUM_COORD_FIELDS] =
             addIntParameter("data_name_" + std::to_string(i),
                             "Name of data column outputted at data_out_" + std::to_string(i), 0, Parameter::Choice);
-        createOutputPort("data_out" + std::to_string(i), "data on points from column dataName" + std::to_string(i));
+        auto *p =
+            createOutputPort("data_out" + std::to_string(i), "data on points from column dataName" + std::to_string(i));
+        linkPortAndParameter(p, m_selectionParams[i + NUM_COORD_FIELDS]);
     }
 
     setParallelizationMode(ParallelizationMode::ParallelizeBlocks);
@@ -127,7 +129,7 @@ bool ReadCsv::examine(const Parameter *param)
             std::getline(f, line);
         }
         m_delimiter = determineDelimiter(line);
-        m_choices = std::vector<std::string>{"NONE"};
+        m_choices = std::vector<std::string>{vistle::Reader::InvalidChoice};
         splitLine(m_choices, line, m_delimiter);
         auto lowerChoices = m_choices;
         std::transform(lowerChoices.begin(), lowerChoices.end(), lowerChoices.begin(), [](std::string s) {

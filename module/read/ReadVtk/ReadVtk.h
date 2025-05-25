@@ -39,7 +39,6 @@ public:
 private:
     static const int NumPorts = 3;
 
-    //bool changeParameter(const vistle::Parameter *p) override;
     //bool compute() override;
 
     bool load(Token &token, const std::string &filename, const vistle::Meta &meta = vistle::Meta(), int piece = -1,

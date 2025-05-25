@@ -11,7 +11,7 @@
 #include <iostream>
 
 namespace {
-const std::string NONE("(none)");
+const std::string NONE{vistle::Reader::InvalidChoice};
 }
 
 using namespace vistle;
@@ -32,6 +32,7 @@ ReadEnsight::ReadEnsight(const std::string &name, int moduleID, mpi::communicato
         m_vol_vert_choice[port] = addStringParameter("vol_vert_field" + std::to_string(port),
                                                      "field " + std::to_string(port), NONE, Parameter::Choice);
         setParameterChoices(m_vol_vert_choice[port], std::vector<std::string>({NONE}));
+        linkPortAndParameter(m_vol_vert[port], m_vol_vert_choice[port]);
     }
     for (int port = 0; port < NumVolElem; ++port) {
         m_vol_elem[port] = createOutputPort("vol_elem_field" + std::to_string(port) + "_out",
@@ -39,6 +40,7 @@ ReadEnsight::ReadEnsight(const std::string &name, int moduleID, mpi::communicato
         m_vol_elem_choice[port] = addStringParameter("vol_elem_field" + std::to_string(port),
                                                      "field " + std::to_string(port), NONE, Parameter::Choice);
         setParameterChoices(m_vol_elem_choice[port], std::vector<std::string>({NONE}));
+        linkPortAndParameter(m_vol_elem[port], m_vol_elem_choice[port]);
     }
 
     m_surf = createOutputPort("surface_out", "surface");
@@ -48,6 +50,7 @@ ReadEnsight::ReadEnsight(const std::string &name, int moduleID, mpi::communicato
         m_surf_vert_choice[port] = addStringParameter("surf_vert_field" + std::to_string(port),
                                                       "field " + std::to_string(port), NONE, Parameter::Choice);
         setParameterChoices(m_surf_vert_choice[port], std::vector<std::string>({NONE}));
+        linkPortAndParameter(m_surf_vert[port], m_surf_vert_choice[port]);
     }
     for (int port = 0; port < NumSurfElem; ++port) {
         m_surf_elem[port] = createOutputPort("surf_elem_field" + std::to_string(port) + "_out",
@@ -55,6 +58,7 @@ ReadEnsight::ReadEnsight(const std::string &name, int moduleID, mpi::communicato
         m_surf_elem_choice[port] = addStringParameter("surf_elem_field" + std::to_string(port),
                                                       "field " + std::to_string(port), NONE, Parameter::Choice);
         setParameterChoices(m_surf_elem_choice[port], std::vector<std::string>({NONE}));
+        linkPortAndParameter(m_surf_elem[port], m_surf_elem_choice[port]);
     }
 
     m_earlyPartList =
