@@ -370,6 +370,21 @@ void DataFlowNetwork::itemInfoChanged(QString text, int type, int id, QString po
     }
 }
 
+void DataFlowNetwork::portStateChanged(int state, int id, QString port)
+{
+    if (Module *m = findModule(id)) {
+        if (port.isEmpty()) {
+            std::cerr << "portStateChanged: no port given for module " << id << std::endl;
+            return;
+        }
+        std::lock_guard guard(m_state);
+        const vistle::Port *p = m_state.portTracker()->findPort(id, port.toStdString());
+        if (auto *gp = m->getGuiPort(p)) {
+            gp->setInfo(state, vistle::message::ItemInfo::PortEnableState);
+        }
+    }
+}
+
 void DataFlowNetwork::setDisplayName(int id, QString text)
 {
     if (Module *m = findModule(id)) {

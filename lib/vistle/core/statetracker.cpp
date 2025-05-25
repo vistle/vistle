@@ -441,6 +441,39 @@ void StateTracker::appendModulePorts(VistleState &state, const Module &mod) cons
     }
 }
 
+void StateTracker::appendModuleInfo(VistleState &state, const Module &mod) const
+{
+    for (const auto &it: mod.currentItemInfo) {
+        using namespace vistle::message;
+        const auto &key = it.first;
+        const auto &value = it.second;
+        if (value.empty())
+            continue;
+
+        ItemInfo info(key.type, key.port);
+        info.setSenderId(mod.id);
+        ItemInfo::Payload pl(value);
+        auto vec = addPayload(info, pl);
+        auto shvec = std::make_shared<buffer>(vec);
+        appendMessage(state, info, shvec);
+    }
+
+    for (const auto &it: mod.currentPortState) {
+        using namespace vistle::message;
+        const auto &key = it.first;
+        const auto &value = it.second;
+        if (value == message::ItemInfo::PortState::Enabled)
+            continue;
+
+        ItemInfo info(key.port, message::ItemInfo::PortState(value));
+        info.setSenderId(mod.id);
+        ItemInfo::Payload pl("");
+        auto vec = addPayload(info, pl);
+        auto shvec = std::make_shared<buffer>(vec);
+        appendMessage(state, info, shvec);
+    }
+}
+
 void StateTracker::appendModuleOutputConnections(VistleState &state, const Module &mod) const
 {
     using namespace vistle::message;
@@ -521,6 +554,7 @@ StateTracker::VistleState StateTracker::getState() const
         }
         appendModuleParameter(state, m);
         appendModulePorts(state, m);
+        appendModuleInfo(state, m);
     }
 
     // connections
@@ -1655,8 +1689,41 @@ bool StateTracker::handlePriv(const message::ItemInfo &info, const buffer &paylo
 {
     auto pl = message::getPayload<message::ItemInfo::Payload>(payload);
     mutex_locker guard(m_stateMutex);
+
+    auto it = runningMap.find(info.senderId());
+    if (it == runningMap.end())
+        return false;
+    auto &mod = it->second;
+    Module::InfoKey key(info.port(), info.infoType());
+    switch (info.infoType()) {
+    case message::ItemInfo::PortEnableState:
+        mod.currentPortState[key] = info.portEnableState();
+        break;
+    default:
+        mod.currentItemInfo[key] = pl.text;
+        break;
+    }
+
+
     for (StateObserver *o: m_observers) {
-        o->itemInfo(pl.text, info.infoType(), info.senderId(), info.port());
+        switch (info.infoType()) {
+        case message::ItemInfo::PortEnableState:
+            o->portState(info.portEnableState(), info.senderId(), info.port());
+            break;
+        default:
+            o->itemInfo(pl.text, info.infoType(), info.senderId(), info.port());
+            break;
+        }
+    }
+    for (StateObserver *o: m_observers) {
+        switch (info.infoType()) {
+        case message::ItemInfo::PortEnableState:
+            o->portState(info.portEnableState(), info.senderId(), info.port());
+            break;
+        default:
+            o->itemInfo(pl.text, info.infoType(), info.senderId(), info.port());
+            break;
+        }
     }
 
     return true;
@@ -2309,6 +2376,8 @@ void StateObserver::info(const std::string &text, message::SendText::TextType te
 {}
 void StateObserver::itemInfo(const std::string &text, message::ItemInfo::InfoType type, int senderId,
                              const std::string &port)
+{}
+void StateObserver::portState(vistle::message::ItemInfo::PortState state, int senderId, const std::string &port)
 {}
 void StateObserver::status(int id, const std::string &text, message::UpdateStatus::Importance importance)
 {}

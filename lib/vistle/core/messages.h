@@ -723,7 +723,12 @@ V_ENUM_OUTPUT_OP(TextType, SendText)
 class V_COREEXPORT ItemInfo: public MessageBase<ItemInfo, ITEMINFO> {
 public:
     DEFINE_ENUM_WITH_STRING_CONVERSIONS(
-        InfoType, (Unspecified)(Module)(Port)(PortType)(PortMapped)(PortGeometry)(PortMapping)(PortSpecies))
+        InfoType,
+        (Unspecified)(Module)(Port)(PortType)(PortMapped)(PortGeometry)(PortMapping)(PortSpecies)(PortEnableState))
+
+    // for PortEnableState
+    // Enabled = default = 0 has to remain first
+    DEFINE_ENUM_WITH_STRING_CONVERSIONS(PortState, (Enabled)(Disabled)(Optional))
 
     struct V_COREEXPORT Payload {
         Payload();
@@ -741,13 +746,17 @@ public:
 
     //! Error message in response to a Message
     explicit ItemInfo(InfoType type, const std::string port = std::string());
+    ItemInfo(const std::string &port, PortState state); //!< for PortEnableState
 
     InfoType infoType() const;
     const char *port() const;
+    PortState portEnableState() const; //!< for PortEnableState
 
 private:
     //! type of text
     InfoType m_infoType;
+    //! numeric flag for additional information, if required (e.g. PortState for PortEnableState)
+    int m_infoFlag;
     //! name of port, if any
     port_name_t m_port;
 };

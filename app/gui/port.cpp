@@ -27,6 +27,8 @@ double Port::portSize = 14.;
 static QColor InColor(200, 30, 30);
 static QColor OutColor(200, 30, 30);
 static QColor ParamColor(30, 30, 200);
+static QColor DisabledColor(150, 150, 150);
+static QColor OptionalColor(150, 150, 150);
 
 void Port::configure()
 {
@@ -329,6 +331,33 @@ void Port::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
     Base::mouseMoveEvent(event);
 }
 
+void Port::setInfo(int flag, int type)
+{
+    using namespace vistle::message;
+
+    assert(type == ItemInfo::PortEnableState);
+    switch (type) {
+    case ItemInfo::PortEnableState: {
+        switch (flag) {
+        case ItemInfo::Enabled:
+            m_enableState = Enabled;
+            m_color = m_portType == Input ? InColor : (m_portType == Output ? OutColor : ParamColor);
+            break;
+        case ItemInfo::Disabled:
+            assert(m_portType == Output);
+            m_color = DisabledColor;
+            break;
+        case ItemInfo::Optional:
+            assert(m_portType == Input);
+            m_color = OptionalColor;
+            break;
+        }
+        break;
+    }
+    }
+    update();
+}
+
 void Port::setInfo(QString text, int type)
 {
     using vistle::message::ItemInfo;
@@ -394,6 +423,7 @@ void Port::createGeometry()
     }
 
     setRect(0., 0., portSize, portSize);
+    update();
 }
 
 } //namespace gui
