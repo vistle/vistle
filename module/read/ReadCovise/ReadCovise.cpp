@@ -37,7 +37,7 @@ MODULE_MAIN(ReadCovise)
 
 namespace {
 const std::string extension(".covise");
-const std::string NONE("(none)");
+const std::string NONE = vistle::Reader::InvalidChoice;
 } // namespace
 
 using namespace vistle;
@@ -54,6 +54,7 @@ ReadCovise::ReadCovise(const std::string &name, int moduleID, mpi::communicator 
     m_fieldFile[0] = m_gridFile;
 #endif
     m_out[0] = createOutputPort("grid_out", "grid or geometry");
+    linkPortAndParameter(m_out[0], m_fieldFile[0]);
 
 #ifdef READ_DIRECTORY
     m_fieldFile[1] = addStringParameter("normals", "name of COVISE file for normals", NONE, Parameter::Choice);
@@ -74,6 +75,7 @@ ReadCovise::ReadCovise(const std::string &name, int moduleID, mpi::communicator 
         setParameterFilters(m_fieldFile[i], "COVISE Files (*.covise)");
 #endif
         m_out[i] = createOutputPort("field" + std::to_string(i - 2) + "_out", "data mapped to geometry");
+        linkPortAndParameter(m_out[i], m_fieldFile[i]);
     }
 
 #ifdef READ_DIRECTORY

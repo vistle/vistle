@@ -110,7 +110,7 @@ ReadMPAS::ReadMPAS(const std::string &name, int moduleID, mpi::communicator comm
 
     char s_var[50];
     std::vector<std::string> varChoices;
-    varChoices.push_back("(NONE)");
+    varChoices.push_back(vistle::Reader::InvalidChoice);
     for (int i = 0; i < NUMPARAMS; ++i) {
         sprintf(s_var, "Variable_%d", i);
         m_variables[i] = addStringParameter(s_var, s_var, "", Parameter::Choice);
@@ -118,6 +118,7 @@ ReadMPAS::ReadMPAS(const std::string &name, int moduleID, mpi::communicator comm
         setParameterChoices(m_variables[i], varChoices);
         sprintf(s_var, "data_out_%d", i);
         m_dataOut[i] = createOutputPort(s_var, "scalar data");
+        linkPortAndParameter(m_dataOut[i], m_variables[i]);
     }
 
     m_velocityOut = createOutputPort("velocity", "composed cartesian velocity");

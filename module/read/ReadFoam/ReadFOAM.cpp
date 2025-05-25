@@ -44,6 +44,8 @@ namespace mpi = boost::mpi;
 
 using namespace vistle;
 
+static const std::string Invalid = Reader::InvalidChoice;
+
 ReadFOAM::ReadFOAM(const std::string &name, int moduleId, mpi::communicator comm)
 : Reader(name, moduleId, comm), m_boundOut(nullptr)
 {
@@ -74,12 +76,14 @@ ReadFOAM::ReadFOAM(const std::string &name, int moduleId, mpi::communicator comm
         { // Date Choice Parameters
             std::stringstream s;
             s << "Data" << i;
-            auto p = addStringParameter(s.str(), "name of field", "(NONE)", Parameter::Choice);
+            auto p = addStringParameter(s.str(), "name of field", Invalid, Parameter::Choice);
             std::vector<std::string> choices;
-            choices.push_back("(NONE)");
+            choices.push_back(Invalid);
             setParameterChoices(p, choices);
             m_fieldOut.push_back(p);
         }
+
+        linkPortAndParameter(m_volumeDataOut[i], m_fieldOut[i]);
     }
     m_readBoundary = addIntParameter("read_boundary", "load the boundary?", 1, Parameter::Boolean);
     m_boundaryPatchesAsVariants = addIntParameter(
@@ -94,12 +98,13 @@ ReadFOAM::ReadFOAM(const std::string &name, int moduleId, mpi::communicator comm
         { // 2d Data Choice Parameters
             std::stringstream s;
             s << "Data2d" << i;
-            auto p = addStringParameter(s.str(), "name of field", "(NONE)", Parameter::Choice);
+            auto p = addStringParameter(s.str(), "name of field", Invalid, Parameter::Choice);
             std::vector<std::string> choices;
-            choices.push_back("(NONE)");
+            choices.push_back(Invalid);
             setParameterChoices(p, choices);
             m_boundaryOut.push_back(p);
         }
+        linkPortAndParameter(m_boundaryDataOut[i], m_boundaryOut[i]);
     }
     m_buildGhostcellsParam = addIntParameter("build_ghostcells", "whether to build ghost cells", 1, Parameter::Boolean);
     m_buildGhost = m_buildGhostcellsParam->getValue();
@@ -118,7 +123,7 @@ ReadFOAM::~ReadFOAM() //Destructor
 std::vector<std::string> ReadFOAM::getFieldList() const
 {
     std::vector<std::string> choices;
-    choices.push_back("(NONE)");
+    choices.push_back(Invalid);
 
     if (m_case.valid) {
         for (auto &field: m_case.constantFields)

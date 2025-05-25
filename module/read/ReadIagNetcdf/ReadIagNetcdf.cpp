@@ -85,11 +85,13 @@ ReadIagNetcdf::ReadIagNetcdf(const std::string &name, int moduleID, mpi::communi
     m_dataFile = addStringParameter("data_file", "File containing data", "", Parameter::ExistingFilename);
 
     m_gridOut = createOutputPort("grid_out", "grid");
-    std::vector<std::string> varChoices{"(NONE)"};
+    linkPortAndParameter(m_gridOut, m_ncFile);
+    std::vector<std::string> varChoices{Reader::InvalidChoice};
     for (unsigned i = 0; i < NUMPORTS; ++i) {
         m_variables[i] = addStringParameter("Variable" + std::to_string(i), "Scalar Variables", "", Parameter::Choice);
         setParameterChoices(m_variables[i], varChoices);
         m_dataOut[i] = createOutputPort("data_out" + std::to_string(i), "volume data");
+        linkPortAndParameter(m_dataOut[i], m_variables[i]);
     }
 
     m_boundaryOut = createOutputPort("boundary_out", "boundary with patch markers");
@@ -97,8 +99,9 @@ ReadIagNetcdf::ReadIagNetcdf(const std::string &name, int moduleID, mpi::communi
     for (unsigned i = 0; i < NUMPORTS; ++i) {
         m_bvariables[i] =
             addStringParameter("boundary_variable" + std::to_string(i), "Variable on boundary", "", Parameter::Choice);
-        setParameterChoices(m_variables[i], varChoices);
+        setParameterChoices(m_bvariables[i], varChoices);
         m_boundaryDataOut[i] = createOutputPort("boundary_out" + std::to_string(i), "boundary data");
+        linkPortAndParameter(m_boundaryDataOut[i], m_bvariables[i]);
     }
 
     observeParameter(m_ncFile);
@@ -233,7 +236,7 @@ bool ReadIagNetcdf::examine(const vistle::Parameter *param)
             return false;
     }
 
-    std::vector<std::string> choices{"(NONE)"};
+    std::vector<std::string> choices{Reader::InvalidChoice};
     std::copy(m_dataVariables.begin(), m_dataVariables.end(), std::back_inserter(choices));
     //std::copy(m_gridVariables.begin(), m_gridVariables.end(), std::back_inserter(choices));
     for (unsigned i = 0; i < NUMPORTS; i++) {
@@ -295,9 +298,8 @@ bool ReadIagNetcdf::examine(const vistle::Parameter *param)
 
 bool ReadIagNetcdf::emptyValue(vistle::StringParameter *ch) const
 {
-    std::string name = "";
-    name = ch->getValue();
-    return ((name == "") || (name == "NONE") || (name == "(NONE)"));
+    auto name = ch->getValue();
+    return name.empty() || name == Reader::InvalidChoice;
 }
 
 bool ReadIagNetcdf::prepareRead()

@@ -55,7 +55,7 @@ using vistle::Reader;
 using vistle::DataBase;
 using vistle::Parameter;
 
-const std::string Invalid("(NONE)");
+const std::string Invalid = Reader::InvalidChoice;
 
 bool isCollectionFile(const std::string &fn)
 {
@@ -349,11 +349,12 @@ void ReadVtk::setChoices(const VtkFile &fileinfo)
 
 ReadVtk::ReadVtk(const std::string &name, int moduleID, mpi::communicator comm): Reader(name, moduleID, comm)
 {
-    createOutputPort("grid_out", "grid or geometry");
+    auto gout = createOutputPort("grid_out", "grid or geometry");
     m_filename = addStringParameter("filename", "name of VTK file", "", Parameter::ExistingFilename);
     setParameterFilters(m_filename, "PVD Files (*.pvd)/XML VTK Files (*.vti *.vtp *.vtr *.vts *.vtu)/Parallel XML VTK "
                                     "Files(*.pvti *.pvtp *.pvtr *.pvts *.pvtu)/Legacy VTK Files "
                                     "(*.vtk)/XML VTK Multiblock Data (*.vtm)");
+    linkPortAndParameter(gout, m_filename);
     m_readPieces = addIntParameter("read_pieces", "create block for every piece in an unstructured grid", false,
                                    Parameter::Boolean);
     m_ghostCells = addIntParameter("create_ghost_cells", "create ghost cells for multi-piece unstructured grids", true,
@@ -367,6 +368,8 @@ ReadVtk::ReadVtk(const std::string &name, int moduleID, mpi::communicator comm):
         std::stringstream sport;
         sport << "point_data" << i;
         m_pointPort[i] = createOutputPort(sport.str(), "vertex data");
+
+        linkPortAndParameter(m_pointPort[i], m_pointDataChoice[i]);
     }
     for (int i = 0; i < NumPorts; ++i) {
         std::stringstream spara;
@@ -376,6 +379,8 @@ ReadVtk::ReadVtk(const std::string &name, int moduleID, mpi::communicator comm):
         std::stringstream sport;
         sport << "cell_data" << i;
         m_cellPort[i] = createOutputPort(sport.str(), "cell data");
+
+        linkPortAndParameter(m_cellPort[i], m_cellDataChoice[i]);
     }
 
     setParallelizationMode(ParallelizeTimeAndBlocks);

@@ -387,6 +387,7 @@ ReadItlrBin::ReadItlrBin(const std::string &name, int moduleID, mpi::communicato
 
     for (int i = 0; i < NumPorts; ++i) {
         m_dataOut[i] = createOutputPort("data" + std::to_string(i), "data output");
+        linkPortAndParameter(m_dataOut[i], m_filename[i]);
     }
 
     setParallelizationMode(ParallelizeBlocks);

@@ -53,7 +53,7 @@ ReadWRFChem::ReadWRFChem(const std::string &name, int moduleID, mpi::communicato
     m_gridZ = addStringParameter("GridZ", "grid Bottom-Top axis", "", Parameter::Choice);
 
     std::vector<std::string> varChoices;
-    varChoices.push_back("(NONE)");
+    varChoices.push_back(Reader::InvalidChoice);
 
     for (Index i = 0; i < NUMPARAMS - 3; ++i) {
         std::stringstream s_var;
@@ -65,19 +65,25 @@ ReadWRFChem::ReadWRFChem(const std::string &name, int moduleID, mpi::communicato
         s_var.str("");
         s_var << "data_out" << i;
         m_dataOut[i] = createOutputPort(s_var.str(), "scalar data");
+        linkPortAndParameter(m_dataOut[i], m_variables[i]);
     }
     m_variables[NUMPARAMS - 3] = addStringParameter("U", "U", "", Parameter::Choice);
     setParameterChoices(m_variables[NUMPARAMS - 3], varChoices);
     observeParameter(m_variables[NUMPARAMS - 3]);
     m_dataOut[NUMPARAMS - 3] = createOutputPort("data_out_U", "scalar data");
+    linkPortAndParameter(m_dataOut[NUMPARAMS - 3], m_variables[NUMPARAMS - 3]);
+
     m_variables[NUMPARAMS - 2] = addStringParameter("V", "V", "", Parameter::Choice);
     setParameterChoices(m_variables[NUMPARAMS - 2], varChoices);
     observeParameter(m_variables[NUMPARAMS - 2]);
     m_dataOut[NUMPARAMS - 2] = createOutputPort("data_out_V", "scalar data");
+    linkPortAndParameter(m_dataOut[NUMPARAMS - 2], m_variables[NUMPARAMS - 2]);
+
     m_variables[NUMPARAMS - 1] = addStringParameter("W", "W", "", Parameter::Choice);
     setParameterChoices(m_variables[NUMPARAMS - 1], varChoices);
     observeParameter(m_variables[NUMPARAMS - 1]);
     m_dataOut[NUMPARAMS - 1] = createOutputPort("data_out_W", "scalar data");
+    linkPortAndParameter(m_dataOut[NUMPARAMS - 1], m_variables[NUMPARAMS - 1]);
 
     setParameterChoices(m_gridLat, varChoices);
     setParameterChoices(m_gridLon, varChoices);
@@ -169,7 +175,7 @@ bool ReadWRFChem::prepareRead()
             NcToken refDim[4]={"","","",""};
 
             name = m_variables[vi]->getValue();
-            if ((name != "") && (name != "NONE")) {
+            if (!name.empty() && name != Reader::InvalidChoice) {
                 NcVar* var = ncFirstFile->get_var(name.c_str());
                 nDim = var->num_dims();
                 if (strcmp(refDim[0],"")!=0) {
@@ -253,8 +259,8 @@ bool ReadWRFChem::examine(const vistle::Parameter *param)
                 }
             }
 
-            AxisChoices.insert(AxisChoices.begin(), "NONE");
-            Axis2dChoices.insert(Axis2dChoices.begin(), "NONE");
+            AxisChoices.insert(AxisChoices.begin(), Reader::InvalidChoice);
+            Axis2dChoices.insert(Axis2dChoices.begin(), Reader::InvalidChoice);
 
             if (strcmp(m_varDim->getValue().c_str(), varDimList[1].c_str()) == 0) { //3D
                 sendInfo("Variable dimension: 3D");
@@ -303,7 +309,7 @@ bool ReadWRFChem::emptyValue(vistle::StringParameter *ch) const
 {
     std::string name = "";
     name = ch->getValue();
-    if ((name == "") || (name == "NONE"))
+    if (name.empty() || name == Reader::InvalidChoice)
         return true;
     else
         return false;
@@ -565,7 +571,7 @@ bool ReadWRFChem::read(Token &token, int timestep, int block)
         for (Index vi = 0; vi < NUMPARAMS; vi++) {
             std::string name = "";
             name = m_variables[vi]->getValue();
-            if ((name != "") && (name != "NONE")) {
+            if (!name.empty() && name != Reader::InvalidChoice) {
                 var = ncFirstFile->getVar(name);
                 if (var.getDimCount() > numdims) {
                     numdims = var.getDimCount();
