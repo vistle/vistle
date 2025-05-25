@@ -131,7 +131,7 @@ public:
     const StateTracker &state() const;
     StateTracker &state();
     virtual void eventLoop(); // called from MODULE_MAIN
-    void initDone(); // to be called from eventLoop after module ctor has run
+    virtual void initDone(); // to be called from eventLoop after module ctor has run
 
     config::Access *configAccess() const;
     config::File *config() const;
