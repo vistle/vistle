@@ -1576,6 +1576,10 @@ ItemInfo::ItemInfo(ItemInfo::InfoType type, const std::string port): m_infoType(
 {
     COPY_STRING(m_port, port);
 }
+ItemInfo::ItemInfo(const std::string &port, PortState state): m_infoType(ItemInfo::PortEnableState), m_infoFlag(state)
+{
+    COPY_STRING(m_port, port);
+}
 
 ItemInfo::InfoType ItemInfo::infoType() const
 {
@@ -1585,6 +1589,12 @@ ItemInfo::InfoType ItemInfo::infoType() const
 const char *ItemInfo::port() const
 {
     return m_port.data();
+}
+
+ItemInfo::PortState ItemInfo::portEnableState() const
+{
+    assert(m_infoType == ItemInfo::PortEnableState);
+    return ItemInfo::PortState(m_infoFlag);
 }
 
 ItemInfo::Payload::Payload() = default;
@@ -2146,6 +2156,9 @@ std::ostream &operator<<(std::ostream &s, const Message &m)
         auto &mm = static_cast<const ItemInfo &>(m);
         s << ", type: " << mm.infoType();
         s << ", port: " << mm.port();
+        if (mm.infoType() == ItemInfo::PortEnableState) {
+            s << ", state: " << ItemInfo::toString(mm.portEnableState());
+        }
         break;
     }
     case UPDATESTATUS: {

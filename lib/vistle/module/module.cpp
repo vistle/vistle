@@ -906,6 +906,24 @@ void Module::setItemInfo(const std::string &text, const std::string &port, messa
     }
 }
 
+bool Module::setPortState(const Port *port, message::ItemInfo::PortState state)
+{
+    using message::ItemInfo;
+    assert(port);
+    if (rank() != 0)
+        return true;
+
+    InfoKey key(port->getName(), ItemInfo::PortEnableState);
+    auto &old = m_currentPortState[key];
+    if (old != state) {
+        ItemInfo info(port->getName(), state);
+        ItemInfo::Payload pl("");
+        sendMessageWithPayload(info, pl);
+        old = state;
+    }
+    return true;
+}
+
 bool Module::addObject(const std::string &portName, vistle::Object::const_ptr object)
 {
     auto *p = findOutputPort(portName);

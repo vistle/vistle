@@ -64,6 +64,7 @@ public:
                       message::Type refType, const message::uuid_t &refUuid);
     virtual void itemInfo(const std::string &text, message::ItemInfo::InfoType type, int senderId,
                           const std::string &port);
+    virtual void portState(vistle::message::ItemInfo::PortState state, int senderId, const std::string &port);
     //! a module sends a status update
     virtual void status(int id, const std::string &text, message::UpdateStatus::Importance importance);
     //! the overall status has changed
@@ -247,6 +248,22 @@ protected:
         message::SchedulingPolicy::Schedule schedulingPolicy;
         message::ReducePolicy::Reduce reducePolicy;
 
+        struct InfoKey {
+            InfoKey(const std::string &port, message::ItemInfo::InfoType type = message::ItemInfo::Unspecified)
+            : port(port), type(type)
+            {}
+            std::string port;
+            message::ItemInfo::InfoType type = message::ItemInfo::Unspecified;
+            bool operator<(const InfoKey &other) const
+            {
+                if (port != other.port)
+                    return port < other.port;
+                return type < other.type;
+            }
+        };
+        std::map<InfoKey, std::string> currentItemInfo;
+        std::map<InfoKey, int> currentPortState;
+
         int state() const;
         bool isSink() const { return height == 0; }
         bool isExecuting() const { return executing; }
@@ -276,6 +293,7 @@ protected:
     void appendModuleState(VistleState &state, const Module &mod) const;
     void appendModuleParameter(VistleState &state, const Module &mod) const;
     void appendModulePorts(VistleState &state, const Module &mod) const;
+    void appendModuleInfo(VistleState &state, const Module &mod) const;
     void appendModuleOutputConnections(VistleState &state, const Module &mod) const;
 
 

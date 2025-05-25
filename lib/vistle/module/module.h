@@ -158,6 +158,7 @@ public:
     Port *createOutputPort(const std::string &name, const std::string &description, const int flags = 0);
     bool destroyPort(const std::string &portName);
     bool destroyPort(const Port *port);
+    bool setPortState(const Port *port, message::ItemInfo::PortState state);
 
     bool sendObject(const mpi::communicator &comm, vistle::Object::const_ptr object, int destRank) const;
     bool sendObject(vistle::Object::const_ptr object, int destRank) const;
@@ -411,6 +412,7 @@ private:
         }
     };
     std::map<InfoKey, std::string> m_currentItemInfo;
+    std::map<InfoKey, message::ItemInfo::PortState> m_currentPortState;
     std::string m_inputSpecies;
     int m_inputSpeciesPort = -1;
 
