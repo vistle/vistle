@@ -159,6 +159,9 @@ public:
     bool destroyPort(const std::string &portName);
     bool destroyPort(const Port *port);
     bool setPortState(const Port *port, message::ItemInfo::PortState state);
+    bool linkPorts(const Port *input, const Port *output); //< make output depend on input
+    void setPortOptional(const Port *port,
+                         bool optional = true); //< set port as optional, i.e. module can run without it being connected
 
     bool sendObject(const mpi::communicator &comm, vistle::Object::const_ptr object, int destRank) const;
     bool sendObject(vistle::Object::const_ptr object, int destRank) const;
@@ -415,6 +418,9 @@ private:
     std::map<InfoKey, message::ItemInfo::PortState> m_currentPortState;
     std::string m_inputSpecies;
     int m_inputSpeciesPort = -1;
+    std::map<const Port *, std::set<const Port *>> m_inPortDependents, m_outPortDependencies;
+    bool updateLinkedPorts(const Port *port);
+    std::map<const Port *, message::ItemInfo::PortState> m_portState;
 
 #ifdef NDEBUG
     int m_validateObjects = 0; // Disable
