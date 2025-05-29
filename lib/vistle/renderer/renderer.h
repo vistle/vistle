@@ -10,7 +10,11 @@ namespace vistle {
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(RenderMode, (LocalOnly)(MasterOnly)(AllRanks)(LocalShmLeader)(AllShmLeaders))
 
+class RhrController;
+
 class V_RENDEREREXPORT Renderer: public Module {
+    friend class RhrController;
+
 public:
     Renderer(const std::string &name, const int moduleID, mpi::communicator comm);
     virtual ~Renderer();
@@ -74,6 +78,7 @@ protected:
 
     bool m_maySleep = true;
     bool m_replayFinished = false;
+    vistle::Port *m_dataIn = nullptr;
 
 private:
     virtual bool render();

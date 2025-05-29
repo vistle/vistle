@@ -26,7 +26,7 @@ Renderer::Renderer(const std::string &name, const int moduleID, mpi::communicato
 {
     setSchedulingPolicy(message::SchedulingPolicy::Ignore); // compute does not have to be called at all
     setReducePolicy(message::ReducePolicy::Never); // because of COMBINE port
-    createInputPort("data_in", "input data", Port::COMBINE);
+    m_dataIn = createInputPort("data_in", "input data", Port::COMBINE);
 
     m_renderMode = addIntParameter("render_mode", "Render on which nodes?", LocalOnly, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_renderMode, RenderMode);

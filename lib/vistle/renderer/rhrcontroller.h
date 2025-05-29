@@ -10,7 +10,7 @@ namespace vistle {
 
 class V_RENDEREREXPORT RhrController {
 public:
-    RhrController(vistle::Module *module, int displayRank);
+    RhrController(vistle::Renderer *module, int displayRank);
     bool handleParam(const vistle::Parameter *p);
     Port *outputPort() const;
 
@@ -47,7 +47,7 @@ private:
     bool sendConfigObject() const;
     std::string tunnelId() const;
 
-    vistle::Module *m_module;
+    vistle::Renderer *m_module;
     Port *m_imageOutPort;
     int m_displayRank;
 
