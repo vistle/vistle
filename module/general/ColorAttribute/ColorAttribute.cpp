@@ -23,7 +23,7 @@ ColorAttribute::ColorAttribute(const std::string &name, int moduleID, mpi::commu
 {
     Port *din = createInputPort("data_in", "input data", Port::MULTI);
     Port *dout = createOutputPort("data_out", "output data", Port::MULTI);
-    din->link(dout);
+    linkPorts(din, dout);
 
     p_color = addStringParameter("color", "hexadecimal RGB/RGBA values (#rrggbb or #rrggbbaa)", "#ff00ff");
 

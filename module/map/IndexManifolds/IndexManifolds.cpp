@@ -24,6 +24,9 @@ IndexManifolds::IndexManifolds(const std::string &name, int moduleID, mpi::commu
     p_surface_out = createOutputPort("surface_out0", "2D slice of input");
     p_line_out = createOutputPort("line_out0", "1D line of input");
     p_point_out = createOutputPort("point_out0", "0D point of input");
+    linkPorts(p_data_in, p_surface_out);
+    linkPorts(p_data_in, p_line_out);
+    linkPorts(p_data_in, p_point_out);
 
     p_coord = addIntVectorParameter("coord", "coordinates of point on surface/line", IntParamVector(0, 0, 0));
     setParameterMinimum(p_coord, IntParamVector(0, 0, 0));

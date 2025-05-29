@@ -32,7 +32,7 @@ AddAttribute::AddAttribute(const std::string &name, int moduleID, mpi::communica
 {
     Port *din = createInputPort("data_in", "input data", Port::MULTI);
     Port *dout = createOutputPort("data_out", "output data", Port::MULTI);
-    din->link(dout);
+    linkPorts(din, dout);
 
     {
         using namespace vistle::attribute;

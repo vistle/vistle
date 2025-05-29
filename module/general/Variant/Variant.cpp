@@ -32,7 +32,7 @@ Variant::Variant(const std::string &name, int moduleID, mpi::communicator comm):
 {
     Port *din = createInputPort("data_in", "input data", Port::MULTI);
     Port *dout = createOutputPort("data_out", "output data", Port::MULTI);
-    din->link(dout);
+    linkPorts(din, dout);
 
     p_variant = addStringParameter("variant", "variant name", "NULL");
     p_visible = addIntParameter("visibility_default", "control visibility default", Visible, Parameter::Choice);

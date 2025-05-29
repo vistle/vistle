@@ -33,8 +33,9 @@ ToUnstructured::ToUnstructured(const std::string &name, int moduleID, mpi::commu
 : Module(name, moduleID, comm)
 {
     // create ports
-    createInputPort("data_in", "(data on) structured, rectilinear, or uniform grid");
-    createOutputPort("data_out", "(data on) equivalent unstructured grid");
+    auto pin = createInputPort("data_in", "(data on) structured, rectilinear, or uniform grid");
+    auto pout = createOutputPort("data_out", "(data on) equivalent unstructured grid");
+    linkPorts(pin, pout);
 
     // add module parameters
     //none

@@ -158,9 +158,12 @@ Threshold::Threshold(const std::string &name, int moduleID, mpi::communicator co
     p_in[0] = createInputPort("threshold_in", "scalar data deciding over elements rejection");
     p_out[0] = createOutputPort("threshold_out", "threshold input filtered to remaining elements");
 #endif
+    linkPorts(p_in[0], p_out[0]);
     for (unsigned i = 1; i < NUMPORTS; ++i) {
         p_in[i] = createInputPort("data_in" + std::to_string(i), "additional input data");
         p_out[i] = createOutputPort("data_out" + std::to_string(i), "additional output data");
+        linkPorts(p_in[i], p_out[i]);
+        setPortOptional(p_in[i], true);
     }
 
     p_reuse = addIntParameter("reuse_coordinates",

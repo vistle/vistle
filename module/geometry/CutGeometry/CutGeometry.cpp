@@ -20,8 +20,9 @@ CutGeometry::CutGeometry(const std::string &name, int moduleID, mpi::communicato
 {
     isocontrol.init();
 
-    createInputPort("grid_in", "bare input grid without mapped data");
-    createOutputPort("grid_out", "clipped grid");
+    auto pin = createInputPort("grid_in", "bare input grid without mapped data");
+    auto pout = createOutputPort("grid_out", "clipped grid");
+    linkPorts(pin, pout);
 }
 
 CutGeometry::~CutGeometry()

@@ -25,6 +25,10 @@ SplitPolyhedra::SplitPolyhedra(const std::string &name, int moduleID, mpi::commu
         m_inPorts[i] = createInputPort("data_in" + std::to_string(i), "(data on) unstructured grid");
         m_outPorts[i] =
             createOutputPort("data_out" + std::to_string(i), "(data on) unstructured grid with simplified cells");
+        linkPorts(m_inPorts[i], m_outPorts[i]);
+        if (i > 0) {
+            setPortOptional(m_inPorts[i], true);
+        }
     }
     m_mode = addIntParameter("mode", "how to handle polyhedral and simple cells", SplitToTetrahedra, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_mode, Mode);

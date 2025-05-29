@@ -371,8 +371,9 @@ Object::ptr DelaunayTriangulator::calculateGrid(Points::const_ptr points,
 DelaunayTriangulator::DelaunayTriangulator(const std::string &name, int moduleID, mpi::communicator comm)
 : Module(name, moduleID, comm)
 {
-    createInputPort("points_in", "unconnected points");
-    createOutputPort("grid_out", "grid or data with grid");
+    auto pin = createInputPort("points_in", "unconnected points");
+    auto pout = createOutputPort("grid_out", "grid or data with grid");
+    linkPorts(pin, pout);
     m_methodChoice = addIntParameter("method", "algorithm to perform on input vertices", ConvexHull, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_methodChoice, Method);
 }

@@ -16,8 +16,9 @@ using namespace vistle;
 
 ToPoints::ToPoints(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
-    createInputPort("grid_in", "grid or geometry");
-    createOutputPort("grid_out", "unconnected points");
+    auto pin = createInputPort("grid_in", "grid or geometry");
+    auto pout = createOutputPort("grid_out", "unconnected points");
+    linkPorts(pin, pout);
 
     m_allCoordinates =
         addIntParameter("all_coordinates", "include all or only referenced coordinates", false, Parameter::Boolean);

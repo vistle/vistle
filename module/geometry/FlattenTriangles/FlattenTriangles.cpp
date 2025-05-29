@@ -19,8 +19,9 @@ using namespace vistle;
 FlattenTriangles::FlattenTriangles(const std::string &name, int moduleID, mpi::communicator comm)
 : Module(name, moduleID, comm)
 {
-    createInputPort("grid_in", "triangles with mapped data");
-    createOutputPort("grid_out", "triangles with resolved indices");
+    auto *gin = createInputPort("grid_in", "triangles with mapped data");
+    auto *gout = createOutputPort("grid_out", "triangles with resolved indices");
+    linkPorts(gin, gout);
 }
 
 FlattenTriangles::~FlattenTriangles()

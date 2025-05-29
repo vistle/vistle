@@ -24,8 +24,9 @@ using namespace vistle;
 
 ToTriangles::ToTriangles(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
-    createInputPort("grid_in", "geometry, e.g. tubes, spheres, polygons");
-    createOutputPort("grid_out", "converted to or approximated by triangles");
+    auto pin = createInputPort("grid_in", "geometry, e.g. tubes, spheres, polygons");
+    auto pout = createOutputPort("grid_out", "converted to or approximated by triangles");
+    linkPorts(pin, pout);
 
     p_transformSpheres =
         addIntParameter("transform_spheres", "also generate triangles for sphere impostors", false, Parameter::Boolean);
