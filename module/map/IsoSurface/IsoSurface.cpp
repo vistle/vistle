@@ -52,8 +52,10 @@ IsoSurface::IsoSurface(const std::string &name, int moduleID, mpi::communicator 
 {
     isocontrol.init();
 
+    m_dataOut[0] = createOutputPort("data_out", "surface with mapped data");
 #ifdef CUTTINGSURFACE
     m_mapDataIn = createInputPort("data_in", "input grid or geometry with mapped data");
+    linkPorts(m_mapDataIn, m_dataOut[0]);
 #else
 #ifdef ISOHEIGHTSURFACE
     m_isovalue = addFloatParameter("iso_height", "height above ground", 0.0);
@@ -64,13 +66,16 @@ IsoSurface::IsoSurface(const std::string &name, int moduleID, mpi::communicator 
     V_ENUM_SET_CHOICES(m_pointOrValue, PointOrValue);
 #endif
     setReducePolicy(message::ReducePolicy::OverAll);
-    createInputPort("data_in", "input grid or geometry with scalar data");
+    m_dataIn[0] = createInputPort("data_in", "input grid or geometry with scalar data");
+    linkPorts(m_dataIn[0], m_dataOut[0]);
     m_mapDataIn = createInputPort("mapdata_in", "additional mapped field");
 #endif
-    m_dataOut[0] = createOutputPort("data_out", "surface with mapped data");
+
     for (int i = 1; i < NumPorts; ++i) {
         m_dataIn[i] = createInputPort("data_in" + std::to_string(i), "input data");
         m_dataOut[i] = createOutputPort("data_out" + std::to_string(i), "output data");
+        linkPorts(m_dataIn[i], m_dataOut[i]);
+        setPortOptional(m_dataIn[i], true);
     }
 
     m_computeNormals =

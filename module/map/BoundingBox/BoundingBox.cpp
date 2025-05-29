@@ -118,13 +118,13 @@ Extrema::Extrema(const std::string &name, int moduleID, mpi::communicator comm):
 #ifdef BOUNDINGBOX
     Port *gin = createInputPort("grid_in", "input data", Port::MULTI);
     Port *gout = createOutputPort("grid_out", "bounding box", Port::MULTI);
-    gin->link(gout);
+    linkPorts(gin, gout);
 
     addIntParameter("per_block", "create bounding box for each block individually", false, Parameter::Boolean);
 #else
     Port *din = createInputPort("data_in", "input data", Port::MULTI);
     Port *dout = createOutputPort("data_out", "output data", Port::MULTI);
-    din->link(dout);
+    linkPorts(din, dout);
 #endif
 
     addVectorParameter("min", "output parameter: minimum",

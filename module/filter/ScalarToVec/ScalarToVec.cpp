@@ -13,10 +13,11 @@ using namespace vistle;
 
 ScalarToVec::ScalarToVec(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
+    m_vecOut = createOutputPort("data_out", "combined vector output");
     for (int i = 0; i < NumScalars; ++i) {
         m_scalarIn[i] = createInputPort("data_in" + std::to_string(i), "scalar input to be combined");
+        linkPorts(m_scalarIn[i], m_vecOut);
     }
-    m_vecOut = createOutputPort("data_out", "combined vector output");
     m_species = addStringParameter("species", "Species for output", "");
 }
 

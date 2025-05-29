@@ -26,9 +26,11 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(Algorithm, (IterateOverFaces)(IterateOverVer
 DomainSurface::DomainSurface(const std::string &name, int moduleID, mpi::communicator comm)
 : Module(name, moduleID, comm)
 {
-    createInputPort("data_in", "geometry or mapped data");
-    createOutputPort("data_out", "domain boundary with mapped data");
-    createOutputPort("lines_out", "outline/edges of domain boundary");
+    auto pin = createInputPort("data_in", "geometry or mapped data");
+    auto pout0 = createOutputPort("data_out", "domain boundary with mapped data");
+    auto pout1 = createOutputPort("lines_out", "outline/edges of domain boundary");
+    linkPorts(pin, pout0);
+    linkPorts(pin, pout1);
 
     addIntParameter("ghost", "Show ghostcells", 0, Parameter::Boolean);
     addIntParameter("tetrahedron", "Show tetrahedron", 1, Parameter::Boolean);

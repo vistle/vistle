@@ -22,6 +22,9 @@ SplitDimensions::SplitDimensions(const std::string &name, int moduleID, mpi::com
     p_out[2] = createOutputPort("data_out_2d", "2-dimensional elements of input (triangles and quads)");
     p_out[1] = createOutputPort("data_out_1d", "1-dimensional elements of input (bars)");
     p_out[0] = createOutputPort("data_out_0d", "3-dimensional elements of input (points)");
+    for (int i = 0; i < 4; ++i) {
+        linkPorts(p_in, p_out[i]);
+    }
 
     p_reuse = addIntParameter("reuse_coordinates", "do not renumber vertices and reuse coordinate and data arrays",
                               false, Parameter::Boolean);

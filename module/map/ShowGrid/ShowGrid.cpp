@@ -21,8 +21,9 @@ using namespace vistle;
 
 ShowGrid::ShowGrid(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
-    createInputPort("grid_in", "grid or data mapped to grid");
-    createOutputPort("grid_out", "edges of grid cells");
+    auto pin = createInputPort("grid_in", "grid or data mapped to grid");
+    auto pout = createOutputPort("grid_out", "edges of grid cells");
+    linkPorts(pin, pout);
 
     m_cells = addStringParameter("cells", "show cells with these indices", "all", Parameter::Restraint);
     m_cellScale = addFloatParameter("cell_scale", "factor for scaling cells around their center", 1.);

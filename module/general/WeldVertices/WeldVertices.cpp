@@ -28,6 +28,9 @@ WeldVertices::WeldVertices(const std::string &name, int moduleID, mpi::communica
     for (int i = 0; i < NumPorts; ++i) {
         m_in[i] = createInputPort("data_in" + std::to_string(i), "input data");
         m_out[i] = createOutputPort("data_out" + std::to_string(i), "indexed data");
+        linkPorts(m_in[i], m_out[i]);
+        if (i > 0)
+            setPortOptional(m_in[i], true);
     }
 }
 

@@ -35,6 +35,7 @@ Transform::Transform(const std::string &name, int moduleID, mpi::communicator co
 {
     data_in = createInputPort("data_in", "input data");
     data_out = createOutputPort("data_out", "output data");
+    linkPorts(data_in, data_out);
 
     p_rotation_axis_angle =
         addVectorParameter("rotation_axis_angle", "axis and angle of rotation", ParamVector(1., 0., 0., 0.));

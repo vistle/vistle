@@ -23,6 +23,10 @@ VtkmModule::VtkmModule(const std::string &name, int moduleID, mpi::communicator 
         }
         m_inputPorts.push_back(createInputPort(in, dataInput ? "input grid with mapped data" : "input grid"));
         m_outputPorts.push_back(createOutputPort(out, dataOutput ? "output grid with mapped data" : "output grid"));
+        linkPorts(m_inputPorts[i], m_outputPorts[i]);
+        if (i > 0) {
+            setPortOptional(m_inputPorts[i], true);
+        }
     }
 
     m_printObjectInfo = addIntParameter("_print_object_info", "print object info", false, Parameter::Boolean);

@@ -27,6 +27,10 @@ CellToVert::CellToVert(const std::string &name, int moduleID, mpi::communicator 
         }
         m_data_in.push_back(createInputPort(in, "input data"));
         m_data_out.push_back(createOutputPort(out, "converted data"));
+        linkPorts(m_data_in[i], m_data_out[i]);
+        if (i > 0) {
+            setPortOptional(m_data_in[i], true);
+        }
     }
 }
 
