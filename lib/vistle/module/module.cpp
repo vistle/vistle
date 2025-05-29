@@ -354,6 +354,13 @@ void Module::initDone()
     sendMessage(start);
 
     ParameterManager::init();
+
+    for (auto &p: inputPorts) {
+        updateLinkedPorts(&p.second);
+    }
+    for (auto &p: outputPorts) {
+        updateLinkedPorts(&p.second);
+    }
 }
 
 const std::string &Module::name() const
@@ -1624,7 +1631,9 @@ bool Module::handleMessage(const vistle::message::Message *message, const Messag
             if (!findParameter(ownPortName))
                 CERR << " did not find port " << ownPortName << std::endl;
         }
-        if (!added) {
+        if (added) {
+            updateLinkedPorts(port);
+        } else {
             delete other;
         }
         break;
@@ -1662,6 +1671,8 @@ bool Module::handleMessage(const vistle::message::Message *message, const Messag
             const Port *p = port->removeConnection(*other);
             delete other;
             delete p;
+
+            updateLinkedPorts(port);
         }
         break;
     }
@@ -2304,6 +2315,102 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
 #endif
 
     return ret;
+}
+
+bool Module::linkPorts(const Port *input, const Port *output)
+{
+    assert(input->getType() == Port::INPUT);
+    assert(output->getType() == Port::OUTPUT);
+
+    m_inPortDependents[input].insert(output);
+    m_outPortDependencies[output].insert(input);
+
+    return true;
+}
+
+void Module::setPortOptional(const Port *port, bool optional)
+{
+    assert(port);
+    if (!port)
+        return;
+    assert(port->getType() == Port::INPUT);
+    if (port->getType() != Port::INPUT)
+        return;
+
+    if (optional) {
+        m_portState[port] = message::ItemInfo::PortState::Optional;
+    } else {
+        m_portState.erase(port);
+    }
+}
+
+bool Module::updateLinkedPorts(const Port *port)
+{
+    if (!port) {
+        return false;
+    }
+    assert(port->getType() == Port::INPUT || port->getType() == Port::OUTPUT);
+
+    auto evaluatePortState = [this](const Port *port) {
+        message::ItemInfo::PortState state = message::ItemInfo::PortState::Enabled;
+        auto it = m_portState.find(port);
+        if (it != m_portState.end()) {
+            state = it->second;
+        }
+        if (port->getType() == Port::INPUT) {
+            auto it = m_inPortDependents.find(port);
+            if (it != m_inPortDependents.end()) {
+                auto &dependents = it->second;
+                for (const auto &dependent: dependents) {
+                    if (isConnected(*dependent)) {
+                        state = message::ItemInfo::PortState::Enabled;
+                        break;
+                    }
+                }
+            }
+        } else {
+            auto it = m_outPortDependencies.find(port);
+            if (it != m_outPortDependencies.end()) {
+                auto &dependencies = it->second;
+                for (const auto &dependency: dependencies) {
+                    if (!isConnected(*dependency)) {
+                        state = message::ItemInfo::PortState::Disabled;
+                        break;
+                    }
+                }
+            }
+        }
+        setPortState(port, state);
+    };
+
+    switch (port->getType()) {
+    case Port::INPUT: {
+        // if connected, set all linked outputs with all their dependencies fulfilled to enabled
+        auto it = m_inPortDependents.find(port);
+        if (it == m_inPortDependents.end())
+            break;
+        for (const auto &dependent: it->second) {
+            evaluatePortState(dependent);
+        }
+        break;
+    }
+
+    case Port::OUTPUT: {
+        // if connected, set all linked inputs to enabled
+        auto it = m_outPortDependencies.find(port);
+        if (it == m_outPortDependencies.end())
+            break;
+        for (const auto &dependency: it->second) {
+            evaluatePortState(dependency);
+        }
+        break;
+    }
+    default:
+        return false;
+    }
+
+
+    return true;
 }
 
 std::string Module::getModuleName(int id) const
