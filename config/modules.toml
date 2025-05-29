@@ -4,6 +4,7 @@ Tubes = "Thicken"
 TubesOld = "Thicken"
 Spheres = "Thicken"
 SpheresOld = "Thicken"
+PrintAttributes = "PrintObjects"
 
 ["replace"]
 renderer = [ "COVER", "BlenderRenderer", "ANARemote", "DisCOVERay", "OsgRenderer" ]
