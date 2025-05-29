@@ -13,7 +13,7 @@ namespace vistle {
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(
     ConnectionMethod, (RendezvousOnHub)(AutomaticHostname)(UserHostname)(ViaHub)(AutomaticReverse)(UserReverse))
 
-RhrController::RhrController(vistle::Module *module, int displayRank)
+RhrController::RhrController(vistle::Renderer *module, int displayRank)
 : m_module(module)
 , m_imageOutPort(nullptr)
 , m_displayRank(displayRank)
@@ -35,6 +35,7 @@ RhrController::RhrController(vistle::Module *module, int displayRank)
 , m_sendTileSize((vistle::Integer)512, (vistle::Integer)512)
 {
     m_imageOutPort = m_module->createOutputPort("image_out", "connect to COVER");
+    m_module->linkPorts(m_module->m_dataIn, m_imageOutPort);
 
     m_rhrConnectionMethod = module->addIntParameter(
         "rhr_connection_method", "how local/remote endpoint should be determined", RendezvousOnHub, Parameter::Choice);
@@ -416,7 +417,7 @@ bool RhrController::sendConfigObject() const
         if (obj) {
             CERR << "sending rhr config object" << std::endl;
             m_module->updateMeta(obj);
-            m_module->addObject(m_imageOutPort, obj);
+            static_cast<Module *>(m_module)->addObject(m_imageOutPort, obj);
             return true;
         }
         return false;
