@@ -27,9 +27,24 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(PointOrValue, (PointPerTimestep)(Value)(Poin
 IsoSurfaceVtkm::IsoSurfaceVtkm(const std::string &name, int moduleID, mpi::communicator comm)
 : Module(name, moduleID, comm)
 {
-    createInputPort("data_in", "input gird or geometry with scalar data");
-    m_mapDataIn = createInputPort("mapdata_in", "additional mapped field");
-    m_dataOut = createOutputPort("data_out", "surface with mapped data");
+    for (int i = 0; i < NumPorts; ++i) {
+        std::string in = "data_in" + std::to_string(i);
+        std::string out = "data_out" + std::to_string(i);
+        if (i == 0)
+            in = "data_in";
+        if (i == 1)
+            in = "mapdata_in";
+
+        m_dataIn[i] = createInputPort(in, "input data");
+        m_dataOut[i] = createOutputPort(out, "output data");
+        linkPorts(m_dataIn[i], m_dataOut[i]);
+        if (i > 0) {
+            linkPorts(m_dataIn[0], m_dataOut[i]);
+            setPortOptional(m_dataIn[i], true);
+        }
+    }
+    m_surfOut = createOutputPort("data_out", "surface without mapped data");
+    linkPorts(m_dataIn[0], m_surfOut);
 
     m_isovalue = addFloatParameter("isovalue", "isovalue", 0.0);
     m_isopoint = addVectorParameter("isopoint", "isopoint", ParamVector(0.0, 0.0, 0.0));
@@ -123,7 +138,7 @@ bool IsoSurfaceVtkm::reduce(int timestep)
             auto gi = b.grid->getInterface<GridInterface>();
             Index cell = gi->findCell(point, InvalidIndex, GridInterface::ForceCelltree);
             if (cell != InvalidIndex) {
-                if (auto scal = Vec<Scalar>::as(b.datas)) {
+                if (auto scal = Vec<Scalar>::as(b.mapdata[0])) {
                     ++found;
                     auto interpol = gi->getInterpolator(cell, point);
                     value = interpol(scal->x());
@@ -155,8 +170,11 @@ bool IsoSurfaceVtkm::reduce(int timestep)
 
     if (m_foundPoint) {
         for (const auto &b: blocks) {
-            auto obj = work(b.grid, b.datas, b.mapdata, value);
-            addObject(m_dataOut, obj);
+            auto objs = work(b.grid, b.mapdata, value);
+            for (int i = 0; i < NumPorts; ++i) {
+                addObject(m_dataOut[i], objs[i]);
+            }
+            addObject(m_surfOut, objs.back());
         }
     }
 
@@ -179,17 +197,23 @@ bool IsoSurfaceVtkm::reduce(int timestep)
 
 int IsoSurfaceVtkm::BlockData::getTimestep() const
 {
-    int t = vistle::getTimestep(datas);
+    int t = vistle::getTimestep(mapdata[0]);
     if (t < 0)
         t = vistle::getTimestep(grid);
-    if (t < 0)
-        t = vistle::getTimestep(mapdata);
+    for (auto &m: mapdata) {
+        if (t >= 0)
+            break;
+        t = vistle::getTimestep(m);
+    }
     return t;
 }
 
-Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBase::const_ptr isoField,
-                                 vistle::DataBase::const_ptr mapField, Scalar isoValue) const
+std::vector<Object::ptr> IsoSurfaceVtkm::work(vistle::Object::const_ptr grid,
+                                              const std::vector<vistle::DataBase::const_ptr> &mapField,
+                                              Scalar isoValue) const
 {
+    std::vector<Object::ptr> result(NumPorts + 1);
+    auto &isoField = mapField[0];
     if (auto scal = Vec<Scalar>::as(isoField)) {
         auto minmax = scal->getMinMax();
         std::lock_guard<std::mutex> guard(m_mutex);
@@ -204,7 +228,7 @@ Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBas
     auto status = vtkmSetGrid(vtkmDataSet, grid);
     if (!status->continueExecution()) {
         sendText(status->messageType(), status->message());
-        return Object::ptr();
+        return result;
     }
 
     std::string isospecies = isoField->getAttribute(attribute::Species);
@@ -213,19 +237,29 @@ Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBas
     status = vtkmAddField(vtkmDataSet, isoField, isospecies);
     if (!status->continueExecution()) {
         sendText(status->messageType(), status->message());
-        return Object::ptr();
+        return result;
     }
 
-    std::string mapspecies;
-    if (mapField) {
-        mapspecies = mapField->getAttribute(attribute::Species);
-        if (mapspecies.empty())
-            mapspecies = "mapped";
-        status = vtkmAddField(vtkmDataSet, mapField, mapspecies);
-        if (!status->continueExecution()) {
-            sendText(status->messageType(), status->message());
-            return Object::ptr();
+    std::vector<std::string> mapspecies;
+    int unnamed = 0;
+    for (auto &m: mapField) {
+        std::string sp;
+        if (m) {
+            sp = m->getAttribute(attribute::Species);
+            if (sp.empty()) {
+                sp = "mapped";
+                if (unnamed > 0) {
+                    sp += std::to_string(unnamed);
+                }
+                ++unnamed;
+            }
+            status = vtkmAddField(vtkmDataSet, m, sp);
+            if (!status->continueExecution()) {
+                sendText(status->messageType(), status->message());
+                return result;
+            }
         }
+        mapspecies.push_back(sp);
     }
 
     // apply vtkm isosurface filter
@@ -240,7 +274,7 @@ Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBas
     // transform result back into vistle format
     Object::ptr geoOut = vtkmGetGeometry(isosurface);
     if (!geoOut) {
-        return Object::ptr();
+        return result;
     }
 
     updateMeta(geoOut);
@@ -256,21 +290,26 @@ Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBas
         geoOut->setNumBlocks(grid->getNumBlocks());
     }
 
-    if (mapField) {
-        if (auto mapOut = vtkmGetField(isosurface, mapspecies)) {
-            mapOut->copyAttributes(mapField);
+    int idx = 0;
+    for (auto &sp: mapspecies) {
+        if (auto mapOut = vtkmGetField(isosurface, sp)) {
+            mapOut->copyAttributes(mapField[idx]);
             mapOut->setGrid(geoOut);
             updateMeta(mapOut);
-            return mapOut;
+            result[idx] = mapOut;
+        } else {
+            result[idx] = geoOut;
         }
+        ++idx;
     }
-    return geoOut;
+    result.back() = geoOut;
+    return result;
 }
 
 bool IsoSurfaceVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) const
 {
     // make sure input data is supported
-    auto isoData = task->expect<Vec<Scalar>>("data_in");
+    auto isoData = task->expect<Vec<Scalar>>(m_dataIn[0]);
     if (!isoData) {
         sendError("need scalar data on data_in");
         return true;
@@ -287,30 +326,38 @@ bool IsoSurfaceVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) con
         sendError("need per-vertex mapping on data_in");
         return true;
     }
+    std::vector<DataBase::const_ptr> mapFields;
+    mapFields.push_back(isoField);
 
-    auto mapData = task->accept<Object>(m_mapDataIn);
-    auto splitMap = splitContainerObject(mapData);
-    auto mapField = splitMap.mapped;
-    if (mapField) {
-        auto &mg = splitMap.geometry;
-        if (!mg) {
-            sendError("no grid on mapped data");
-            return true;
-        }
-        if (mg->getHandle() != grid->getHandle()) {
-            sendError("grids on mapped data and iso-data do not match");
-            std::cerr << "grid mismatch: mapped: " << *mapField << ",\n    isodata: " << *isoField << std::endl;
-            return true;
+    for (int i = 1; i < NumPorts; ++i) {
+        auto mapData = task->accept<Object>(m_dataIn[i]);
+        auto splitMap = splitContainerObject(mapData);
+        auto mapField = splitMap.mapped;
+        if (mapField) {
+            auto &mg = splitMap.geometry;
+            if (!mg) {
+                sendError("no grid on mapped data");
+                return true;
+            }
+            if (mg->getHandle() != grid->getHandle()) {
+                sendError("grids on mapped data and iso-data do not match");
+                std::cerr << "grid mismatch: mapped: " << *mapField << ",\n    isodata: " << *isoField << std::endl;
+                return true;
+            }
+            mapFields.push_back(mapField);
         }
     }
 
     if (m_pointOrValue->getValue() == Value) {
-        auto obj = work(grid, isoField, mapField, m_isovalue->getValue());
-        task->addObject(m_dataOut, obj);
+        auto objs = work(grid, mapFields, m_isovalue->getValue());
+        for (int i = 0; i < NumPorts; ++i) {
+            task->addObject(m_dataOut[i], objs[i]);
+        }
+        task->addObject(m_surfOut, objs.back());
         return true;
     } else {
         std::lock_guard<std::mutex> guard(m_mutex);
-        BlockData b(grid, isoField, mapField);
+        BlockData b(grid, mapFields);
         int t = b.getTimestep();
         m_blocksForTime[t].emplace_back(b);
         return true;
