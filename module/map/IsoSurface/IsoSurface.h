@@ -16,7 +16,7 @@ class IsoSurface: public vistle::Module {
 #elif defined(ISOHEIGHTSURFACE)
     constexpr static int NumPorts = 1;
 #else
-    constexpr static int NumPorts = 1;
+    constexpr static int NumPorts = 3;
 #endif
 
 public:
@@ -76,6 +76,9 @@ private:
     vistle::StringParameter *m_heightmap;
     vistle::Port *m_dataIn[NumPorts], *m_dataOut[NumPorts];
     vistle::Port *&m_mapDataIn = m_dataIn[0];
+#ifdef ISOSURFACE
+    vistle::Port *m_surfOut = nullptr;
+#endif
 
     mutable vistle::Scalar m_min, m_max;
     vistle::Float m_paraMin, m_paraMax;

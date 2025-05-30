@@ -1002,7 +1002,6 @@ bool Leveller::process()
         if (m_isoValue < bounds.first[0] || m_isoValue > bounds.second[0])
             return true;
     }
-#else
 #endif
 
     Index dims[3] = {0, 0, 0};
