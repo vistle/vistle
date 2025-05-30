@@ -66,22 +66,36 @@ bool agree(const boost::mpi::communicator &comm, const Value &value)
     return mismatch == 0;
 }
 
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(
+    AddDataKind, (None)(ParticleId)(Step)(Time)(StepWidth)(Distance)(TerminationReason)(CellIndex)(BlockIndex))
+
 Tracer::Tracer(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
     setReducePolicy(message::ReducePolicy::PerTimestep);
 
-    createInputPort("data_in0", "vector field");
-    createInputPort("data_in1", "additional field on same geometry");
-    createOutputPort("data_out0", "stream lines or points with mapped vector");
-    createOutputPort("data_out1", "stream lines or points with mapped field");
-    createOutputPort("particle_id", "stream lines or points with mapped particle id");
-    createOutputPort("step", "stream lines or points with step number");
-    createOutputPort("time", "stream lines or points with time");
-    createOutputPort("stepwidth", "stream lines or points with stepwidth");
-    createOutputPort("distance", "stream lines or points with accumulated distance");
-    createOutputPort("stop_reason", "stream lines or points with reason for finishing trace");
-    createOutputPort("cell_index", "stream lines or points with cell index");
-    createOutputPort("block_index", "stream lines or points with block index");
+    m_inPort[0] = createInputPort("data_in0", "vector field");
+    m_outPort[0] = createOutputPort("data_out0", "stream lines or points with mapped vector");
+    linkPorts(m_inPort[0], m_outPort[0]);
+    for (int i = 1; i < NumPorts; ++i) {
+        m_inPort[i] = createInputPort("data_in" + std::to_string(i), "additional field on same geometry");
+        m_outPort[i] = createOutputPort("data_out" + std::to_string(i), "stream lines or points with mapped field");
+        linkPorts(m_inPort[i], m_outPort[i]);
+        setPortOptional(m_inPort[i], true);
+    }
+    for (int i = 0; i < NumAddPorts; ++i) {
+        m_addPort[i] = createOutputPort("add_data_out" + std::to_string(i), "computed field on same geometry");
+        linkPorts(m_inPort[0], m_addPort[i]);
+        m_addField[i] = addIntParameter("add_data_kind" + std::to_string(i), "field to compute", 0, Parameter::Choice);
+        V_ENUM_SET_CHOICES(m_addField[i], AddDataKind);
+    }
+    addDescription(ParticleId, "particle_id", "stream lines or points with mapped particle id");
+    addDescription(Step, "step", "stream lines or points with step number");
+    addDescription(Time, "time", "stream lines or points with time");
+    addDescription(StepWidth, "stepwidth", "stream lines or points with stepwidth");
+    addDescription(Distance, "distance", "stream lines or points with accumulated distance");
+    addDescription(TerminationReason, "stop_reason", "stream lines or points with reason for finishing trace");
+    addDescription(CellIndex, "cell_index", "stream lines or points with cell index");
+    addDescription(BlockIndex, "block_index", "stream lines or points with block index");
 
 #if 0
     const char *TracerInteraction::P_DIRECTION = "direction";
@@ -162,6 +176,31 @@ Tracer::Tracer(const std::string &name, int moduleID, mpi::communicator comm): M
 Tracer::~Tracer()
 {}
 
+void Tracer::addDescription(int kind, const std::string &name, const std::string &description)
+{
+    m_addFieldName[kind] = name;
+    m_addFieldDescription[kind] = name;
+}
+
+const std::string &Tracer::getFieldName(int kind) const
+{
+    auto it = m_addFieldName.find(kind);
+    if (it != m_addFieldName.end()) {
+        return it->second;
+    }
+    static const std::string empty;
+    return empty;
+}
+
+const std::string &Tracer::getFieldDescription(int kind) const
+{
+    auto it = m_addFieldDescription.find(kind);
+    if (it != m_addFieldDescription.end()) {
+        return it->second;
+    }
+    static const std::string empty;
+    return empty;
+}
 
 bool Tracer::prepare()
 {
@@ -508,16 +547,38 @@ bool Tracer::reduce(int timestep)
     global.cell_index_modulus = getIntParameter("cell_index_modulus");
     global.simplification_error = getFloatParameter("simplification_error");
 
-    global.computeVector = isConnected("data_out0");
-    global.computeScalar = isConnected("data_out1");
-    global.computeId = isConnected("particle_id");
-    global.computeStep = isConnected("step");
-    global.computeStopReason = isConnected("stop_reason");
-    global.computeCellIndex = isConnected("cell_index");
-    global.computeBlockIndex = isConnected("block_index");
-    global.computeTime = isConnected("time");
-    global.computeDist = isConnected("distance");
-    global.computeStepWidth = isConnected("stepwidth");
+    global.computeVector = isConnected(*m_outPort[0]);
+    global.computeScalar = isConnected(*m_outPort[1]);
+    for (int i = 0; i < NumAddPorts; ++i) {
+        if (!isConnected(*m_addPort[i])) {
+            continue;
+        }
+        switch (m_addField[i]->getValue()) {
+        case ParticleId:
+            global.computeId = true;
+            break;
+        case Step:
+            global.computeStep = true;
+            break;
+        case Time:
+            global.computeTime = true;
+            break;
+        case StepWidth:
+            global.computeStepWidth = true;
+            break;
+        case Distance:
+            global.computeDist = true;
+            break;
+        case TerminationReason:
+            global.computeStopReason = true;
+        case CellIndex:
+            global.computeCellIndex = true;
+            break;
+        case BlockIndex:
+            global.computeBlockIndex = true;
+            break;
+        }
+    }
 
     std::vector<Index> stopReasonCount(NumStopReasons, 0);
     std::vector<std::shared_ptr<ParticleT>> allParticles;
@@ -909,6 +970,49 @@ bool Tracer::reduce(int timestep)
         geo->setMeta(meta);
         updateMeta(geo);
 
+        for (int i = 0; i < NumAddPorts; ++i) {
+            DataBase::ptr field;
+            if (m_addField[i]->getValue() == ParticleId) {
+                field = global.idField[i];
+            } else if (m_addField[i]->getValue() == Step) {
+                field = global.stepField[i];
+            } else if (m_addField[i]->getValue() == Time) {
+                field = global.timeField[i];
+            } else if (m_addField[i]->getValue() == StepWidth) {
+                field = global.stepWidthField[i];
+            } else if (m_addField[i]->getValue() == Distance) {
+                field = global.distField[i];
+            } else if (m_addField[i]->getValue() == TerminationReason) {
+                field = global.stopReasonField[i];
+            } else if (m_addField[i]->getValue() == CellIndex) {
+                field = global.cellField[i];
+            } else if (m_addField[i]->getValue() == BlockIndex) {
+                field = global.blockField[i];
+            }
+
+            if (isConnected(*m_addPort[i])) {
+                if (field) {
+                    bool initField = true;
+                    for (int j = 0; j < i; ++j) {
+                        if (m_addField[j]->getValue() == m_addField[i]->getValue()) {
+                            initField = false;
+                            break;
+                        }
+                    }
+                    if (initField) {
+                        field->setGrid(geo);
+                        field->setMeta(meta);
+                        auto kind = m_addField[i]->getValue();
+                        field->addAttribute(attribute::Species, getFieldName(kind));
+                        updateMeta(field);
+                    }
+                    addObject(m_addPort[i], field);
+                } else {
+                    addObject(m_addPort[i], geo);
+                }
+            }
+        }
+
         auto addField = [this, geo, meta](const char *name, DataBase::ptr field) {
             field->setGrid(geo);
             field->setMeta(meta);
@@ -917,43 +1021,18 @@ bool Tracer::reduce(int timestep)
             addObject(name, field);
         };
 
-        if (global.computeId) {
-            addField("particle_id", global.idField[i]);
-        }
-        if (global.computeStep) {
-            addField("step", global.stepField[i]);
-        }
-        if (global.computeTime) {
-            addField("time", global.timeField[i]);
-        }
-        if (global.computeDist) {
-            addField("distance", global.distField[i]);
-        }
-        if (global.computeStepWidth) {
-            addField("stepwidth", global.stepWidthField[i]);
-        }
-        if (global.computeStopReason) {
-            addField("stop_reason", global.stopReasonField[i]);
-        }
-        if (global.computeCellIndex) {
-            addField("cell_index", global.cellField[i]);
-        }
-        if (global.computeBlockIndex) {
-            addField("block_index", global.blockField[i]);
-        }
-
         if (global.computeVector) {
             global.vecField[i]->setGrid(geo);
             global.vecField[i]->setMeta(meta);
             updateMeta(global.vecField[i]);
-            addObject("data_out0", global.vecField[i]);
+            addObject(m_outPort[0], global.vecField[i]);
         }
 
         if (global.computeScalar) {
             global.scalField[i]->setGrid(geo);
             global.scalField[i]->setMeta(meta);
             updateMeta(global.scalField[i]);
-            addObject("data_out1", global.scalField[i]);
+            addObject(m_outPort[1], global.scalField[i]);
         }
     }
 

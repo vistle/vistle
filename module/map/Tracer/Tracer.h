@@ -52,16 +52,16 @@ private:
 
     vistle::Index max_step;
 
-    bool computeVector = true;
-    bool computeScalar = true;
-    bool computeId = true;
-    bool computeStep = true;
-    bool computeStopReason = true;
-    bool computeTime = true;
-    bool computeDist = true;
-    bool computeStepWidth = true;
-    bool computeCellIndex = true;
-    bool computeBlockIndex = true;
+    bool computeVector = false;
+    bool computeScalar = false;
+    bool computeId = false;
+    bool computeStep = false;
+    bool computeStopReason = false;
+    bool computeTime = false;
+    bool computeDist = false;
+    bool computeStepWidth = false;
+    bool computeCellIndex = false;
+    bool computeBlockIndex = false;
 
     std::vector<vistle::Points::ptr> points; // points objects for each timestep (MovingPoints)
     std::vector<vistle::Lines::ptr> lines; // lines objects for each timestep (other modes)
@@ -76,6 +76,9 @@ private:
 };
 
 class Tracer: public vistle::Module {
+    static const int NumPorts = 2;
+    static const int NumAddPorts = 2;
+
 public:
     Tracer(const std::string &name, int moduleID, mpi::communicator comm);
     ~Tracer();
@@ -96,6 +99,10 @@ private:
     std::vector<AttributeMap> m_gridAttr, m_data0Attr, m_data1Attr;
     std::vector<vistle::Meta> m_gridTime, m_data0Time, m_data1Time;
 
+    vistle::Port *m_inPort[NumPorts];
+    vistle::Port *m_outPort[NumPorts];
+    vistle::Port *m_addPort[NumAddPorts];
+    vistle::IntParameter *m_addField[NumAddPorts];
     vistle::IntParameter *m_taskType;
     vistle::IntParameter *m_maxStartpoints, *m_numStartpoints;
     vistle::IntParameter *m_useCelltree;
@@ -105,6 +112,11 @@ private:
     bool m_havePressure;
 
     bool m_haveTimeSteps = false;
+    void addDescription(int kind, const std::string &name, const std::string &description);
+    const std::string &getFieldName(int kind) const;
+    const std::string &getFieldDescription(int kind) const;
+    std::map<int, std::string> m_addFieldName;
+    std::map<int, std::string> m_addFieldDescription;
 
     std::vector<vistle::Index> m_stopReasonCount;
     vistle::Index m_numTotalParticles = 0;
