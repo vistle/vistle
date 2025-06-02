@@ -169,11 +169,12 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm): Mod
     setReducePolicy(message::ReducePolicy::OverAll);
 
     m_dataIn = createInputPort("data_in", "field to create colormap for");
+    setPortOptional(m_dataIn, true);
     m_dataOut = createOutputPort("data_out", "field converted to colors");
     m_colorOut = createOutputPort("color_out", "color map");
+    linkPorts(m_dataIn, m_dataOut);
 
     m_speciesPara = addStringParameter("species", "species attribute of input data", "");
-    setParameterReadOnly(m_speciesPara, true);
 
     m_minPara = addFloatParameter("min", "minimum value of range to map", 0.0);
     m_maxPara = addFloatParameter("max", "maximum value of range to map", 0.0);
@@ -198,8 +199,8 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm): Mod
                                               false, Parameter::Boolean);
 
     m_autoRangePara = addIntParameter("auto_range", "compute range automatically", m_autoRange, Parameter::Boolean);
-    addIntParameter("preview", "use preliminary colormap for showing preview when determining bounds", true,
-                    Parameter::Boolean);
+    m_preview = addIntParameter("preview", "use preliminary colormap for showing preview when determining bounds", true,
+                                Parameter::Boolean);
 
 #ifndef COLOR_RANDOM
     setCurrentParameterGroup("Nested Color Map");
@@ -359,6 +360,8 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm): Mod
     transferFunctions[Gray20] = pins;
     pins.clear();
 #endif
+
+    updateHaveData();
 }
 
 Color::~Color()
@@ -756,18 +759,20 @@ void Color::computeMap()
 
 bool Color::prepare()
 {
-    m_species.clear();
     m_colorMapSent = false;
+    if (m_haveData) {
+        m_species.clear();
 
-    m_dataMin = std::numeric_limits<Scalar>::max();
-    m_dataMax = -std::numeric_limits<Scalar>::max();
-    m_dataRangeValid = false;
+        m_dataMin = std::numeric_limits<Scalar>::max();
+        m_dataMax = -std::numeric_limits<Scalar>::max();
+        m_dataRangeValid = false;
 
-    if (!m_autoRange) {
-        m_min = m_minPara->getValue();
-        m_max = m_maxPara->getValue();
-        if (m_min == m_max)
-            m_max = m_min + 1.;
+        if (!m_autoRange) {
+            m_min = m_minPara->getValue();
+            m_max = m_maxPara->getValue();
+            if (m_min == m_max)
+                m_max = m_min + 1.;
+        }
     }
     m_reverse = m_min > m_max;
     if (m_reverse)
@@ -776,10 +781,12 @@ bool Color::prepare()
 
     computeMap();
 
-    bool preview = getIntParameter("preview");
-    if (m_autoRange || (m_nest && m_autoInsetCenter)) {
-        if (preview)
-            startIteration();
+    if (m_haveData) {
+        bool preview = getIntParameter("preview");
+        if (m_autoRange || (m_nest && m_autoInsetCenter)) {
+            if (preview)
+                startIteration();
+        }
     }
 
     return true;
@@ -787,6 +794,11 @@ bool Color::prepare()
 
 bool Color::compute()
 {
+    if (!m_haveData) {
+        sendColorMap();
+        return true;
+    }
+
     Object::const_ptr obj = expect<Object>(m_dataIn);
     auto split = splitContainerObject(obj);
     DataBase::const_ptr data = split.mapped;
@@ -827,6 +839,10 @@ bool Color::compute()
 bool Color::reduce(int timestep)
 {
     assert(timestep == -1);
+    if (!m_haveData) {
+        return true;
+    }
+
     bool preview = getIntParameter("preview");
 
     m_dataMin = boost::mpi::all_reduce(comm(), m_dataMin, boost::mpi::minimum<Scalar>());
@@ -912,13 +928,34 @@ bool Color::reduce(int timestep)
     return true;
 }
 
+void Color::updateHaveData()
+{
+    setParameterReadOnly(m_speciesPara, m_haveData);
+    setParameterReadOnly(m_autoRangePara, !m_haveData);
+    setParameterReadOnly(m_autoInsetCenterPara, !m_haveData);
+    setParameterReadOnly(m_constrain, !m_haveData);
+    setParameterReadOnly(m_preview, !m_haveData);
+}
+
 void Color::connectionAdded(const Port *from, const Port *to)
 {
-    if (from != m_colorOut)
-        return;
+    if (from == m_colorOut) {
+        m_colorMapSent = false;
+        sendColorMap();
+    }
 
-    m_colorMapSent = false;
-    sendColorMap();
+    if (to == m_dataIn) {
+        m_haveData = true;
+        updateHaveData();
+    }
+}
+
+void Color::connectionRemoved(const Port *from, const Port *to)
+{
+    if (to == m_dataIn) {
+        m_haveData = false;
+        updateHaveData();
+    }
 }
 
 void Color::process(const DataBase::const_ptr data)
@@ -947,8 +984,13 @@ void Color::sendColorMap()
     if (m_colorMapSent)
         return;
 
-    setParameter(m_speciesPara, m_species);
-    setItemInfo(m_species);
+    if (m_haveData) {
+        setParameter(m_speciesPara, m_species);
+    } else {
+        m_species = m_speciesPara->getValue();
+    }
+    if (!m_species.empty())
+        setItemInfo(m_species);
 
     if (m_colorOut->isConnected() && !m_species.empty()) {
 #ifdef COLOR_RANDOM

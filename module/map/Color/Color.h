@@ -45,8 +45,12 @@ private:
     bool compute() override;
     bool reduce(int timestep) override;
     void connectionAdded(const vistle::Port *from, const vistle::Port *to) override;
+    void connectionRemoved(const vistle::Port *from, const vistle::Port *to) override;
 
     void process(const vistle::DataBase::const_ptr data);
+
+    bool m_haveData = false;
+    void updateHaveData();
 
 #ifndef COLOR_RANDOM
     std::map<int, ColorMap::TF> transferFunctions;
@@ -60,6 +64,7 @@ private:
     vistle::IntParameter *m_autoRangePara, *m_autoInsetCenterPara, *m_nestPara;
     vistle::FloatParameter *m_minPara = nullptr, *m_maxPara = nullptr;
     vistle::IntParameter *m_constrain = nullptr;
+    vistle::IntParameter *m_preview = nullptr;
     vistle::FloatParameter *m_center = nullptr;
     vistle::IntParameter *m_centerAbsolute = nullptr;
 #ifndef COLOR_RANDOM
