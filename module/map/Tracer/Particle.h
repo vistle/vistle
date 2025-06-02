@@ -35,11 +35,11 @@ struct Segment {
     std::vector<vistle::Vector3> m_xhist; //!< trajectory
     std::vector<vistle::Vector3> m_vhist; //!< previous velocities
     std::vector<vistle::Scalar> m_stepWidth; //!< previous integration stepwidths
-    std::vector<vistle::Scalar> m_pressures; //!< previous pressures
     std::vector<vistle::Index> m_steps; //!< previous steps
     std::vector<vistle::Scalar> m_times; //!< previous times
     std::vector<vistle::Scalar> m_dists; //!< previous times
     std::vector<vistle::Index> m_cellIndex; //!< previous cell/element indices
+    std::vector<std::vector<vistle::Scalar>> m_scalars; //!< previous scalars
 
     Segment(int num = 0): m_rank(-1), m_num(num), m_blockIndex(vistle::InvalidIndex), m_startStep(vistle::InvalidIndex)
     {}
@@ -60,11 +60,13 @@ struct Segment {
         ar &m_xhist;
         ar &m_vhist;
         ar &m_stepWidth;
-        ar &m_pressures;
         ar &m_steps;
         ar &m_times;
         ar &m_dists;
         ar &m_cellIndex;
+        for (auto &s: m_scalars) {
+            ar &s;
+        }
     }
 
     void clear()
@@ -75,11 +77,13 @@ struct Segment {
         m_xhist.clear();
         m_vhist.clear();
         m_stepWidth.clear();
-        m_pressures.clear();
         m_steps.clear();
         m_times.clear();
         m_dists.clear();
         m_cellIndex.clear();
+        for (auto &s: m_scalars) {
+            s.clear();
+        }
     }
 };
 
@@ -141,7 +145,7 @@ private:
     Vect3 m_x; //!< current position
     Vect3 m_xold; //!< previous position
     vistle::Vector3 m_v; //!< current velocity
-    vistle::Scalar m_p; //!< current pressure
+    std::vector<vistle::Scalar> m_scalars; //!< current scalar values
     vistle::Index m_stp; //!< current integration step
     vistle::Scalar m_time; //! current time
     vistle::Scalar m_dist; //!< total distance traveled
@@ -168,7 +172,7 @@ private:
         ar &m_stp;
         ar &m_time;
         ar &m_dist;
-        ar &m_p;
+        ar &m_scalars;
         ar &m_ingrid;
         ar &m_integrator.m_h;
         ar &m_stopReason;

@@ -25,6 +25,55 @@ class Particle;
 template<typename S>
 class Integrator;
 
+class Tracer: public vistle::Module {
+    static const int NumAddPorts = 2;
+
+public:
+    static const int NumPorts = 3;
+    Tracer(const std::string &name, int moduleID, mpi::communicator comm);
+    ~Tracer();
+
+    typedef std::map<std::string, std::string> AttributeMap;
+
+private:
+    bool compute() override;
+    bool prepare() override;
+    bool reduce(int timestep) override;
+    bool changeParameter(const vistle::Parameter *param) override;
+
+    std::vector<std::vector<vistle::Object::const_ptr>> grid_in;
+    std::vector<std::vector<std::future<vistle::Celltree3::const_ptr>>> celltree;
+    std::vector<std::vector<vistle::Vec<vistle::Scalar, 3>::const_ptr>> data_in0;
+    std::vector<std::vector<vistle::DataBase::const_ptr>> data_in[NumPorts];
+    int data_dim[NumPorts];
+
+    std::vector<AttributeMap> m_gridAttr, m_dataAttr[NumPorts];
+    std::vector<vistle::Meta> m_gridTime, m_dataTime[NumPorts];
+
+    vistle::Port *m_inPort[NumPorts];
+    vistle::Port *m_outPort[NumPorts];
+    vistle::Port *m_addPort[NumAddPorts];
+    vistle::IntParameter *m_addField[NumAddPorts];
+    vistle::IntParameter *m_taskType;
+    vistle::IntParameter *m_maxStartpoints, *m_numStartpoints;
+    vistle::IntParameter *m_useCelltree;
+    vistle::IntParameter *m_particlePlacement = nullptr;
+    vistle::FloatParameter *m_simplificationError = nullptr;
+    vistle::IntParameter *m_verbose = nullptr;
+
+    bool m_haveTimeSteps = false;
+    void addDescription(int kind, const std::string &name, const std::string &description);
+    const std::string &getFieldName(int kind) const;
+    const std::string &getFieldDescription(int kind) const;
+    std::map<int, std::string> m_addFieldName;
+    std::map<int, std::string> m_addFieldDescription;
+
+    std::vector<vistle::Index> m_stopReasonCount;
+    vistle::Index m_numTotalParticles = 0;
+    bool m_stopStatsPrinted = false;
+    bool m_numStartpointsPrinted = false;
+};
+
 class GlobalData {
     friend class Particle<float>;
     friend class Particle<double>;
@@ -53,7 +102,7 @@ private:
     vistle::Index max_step;
 
     bool computeVector = false;
-    bool computeScalar = false;
+    bool computeField[Tracer::NumPorts]{false};
     bool computeId = false;
     bool computeStep = false;
     bool computeStopReason = false;
@@ -66,61 +115,15 @@ private:
     std::vector<vistle::Points::ptr> points; // points objects for each timestep (MovingPoints)
     std::vector<vistle::Lines::ptr> lines; // lines objects for each timestep (other modes)
     std::vector<vistle::Vec<vistle::Scalar, 3>::ptr> vecField;
-    std::vector<vistle::Vec<vistle::Scalar>::ptr> scalField;
+    std::vector<std::vector<vistle::DataBase::ptr>> fields;
+    std::vector<std::vector<vistle::shm<vistle::Scalar>::array>> scalars;
     std::vector<vistle::Vec<vistle::Index>::ptr> idField, stepField, stopReasonField;
     std::vector<vistle::Vec<vistle::Index>::ptr> blockField, cellField;
     std::vector<vistle::Vec<vistle::Scalar>::ptr> timeField, distField, stepWidthField;
+    int numScalars = 0;
     std::mutex mutex;
 
     Tracer *module = nullptr;
 };
 
-class Tracer: public vistle::Module {
-    static const int NumPorts = 2;
-    static const int NumAddPorts = 2;
-
-public:
-    Tracer(const std::string &name, int moduleID, mpi::communicator comm);
-    ~Tracer();
-
-    typedef std::map<std::string, std::string> AttributeMap;
-
-private:
-    bool compute() override;
-    bool prepare() override;
-    bool reduce(int timestep) override;
-    bool changeParameter(const vistle::Parameter *param) override;
-
-    std::vector<std::vector<vistle::Object::const_ptr>> grid_in;
-    std::vector<std::vector<std::future<vistle::Celltree3::const_ptr>>> celltree;
-    std::vector<std::vector<vistle::Vec<vistle::Scalar, 3>::const_ptr>> data_in0;
-    std::vector<std::vector<vistle::Vec<vistle::Scalar>::const_ptr>> data_in1;
-
-    std::vector<AttributeMap> m_gridAttr, m_data0Attr, m_data1Attr;
-    std::vector<vistle::Meta> m_gridTime, m_data0Time, m_data1Time;
-
-    vistle::Port *m_inPort[NumPorts];
-    vistle::Port *m_outPort[NumPorts];
-    vistle::Port *m_addPort[NumAddPorts];
-    vistle::IntParameter *m_addField[NumAddPorts];
-    vistle::IntParameter *m_taskType;
-    vistle::IntParameter *m_maxStartpoints, *m_numStartpoints;
-    vistle::IntParameter *m_useCelltree;
-    vistle::IntParameter *m_particlePlacement = nullptr;
-    vistle::FloatParameter *m_simplificationError = nullptr;
-    vistle::IntParameter *m_verbose = nullptr;
-    bool m_havePressure;
-
-    bool m_haveTimeSteps = false;
-    void addDescription(int kind, const std::string &name, const std::string &description);
-    const std::string &getFieldName(int kind) const;
-    const std::string &getFieldDescription(int kind) const;
-    std::map<int, std::string> m_addFieldName;
-    std::map<int, std::string> m_addFieldDescription;
-
-    std::vector<vistle::Index> m_stopReasonCount;
-    vistle::Index m_numTotalParticles = 0;
-    bool m_stopStatsPrinted = false;
-    bool m_numStartpointsPrinted = false;
-};
 #endif

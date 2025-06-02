@@ -6,17 +6,14 @@
 
 using namespace vistle;
 
-BlockData::BlockData(Index i, Object::const_ptr grid, Vec<Scalar, 3>::const_ptr vdata, Vec<Scalar>::const_ptr pdata)
+BlockData::BlockData(Index i, Object::const_ptr grid, Vec<Scalar, 3>::const_ptr vdata, DataBase::const_ptr pdata[])
 : m_grid(grid)
 , m_gridInterface(m_grid->getInterface<GridInterface>())
 , m_vecfld(vdata)
-, m_scafld(pdata)
 , m_vecmap(DataBase::Vertex)
-, m_scamap(DataBase::Vertex)
 , m_vx(nullptr)
 , m_vy(nullptr)
 , m_vz(nullptr)
-, m_p(nullptr)
 {
     m_transform = m_grid->getTransform();
     m_invTransform = m_transform.inverse();
@@ -32,11 +29,28 @@ BlockData::BlockData(Index i, Object::const_ptr grid, Vec<Scalar, 3>::const_ptr 
             m_vecmap = DataBase::Vertex;
     }
 
-    if (m_scafld) {
-        m_p = &m_scafld->x()[0];
-        m_scamap = m_scafld->guessMapping();
-        if (m_scamap == DataBase::Unspecified)
-            m_scamap = DataBase::Vertex;
+    for (int i = 0; i < NumFields; ++i) {
+        m_field[i] = pdata[i];
+        if (i == 0)
+            continue; // skip first field, which is the velocity field
+        const auto &f = m_field[i];
+        if (!f)
+            continue;
+
+        auto m = f->guessMapping();
+        if (m == DataBase::Unspecified) {
+            m = DataBase::Vertex;
+        }
+
+        if (auto sca = Vec<Scalar>::as(f)) {
+            m_scalmap.push_back(m);
+            m_scal.push_back(&sca->x()[0]);
+        } else if (auto vec = Vec<Scalar, 3>::as(f)) {
+            for (int dim = 0; dim < 3; ++dim) {
+                m_scalmap.push_back(m);
+                m_scal.push_back(&vec->x(dim)[0]);
+            }
+        }
     }
 }
 
@@ -56,16 +70,6 @@ Vec<Scalar, 3>::const_ptr BlockData::getVecFld()
 DataBase::Mapping BlockData::getVecMapping() const
 {
     return m_vecmap;
-}
-
-Vec<Scalar>::const_ptr BlockData::getScalFld()
-{
-    return m_scafld;
-}
-
-DataBase::Mapping BlockData::getScalMapping() const
-{
-    return m_scamap;
 }
 
 const Matrix4 &BlockData::transform() const
