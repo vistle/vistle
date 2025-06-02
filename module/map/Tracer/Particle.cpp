@@ -27,7 +27,6 @@ Particle<S>::Particle(Index id, int rank, Index startId, const Vector3 &pos, boo
 , m_xold(VI(pos))
 , m_v(Vector3(std::numeric_limits<Scalar>::max(), 0, 0))
 // keep large enough so that particle moves initially
-, m_p(0)
 , m_stp(0)
 , m_time(0)
 , m_dist(0)
@@ -40,6 +39,7 @@ Particle<S>::Particle(Index id, int rank, Index startId, const Vector3 &pos, boo
 , m_stopReason(StillActive)
 , m_useCelltree(m_global.use_celltree)
 {
+    m_scalars.resize(global.numScalars);
     m_integrator.enableCelltree(m_useCelltree);
 
     if (!global.blocks[timestep].empty())
@@ -196,6 +196,7 @@ bool Particle<S>::findCell(double time)
                 m_currentSegment->m_startStep = m_stp;
                 m_currentSegment->m_num = m_segment;
                 m_currentSegment->m_blockIndex = block->m_grid->getBlock();
+                m_currentSegment->m_scalars.resize(m_global.numScalars);
                 if (m_forward)
                     ++m_segment;
                 else
@@ -220,8 +221,11 @@ void Particle<S>::EmitData()
     m_currentSegment->m_times.push_back(m_time);
     if (m_global.computeStep)
         m_currentSegment->m_steps.push_back(m_stp);
-    if (m_global.computeScalar)
-        m_currentSegment->m_pressures.push_back(m_p); // will be ignored later on
+    assert(m_global.numScalars == m_scalars.size());
+    assert(m_currentSegment->m_scalars.size() == m_scalars.size());
+    for (int i = 0; i < m_scalars.size(); ++i) {
+        m_currentSegment->m_scalars[i].push_back(m_scalars[i]);
+    }
     if (m_global.computeStepWidth)
         m_currentSegment->m_stepWidth.push_back(m_integrator.h());
     if (m_global.computeDist)
@@ -251,10 +255,18 @@ bool Particle<S>::Step()
     const auto &grid = m_block->getGrid();
     auto inter = grid->getInterpolator(m_el, VV(m_x), m_block->m_vecmap);
     m_v = inter(m_block->m_vx, m_block->m_vy, m_block->m_vz);
-    if (m_block->m_p) {
-        if (m_block->m_scamap != m_block->m_vecmap)
-            inter = grid->getInterpolator(m_el, VV(m_x), m_block->m_scamap);
-        m_p = inter(m_block->m_p);
+    GridInterface::Interpolator otherInter;
+    bool haveOtherInter = false;
+    for (int i = 0; i < m_block->m_scal.size(); ++i) {
+        if (m_block->m_scalmap[i] == m_block->m_vecmap) {
+            m_scalars[i] = inter(m_block->m_scal[i]);
+        } else {
+            if (!haveOtherInter) {
+                haveOtherInter = true;
+                otherInter = grid->getInterpolator(m_el, VV(m_x), m_block->m_scalmap[i]);
+            }
+            m_scalars[i] = otherInter(m_block->m_scal[i]);
+        }
     }
     Scal ddist = (m_x - m_xold).norm();
     m_xold = m_x;
@@ -422,11 +434,28 @@ void Particle<S>::addToOutput()
                         vout->z().push_back(vel[2]);
                     }
 
-                    if (m_global.computeScalar) {
-                        const auto pres1 = seg.m_pressures[i];
-                        const auto pres0 = prevSeg->m_pressures[prevIdx];
-                        Scalar pres = lerp(pres0, pres1, t);
-                        m_global.scalField[timestep]->x().push_back(pres);
+                    if (m_global.numScalars > 0) {
+                        std::vector<shm<Scalar>::array *> scalars;
+                        scalars.reserve(m_global.numScalars);
+                        for (int p = 1; p < Tracer::NumPorts; ++p) {
+                            if (!m_global.computeField[p])
+                                continue;
+                            auto &f = m_global.fields[p][timestep];
+                            if (auto vec = Vec<Scalar, 3>::as(f)) {
+                                scalars.push_back(&vec->x());
+                                scalars.push_back(&vec->y());
+                                scalars.push_back(&vec->z());
+                            } else if (auto scal = Vec<Scalar>::as(f)) {
+                                scalars.push_back(&scal->x());
+                            }
+                        }
+                        assert(scalars.size() == m_global.numScalars);
+                        for (int s = 0; s < m_global.numScalars; ++s) {
+                            const auto &scalars1 = seg.m_scalars[s];
+                            const auto &scalars0 = prevSeg->m_scalars[s];
+                            Scalar scal = lerp(scalars0[i], scalars1[i], t);
+                            scalars[s]->push_back(scal);
+                        }
                     }
 
                     if (m_global.computeDist) {
@@ -490,10 +519,26 @@ void Particle<S>::addToOutput()
             vec_y->reserve(nsz);
             vec_z->reserve(nsz);
         }
-        shm<Scalar>::array *scal = nullptr;
-        if (m_global.computeScalar) {
-            scal = &m_global.scalField[t]->x();
-            scal->reserve(nsz);
+
+        std::vector<shm<Scalar>::array *> scalars;
+        if (m_global.numScalars > 0) {
+            scalars.reserve(m_global.numScalars);
+            for (int p = 1; p < Tracer::NumPorts; ++p) {
+                if (!m_global.computeField[p])
+                    continue;
+                auto &f = m_global.fields[p][t];
+                if (auto vec = Vec<Scalar, 3>::as(f)) {
+                    scalars.push_back(&vec->x());
+                    scalars.push_back(&vec->y());
+                    scalars.push_back(&vec->z());
+                } else if (auto scal = Vec<Scalar>::as(f)) {
+                    scalars.push_back(&scal->x());
+                }
+            }
+            assert(scalars.size() == m_global.numScalars);
+            for (int s = 0; s < m_global.numScalars; ++s) {
+                scalars[s]->reserve(nsz);
+            }
         }
         shm<Scalar>::array *stepwidth = nullptr;
         if (m_global.computeStepWidth) {
@@ -536,8 +581,8 @@ void Particle<S>::addToOutput()
             blockIndex->reserve(nsz);
         }
 
-        auto addStep = [this, &x, &y, &z, &cl, vec_x, vec_y, vec_z, scal, id, step, stepwidth, time, dist, stopReason,
-                        cellIndex, blockIndex](const Segment &seg, Index i) {
+        auto addStep = [this, &x, &y, &z, &cl, vec_x, vec_y, vec_z, scalars, id, step, stepwidth, time, dist,
+                        stopReason, cellIndex, blockIndex](const Segment &seg, Index i) {
             const auto &vec = seg.m_xhist[i];
             x.push_back(vec[0]);
             y.push_back(vec[1]);
@@ -551,8 +596,9 @@ void Particle<S>::addToOutput()
                 vec_y->push_back(vel[1]);
             if (vec_z)
                 vec_z->push_back(vel[2]);
-            if (scal)
-                scal->push_back(seg.m_pressures[i]);
+            for (int s = 0; s < m_global.numScalars; ++s) {
+                scalars[s]->push_back(seg.m_scalars[s][i]);
+            }
             if (stepwidth)
                 stepwidth->push_back(seg.m_stepWidth[i]);
             if (step)
@@ -696,8 +742,10 @@ static void skipVector(std::vector<T> &v, const std::vector<Index> &use)
         return;
     }
 
-    if (use.back() >= v.size())
+    if (use.back() >= v.size()) {
+        assert(v.empty());
         return;
+    }
 
     std::vector<T> vv;
     for (auto i: use) {
@@ -746,13 +794,16 @@ double Segment::interpolationError(Index i0, Index i1, Index i) const
             err = e;
     }
 
-    if (m_pressures.size() == m_xhist.size()) {
-        auto p0 = m_pressures[i0], p1 = m_pressures[i1], p = m_pressures[i];
-        auto pi = lerp(p0, p1, t);
-        auto d = p - pi;
-        double e = std::abs(pi) > eps ? 1. : 0.;
-        if (std::abs(p) > eps)
-            e = std::abs(d / p);
+    for (int k = 0; k < m_scalars.size(); ++k) {
+        if (m_scalars[k].size() != m_xhist.size()) {
+            continue;
+        }
+        auto s0 = m_scalars[k][i0], s1 = m_scalars[k][i1], s = m_scalars[k][i];
+        auto si = lerp(s0, s1, t);
+        auto d = s - si;
+        double e = std::abs(si) > eps ? 1. : 0.;
+        if (std::abs(s) > eps)
+            e = std::abs(d / s);
         if (e > err)
             err = e;
     }
@@ -813,7 +864,9 @@ void Segment::simplify(double relerr)
         skipVector(m_xhist, use);
         skipVector(m_vhist, use);
         skipVector(m_stepWidth, use);
-        skipVector(m_pressures, use);
+        for (int i = 0; i < m_scalars.size(); ++i) {
+            skipVector(m_scalars[i], use);
+        }
         skipVector(m_steps, use);
         skipVector(m_times, use);
         skipVector(m_dists, use);
