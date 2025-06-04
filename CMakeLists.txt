@@ -84,6 +84,12 @@ endif()
 
 option(VISTLE_INTERNAL_BOOST_MPI "Use internal copy of Boost.MPI" ON)
 
+# configure process model
+option(VISTLE_MULTI_PROCESS "use multiple processes communicating via shared memory" ON)
+
+option(VISTLE_MODULES_SHARED "use shared libraries for modules" ON)
+option(VISTLE_USE_SHARED_MEMORY "use shared memory even within a process" OFF)
+
 enable_testing()
 
 if(CMAKE_CONFIGURATION_TYPES)
@@ -852,12 +858,6 @@ endif()
 enable_testing()
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-
-# configure process model
-option(VISTLE_MULTI_PROCESS "use multiple processes communicating via shared memory" ON)
-
-option(VISTLE_MODULES_SHARED "use shared libraries for modules" ON)
-option(VISTLE_USE_SHARED_MEMORY "use shared memory even within a process" OFF)
 
 macro(USE_OPENMP)
     if(VISTLE_USE_OPENMP AND OPENMP_FOUND)
