@@ -3870,13 +3870,15 @@ bool Hub::handlePriv(const message::Barrier &barrier)
     }
     assert(!m_barrierActive);
     assert(m_reachedSet.empty());
-    m_barrierActive = true;
-    m_barrierUuid = barrier.uuid();
-    message::Buffer buf(barrier);
-    buf.setDestId(Id::NextHop);
-    if (m_isMaster)
-        sendSlaves(buf, true);
-    sendManager(buf);
+    if (m_stateTracker.getNumRunning() > 0) {
+        m_barrierActive = true;
+        m_barrierUuid = barrier.uuid();
+        message::Buffer buf(barrier);
+        buf.setDestId(Id::NextHop);
+        if (m_isMaster)
+            sendSlaves(buf, true);
+        sendManager(buf);
+    }
     return true;
 }
 
