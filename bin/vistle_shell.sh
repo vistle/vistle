@@ -11,10 +11,10 @@ if [ -n "$2" ]; then
     port="$2"
 fi
 
-for v in DYLD_LIBRARY_PATH DYLD_FRAMEWORK_PATH DYLD_FALLBACK_LIBRARY_PATH DYLD_FALLBACK_FRAMEWORK_PATH DYLD_INSERT_LIBRARIES; do
-    eval val="\${VISTLE_${v}}"
+for v in LIBRARY_PATH FRAMEWORK_PATH FALLBACK_LIBRARY_PATH FALLBACK_FRAMEWORK_PATH INSERT_LIBRARIES; do
+    eval val="\${VISTLE_DYLD_${v}}"
     if [ -n "${val}" ]; then
-        export $v="$val"
+        export DYLD_$v="$val"
     fi
 done
 exec ipython -i -c "import vistle; vistle._vistle.sessionConnect(None, \"$host\", $port); from vistle import *;" -- "$@"

@@ -21,6 +21,14 @@ envvars="$envvars LD_LIBRARY_PATH LD_PRELOAD"
 envvars="$envvars DYLD_LIBRRARY_PATH VISTLE_DYLD_LIBRARY_PATH DYLD_FRAMEWORK_PATH VISTLE_DYLD_FRAMEWORK_PATH"
 envvars="$envvars DYLD_FALLBACK_LIBRRARY_PATH VISTLE_DYLD_FALLBACK_LIBRARY_PATH DYLD_FALLBACK_FRAMEWORK_PATH VISTLE_DYLD_FALLBACK_FRAMEWORK_PATH"
 
+for v in LIBRARY_PATH FRAMEWORK_PATH FALLBACK_LIBRARY_PATH FALLBACK_FRAMEWORK_PATH INSERT_LIBRARIES; do
+    eval val="\${VISTLE_DYLD_${v}}"
+    if [ -n "${val}" ]; then
+        export DYLD_$v="$val"
+    fi
+    envvars="$envvars DYLD_${v} VISTLE_DYLD_${v}"
+done
+
 if [ -n "$VISTLE_LOGFILE" ]; then
     mkdir -p $(dirname "$VISTLE_LOGFILE") || echo "Could not create directory for $VISTLE_LOGFILE" && exit 1
     exec > $VISTLE_LOGFILE 2>&1
@@ -75,14 +83,6 @@ fi
 #echo SPAWN "$@"
 
 #echo "spawn_vistle.sh: $@"
-case $(uname) in
-   Darwin)
-      export DYLD_LIBRARY_PATH="$VISTLE_DYLD_LIBRARY_PATH"
-      export DYLD_FRAMEWORK_PATH="$VISTLE_DYLD_FRAMEWORK_PATH"
-      export DYLD_FALLBACK_LIBRARY_PATH="$VISTLE_DYLD_FALLBACK_LIBRARY_PATH"
-      export DYLD_FALLBACK_FRAMEWORK_PATH="$VISTLE_DYLD_FALLBACK_FRAMEWORK_PATH"
-      ;;
-esac
 
 WRAPPER="valgrind --track-origins=yes --read-var-info=yes --read-inline-info=yes --error-limit=no"
 WRAPPER="valgrind --max-threads=1024"

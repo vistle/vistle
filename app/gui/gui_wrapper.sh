@@ -6,10 +6,13 @@ if [ "$1" = "-g" ]; then
    shift
 fi
 
-export DYLD_LIBRARY_PATH="$VISTLE_DYLD_LIBRARY_PATH"
-export DYLD_FRAMEWORK_PATH="$VISTLE_DYLD_FRAMEWORK_PATH"
-export DYLD_FALLBACK_LIBRARY_PATH="$VISTLE_DYLD_FALLBACK_LIBRARY_PATH"
-export DYLD_FALLBACK_FRAMEWORK_PATH="$VISTLE_DYLD_FALLBACK_FRAMEWORK_PATH"
+for v in LIBRARY_PATH FRAMEWORK_PATH FALLBACK_LIBRARY_PATH FALLBACK_FRAMEWORK_PATH INSERT_LIBRARIES; do
+    eval val="\${VISTLE_DYLD_${v}}"
+    if [ -n "${val}" ]; then
+        export DYLD_$v="$val"
+    fi
+done
+
 grealpath=echo
 if which grealpath >/dev/null 2>&1; then
     grealpath=grealpath
