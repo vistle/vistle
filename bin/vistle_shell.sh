@@ -17,4 +17,9 @@ for v in LIBRARY_PATH FRAMEWORK_PATH FALLBACK_LIBRARY_PATH FALLBACK_FRAMEWORK_PA
         export DYLD_$v="$val"
     fi
 done
-exec ipython -i -c "import vistle; vistle._vistle.sessionConnect(None, \"$host\", $port); from vistle import *;" -- "$@"
+
+PY=python3
+if which ipython >/dev/null 2>&1; then
+    PY=ipython
+fi
+exec "$PY" -i -c "import vistle; vistle._vistle.sessionConnect(None, \"$host\", $port); from vistle import *;" -- "$@"
