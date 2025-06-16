@@ -231,6 +231,28 @@ bool VistlePlugin::sendVisMessage(const covise::Message *msg)
         return false;
     }
 
+#if 0
+    auto tostr = [](int t) -> std::string {
+        std::stringstream str;
+        str << t;
+        if (t < 0 || t >= covise::COVISE_MESSAGE_LAST_DUMMY_MESSAGE) {
+            str << " (invalid)";
+        } else {
+            str << " (" << covise::covise_msg_types_array[t] << ")";
+        }
+        return str.str();
+    };
+
+    std::cerr << "send vis message: sender=" << msg->sender << ", send_type=" << msg->send_type
+              << ", type=" << tostr(msg->type) << std::endl;
+#endif
+
+    if (msg->type == covise::Message::UI && msg->data.data() &&
+        strncmp(msg->data.data(), "WANT_TABLETUI", msg->data.length()) == 0) {
+        // no one is listening for this
+        return true;
+    }
+
     message::Cover cover(m_module->mirrorId(), msg->sender, msg->send_type, msg->type);
     cover.setDestId(message::Id::MasterHub);
     MessagePayload pl(msg->data.data(), msg->data.length());
