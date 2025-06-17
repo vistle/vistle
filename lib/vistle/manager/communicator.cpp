@@ -470,7 +470,7 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message, co
     buf.setWasBroadcast(true);
 
     MessagePayload pl = payload;
-    if (m_size > 0) {
+    if (m_size > 1) {
         std::lock_guard guard(m_mutex);
         std::vector<MPI_Request> s(m_size);
         unsigned int size = buf.size();
