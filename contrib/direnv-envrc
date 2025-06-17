@@ -81,38 +81,30 @@ elif [ -s .flavor ]; then
 fi
 
 if [ -f .release ]; then
-    if [ -n "${ARCHSUFFIX}" -a "${ARCHSUFFIX%opt}" = "${ARCHSUFFIX}" ]; then
-        ARCHSUFFIX="${ARCHSUFFIX}opt"
-    fi
     VISTLE_BUILD_TYPE=Release
     builddir="${builddir}-release"
 elif [ -f .debug ]; then
-    if [ "${ARCHSUFFIX%opt}" != "${ARCHSUFFIX}" ]; then
-        : ARCHSUFFIX="${ARCHSUFFIX%opt}"
-    fi
     VISTLE_BUILD_TYPE=Debug
     builddir="${builddir}-debug"
 elif [ -f .buildtype ]; then
     VISTLE_BUILD_TYPE="$(cat .buildtype)"
-    case "$VISTLE_BUILD_TYPE" in
-    Debug|Sanitize)
-        if [ "${ARCHSUFFIX%opt}" != "${ARCHSUFFIX}" ]; then
-            : ARCHSUFFIX="${ARCHSUFFIX%opt}"
-        fi
-        ;;
-    RelWithDebInfo|Release|MinSizeRel|RelSanitize)
-        if [ -n "${ARCHSUFFIX}" -a "${ARCHSUFFIX%opt}" = "${ARCHSUFFIX}" ]; then
-            ARCHSUFFIX="${ARCHSUFFIX}opt"
-        fi
-        ;;
-    esac
 else
-    if [ -n "${ARCHSUFFIX}" -a "${ARCHSUFFIX%opt}" = "${ARCHSUFFIX}" ]; then
-        ARCHSUFFIX="${ARCHSUFFIX}opt"
-    fi
     VISTLE_BUILD_TYPE=RelWithDebInfo
 fi
 export VISTLE_BUILD_TYPE
+
+case "$VISTLE_BUILD_TYPE" in
+Debug|Sanitize)
+    if [ "${ARCHSUFFIX%opt}" != "${ARCHSUFFIX}" ]; then
+        ARCHSUFFIX="${ARCHSUFFIX%opt}"
+    fi
+    ;;
+RelWithDebInfo|Release|MinSizeRel|RelSanitize|*)
+    if [ -n "${ARCHSUFFIX}" -a "${ARCHSUFFIX%opt}" = "${ARCHSUFFIX}" ]; then
+        ARCHSUFFIX="${ARCHSUFFIX}opt"
+    fi
+    ;;
+esac
 
 if [ -n "${ARCHSUFFIX}" ]; then
     export ARCHSUFFIX
