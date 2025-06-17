@@ -669,7 +669,9 @@ bool ClusterManager::handle(const message::Buffer &message, const MessagePayload
         message.destId() == message::Id::Vistle) {
         if (destHub != hubId() || message.type() == message::EXECUTE || message.type() == message::CANCELEXECUTE ||
             message.type() == message::COVER) {
-            return sendHub(message, payload);
+            if (!message.wasBroadcast()) {
+                return sendHub(message, payload);
+            }
         }
     }
 
