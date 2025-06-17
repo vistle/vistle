@@ -113,6 +113,8 @@ public:
 
 private:
     struct Slave;
+
+    StateTracker m_stateTracker;
     std::unique_ptr<config::Access> m_config;
 
     message::MessageFactory make;
@@ -220,7 +222,6 @@ private:
 
     std::shared_ptr<DataProxy> m_dataProxy;
     TunnelManager m_tunnelManager;
-    StateTracker m_stateTracker;
     UiManager m_uiManager;
     bool m_hasUi = false;
     bool m_hasVrb = false;

@@ -271,14 +271,14 @@ void HubParameters::sendParameterMessage(const message::Message &message, const 
 }
 
 Hub::Hub(bool inManager)
-: m_inManager(inManager)
+: m_stateTracker(message::Id::Invalid, "Hub state")
+, m_inManager(inManager)
 , m_basePort(31093)
 , m_port(0)
 , m_masterPort(m_basePort)
 , m_masterHost("localhost")
 , m_acceptorv4(new boost::asio::ip::tcp::acceptor(m_ioContext))
 , m_acceptorv6(new boost::asio::ip::tcp::acceptor(m_ioContext))
-, m_stateTracker(message::Id::Invalid, "Hub state")
 , m_uiManager(*this, m_stateTracker)
 , m_managerConnected(false)
 , m_quitting(false)
