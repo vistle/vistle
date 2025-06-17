@@ -1870,9 +1870,7 @@ bool StateTracker::handlePriv(const message::CloseConnection &close)
 
 StateTracker::~StateTracker()
 {
-    if (m_portTracker) {
-        m_portTracker->setTracker(nullptr);
-    }
+    m_portTracker.reset();
 }
 
 std::shared_ptr<PortTracker> StateTracker::portTracker() const
