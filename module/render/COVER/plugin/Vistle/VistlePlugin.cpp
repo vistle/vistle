@@ -186,11 +186,11 @@ bool VistlePlugin::update()
             }
         }
     } catch (boost::interprocess::interprocess_exception &e) {
-        std::cerr << "Module::dispatch: interprocess_exception: " << e.what() << std::endl;
+        std::cerr << "VistlePlugin::update: interprocess_exception: " << e.what() << std::endl;
         std::cerr << "   error: code: " << e.get_error_code() << ", native: " << e.get_native_error() << std::endl;
         throw(e);
     } catch (std::exception &e) {
-        std::cerr << "Module::dispatch: std::exception: " << e.what() << std::endl;
+        std::cerr << "VistlePlugin::update: std::exception: " << e.what() << std::endl;
         throw(e);
     }
 
@@ -243,7 +243,7 @@ bool VistlePlugin::sendVisMessage(const covise::Message *msg)
         return str.str();
     };
 
-    std::cerr << "send vis message: sender=" << msg->sender << ", send_type=" << msg->send_type
+    std::cerr << "VistlePlugin::sendVisMessage: sender=" << msg->sender << ", send_type=" << msg->send_type
               << ", type=" << tostr(msg->type) << std::endl;
 #endif
 
