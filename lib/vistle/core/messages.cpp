@@ -486,12 +486,12 @@ int Spawn::migrateId() const
 
 void Spawn::setMirroringId(int id)
 {
-    setReference(id, ReferenceType::Mirror);
+    m_mirrorId = id;
 }
 
 int Spawn::mirroringId() const
 {
-    return m_referenceType == (int)ReferenceType::Mirror ? m_referenceId : Id::Invalid;
+    return m_mirrorId;
 }
 
 int Spawn::hubId() const
@@ -2109,6 +2109,12 @@ std::ostream &operator<<(std::ostream &s, const Message &m)
     case SPAWN: {
         auto &mm = static_cast<const Spawn &>(m);
         s << ", name: " << mm.getName() << ", id: " << mm.spawnId() << ", hub: " << mm.hubId();
+        if (mm.migrateId() != message::Id::Invalid) {
+            s << ", migrate: " << mm.migrateId();
+        }
+        if (mm.mirroringId() != message::Id::Invalid) {
+            s << ", mirror: " << mm.mirroringId();
+        }
         break;
     }
     case KILL: {
