@@ -146,7 +146,7 @@ public:
 
     int getModuleState(int id) const;
     int getMirrorId(int id) const;
-    const std::set<int> &getMirrors(int id) const;
+    std::set<int> getMirrors(int id) const;
 
     std::vector<std::string> getParameters(int id) const;
     std::shared_ptr<Parameter> getParameter(int id, const std::string &name) const;

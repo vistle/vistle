@@ -311,22 +311,29 @@ int StateTracker::getMirrorId(int id) const
     return it->second.mirrorOfId;
 }
 
-const std::set<int> &StateTracker::getMirrors(int id) const
+std::set<int> StateTracker::getMirrors(int id) const
 {
-    static std::set<int> empty;
+    std::set<int> mirrors;
     mutex_locker guard(m_stateMutex);
     RunningMap::const_iterator it = runningMap.find(id);
     if (it == runningMap.end())
-        return empty;
+        return mirrors;
+
     int mid = it->second.mirrorOfId;
     if (mid == message::Id::Invalid) {
-        return it->second.mirrors;
+        return mirrors;
     }
-    RunningMap::const_iterator mit = runningMap.find(mid);
-    if (mit == runningMap.end())
-        return empty;
 
-    return mit->second.mirrors;
+    RunningMap::const_iterator mit = runningMap.find(mid);
+    if (mit != runningMap.end())
+        return mit->second.mirrors;
+
+    for (const auto &mod: runningMap) {
+        if (mod.second.mirrorOfId == mid) {
+            mirrors.insert(mod.first);
+        }
+    }
+    return mirrors;
 }
 
 namespace {
