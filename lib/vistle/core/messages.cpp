@@ -654,22 +654,32 @@ const char *CloseConnection::reason() const
     return m_reason.data();
 }
 
-ModuleExit::ModuleExit(bool crashed): forwarded(false), crashed(crashed)
+ModuleExit::ModuleExit(bool crashed): m_forwarded(0), m_crashed(crashed ? 1 : 0)
 {}
 
 void ModuleExit::setForwarded()
 {
-    forwarded = true;
+    m_forwarded = 1;
 }
 
 bool ModuleExit::isForwarded() const
 {
-    return forwarded;
+    return m_forwarded != 0;
 }
 
 bool ModuleExit::isCrashed() const
 {
-    return crashed;
+    return m_crashed != 0;
+}
+
+void ModuleExit::setLeaveMirrorGroup(bool leave)
+{
+    m_leaveMirrorGroup = leave ? 1 : 0;
+}
+
+bool ModuleExit::leaveMirrorGroup() const
+{
+    return m_leaveMirrorGroup != 0;
 }
 
 Screenshot::Screenshot(const std::string &filename, bool quit): m_quit(quit)

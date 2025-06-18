@@ -318,11 +318,14 @@ public:
     ModuleExit(bool crashed = false);
     void setForwarded();
     bool isForwarded() const;
+    void setLeaveMirrorGroup(bool leave);
+    bool leaveMirrorGroup() const;
     bool isCrashed() const;
 
 private:
-    bool forwarded = false;
-    bool crashed = false;
+    int m_forwarded = 0;
+    int m_crashed = 0;
+    int m_leaveMirrorGroup = 0;
 };
 
 //! instruct GUI to store a snapshot of the rendered workflow

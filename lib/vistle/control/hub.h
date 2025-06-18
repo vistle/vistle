@@ -155,6 +155,7 @@ private:
     bool linkModuleParams(int oldModuleId, int newModuleId);
 
     bool handlePlainSpawn(message::Spawn &notify, bool doSpawn, bool error);
+    bool notifySpawnError(message::Spawn &notify);
 
     void killOldModule(int migratedId);
     void sendInfo(const std::string &s, int senderId = message::Id::Invalid);
