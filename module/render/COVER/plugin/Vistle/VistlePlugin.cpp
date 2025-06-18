@@ -109,7 +109,9 @@ bool VistlePlugin::init()
             executeButton->setPriority(ui::Element::Toolbar);
         }
 
-        update();
+        do {
+            update();
+        } while (m_module->mirrorId() == message::Id::Invalid);
 
         return true;
     }
