@@ -2738,129 +2738,143 @@ bool Hub::handlePlainSpawn(message::Spawn &notify, bool doSpawn, bool error)
     }
     return true;
 }
-
-bool Hub::handlePriv(const message::Spawn &spawnRecv)
+bool Hub::notifySpawnError(message::Spawn &notify)
 {
-    bool error = false;
-    message::Spawn spawn(spawnRecv);
+    return handlePlainSpawn(notify, false, true);
+}
+
+bool Hub::handlePriv(const message::Spawn &spawn)
+{
     std::string moduleName(spawn.getName());
     bool isCover = moduleName == "COVER";
 
-    if (m_isMaster) {
-        bool restart = spawn.getReferenceType() == message::Spawn::ReferenceType::Migrate;
-        bool shouldMirror = (spawn.getReferenceType() == message::Spawn::ReferenceType::None && isCover) &&
-                            m_stateTracker.getHubData(spawn.hubId()).hasUi;
-        bool clone = spawn.getReferenceType() == message::Spawn::ReferenceType::Clone;
-        bool cloneLinked = spawn.getReferenceType() == message::Spawn::ReferenceType::LinkedClone;
-
-        bool someFormOfCopy = restart || clone || cloneLinked;
-
-        auto notify = spawn;
-        notify.setReferrer(spawn.uuid());
-        notify.setSenderId(m_hubId);
-        bool doSpawn = false;
-        int mirroredId = Id::Invalid;
-        if (spawn.spawnId() == Id::Invalid) {
-            notify.setSpawnId(Id::ModuleBase + m_moduleCount);
-            mirroredId = Id::ModuleBase + m_moduleCount;
-            ++m_moduleCount;
-            std::string suffix = "[" + std::to_string(mirroredId) + "]";
-
-            session.setCurrentParameterGroup("Workflow", false);
-            session.addIntParameter("layer" + suffix, "layer for module " + std::to_string(mirroredId), Integer(0));
-            session.addVectorParameter("position" + suffix, "position for module " + std::to_string(mirroredId),
-                                       ParamVector(0., 0.));
-            session.setCurrentParameterGroup("", false);
-
-            doSpawn = true;
-            if (spawn.hubId() == m_hubId) {
-                if (isCover && m_coverIsManager) {
-                    spawn.setAsPlugin(true);
-                    notify.setAsPlugin(true);
-                }
-            }
-        } else if (someFormOfCopy) {
-            doSpawn = true;
-            someFormOfCopy = false;
+    auto notify = spawn;
+    if (spawn.hubId() == m_hubId) {
+        if (isCover && m_coverIsManager) {
+            notify.setAsPlugin(true);
         }
-        if (shouldMirror)
-            notify.setMirroringId(mirroredId);
-        auto hubs = m_stateTracker.getHubs();
-        if (std::find(hubs.begin(), hubs.end(), spawn.hubId()) == hubs.end()) {
-            std::stringstream str;
-            str << "hub with id " << spawn.hubId() << " not known";
-            sendError(str.str());
-            error = true;
-        }
-        if (!error && someFormOfCopy) {
-            spawn.setSpawnId(notify.spawnId());
-            if (restart) {
-                if (doSpawn) {
-                    if (!cacheModuleValues(spawn.migrateId(), notify.spawnId())) {
-                        sendError("cannot migrate module with id " + std::to_string(spawn.getReference()));
-                        return handlePlainSpawn(notify, doSpawn, true);
-                    }
-                    if (!editDelayedConnects(spawn.migrateId(), notify.spawnId())) {
-                        sendError("cannot migrate module with id " + std::to_string(spawn.getReference()));
-                        return handlePlainSpawn(notify, doSpawn, true);
-                    }
-                }
-                m_sendAfterExit[spawn.migrateId()].push_back(spawn);
-                killOldModule(spawn.migrateId());
-                return true;
-            } else if (clone) {
-                if (doSpawn) {
-                    if (!copyModuleParams(spawn.getReference(), notify.spawnId(), true)) {
-                        sendError("cannot clone module with id " + std::to_string(spawn.getReference()));
-                        return handlePlainSpawn(notify, doSpawn, true);
-                    }
-                }
-                handleMessage(spawn);
-                return true;
-            } else if (cloneLinked) {
-                if (doSpawn) {
-                    if (!linkModuleParams(spawn.getReference(), notify.spawnId())) {
-                        sendError("cannot clone module with id " + std::to_string(spawn.getReference()));
-                        return handlePlainSpawn(notify, doSpawn, true);
-                    }
-                }
-                handleMessage(spawn);
-                return true;
-            }
-        }
-        handlePlainSpawn(notify, doSpawn, error);
+    }
 
-        if (!error && doSpawn && shouldMirror) {
-            for (auto &hubid: m_stateTracker.getHubs()) {
-                if (hubid == spawn.hubId())
-                    continue;
-                if (hubid == Id::MasterHub && m_isMaster && m_proxyOnly)
-                    continue;
-                const auto &hub = m_stateTracker.getHubData(hubid);
-                if (!hub.hasUi)
-                    continue;
-
-                spawnMirror(hubid, spawn.getName(), mirroredId);
-            }
-        }
-    } else {
+    if (!m_isMaster) {
         if (m_verbose >= Verbosity::Normal) {
             CERR << "SLAVE: handle spawn: " << spawn << std::endl;
         }
         if (spawn.spawnId() == Id::Invalid) {
-            sendMaster(spawn);
-        } else {
-            if (spawn.hubId() == m_hubId) {
-                if (isCover && m_coverIsManager) {
-                    spawn.setAsPlugin(true);
+            return sendMaster(spawn);
+        }
+
+        m_stateTracker.handle(notify, nullptr);
+        sendManager(notify);
+        sendUi(notify);
+        return true;
+    }
+
+    notify.setReferrer(spawn.uuid());
+    notify.setSenderId(m_hubId);
+
+    auto hubs = m_stateTracker.getHubs();
+    if (std::find(hubs.begin(), hubs.end(), spawn.hubId()) == hubs.end()) {
+        std::stringstream str;
+        str << "hub with id " << spawn.hubId() << " not known";
+        sendError(str.str());
+        return notifySpawnError(notify);
+    }
+
+    bool shouldMirror = isCover && m_stateTracker.getHubData(spawn.hubId()).hasUi;
+    bool migrateOrRestart = spawn.getReferenceType() == message::Spawn::ReferenceType::Migrate;
+    bool clone = spawn.getReferenceType() == message::Spawn::ReferenceType::Clone;
+    bool cloneLinked = spawn.getReferenceType() == message::Spawn::ReferenceType::LinkedClone;
+
+    bool migrate = false;
+    bool restart = false;
+    if (migrateOrRestart && spawn.getReference() != Id::Invalid) {
+        int oldHub = m_stateTracker.getHub(spawn.getReference());
+        restart = oldHub == spawn.hubId();
+        migrate = !restart;
+    }
+    bool someFormOfCopy = restart || migrate || clone || cloneLinked;
+
+    bool doSpawn = false;
+    int newId = spawn.spawnId();
+    int mirroringId = Id::Invalid;
+    if (spawn.spawnId() == Id::Invalid) {
+        newId = Id::ModuleBase + m_moduleCount;
+        ++m_moduleCount;
+        notify.setSpawnId(newId);
+        std::string suffix = "[" + std::to_string(newId) + "]";
+
+        session.setCurrentParameterGroup("Workflow", false);
+        session.addIntParameter("layer" + suffix, "layer for module " + std::to_string(newId), Integer(0));
+        session.addVectorParameter("position" + suffix, "position for module " + std::to_string(newId),
+                                   ParamVector(0., 0.));
+        session.setCurrentParameterGroup("", false);
+
+        doSpawn = true;
+    } else if (someFormOfCopy) {
+        doSpawn = true;
+        someFormOfCopy = false;
+    }
+
+    if (shouldMirror) {
+        mirroringId = newId;
+        if (restart) {
+            mirroringId = m_stateTracker.getMirrorId(spawn.getReference());
+            CERR << "restarting module " << spawn.getReference() << " as " << newId << " with mirroring id "
+                 << mirroringId << std::endl;
+            CERR << "restart " << notify << std::endl;
+        }
+        notify.setMirroringId(mirroringId);
+    }
+
+    if (someFormOfCopy) {
+        if (migrateOrRestart) {
+            if (doSpawn) {
+                if (!cacheModuleValues(spawn.getReference(), newId)) {
+                    sendError("cannot migrate module with id " + std::to_string(spawn.getReference()));
+                    return notifySpawnError(notify);
+                }
+                if (!editDelayedConnects(spawn.getReference(), newId)) {
+                    sendError("cannot migrate module with id " + std::to_string(spawn.getReference()));
+                    return notifySpawnError(notify);
                 }
             }
-            m_stateTracker.handle(spawn, nullptr);
-            sendManager(spawn);
-            sendUi(spawn);
+            m_sendAfterExit[spawn.getReference()].push_back(notify);
+            killOldModule(spawn.getReference());
+            return true;
+        } else if (clone) {
+            if (doSpawn) {
+                if (!copyModuleParams(spawn.getReference(), newId, true)) {
+                    sendError("cannot clone module with id " + std::to_string(spawn.getReference()));
+                    return notifySpawnError(notify);
+                }
+            }
+            return handleMessage(notify);
+        } else if (cloneLinked) {
+            if (doSpawn) {
+                if (!linkModuleParams(spawn.getReference(), newId)) {
+                    sendError("cannot clone module with id " + std::to_string(spawn.getReference()));
+                    return notifySpawnError(notify);
+                }
+            }
+            return handleMessage(notify);
         }
     }
 
+    handlePlainSpawn(notify, doSpawn, false);
+
+    if (doSpawn && shouldMirror && !restart) {
+        for (auto &hubid: m_stateTracker.getHubs()) {
+            if (hubid == spawn.hubId())
+                continue;
+            if (hubid == Id::MasterHub && m_isMaster && m_proxyOnly)
+                continue;
+            const auto &hub = m_stateTracker.getHubData(hubid);
+            if (!hub.hasUi)
+                continue;
+
+            spawnMirror(hubid, spawn.getName(), newId);
+        }
+    }
     return true;
 }
 
@@ -4058,6 +4072,7 @@ bool Hub::handlePriv(const message::ModuleExit &exit)
         handleMessage(r);
     }
 
+    bool restarting = false;
     if (!crashed) {
         std::vector<message::Disconnect> disconnects;
         auto inputs = m_stateTracker.portTracker()->getConnectedInputPorts(id);
@@ -4091,19 +4106,20 @@ bool Hub::handlePriv(const message::ModuleExit &exit)
                 handleMessage(m);
             }
             m_sendAfterExit.erase(it2);
+            restarting = true;
         }
+    }
 
-        if (m_isMaster) {
-            const auto &hub = m_stateTracker.getHubData(idToHub(id));
-            if (!hub.isQuitting) {
-                auto mirrors = m_stateTracker.getMirrors(id);
-                for (auto m: mirrors) {
-                    if (m == id)
-                        continue;
-                    auto kill = message::Kill(m);
-                    kill.setDestId(m);
-                    handleMessage(kill);
-                }
+    if (m_isMaster && !exit.leaveMirrorGroup() && !restarting) {
+        const auto &hub = m_stateTracker.getHubData(idToHub(id));
+        if (!hub.isQuitting) {
+            auto mirrors = m_stateTracker.getMirrors(id);
+            for (auto m: mirrors) {
+                if (m == id)
+                    continue;
+                auto kill = message::Kill(m);
+                kill.setDestId(m);
+                handleMessage(kill);
             }
         }
     }
@@ -4159,8 +4175,6 @@ bool Hub::handlePriv(const message::Cover &cover, const buffer *payload)
 
     //CERR << "handling: " << cover << std::endl;
 
-    auto mid = cover.mirrorId();
-    auto mirrors = m_stateTracker.getMirrors(mid);
     socket_ptr sock;
     auto it = m_vrbSockets.find(cover.senderId());
     if (it == m_vrbSockets.end()) {
@@ -4309,6 +4323,7 @@ bool Hub::checkChildProcesses(bool emergency, bool onMainThread)
                 // synthesize ModuleExit message for crashed modules
                 auto m = make.message<message::ModuleExit>(true /* crashed*/);
                 m.setSenderId(id);
+                m.setLeaveMirrorGroup(true);
                 sendManager(m); // will be returned and forwarded to master hub
             }
         }
@@ -4425,6 +4440,7 @@ void Hub::spawnModule(const std::string &path, const std::string &name, int spaw
         sendError(str.str());
         auto ex = make.message<message::ModuleExit>();
         ex.setSenderId(spawnId);
+        ex.setLeaveMirrorGroup(true);
         sendManager(ex);
     }
 }
