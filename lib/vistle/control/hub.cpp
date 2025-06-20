@@ -946,9 +946,9 @@ Hub::launchProcess(int type, const std::string &prog, const std::vector<std::str
     auto out = std::make_shared<process::ipstream>();
     auto err = std::make_shared<process::ipstream>();
     try {
-        child = std::make_shared<process::child>(path, process::args(args), terminate_with_parent(),
-                                                 process::std_out > *out, process::std_err > *err, m_ioContext,
-                                                 process::on_exit(exit_handler));
+        child = std::make_shared<process::child>(
+            path, process::args(args), terminate_with_parent(), process::std_out > *out, process::std_err > *err,
+            process::std_in < process::null, m_ioContext, process::on_exit(exit_handler));
     } catch (std::exception &ex) {
         std::stringstream info;
         info << "Failed to launch: " << path << ": " << ex.what();
