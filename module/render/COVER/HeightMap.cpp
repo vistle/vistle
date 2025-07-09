@@ -84,7 +84,7 @@ void HeightMap::setup()
     auto state = getOrCreateStateSet();
 
     _heightImg = new osg::Image;
-    _heightImg->setInternalTextureFormat(GL_LUMINANCE32F_ARB);
+    _heightImg->setInternalTextureFormat(GL_R32F);
     auto heightTex = new osg::TextureRectangle;
     state->setTextureAttributeAndModes(HeightTexUnit, heightTex, osg::StateAttribute::ON);
     heightTex->setImage(_heightImg);
@@ -97,7 +97,7 @@ void HeightMap::setup()
     state->addUniform(heightSampler);
 
     _dataImg = new osg::Image;
-    _dataImg->setInternalTextureFormat(GL_LUMINANCE32F_ARB);
+    _dataImg->setInternalTextureFormat(GL_R32F);
     _dataTex = new osg::TextureRectangle;
     _dataTex->setDataVariance(osg::Object::STATIC);
     _dataTex->setResizeNonPowerOfTwoHint(false);
@@ -190,25 +190,25 @@ osg::BoundingBox HeightMap::computeBoundingBox() const
 void HeightMap::allocate(unsigned int numColumns, unsigned int numRows, HeightMap::DataMode mode)
 {
     if (_columns != numColumns || _rows != numRows) {
-        _heightImg->allocateImage(numColumns, numRows, 1, GL_LUMINANCE, GL_FLOAT);
+        _heightImg->allocateImage(numColumns, numRows, 1, GL_RED, GL_FLOAT);
         _heights = (float *)_heightImg->data();
 
         switch (mode) {
         case VertexData:
             //std::cerr << "HeightMap: allocating with vertex data: " << numColumns << "x" << numRows << std::endl;
-            _dataImg->allocateImage(numColumns, numRows, 1, GL_LUMINANCE, GL_FLOAT);
+            _dataImg->allocateImage(numColumns, numRows, 1, GL_RED, GL_FLOAT);
             _data = (float *)_dataImg->data();
             break;
         case CellData:
             //std::cerr << "HeightMap: allocating with cell data: " << numColumns << "x" << numRows << std::endl;
             if (numColumns > 1 && numRows > 1) {
-                _dataImg->allocateImage(numColumns - 1, numRows - 1, 1, GL_LUMINANCE, GL_FLOAT);
+                _dataImg->allocateImage(numColumns - 1, numRows - 1, 1, GL_RED, GL_FLOAT);
                 _data = (float *)_dataImg->data();
                 break;
             }
         default:
             //std::cerr << "HeightMap: allocating without data: " << numColumns << "x" << numRows << std::endl;
-            _dataImg->allocateImage(0, 0, 0, GL_LUMINANCE, GL_FLOAT);
+            _dataImg->allocateImage(0, 0, 0, GL_RED, GL_FLOAT);
             _data = nullptr;
             break;
         }
