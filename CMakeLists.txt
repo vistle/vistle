@@ -31,6 +31,10 @@ if(POLICY CMP0144)
     # make find_include/find_library search in uppercased <PackageName>_ROOT prefix
     cmake_policy(SET CMP0144 NEW)
 endif()
+if(POLICY CMP0167)
+    # use find_package(Boost) only in CONFIG mode
+    cmake_policy(SET CMP0167 NEW)
+endif()
 if(POLICY CMP0177)
     # normalize install DESTINATION paths
     cmake_policy(SET CMP0177 NEW)
