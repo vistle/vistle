@@ -160,21 +160,9 @@ bool TecplotFile::Impl::open(std::string const &iFileName)
     }
     char versionString[8];
     mStream.read(versionString, sizeof(versionString));
-    // if (std::strncmp(versionString, "#!TDV", 5) || 
-    //     std::strncmp(versionString, "#!SZPLT ", 7)) {
-    //     std::cerr << "No tecplot binary file.\n";
-    //     return false;
-    // }
-    // READ first strings to get an impression of the new format:
-    char testString[32];
-    mStream.read(testString, sizeof(testString)); //'105BF $Revision:'
-
-    char testString1[16];
-    mStream.read(testString1, sizeof(testString1));
-
-    if (std::strncmp(versionString, "#!SZPLT ", 7)) {
-        std::cerr << "No tecplot binary file.\n";
-        return false;
+    if (std::strncmp(versionString, "#!TDV", 5)) {
+         std::cerr << "No tecplot binary file.\n";
+         return false;
     }
     mVersion = 0;
     if (isdigit(versionString[5]))
@@ -205,9 +193,7 @@ bool TecplotFile::Impl::open(std::string const &iFileName)
     int endianTest = fetchInt32();
     if (endianTest != 1) {
         if (endianTest == 16777216) {
-            mOtherEndian = true;
-        //} else if (endianTest == 1110782001) {  //endianTest for .szplt -> leads to process abortion
-        //    mOtherEndian = true;  
+            mOtherEndian = true; 
         } else {
             std::cerr << "Illegal endianness test value.\n";
             return false;

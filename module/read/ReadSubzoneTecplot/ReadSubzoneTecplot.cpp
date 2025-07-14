@@ -17,8 +17,8 @@
 
 #include <vistle/util/filesystem.h>
 
-//Include TecIO:
-//#include <vistle/tecio/teciosrc/TECIO.h>
+//Include TecIO for szPLot:
+#include <vistle/tecio/teciosrc/TECIO.h>
 
 MODULE_MAIN(ReadSubzoneTecplot)
 
