@@ -1,0 +1,3 @@
+ #pragma once
+#include "SZLFEZoneWriter.h"
+namespace tecplot { namespace ___3931 { class ItemSetIterator; class SZLFEPartitionWriter : public SZLFEZoneWriter { public: SZLFEPartitionWriter( uint32_t                            fileVersion, ItemSetIterator&                    varIter, ___4633                         zone, ___4633                         ASSERT_ONLY(___341), ItemAddress64::___2978          ___2975, std::vector<___372> const&       ___4561, ___372                           ___4496, ___37&                         ___36, boost::shared_ptr<___1348 const> zoneInfo); virtual ~SZLFEPartitionWriter(); virtual ___2477 varMinMax(___4349 ___4333); }; }}

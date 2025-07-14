@@ -1,0 +1,7 @@
+#include "SZLFEPartitionWriter.h"
+#include "ThirdPartyHeadersBegin.h"
+#include <sstream>
+#include "ThirdPartyHeadersEnd.h"
+#include "FEZoneInfo.h"
+#include "writeValueArray.h"
+namespace tecplot { namespace ___3931 { class ItemSetIterator; SZLFEPartitionWriter::SZLFEPartitionWriter( uint32_t                            fileVersion, ItemSetIterator&                    varIter, ___4633                         zone, ___4633                         ASSERT_ONLY(___341), ItemAddress64::___2978          ___2975, std::vector<___372> const&       ___4561, ___372                           ___4496, ___37&                         ___36, boost::shared_ptr<___1348 const> zoneInfo) : SZLFEZoneWriter(fileVersion, varIter, static_cast<___4633>(___2975), 0, ___4561, ___4496, ___36, zoneInfo) { REQUIRE(0 <= ___341 && ___341 <= zone); std::ostringstream labelStream; labelStream << "partitionNumForZone" << zone + 1 << "*"; std::ostringstream suffixStream; suffixStream << "ForZone" << zone + 1 << "Partition"; m_headerWriter.setMarkerAndLabels("partitionMarker*", SZPLT_PARTITION_MARKER, labelStream.str(), suffixStream.str()); setZoneNumberLabel(labelStream.str()); } SZLFEPartitionWriter::~SZLFEPartitionWriter() {} ___2477 SZLFEPartitionWriter::varMinMax(___4349 ___4333) { ___2477 minMax = ___4706::varMinMax(___4333); ___1348::NszMinMaxMap const& nszMinMaxMap = m_feZoneInfo->getNszMinMaxes(); for (___1348::NszMinMaxMap::const_iterator it = nszMinMaxMap.begin(); it != nszMinMaxMap.end(); ++it) minMax.include(it->second[___4333]); return minMax; } } }
