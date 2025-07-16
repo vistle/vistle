@@ -12,7 +12,9 @@
 #include <vistle/core/message.h>
 #include <vistle/core/coords.h>
 #include <vistle/core/lines.h>
+#include <vistle/core/points.h>
 #include <vistle/core/structuredgridbase.h>
+#include <vistle/core/standardattributes.h>
 #include <vistle/alg/objalg.h>
 
 #ifdef BOUNDINGBOX
@@ -27,25 +29,32 @@ public:
     ~Extrema();
 
 private:
+#ifdef BOUNDINGBOX
+    static const int MaxDim = 3;
+#else
     static const int MaxDim = ParamVector::MaxDimension;
+#endif
 
     int dim;
     bool handled;
     bool haveGeometry;
     ParamVector min, max, gmin, gmax;
+    std::vector<ParamVector> tmin, tmax;
     IntParamVector minIndex, maxIndex, gminIndex, gmaxIndex;
     IntParamVector minBlock, maxBlock, gminBlock, gmaxBlock;
 
-    virtual bool compute();
-    virtual bool reduce(int timestep);
+    bool compute() override;
+    bool reduce(int timestep) override;
 
     template<int Dim>
     friend struct Compute;
 
-    bool prepare()
+    bool prepare() override
     {
         haveGeometry = false;
 
+        tmin.clear();
+        tmax.clear();
         for (int c = 0; c < MaxDim; ++c) {
             gmin[c] = std::numeric_limits<ParamVector::Scalar>::max();
             gmax[c] = -std::numeric_limits<ParamVector::Scalar>::max();
@@ -55,6 +64,72 @@ private:
 
         return true;
     }
+
+#ifdef BOUNDINGBOX
+    IntParameter *perTimestepParam = nullptr;
+    StringParameter *transformationNameParam = nullptr;
+
+    void updateReducePolicy()
+    {
+        bool transform = isConnected("transform_out");
+        bool per_timestep = perTimestepParam->getValue() != 0;
+        if (transform)
+            setReducePolicy(message::ReducePolicy::PerTimestepZeroFirst);
+        else if (per_timestep)
+            setReducePolicy(message::ReducePolicy::PerTimestep);
+        else
+            setReducePolicy(message::ReducePolicy::OverAll);
+    }
+
+    bool changeParameter(const Parameter *param) override
+    {
+        if (!param || param == perTimestepParam) {
+            updateReducePolicy();
+        }
+        return Module::changeParameter(param);
+    }
+
+    void connectionAdded(const Port *from, const Port *to) override
+    {
+        updateReducePolicy();
+        Module::connectionAdded(from, to);
+    }
+
+    void connectionRemoved(const Port *from, const Port *to) override
+    {
+        updateReducePolicy();
+        Module::connectionRemoved(from, to);
+    }
+
+    void expandTimestepExtrema(size_t num)
+    {
+        while (tmin.size() < num) {
+            tmin.emplace_back();
+            tmax.emplace_back();
+            tmin.back().dim = MaxDim;
+            tmax.back().dim = MaxDim;
+            for (int c = 0; c < MaxDim; ++c) {
+                tmin.back()[c] = std::numeric_limits<ParamVector::Scalar>::max();
+                tmax.back()[c] = -std::numeric_limits<ParamVector::Scalar>::max();
+            }
+        }
+    }
+
+    bool boundsValid(int timestep) const
+    {
+        if (timestep < 0 || timestep >= static_cast<int>(tmin.size())) {
+            //std::cerr << "timestep " << timestep << " out of bounds: no data" << std::endl;
+            return false;
+        }
+        for (int c = 0; c < MaxDim; ++c) {
+            if (tmin[timestep][c] > tmax[timestep][c]) {
+                //std::cerr << "timestep " << timestep << " component " << c << " invalid" << std::endl;
+                return false;
+            }
+        }
+        return true;
+    }
+#endif
 
     template<int Dim>
     struct Compute {
@@ -121,6 +196,12 @@ Extrema::Extrema(const std::string &name, int moduleID, mpi::communicator comm):
     linkPorts(gin, gout);
 
     addIntParameter("per_block", "create bounding box for each block individually", false, Parameter::Boolean);
+    perTimestepParam = addIntParameter("per_timestep", "create bounding box for each timestep individually", false,
+                                       Parameter::Boolean);
+    transformationNameParam =
+        addStringParameter("transformation_name", "tag for derived transformation", "BoundingBox");
+    Port *dout = createOutputPort("transform_out", "empty data object carrying transformation");
+    linkPorts(gin, dout);
 #else
     Port *din = createInputPort("data_in", "input data", Port::MULTI);
     Port *dout = createOutputPort("data_out", "output data", Port::MULTI);
@@ -340,6 +421,19 @@ bool Extrema::compute()
         updateMeta(box);
         addObject("grid_out", box);
     }
+
+    int ts = split.timestep;
+    if (ts >= 0) {
+        expandTimestepExtrema(ts + 1);
+        for (int c = 0; c < MaxDim; ++c) {
+            if (tmin[ts][c] > min[c]) {
+                tmin[ts][c] = min[c];
+            }
+            if (tmax[ts][c] < max[c]) {
+                tmax[ts][c] = max[c];
+            }
+        }
+    }
 #else
     Object::ptr out = obj->clone();
     out->addAttribute("min", min.str());
@@ -376,24 +470,67 @@ bool Extrema::reduce(int timestep)
 {
     //std::cerr << "reduction for timestep " << timestep << std::endl;
 
-    for (int i = 0; i < MaxDim; ++i) {
-        gmin[i] = boost::mpi::all_reduce(comm(), gmin[i], boost::mpi::minimum<ParamVector::Scalar>());
-        gmax[i] = boost::mpi::all_reduce(comm(), gmax[i], boost::mpi::maximum<ParamVector::Scalar>());
+    if (timestep >= 0) {
+#ifdef BOUNDINGBOX
+        expandTimestepExtrema(timestep + 1);
+        for (int i = 0; i < MaxDim; ++i) {
+            tmin[timestep][i] =
+                boost::mpi::all_reduce(comm(), tmin[timestep][i], boost::mpi::minimum<ParamVector::Scalar>());
+            tmax[timestep][i] =
+                boost::mpi::all_reduce(comm(), tmax[timestep][i], boost::mpi::maximum<ParamVector::Scalar>());
+        }
+#endif
+    } else {
+        for (int i = 0; i < MaxDim; ++i) {
+            gmin[i] = boost::mpi::all_reduce(comm(), gmin[i], boost::mpi::minimum<ParamVector::Scalar>());
+            gmax[i] = boost::mpi::all_reduce(comm(), gmax[i], boost::mpi::maximum<ParamVector::Scalar>());
+        }
+
+        setVectorParameter("min", gmin);
+        setVectorParameter("max", gmax);
+        setIntVectorParameter("min_block", gminBlock);
+        setIntVectorParameter("max_block", gmaxBlock);
+        setIntVectorParameter("min_index", gminIndex);
+        setIntVectorParameter("max_index", gmaxIndex);
     }
 
-    setVectorParameter("min", gmin);
-    setVectorParameter("max", gmax);
-    setIntVectorParameter("min_block", gminBlock);
-    setIntVectorParameter("max_block", gmaxBlock);
-    setIntVectorParameter("min_index", gminIndex);
-    setIntVectorParameter("max_index", gmaxIndex);
-
 #ifdef BOUNDINGBOX
+    bool perTimestep = perTimestepParam->getValue() != 0;
     bool perBlock = getIntParameter("per_block");
     if (!perBlock && haveGeometry && rank() == 0) {
-        Lines::ptr box = makeBox(gmin, gmax);
-        updateMeta(box);
-        addObject("grid_out", box);
+        if (perTimestep) {
+            if (timestep >= 0 && boundsValid(timestep)) {
+                Lines::ptr box = makeBox(tmin[timestep], tmax[timestep]);
+                updateMeta(box);
+                box->setTimestep(timestep);
+                addObject("grid_out", box);
+            }
+        } else {
+            Lines::ptr box = makeBox(gmin, gmax);
+            updateMeta(box);
+            addObject("grid_out", box);
+        }
+    }
+
+    if (isConnected("transform_out") && timestep >= 0 && rank() == 0) {
+        auto dummy = std::make_shared<Points>(0);
+        if (timestep > 0 && boundsValid(timestep)) {
+            Vector3 center0 =
+                (Vector3(tmin[0][0], tmin[0][1], tmin[0][2]) + Vector3(tmax[0][0], tmax[0][1], tmax[0][2])) / 2.0;
+            Vector3 center = (Vector3(tmin[timestep][0], tmin[timestep][1], tmin[timestep][2]) +
+                              Vector3(tmax[timestep][0], tmax[timestep][1], tmax[timestep][2])) /
+                             2.0;
+            Vector3 translate = center - center0;
+            Matrix4 translateMat(Matrix4::Identity());
+            translateMat.col(3) << translate, 1;
+            dummy->setTransform(translateMat);
+        }
+        updateMeta(dummy);
+        dummy->setTimestep(timestep);
+        dummy->addAttribute(attribute::Plugin, "VisObjectSensor");
+        auto name = transformationNameParam->getValue();
+        dummy->addAttribute(attribute::TransformName, name);
+        addObject("transform_out", dummy);
     }
 #endif
 
