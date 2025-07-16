@@ -1768,6 +1768,7 @@ bool Module::handleMessage(const vistle::message::Message *message, const Messag
     case message::IDLE:
     case message::BUSY:
     case message::REMOTERENDERING:
+    case message::ITEMINFO:
         break;
 
     default:
