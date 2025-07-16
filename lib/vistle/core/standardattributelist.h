@@ -15,3 +15,4 @@ A(BinNumPrimitives, bin_num_primitives);
 A(ApproximateDepth, approximate_depth);
 A(RhrConfig, rhr_config);
 A(Sender, sender);
+A(TransformName, transformation_name);
