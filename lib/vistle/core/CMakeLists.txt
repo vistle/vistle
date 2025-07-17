@@ -183,7 +183,7 @@ endif()
 if(WIN32)
     target_link_libraries(vistle_core PUBLIC bcrypt.lib)
 endif()
-
+target_compile_definitions(vistle_core PUBLIC BOOST_MPL_LIMIT_VECTOR_SIZE=30)
 vistle_target_link_libraries(
     vistle_core
     PRIVATE
