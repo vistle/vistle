@@ -23,7 +23,7 @@ class V_MODULEEXPORT Reader: public Module {
     friend class Token;
 
 public:
-    static const std::string InvalidChoice;
+    static inline const std::string InvalidChoice{"(NONE)"};
 
     class V_MODULEEXPORT Token {
         friend class vistle::Reader;
