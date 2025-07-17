@@ -3,8 +3,6 @@
 
 namespace vistle {
 
-const std::string Reader::InvalidChoice("(NONE)");
-
 Reader::Reader(const std::string &name, const int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
     setCurrentParameterGroup("Reader");
