@@ -3,7 +3,7 @@
 
 #include <vistle/util/export.h>
 
-#if defined(vistle_vtkm_EXPORTS)
+#if defined(vistle_viskores_EXPORTS)
 #define V_VTKM_EXPORT V_EXPORT
 #else
 #define V_VTKM_EXPORT V_IMPORT
