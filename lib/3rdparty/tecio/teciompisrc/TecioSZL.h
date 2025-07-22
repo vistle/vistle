@@ -1,4 +1,4 @@
- #pragma once
+#pragma once
  #if defined _WIN32
  #if !defined MSWIN
  #define MSWIN 

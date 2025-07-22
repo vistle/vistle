@@ -47,7 +47,7 @@ bool ReadSubzoneTecplot::examine(const vistle::Parameter *param)
     //get File Handle
     void* testfileHandle = NULL; 
     //int i = tecFileReaderOpen(filename.c_str(), &testfileHandle); //'tecFileReaderOpen' is not a member of 'tecplot::tecioszl'; did you mean 'tecioSZL_FileReaderOpen'?
-    //tecplot::tecioszl::tecioSZL_DataSetGetNumVars(testfileHandle, NumVar);
+    // tecplot::tecioszl::tecioSZL_DataSetGetNumVars(testfileHandle, NumVar);
     //tecFileReaderOpen(filename.c_str(), testfileHandle);
     //tecDataSetGetNumVars(testfileHandle, NumVar);
     //std::cout << "Number of Variables is: " << mNumvar << std::endl;

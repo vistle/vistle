@@ -311,11 +311,11 @@
  #   define EXTERNC
  #   define TP_GLOBAL_NAMESPACE
  #endif 
- #if defined MAKEARCHIVE
- #define tpsdkbase_API
- #else
-#include "tpsdkbase_Exports.h"
- #endif
+//  #if defined MAKEARCHIVE
+//  #define tpsdkbase_API
+//  #else
+// #include "tpsdkbase_Exports.h"
+// #endif
  #define ___2289 EXTERNC tpsdkbase_API
  #if defined MSWIN
  # define ___1233 EXTERNC _declspec ( dllexport )
