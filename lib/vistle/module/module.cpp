@@ -1662,13 +1662,13 @@ bool Module::handleMessage(const vistle::message::Message *message, const Messag
         }
 
         if (ports && port && other) {
+            const Port *p = port->removeConnection(*other);
             if (inputConnection) {
                 connectionRemoved(other, port);
                 m_cache.removePort(port->getName());
             } else {
                 connectionRemoved(port, other);
             }
-            const Port *p = port->removeConnection(*other);
             delete other;
             delete p;
 
@@ -1768,6 +1768,7 @@ bool Module::handleMessage(const vistle::message::Message *message, const Messag
     case message::IDLE:
     case message::BUSY:
     case message::REMOTERENDERING:
+    case message::ITEMINFO:
         break;
 
     default:

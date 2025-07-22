@@ -31,6 +31,10 @@ if(POLICY CMP0144)
     # make find_include/find_library search in uppercased <PackageName>_ROOT prefix
     cmake_policy(SET CMP0144 NEW)
 endif()
+if(POLICY CMP0177)
+    # normalize install DESTINATION paths
+    cmake_policy(SET CMP0177 NEW)
+endif()
 
 # vim's YouCompleteMe can make use of this
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
