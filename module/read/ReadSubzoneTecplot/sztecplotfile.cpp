@@ -11,7 +11,7 @@
 #include "topo.h"
 
 // Includes from TecIO library
-#include <TECIO.h>
+//#include <TECIO.h>
 // add TecIO library to ./lib/3rdparty before compiling
 
 #include <fstream>
@@ -24,7 +24,7 @@
 #include <exception>
 
 //Include TecIO for szPLot:
-#include <TECIO.h>
+//include <TECIO.h>
 
 
 #if defined(HAVE_STDINT_H)
@@ -149,7 +149,7 @@ T SzTecplotFile::Impl::byteswap(T iVal)
 
 bool SzTecplotFile::Impl::open(std::string const &iFileName)
 {
-    // const std::string filename = m_filename->getValue();
+    //const std::string filename = m_filename->getValue();
     // size_t numZones = 0;
     // size_t test = 5;
     // int NumVar = 0;

@@ -18,12 +18,11 @@
 #include <vistle/util/filesystem.h>
 
 //Include TecIO for szPLot:
-extern "C" {
-    #include "TECIO.h"
-    #include "TecioPLT.h"
-    #include "TecioSZL.h"
-    #include "tecio_Exports.h"
-}
+//extern "C" {
+#include "../../../lib/3rdparty/tecio/teciosrc/TecioPLT.h"
+#include "TECIO.h"
+//#include <TecioSZL.h>
+//}
 #if defined TECIOMPI
     #include "mpi.h"
 #endif
@@ -32,7 +31,7 @@ extern "C" {
 MODULE_MAIN(ReadSubzoneTecplot)
 
 //using namespace vistle;
-using namespace tecplot::tecioszl;
+//using namespace tecplot::tecioszl;
 using vistle::Scalar;
 using vistle::Vec;
 using vistle::Index;
@@ -42,27 +41,44 @@ bool ReadSubzoneTecplot::examine(const vistle::Parameter *param)
         return true;
 
     const std::string filename = m_filename->getValue();
-    int32_t* numZones = 0;
-    int32_t* NumVar = 0;
-    //get File Handle
-    void* testfileHandle = NULL; 
-    //int i = tecFileReaderOpen(filename.c_str(), &testfileHandle); //'tecFileReaderOpen' is not a member of 'tecplot::tecioszl'; did you mean 'tecioSZL_FileReaderOpen'?
-    //tecplot::tecioszl::tecioSZL_DataSetGetNumVars(testfileHandle, NumVar);
-    //tecFileReaderOpen(filename.c_str(), testfileHandle);
-    //tecDataSetGetNumVars(testfileHandle, NumVar);
-    //std::cout << "Number of Variables is: " << mNumvar << std::endl;
-    //tecDataSetGetNumZones(testfileHandle, numZones);
-    // try {
-    //     SzTecplotFile tecplot(filename);
-    //     numZones = tecplot.NumZones();
-    // } catch (...) {
-    //     std::cerr << "failed to create TecplotFile for " << filename << std::endl;
-    //     setPartitions(0);
-    //     return false;
-    // }
+    try
+    {
+        int32_t NumVar = 0;
+        //get File Handle
+        //void* testfileHandle = NULL; 
+        int i = tecFileReaderOpen(filename.c_str(), &fileHandle); 
+        char* dataSetTitle = NULL;
+        i = tecDataSetGetTitle(fileHandle, &dataSetTitle);
 
-    // setPartitions(std::min(size_t(size() * 32), numZones));
+        //
+        i = tecDataSetGetNumVars(fileHandle,  &NumVar);
 
+        std::ostringstream outputStream;
+        for (int32_t var = 1; var <= NumVar; ++var)
+            {
+                char* name = NULL;
+                i = tecVarGetName(fileHandle, var, &name);
+                outputStream << name;
+                if (var < NumVar)
+                    outputStream << ',';
+                tecStringFree(&name);
+            }
+        std::cerr << "variables: " << outputStream.str() << std::endl;
+
+        int32_t fileType;
+        i = tecFileGetType(fileHandle, &fileType);
+
+        int32_t numZones = 0;
+        i = tecDataSetGetNumZones(fileHandle, &numZones);
+        //setPartitions(std::min(size_t(size() * 32), numZones));
+        setPartitions(numZones);
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << "failed to read number of Variables and Zones of " << filename << ": " << e.what() << '\n';
+        setPartitions(0);
+        return false;
+    }
     return true;
 }
 
@@ -115,20 +131,22 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
 
     const int npart = std::max(1, numPartitions());
 
-    SzTecplotFile tecplot(m_filename->getValue());
+    SzTecplotFile tecplot(m_filename->getValue()); // TODO update sztecplot class
 
-    size_t numZones = tecplot.NumZones();
-    size_t numZonesBlock = (numZones + npart - 1) / npart;
-    size_t begin = block >= 0 ? numZonesBlock * block : 0;
-    size_t end = block >= 0 ? std::min(numZones, numZonesBlock * (block + 1)) : numZones;
+    int32_t numZones;
+    tecDataSetGetNumZones(fileHandle, &numZones);
+    int32_t numZonesBlock = (numZones + npart - 1) / npart;
+    int32_t begin = block >= 0 ? numZonesBlock * block : 0;
+    int32_t end = block >= 0 ? std::min(numZones, numZonesBlock * (block + 1)) : numZones;
     std::cerr << "reading zones " << begin << " to " << end - 1 << std::endl;
 
-    for (size_t i = 0; i < begin && i < numZones; ++i) {
+    // till here updated code
+    for (int32_t i = 0; i < begin && i < numZones; ++i) {
         tecplot.SkipZone(i);
     }
 
     Index baseVertex = 0;
-    for (size_t i = begin; i < end; ++i) {
+    for (int32_t i = begin; i < end; ++i) {
         auto mesh = tecplot.ReadZone(i);
         if (auto hexmesh = dynamic_cast<VolumeMesh<HexaederTopo> *>(mesh)) {
             hexmesh->SetupVolume();

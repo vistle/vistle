@@ -8,10 +8,9 @@ public:
     ReadSubzoneTecplot(const std::string &name, int moduleID, mpi::communicator comm);
     ~ReadSubzoneTecplot();
 
-    const void *fileHandle;
-
 private:
     static const int NumPorts = 3;
+    void* fileHandle;
 
 #if 0
    bool changeParameter(const vistle::Parameter *p) override;
