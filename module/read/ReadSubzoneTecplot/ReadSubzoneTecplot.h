@@ -19,6 +19,8 @@ private:
 
     bool examine(const vistle::Parameter *param) override;
     bool read(Token &token, int timestep, int block) override;
+    //template<typename T> 
+    std::vector<double> readVariables(int32_t numValues, int32_t inputZone, int32_t var);
 
     vistle::StringParameter *m_filename;
     vistle::Port *m_grid = nullptr;

@@ -44,20 +44,19 @@ bool ReadSubzoneTecplot::examine(const vistle::Parameter *param)
     try
     {
         int32_t NumVar = 0;
-        //get File Handle
-        //void* testfileHandle = NULL; 
-        int i = tecFileReaderOpen(filename.c_str(), &fileHandle); 
+        //get File Handle 
+        tecFileReaderOpen(filename.c_str(), &fileHandle); 
         char* dataSetTitle = NULL;
-        i = tecDataSetGetTitle(fileHandle, &dataSetTitle);
+        tecDataSetGetTitle(fileHandle, &dataSetTitle);
 
         //
-        i = tecDataSetGetNumVars(fileHandle,  &NumVar);
+        tecDataSetGetNumVars(fileHandle,  &NumVar);
 
         std::ostringstream outputStream;
         for (int32_t var = 1; var <= NumVar; ++var)
             {
                 char* name = NULL;
-                i = tecVarGetName(fileHandle, var, &name);
+                tecVarGetName(fileHandle, var, &name);
                 outputStream << name;
                 if (var < NumVar)
                     outputStream << ',';
@@ -65,13 +64,33 @@ bool ReadSubzoneTecplot::examine(const vistle::Parameter *param)
             }
         std::cerr << "variables: " << outputStream.str() << std::endl;
 
+        // Check file type
+        // 0 = contains grid and solution, 1 = grid only, 2 = solution only
         int32_t fileType;
-        i = tecFileGetType(fileHandle, &fileType);
-
+        tecFileGetType(fileHandle, &fileType);
+        
         int32_t numZones = 0;
-        i = tecDataSetGetNumZones(fileHandle, &numZones);
+        tecDataSetGetNumZones(fileHandle, &numZones);
         //setPartitions(std::min(size_t(size() * 32), numZones));
         setPartitions(numZones);
+        
+        int32_t zoneType;
+        // Check zone type for each zone
+        // 0 = ordered, 1 = line segment, 2 = triangle, 3 = quadrilateral, 4 = tetraheddron, 5 = brick,
+        // 6 = polygon, 7 = polyhedron, 8  = Mixed(not used)
+        // TODO: implement function to check zone type for a specified zone
+        for (int32_t inputZone = 1; inputZone <= numZones; ++inputZone)
+        {
+            // Retrieve zone characteristics
+            //int32_t zoneType;
+            tecZoneGetType(fileHandle, inputZone, &zoneType);
+        }
+
+        if(fileType!=0)
+        {
+            std::cerr << "Tecplot Module is just defined for structured grids " << std::endl;
+            return false;
+        }
     }
     catch(const std::exception& e)
     {
@@ -82,185 +101,99 @@ bool ReadSubzoneTecplot::examine(const vistle::Parameter *param)
     return true;
 }
 
+
+//template<typename T>
+std::vector<double> ReadSubzoneTecplot::readVariables(int32_t numValues, int32_t inputZone, int32_t var) {
+    std::vector<double> values(numValues);
+
+    // Example: fill with default values or your reading logic
+    int64_t numValuesRead = 0;
+    // Read and write var data with specified chunk size
+    //for (size_t i = 0; i < numValues; i++)
+    //{
+        //t64_t numValuesToRead = std::min(numValuesPerRead, numValues - numValuesRead);
+        int32_t varType;
+        tecZoneVarGetType(fileHandle, inputZone, var, &varType);
+        switch ((FieldDataType_e)varType) {
+        case FieldDataType_Float: {
+            //std::vector<float> values(numValuesPerRead);
+            tecZoneVarGetFloatValues(fileHandle, inputZone, var, 0, numValues,
+                                         &values[0]);
+        } break;
+        case FieldDataType_Double: {
+            //std::vector<double> values(numValuesPerRead);
+            tecZoneVarGetDoubleValues(fileHandle, inputZone, var, 0, numValues,
+                                          &values[0]);
+        } break;
+        case FieldDataType_Int32: {
+            //std::vector<int32_t> values(numValuesPerRead);
+            tecZoneVarGetInt32Values(fileHandle, inputZone, var, 0, numValues,
+                                         &values[0]);
+        } break;
+        case FieldDataType_Int16: {
+            //std::vector<int16_t> values(numValuesPerRead);
+            tecZoneVarGetInt16Values(fileHandle, inputZone, var, 0, numValues,
+                                         &values[0]);
+        } break;
+        case FieldDataType_Byte: {
+            //std::vector<uint8_t> values(numValuesPerRead);
+            tecZoneVarGetUInt8Values(fileHandle, inputZone, var, 0, numValues,
+                                         &values[0]);
+        }
+        } // close switch
+    //}
+
+    return values;
+}
+
+//template<typename T>
 bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
 {
-    auto unstr = std::make_shared<vistle::UnstructuredGrid>(0, 0, 0);
-    auto &x = unstr->x();
-    auto &y = unstr->y();
-    auto &z = unstr->z();
-    auto &el = unstr->el();
-    auto &cl = unstr->cl();
-    auto &tl = unstr->tl();
+    int32_t inputZone = 1; // TODO: change for more than structured gird (zoneType=0) and do a for loop over zones
+    // TODO: implement extern function for grid definition
+    int64_t m_numVert_x = 0;
+    int64_t m_numVert_y = 0;
+    int64_t m_numVert_z = 0;
+    tecZoneGetIJK(fileHandle, inputZone, &m_numVert_x, &m_numVert_y, &m_numVert_z);
+    vistle::StructuredGrid::ptr str_grid = std::make_shared<vistle::StructuredGrid>(m_numVert_x, m_numVert_y, m_numVert_z);
 
-    vistle::Vec<Scalar>::ptr p, r;
-    vistle::Vec<Scalar, 3>::ptr n, u, v;
+    auto ptrXcoords = str_grid->x().data();
+    auto ptrYcoords = str_grid->y().data();
+    auto ptrZcoords = str_grid->z().data();
 
-    typedef vistle::Vec<Scalar>::array array;
+    int64_t numValues;
+    int32_t var = 0; //later with for-loop over variables
+    tecZoneVarGetNumValues(fileHandle, inputZone, var, &numValues);
 
-    array *pp = nullptr;
-    if (m_p->isConnected()) {
-        p = std::make_shared<Vec<vistle::Scalar>>(0);
-        pp = &p->x();
-    }
-    array *rr = nullptr;
-    if (m_rho->isConnected()) {
-        r = std::make_shared<Vec<Scalar>>(0);
-        rr = &r->x();
-    }
-    array *nx = nullptr, *ny = nullptr, *nz = nullptr;
-    if (m_n->isConnected()) {
-        n = std::make_shared<Vec<Scalar, 3>>(0);
-        nx = &n->x();
-        ny = &n->y();
-        nz = &n->z();
-    }
-    array *ux = nullptr, *uy = nullptr, *uz = nullptr;
-    if (m_u->isConnected()) {
-        u = std::make_shared<Vec<Scalar, 3>>(0);
-        ux = &u->x();
-        uy = &u->y();
-        uz = &u->z();
-    }
-    array *vx = nullptr, *vy = nullptr, *vz = nullptr;
-    if (m_v->isConnected()) {
-        v = std::make_shared<Vec<Scalar, 3>>(0);
-        vx = &v->x();
-        vy = &v->y();
-        vz = &v->z();
-    }
+    for (int64_t k = 0; k < m_numVert_z; k++)
+    {
+        for (int64_t j = 0; j < m_numVert_y; j++)
+        {
+            for (int64_t i = 0; i < m_numVert_x; i++)
+            {
 
-    const int npart = std::max(1, numPartitions());
-
-    SzTecplotFile tecplot(m_filename->getValue()); // TODO update sztecplot class
-
-    int32_t numZones;
-    tecDataSetGetNumZones(fileHandle, &numZones);
-    int32_t numZonesBlock = (numZones + npart - 1) / npart;
-    int32_t begin = block >= 0 ? numZonesBlock * block : 0;
-    int32_t end = block >= 0 ? std::min(numZones, numZonesBlock * (block + 1)) : numZones;
-    std::cerr << "reading zones " << begin << " to " << end - 1 << std::endl;
-
-    // till here updated code
-    for (int32_t i = 0; i < begin && i < numZones; ++i) {
-        tecplot.SkipZone(i);
-    }
-
-    Index baseVertex = 0;
-    for (int32_t i = begin; i < end; ++i) {
-        auto mesh = tecplot.ReadZone(i);
-        if (auto hexmesh = dynamic_cast<VolumeMesh<HexaederTopo> *>(mesh)) {
-            hexmesh->SetupVolume();
-            //std::cerr << "hexmesh: #points=" << hexmesh->getNumPoints() << ", #cells=" << hexmesh->getNumCells() << std::endl;
-
-            std::map<int, Index> vertMap;
-            for (int c = 0; c < hexmesh->getNumCells(); ++c) {
-                const auto &cell = mesh->getState(c);
-                const auto &hex = static_cast<const HexaederTopo &>(cell);
-                bool allNodesPresent = true, allNodesBlanked = true;
-                for (int n = 0; n < 8; ++n) {
-                    int v = hex.mNodes[n];
-                    if (v < 0) {
-                        allNodesPresent = false;
-                        break;
-                    }
-                    const auto &ps = mesh->getPointState(v);
-                    if (ps.mBlank) {
-                        allNodesBlanked = false;
-                    }
-                }
-                if (!allNodesPresent)
-                    continue;
-                if (allNodesBlanked)
-                    continue;
-                for (int n = 0; n < 8; ++n) {
-                    int v = hex.mNodes[n];
-                    auto p = vertMap.emplace(v, baseVertex + vertMap.size());
-                    if (p.second) {
-                        auto &ps = mesh->getPointState(v);
-                        x.push_back(ps.X());
-                        y.push_back(ps.Y());
-                        z.push_back(ps.Z());
-
-                        if (pp) {
-                            pp->push_back(ps.mP);
-                        }
-                        if (rr) {
-                            rr->push_back(ps.mR);
-                        }
-                        if (nx && ny && nz) {
-                            nx->push_back(ps.mN.X());
-                            ny->push_back(ps.mN.Y());
-                            nz->push_back(ps.mN.Z());
-                        }
-                        if (ux && uy && uz) {
-                            ux->push_back(ps.mU.X());
-                            uy->push_back(ps.mU.Y());
-                            uz->push_back(ps.mU.Z());
-                        }
-                        if (vx && vy && vz) {
-                            vx->push_back(ps.mV.X());
-                            vy->push_back(ps.mV.Y());
-                            vz->push_back(ps.mV.Z());
-                        }
-                    }
-                    Index &vv = p.first->second;
-                    cl.push_back(vv);
-                }
-                tl.push_back(vistle::UnstructuredGrid::HEXAHEDRON);
-                el.push_back(cl.size());
+                // formula: C/C++ (zero-based): I-1 + (J-1) * IMax + (K-1) * IMax * JMax
+                size_t n = i + j * m_numVert_x + k * m_numVert_x * m_numVert_y;
+                std::vector<double> result(numValues);
+                result = ReadSubzoneTecplot::readVariables(numValues, inputZone, var);
+                ptrXcoords[n] = result[n]; // Assuming var 0 is X coordinate
+                ptrYcoords[n] = j;
+                ptrZcoords[n] = k;
+/*                 ptrXcoords[i] = tecZoneVarGetNumValues(fileHandle, inputZone, 1, &numValues);
+                ptrYcoords[j * m_numVert_x + i] = j;
+                ptrZcoords[k * m_numVert_x * m_numVert_y + j * m_numVert_x + i] = k; */
             }
-            baseVertex += vertMap.size();
-        } else if (auto tetmesh = dynamic_cast<VolumeMesh<HexaederTopo> *>(mesh)) {
-            std::cerr << "IGNORING tetmesh: #points=" << tetmesh->getNumPoints()
-                      << ", #cells=" << tetmesh->getNumCells() << std::endl;
-        } else if (auto trisurf = dynamic_cast<SurfaceMesh<TriangleTopo> *>(mesh)) {
-            std::cerr << "IGNORING trisurf: #points=" << trisurf->getNumPoints()
-                      << ", #cells=" << trisurf->getNumCells() << std::endl;
-        } else if (auto quadsurf = dynamic_cast<SurfaceMesh<QuadrangleTopo> *>(mesh)) {
-            std::cerr << "IGNORING quadsurf: #points=" << quadsurf->getNumPoints()
-                      << ", #cells=" << quadsurf->getNumCells() << std::endl;
-        } else {
-            std::cerr << "IGNORING unknown mesh type" << std::endl;
         }
-        delete mesh;
     }
 
-    token.applyMeta(unstr);
-    token.addObject(m_grid, unstr);
-    if (p) {
-        p->addAttribute(vistle::attribute::Species, "pressure");
-        p->setGrid(unstr);
-        token.applyMeta(p);
-        token.addObject(m_p, p);
-    }
-    if (r) {
-        r->addAttribute(vistle::attribute::Species, "rho");
-        r->setGrid(unstr);
-        token.applyMeta(r);
-        token.addObject(m_rho, r);
-    }
-    if (n) {
-        n->addAttribute(vistle::attribute::Species, "n");
-        n->setGrid(unstr);
-        token.applyMeta(n);
-        token.addObject(m_n, n);
-    }
-    if (u) {
-        u->addAttribute(vistle::attribute::Species, "u");
-        u->setGrid(unstr);
-        token.applyMeta(u);
-        token.addObject(m_u, u);
-    }
-    if (v) {
-        v->addAttribute(vistle::attribute::Species, "v");
-        v->setGrid(unstr);
-        token.applyMeta(v);
-        token.addObject(m_v, v);
-    }
+    // for loop over 3 dimensions
+
+
+    token.applyMeta(str_grid);
+    token.addObject(m_grid, str_grid);
 
     return true;
 }
-
 
 ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mpi::communicator comm)
 : Reader(name, moduleID, comm)
@@ -269,10 +202,10 @@ ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mp
 
     m_grid = createOutputPort("grid_out", "grid or geometry");
     m_p = createOutputPort("p", "pressure");
-    m_rho = createOutputPort("rho", "rho");
-    m_n = createOutputPort("n", "n");
-    m_u = createOutputPort("u", "u");
-    m_v = createOutputPort("v", "v");
+    //m_rho = createOutputPort("rho", "rho");
+    //m_n = createOutputPort("n", "n");
+    //m_u = createOutputPort("u", "u");
+    //m_v = createOutputPort("v", "v");
 
     //setParallelizationMode(Serial);
     setParallelizationMode(ParallelizeTimeAndBlocks);
