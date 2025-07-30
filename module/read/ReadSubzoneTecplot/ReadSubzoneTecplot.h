@@ -2,7 +2,9 @@
 #define VISTLE_READSUBZONETECPLOT_READIAGTECPLOT_H
 
 #include <vistle/module/reader.h>
+#include <vistle/core/structuredgrid.h>
 
+namespace vistle {
 class ReadSubzoneTecplot: public vistle::Reader {
 public:
     ReadSubzoneTecplot(const std::string &name, int moduleID, mpi::communicator comm);
@@ -20,7 +22,9 @@ private:
     bool examine(const vistle::Parameter *param) override;
     bool read(Token &token, int timestep, int block) override;
     //template<typename T> 
-    std::vector<double> readVariables(int32_t numValues, int32_t inputZone, int32_t var);
+    //void readVariables(std::vector<T> &values, void* fileHandle, int32_t numValues, int32_t inputZone, int32_t var);
+    //template<typename T>
+    vistle::StructuredGrid::ptr createStructuredGrid(void* fileHandle, int32_t inputZone);
 
     vistle::StringParameter *m_filename;
     vistle::Port *m_grid = nullptr;
@@ -30,4 +34,5 @@ private:
     vistle::Port *m_u = nullptr;
     vistle::Port *m_v = nullptr;
 };
+} // namespace vistle
 #endif
