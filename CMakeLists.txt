@@ -1229,6 +1229,7 @@ add_subdirectory(module)
 add_subdirectory(app) # has to come after module subdirectory for static module registration
 add_subdirectory(test)
 add_subdirectory(bin)
+add_subdirectory(lib/3rdparty/tecio/teciosrc) # TODO: just load subdirectory if ReadSubzoneTecplot is needed
 
 write_category_descriptions(${CATEGORY_DESCRIPTION_FILE})
 configure_documentation()
