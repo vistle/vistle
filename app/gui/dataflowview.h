@@ -33,7 +33,7 @@ public:
     int visibleLayer() const;
     int numLayers() const;
     void setNumLayers(int num);
-
+    void keyPressEvent(QKeyEvent *event) override;
 signals:
     void executeDataFlow();
     void visibleLayerChanged(int layer);
