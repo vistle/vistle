@@ -135,6 +135,11 @@ QVariant Module::itemChange(GraphicsItemChange change, const QVariant &value)
             setToolTip("");
         }
     }
+
+    if (change == ItemSelectedChange && value.toBool() && scene() && scene()->moduleBrowser()) {
+        scene()->moduleBrowser()->clearFocus(); // the focus prevents key events to reach the dataflowView
+    }
+
     return QGraphicsItem::itemChange(change, value);
 }
 
