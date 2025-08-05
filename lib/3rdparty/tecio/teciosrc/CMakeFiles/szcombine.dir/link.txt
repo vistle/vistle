@@ -1,1 +1,0 @@
-/usr/bin/c++  -DLINUX -DLINUX64 -DTP_PROJECT_USES_BOOST -DBOOST_ALL_NO_LIB -DMAKEARCHIVE -DNO_THIRD_PARTY_LIBS -DNO_ASSERTS -Dtecio_EXPORTS -fmessage-length=0 -fPIC -fvisibility=hidden -w -O3 -DNDEBUG -Wl,--dependency-file=CMakeFiles/szcombine.dir/link.d CMakeFiles/szcombine.dir/szcombine.cpp.o -o szcombine  libtecio.a -lpthread

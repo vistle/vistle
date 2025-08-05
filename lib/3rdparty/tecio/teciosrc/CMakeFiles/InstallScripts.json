@@ -1,7 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"/home/rosba/vistle/lib/3rdparty/tecio/teciosrc/cmake_install.cmake"
-	],
-	"Parallel" : false
-}

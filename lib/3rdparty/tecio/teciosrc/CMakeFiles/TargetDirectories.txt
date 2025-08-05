@@ -1,4 +1,0 @@
-/home/rosba/vistle/lib/3rdparty/tecio/teciosrc/CMakeFiles/tecio.dir
-/home/rosba/vistle/lib/3rdparty/tecio/teciosrc/CMakeFiles/szcombine.dir
-/home/rosba/vistle/lib/3rdparty/tecio/teciosrc/CMakeFiles/edit_cache.dir
-/home/rosba/vistle/lib/3rdparty/tecio/teciosrc/CMakeFiles/rebuild_cache.dir

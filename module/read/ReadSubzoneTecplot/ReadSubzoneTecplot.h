@@ -11,7 +11,7 @@ public:
     ~ReadSubzoneTecplot();
 
 private:
-    static const int NumPorts = 3;
+    static const int NumPorts = 5;
     void* fileHandle;
 
 #if 0
@@ -21,18 +21,14 @@ private:
 
     bool examine(const vistle::Parameter *param) override;
     bool read(Token &token, int timestep, int block) override;
-    //template<typename T> 
-    //void readVariables(std::vector<T> &values, void* fileHandle, int32_t numValues, int32_t inputZone, int32_t var);
-    //template<typename T>
+    template<typename T = float> 
+    std::vector<T> readVariables(void* fileHandle, int32_t numValues, int32_t inputZone, int32_t var);
+    template<typename T>
     vistle::StructuredGrid::ptr createStructuredGrid(void* fileHandle, int32_t inputZone);
-
     vistle::StringParameter *m_filename;
     vistle::Port *m_grid = nullptr;
-    vistle::Port *m_p = nullptr;
-    vistle::Port *m_rho = nullptr;
-    vistle::Port *m_n = nullptr;
-    vistle::Port *m_u = nullptr;
-    vistle::Port *m_v = nullptr;
+    vistle::StringParameter *m_fieldChoice[NumPorts];
+    vistle::Port *m_fieldsOut[NumPorts];
 };
 } // namespace vistle
 #endif
