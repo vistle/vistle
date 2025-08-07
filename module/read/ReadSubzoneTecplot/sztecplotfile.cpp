@@ -6,14 +6,13 @@
 	email				: acco@iag.uni-stuttgart.de
  ***************************************************************************/
 
-#include "tecplotfile.h"
+#include "sztecplotfile.h"
 //#include <Include/parallel.h>
 #include "topo.h"
 
-//#include <iag/debug.h>
-//#include <iag/problem.h>
-//#include <iag/stringutil.h>
-//#include <iag/tool.h>
+// Includes from TecIO library
+//#include <TECIO.h>
+// add TecIO library to ./lib/3rdparty before compiling
 
 #include <fstream>
 #include <iostream>
@@ -23,6 +22,9 @@
 #include <cstdio>
 #include <string>
 #include <exception>
+
+//Include TecIO for szPLot:
+//include <TECIO.h>
 
 
 #if defined(HAVE_STDINT_H)
@@ -53,7 +55,7 @@ enum FileDataSet {
     FLIGHTLAB_SURFACE,
 };
 
-struct TecplotFile::Zone {
+struct SzTecplotFile::Zone {
 public:
     struct RindSpec {
         int mMinI, mMaxI, mMinJ, mMaxJ, mMinK, mMaxK;
@@ -61,11 +63,11 @@ public:
     static void parseRindSpec(std::string const &iSpec, RindSpec &oRind);
     Zone();
     std::string getName() const { return mName; }
-    void ReadHeader(TecplotFile::Impl *pimpl, int iNumVar);
-    void ReadDataHeader(TecplotFile::Impl *pimpl, int iNumVar);
-    MeshBase *ReadData(TecplotFile::Impl *pimpl, int iNumVar, RindSpec const &iRind);
-    void SkipData(TecplotFile::Impl *pimpl, int iNumVar);
-    MeshPts *ReadInnerPtsData(TecplotFile::Impl *pimpl, int iNumVar);
+    void ReadHeader(SzTecplotFile::Impl *pimpl, int iNumVar);
+    void ReadDataHeader(SzTecplotFile::Impl *pimpl, int iNumVar);
+    MeshBase *ReadData(SzTecplotFile::Impl *pimpl, int iNumVar, RindSpec const &iRind);
+    void SkipData(SzTecplotFile::Impl *pimpl, int iNumVar);
+    MeshPts *ReadInnerPtsData(SzTecplotFile::Impl *pimpl, int iNumVar);
     enum DataFormat { FLOAT = 1, DOUBLE = 2, LONG = 3, SHORT = 4, BYTE = 5, BIT = 6 };
     enum ZoneType {
         ORDERED = 0,
@@ -92,7 +94,7 @@ private:
     std::vector<double> mVarMin, mVarMax;
 };
 
-struct TecplotFile::Impl {
+struct SzTecplotFile::Impl {
     static double const ZONEMARKER;
     static double const GEOMETRYMARKER;
     static double const TEXTMARKER;
@@ -111,28 +113,28 @@ struct TecplotFile::Impl {
 
     void skip32(int iNum = 1);
     void skip64(int iNum = 1);
-    void skipReal(TecplotFile::Zone::DataFormat iFormat, int iNum = 1);
+    void skipReal(SzTecplotFile::Zone::DataFormat iFormat, int iNum = 1);
     int fetchInt32();
     float fetchFloat();
     double fetchDouble();
-    double fetchReal(TecplotFile::Zone::DataFormat iFormat);
+    double fetchReal(SzTecplotFile::Zone::DataFormat iFormat);
     std::string fetchString();
 
     template<typename T>
     static T byteswap(T iVal);
 };
 
-double const TecplotFile::Impl::ZONEMARKER = 299;
-double const TecplotFile::Impl::GEOMETRYMARKER = 399;
-double const TecplotFile::Impl::TEXTMARKER = 499;
-double const TecplotFile::Impl::LABELMARKER = 599;
-double const TecplotFile::Impl::USERMARKER = 699;
-double const TecplotFile::Impl::DATAAUXMARKER = 799;
-double const TecplotFile::Impl::VARAUXMARKER = 899;
-double const TecplotFile::Impl::EOHMARKER = 357;
+double const SzTecplotFile::Impl::ZONEMARKER = 299;
+double const SzTecplotFile::Impl::GEOMETRYMARKER = 399;
+double const SzTecplotFile::Impl::TEXTMARKER = 499;
+double const SzTecplotFile::Impl::LABELMARKER = 599;
+double const SzTecplotFile::Impl::USERMARKER = 699;
+double const SzTecplotFile::Impl::DATAAUXMARKER = 799;
+double const SzTecplotFile::Impl::VARAUXMARKER = 899;
+double const SzTecplotFile::Impl::EOHMARKER = 357;
 
 template<typename T>
-T TecplotFile::Impl::byteswap(T iVal)
+T SzTecplotFile::Impl::byteswap(T iVal)
 {
     union {
         char asChar[sizeof(T)];
@@ -145,60 +147,84 @@ T TecplotFile::Impl::byteswap(T iVal)
     return out.asT;
 }
 
-bool TecplotFile::Impl::open(std::string const &iFileName)
+bool SzTecplotFile::Impl::open(std::string const &iFileName)
 {
-    if (mStream.is_open())
-        mStream.close();
-    mStream.open(iFileName.c_str(), std::ios::binary);
-    if (!mStream.good()) {
-        std::cerr << "Failed to open " << iFileName << " successfully.\n";
-        std::cerr << "stream state: " << mStream.rdstate() << ", fail=" << mStream.fail() << ", bad=" << mStream.bad()
-                  << ", eof=" << mStream.eof() << std::endl;
-        std::perror("opening");
+    //const std::string filename = m_filename->getValue();
+    // size_t numZones = 0;
+    // size_t test = 5;
+    // int NumVar = 0;
+    // //get File Handle
+    // const void  *testfileHandle = tecFileReaderOpen(filename);
+    // NumVar = tecDataSetGetNumVars(*testfileHandle);
+    // std::cout << "Number of Variables is: " << mNumvar << std::endl;
+    // numZones = tecDataSetGetNumZones(*testfileHandle);
 
-        return false;
-    }
-    char versionString[8];
-    mStream.read(versionString, sizeof(versionString));
-    if (std::strncmp(versionString, "#!TDV", 5)) {
-         std::cerr << "No tecplot binary file.\n";
-         return false;
-    }
-    mVersion = 0;
-    if (isdigit(versionString[5]))
-        mVersion = versionString[5] - '0';
-    if (isdigit(versionString[6]))
-        mVersion = mVersion * 10 + versionString[6] - '0';
-    if (isdigit(versionString[7]))
-        mVersion = mVersion * 10 + versionString[7] - '0';
-    std::cerr << " Version: " << versionString[5] << versionString[6] << "." << versionString[7] << " (" << mVersion
-              << ")\n";
-    if (mVersion > 112) {
-        std::cerr << "WARNING: Tecplot version newer than 360 2009 detected, hoping for compatibility...\n";
-    } else if (mVersion == 112) {
-        // 		std::cout << "  Tecplot version 360 2009 detected\n";
-    } else if (mVersion == 111) {
-        // 		std::cout << "  Tecplot version 360 2008 detected\n";
-    } else if (mVersion == 107) {
-        // 		std::cout << "  Tecplot version 360 detected\n";
-    } else if (mVersion == 102) {
-        // 		std::cout << "  Tecplot version 10 detected\n";
-    } else if (mVersion == 75) {
-        // 		std::cout << "  Tecplot version 9.2 detected\n";
-    } else {
-        std::cout << "WARNING: Unknown Tecplot version detected, hoping for compatibility...\n";
-    }
-    // integer with value "1" to detect little or big endian -----------
-    mOtherEndian = false; // ensure endianTest is fetched unchanged
-    int endianTest = fetchInt32();
-    if (endianTest != 1) {
-        if (endianTest == 16777216) {
-            mOtherEndian = true; 
-        } else {
-            std::cerr << "Illegal endianness test value.\n";
-            return false;
-        }
-    }
+    // if (mStream.is_open())
+    //     mStream.close();
+    // mStream.open(iFileName.c_str(), std::ios::binary);
+    // if (!mStream.good()) {
+    //     std::cerr << "Failed to open " << iFileName << " successfully.\n";
+    //     std::cerr << "stream state: " << mStream.rdstate() << ", fail=" << mStream.fail() << ", bad=" << mStream.bad()
+    //               << ", eof=" << mStream.eof() << std::endl;
+    //     std::perror("opening");
+
+    //     return false;
+    // }
+    // char versionString[8];
+    // mStream.read(versionString, sizeof(versionString));
+    // // if (std::strncmp(versionString, "#!TDV", 5) || 
+    // //     std::strncmp(versionString, "#!SZPLT ", 7)) {
+    // //     std::cerr << "No tecplot binary file.\n";
+    // //     return false;
+    // // }
+    // // READ first strings to get an impression of the new format:
+    // char testString[32];
+    // mStream.read(testString, sizeof(testString)); //'105BF $Revision:'
+
+    // char testString1[16];
+    // mStream.read(testString1, sizeof(testString1));
+
+    // if (std::strncmp(versionString, "#!SZPLT ", 7)) {
+    //     std::cerr << "No tecplot binary file.\n";
+    //     return false;
+    // }
+    // mVersion = 0;
+    // if (isdigit(versionString[5]))
+    //     mVersion = versionString[5] - '0';
+    // if (isdigit(versionString[6]))
+    //     mVersion = mVersion * 10 + versionString[6] - '0';
+    // if (isdigit(versionString[7]))
+    //     mVersion = mVersion * 10 + versionString[7] - '0';
+    // std::cerr << " Version: " << versionString[5] << versionString[6] << "." << versionString[7] << " (" << mVersion
+    //           << ")\n";
+    // if (mVersion > 112) {
+    //     std::cerr << "WARNING: Tecplot version newer than 360 2009 detected, hoping for compatibility...\n";
+    // } else if (mVersion == 112) {
+    //     // 		std::cout << "  Tecplot version 360 2009 detected\n";
+    // } else if (mVersion == 111) {
+    //     // 		std::cout << "  Tecplot version 360 2008 detected\n";
+    // } else if (mVersion == 107) {
+    //     // 		std::cout << "  Tecplot version 360 detected\n";
+    // } else if (mVersion == 102) {
+    //     // 		std::cout << "  Tecplot version 10 detected\n";
+    // } else if (mVersion == 75) {
+    //     // 		std::cout << "  Tecplot version 9.2 detected\n";
+    // } else {
+    //     std::cout << "WARNING: Unknown Tecplot version detected, hoping for compatibility...\n";
+    // }
+    // // integer with value "1" to detect little or big endian -----------
+    // mOtherEndian = false; // ensure endianTest is fetched unchanged
+    // int endianTest = fetchInt32();
+    // if (endianTest != 1) {
+    //     if (endianTest == 16777216) {
+    //         mOtherEndian = true;
+    //     //} else if (endianTest == 1110782001) {  //endianTest for .szplt -> leads to process abortion
+    //     //    mOtherEndian = true;  
+    //     } else {
+    //         std::cerr << "Illegal endianness test value.\n";
+    //         return false;
+    //     }
+    // }
     return true;
 }
 
@@ -209,56 +235,56 @@ bool TecplotFile::Impl::open(std::string const &iFileName)
             (VAR) = byteswap(VAR); \
     } while (false)
 
-void TecplotFile::Impl::skip32(int iNum)
+void SzTecplotFile::Impl::skip32(int iNum)
 {
     mStream.seekg(4 * iNum, std::istream::cur);
 }
 
-void TecplotFile::Impl::skip64(int iNum)
+void SzTecplotFile::Impl::skip64(int iNum)
 {
     mStream.seekg(8 * iNum, std::istream::cur);
 }
 
-void TecplotFile::Impl::skipReal(TecplotFile::Zone::DataFormat iFormat, int iNum)
+void SzTecplotFile::Impl::skipReal(SzTecplotFile::Zone::DataFormat iFormat, int iNum)
 {
-    if (iFormat == TecplotFile::Zone::FLOAT) {
+    if (iFormat == SzTecplotFile::Zone::FLOAT) {
         skip32(iNum);
     } else {
-        assert(iFormat == TecplotFile::Zone::DOUBLE);
+        assert(iFormat == SzTecplotFile::Zone::DOUBLE);
         skip64(iNum);
     }
 }
 
-int TecplotFile::Impl::fetchInt32()
+int SzTecplotFile::Impl::fetchInt32()
 {
     TEC_INT32 v;
     FETCH(v);
     return v;
 }
 
-float TecplotFile::Impl::fetchFloat()
+float SzTecplotFile::Impl::fetchFloat()
 {
     TEC_FLOAT32 v;
     FETCH(v);
     return v;
 }
 
-double TecplotFile::Impl::fetchDouble()
+double SzTecplotFile::Impl::fetchDouble()
 {
     TEC_FLOAT64 v;
     FETCH(v);
     return v;
 }
 
-double TecplotFile::Impl::fetchReal(TecplotFile::Zone::DataFormat iFormat)
+double SzTecplotFile::Impl::fetchReal(SzTecplotFile::Zone::DataFormat iFormat)
 {
-    if (iFormat == TecplotFile::Zone::FLOAT)
+    if (iFormat == SzTecplotFile::Zone::FLOAT)
         return fetchFloat();
-    assert(iFormat == TecplotFile::Zone::DOUBLE);
+    assert(iFormat == SzTecplotFile::Zone::DOUBLE);
     return fetchDouble();
 }
 
-std::string TecplotFile::Impl::fetchString()
+std::string SzTecplotFile::Impl::fetchString()
 {
     std::string result;
     int nTemp = fetchInt32();
@@ -269,7 +295,7 @@ std::string TecplotFile::Impl::fetchString()
     return result;
 }
 
-TecplotFile::Zone::Zone()
+SzTecplotFile::Zone::Zone()
 : mType(ORDERED)
 , mDataPacking(BLOCK)
 , mVarLocation(0)
@@ -285,7 +311,7 @@ TecplotFile::Zone::Zone()
 , mVarDataFormat(0)
 {}
 
-void TecplotFile::Zone::ReadHeader(TecplotFile::Impl *pimpl, int iNumVar)
+void SzTecplotFile::Zone::ReadHeader(SzTecplotFile::Impl *pimpl, int iNumVar)
 {
     mName = pimpl->fetchString();
     if (pimpl->mVersion >= 107) {
@@ -348,7 +374,7 @@ void TecplotFile::Zone::ReadHeader(TecplotFile::Impl *pimpl, int iNumVar)
     }
 }
 
-void TecplotFile::Zone::ReadDataHeader(TecplotFile::Impl *pimpl, int iNumVar)
+void SzTecplotFile::Zone::ReadDataHeader(SzTecplotFile::Impl *pimpl, int iNumVar)
 {
     mVarDataFormat.resize(iNumVar);
     mVarMin.resize(iNumVar);
@@ -392,7 +418,7 @@ void TecplotFile::Zone::ReadDataHeader(TecplotFile::Impl *pimpl, int iNumVar)
     }
 }
 
-MeshPts *TecplotFile::Zone::ReadInnerPtsData(TecplotFile::Impl *pimpl, int iNumVar)
+MeshPts *SzTecplotFile::Zone::ReadInnerPtsData(SzTecplotFile::Impl *pimpl, int iNumVar)
 {
     ReadDataHeader(pimpl, iNumVar);
     MeshPts *mesh = 0;
@@ -421,7 +447,7 @@ MeshPts *TecplotFile::Zone::ReadInnerPtsData(TecplotFile::Impl *pimpl, int iNumV
     return mesh;
 }
 
-MeshBase *TecplotFile::Zone::ReadData(TecplotFile::Impl *pimpl, int iNumVar, RindSpec const &iRind)
+MeshBase *SzTecplotFile::Zone::ReadData(SzTecplotFile::Impl *pimpl, int iNumVar, RindSpec const &iRind)
 {
     ReadDataHeader(pimpl, iNumVar);
     MeshBase *mesh = 0;
@@ -1142,7 +1168,7 @@ MeshBase *TecplotFile::Zone::ReadData(TecplotFile::Impl *pimpl, int iNumVar, Rin
     return mesh;
 }
 
-void TecplotFile::Zone::SkipData(TecplotFile::Impl *pimpl, int iNumVar)
+void SzTecplotFile::Zone::SkipData(SzTecplotFile::Impl *pimpl, int iNumVar)
 {
     size_t num32Skip = 0;
     ReadDataHeader(pimpl, iNumVar);
@@ -1278,7 +1304,7 @@ void splitMinMax(std::string const &iSpec, int &oMin, int &oMax)
     }
 }
 
-void TecplotFile::Zone::parseRindSpec(std::string const &iSpec, TecplotFile::Zone::RindSpec &oRind)
+void SzTecplotFile::Zone::parseRindSpec(std::string const &iSpec, SzTecplotFile::Zone::RindSpec &oRind)
 {
     if (iSpec.empty())
         return;
@@ -1297,7 +1323,7 @@ void TecplotFile::Zone::parseRindSpec(std::string const &iSpec, TecplotFile::Zon
     splitMinMax(std::string(spec, 0, slash), oRind.mMinK, oRind.mMaxK);
 }
 
-TecplotFile::TecplotFile(std::string const &iFile): mNumVar(0), mVarNames(0), pimpl(new Impl)
+SzTecplotFile::SzTecplotFile(std::string const &iFile): mNumVar(0), mVarNames(0), pimpl(new Impl)
 {
     //	::Read(iFile, "");
     if (!pimpl->open(iFile))
@@ -1322,7 +1348,7 @@ TecplotFile::TecplotFile(std::string const &iFile): mNumVar(0), mVarNames(0), pi
     double marker = pimpl->fetchFloat();
     while (marker != pimpl->EOHMARKER) {
         if (marker == pimpl->ZONEMARKER) {
-            TecplotFile::Zone TecZone;
+            SzTecplotFile::Zone TecZone;
             TecZone.ReadHeader(&*pimpl, mNumVar);
             mZones.push_back(TecZone);
             marker = pimpl->fetchFloat();
@@ -1467,20 +1493,20 @@ TecplotFile::TecplotFile(std::string const &iFile): mNumVar(0), mVarNames(0), pi
 
 // due to a bug in (at least) gcc 4.4.0 (apparently fixed in 4.4.1), an (otherwise
 // unnecessary) explicit destructor is needed in order to close the Impl.mStream
-TecplotFile::~TecplotFile()
+SzTecplotFile::~SzTecplotFile()
 {}
 
-const std::vector<std::string> &TecplotFile::Variables() const
+const std::vector<std::string> &SzTecplotFile::Variables() const
 {
     return mVarNames;
 }
 
-size_t TecplotFile::NumZones() const
+size_t SzTecplotFile::NumZones() const
 {
     return mZones.size();
 }
 
-MeshBaseVec TecplotFile::Read(std::string const &iZoneRindList)
+MeshBaseVec SzTecplotFile::Read(std::string const &iZoneRindList)
 {
     checkDataSetType();
     if (pimpl->mDataSet == UNKNOWN) {
@@ -1499,17 +1525,17 @@ MeshBaseVec TecplotFile::Read(std::string const &iZoneRindList)
     // data section
     MeshBaseVec mesh;
     int j = 1;
-    for (std::vector<TecplotFile::Zone>::iterator i = mZones.begin(); i != mZones.end(); ++i, ++j) {
+    for (std::vector<SzTecplotFile::Zone>::iterator i = mZones.begin(); i != mZones.end(); ++i, ++j) {
         mesh.push_back(ReadZone(j - 1, iZoneRindList));
     }
     return mesh;
 }
 
-MeshBase *TecplotFile::ReadZone(size_t idx, const std::string &iZoneRindList)
+MeshBase *SzTecplotFile::ReadZone(size_t idx, const std::string &iZoneRindList)
 {
-    std::vector<TecplotFile::Zone>::iterator i = mZones.begin() + idx;
+    std::vector<SzTecplotFile::Zone>::iterator i = mZones.begin() + idx;
 
-    TecplotFile::Zone::RindSpec rind = {
+    SzTecplotFile::Zone::RindSpec rind = {
         0, 0, 0, 0, 0, 0,
     };
     size_t zoneNamePos = iZoneRindList.find(',' + i->getName() + '{');
@@ -1536,9 +1562,9 @@ MeshBase *TecplotFile::ReadZone(size_t idx, const std::string &iZoneRindList)
     return i->ReadData(&*pimpl, mNumVar, rind);
 }
 
-void TecplotFile::SkipZone(size_t idx)
+void SzTecplotFile::SkipZone(size_t idx)
 {
-    std::vector<TecplotFile::Zone>::iterator i = mZones.begin() + idx;
+    std::vector<SzTecplotFile::Zone>::iterator i = mZones.begin() + idx;
 
     double marker = pimpl->fetchFloat();
     assert(marker == pimpl->ZONEMARKER);
@@ -1547,7 +1573,7 @@ void TecplotFile::SkipZone(size_t idx)
     return i->SkipData(&*pimpl, mNumVar);
 }
 
-bool TecplotFile::checkDataSetType()
+bool SzTecplotFile::checkDataSetType()
 {
     pimpl->mDataSet = UNKNOWN;
     // check variables
@@ -1681,7 +1707,7 @@ bool TecplotFile::checkDataSetType()
     return pimpl->mDataSet != UNKNOWN;
 }
 
-std::vector<MeshPts *> TecplotFile::ReadInnerPts()
+std::vector<MeshPts *> SzTecplotFile::ReadInnerPts()
 {
     std::cout << "var names ..." << mVarNames[0] << mVarNames[1] << mVarNames[2] << std::endl;
     // check variables
@@ -1699,7 +1725,7 @@ std::vector<MeshPts *> TecplotFile::ReadInnerPts()
     // data section
     MeshPtsVec mesh;
     int j = 0;
-    for (std::vector<TecplotFile::Zone>::iterator i = mZones.begin(); i != mZones.end(); ++i, ++j) {
+    for (std::vector<SzTecplotFile::Zone>::iterator i = mZones.begin(); i != mZones.end(); ++i, ++j) {
         double marker = pimpl->fetchFloat();
         assert(marker == pimpl->ZONEMARKER);
         (void)marker;
