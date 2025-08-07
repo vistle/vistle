@@ -19,12 +19,14 @@
 
 //Include TecIO for szPLot:
 //extern "C" {
-#include "../../../lib/3rdparty/tecio/teciosrc/TecioPLT.h"
-#include "TECIO.h"
+#if !defined TECIOMPI
+#include <TecioPLT.h>
+#endif
+#include <TECIO.h>
 //#include <TecioSZL.h>
 //}
 #if defined TECIOMPI
-#include "mpi.h"
+#include <mpi.h>
 #endif
 //#include <qt6/QtCore/qcborvalue.h>
 
@@ -121,6 +123,7 @@ Vec<Scalar, 1>::ptr ReadSubzoneTecplot::readVariables(void *fileHandle, int32_t 
     switch ((FieldDataType_e)varType) {
     case FieldDataType_Float: {
         //std::vector<float> values(numValuesPerRead);
+
         tecZoneVarGetFloatValues(fileHandle, inputZone, var, 1, numValues, &values[0]);
         for (int64_t i = 0; i < numValues; i++) {
             field->x()[i] = values[i];
@@ -273,6 +276,7 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
             int64_t numValues;
             tecZoneVarGetNumValues(fileHandle, zone, var, &numValues);
             std::vector<float> values(numValues);
+
             /* 
             Vec<Scalar, 1>::ptr field(new Vec<Scalar, 1>(numValues));
             //std::shared_ptr<vistle::Object> field; //(new Vec<Scalar, 1>(numValues));
@@ -315,6 +319,7 @@ ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mp
     //setParallelizationMode(Serial);
     setParallelizationMode(ParallelizeTimeAndBlocks);
 
+
 /* 
     for (int i = 0; i < NumPorts; i++) {
         std::stringstream choiceFieldName;
@@ -325,6 +330,7 @@ ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mp
             "This data field from the tecplot file will be added to output port field_out_" + std::to_string(i) + ".",
             "", Parameter::Choice);
         m_fieldsOut[i] = createOutputPort("field_out_" + std::to_string(i), "data field");
+
     } */
 
     observeParameter(m_filename);
