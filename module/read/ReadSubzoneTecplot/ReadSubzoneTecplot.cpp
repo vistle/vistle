@@ -121,26 +121,26 @@ Vec<Scalar, 1>::ptr ReadSubzoneTecplot::readVariables(void *fileHandle, int32_t 
     switch ((FieldDataType_e)varType) {
     case FieldDataType_Float: {
         //std::vector<float> values(numValuesPerRead);
-        tecZoneVarGetFloatValues(fileHandle, inputZone, var, 0, numValues, &values[0]);
+        tecZoneVarGetFloatValues(fileHandle, inputZone, var, 1, numValues, &values[0]);
         for (int64_t i = 0; i < numValues; i++) {
             field->x()[i] = values[i];
         }
     } break;
     case FieldDataType_Double: {
         //std::vector<double> values(numValuesPerRead);
-        tecZoneVarGetDoubleValues(fileHandle, inputZone, var, 0, numValues, &values[0]);
+        tecZoneVarGetDoubleValues(fileHandle, inputZone, var, 1, numValues, &values[0]);
     } break;
     case FieldDataType_Int32: {
         //std::vector<int32_t> values(numValuesPerRead);
-        tecZoneVarGetInt32Values(fileHandle, inputZone, var, 0, numValues, &values[0]);
+        tecZoneVarGetInt32Values(fileHandle, inputZone, var, 1, numValues, &values[0]);
     } break;
     case FieldDataType_Int16: {
         //std::vector<int16_t> values(numValuesPerRead);
-        tecZoneVarGetInt16Values(fileHandle, inputZone, var, 0, numValues, &values[0]);
+        tecZoneVarGetInt16Values(fileHandle, inputZone, var, 1, numValues, &values[0]);
     } break;
     case FieldDataType_Byte: {
         //std::vector<uint8_t> values(numValuesPerRead);
-        tecZoneVarGetUInt8Values(fileHandle, inputZone, var, 0, numValues, &values[0]);
+        tecZoneVarGetUInt8Values(fileHandle, inputZone, var, 1, numValues, &values[0]);
     }
     } // close switch
 
@@ -273,7 +273,7 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
             int64_t numValues;
             tecZoneVarGetNumValues(fileHandle, zone, var, &numValues);
             std::vector<float> values(numValues);
-/* 
+            /* 
             Vec<Scalar, 1>::ptr field(new Vec<Scalar, 1>(numValues));
             //std::shared_ptr<vistle::Object> field; //(new Vec<Scalar, 1>(numValues));
             // TODO: update readVariables method to output a Vec<Scalar, 1> object
@@ -315,7 +315,7 @@ ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mp
     //setParallelizationMode(Serial);
     setParallelizationMode(ParallelizeTimeAndBlocks);
 
-
+/* 
     for (int i = 0; i < NumPorts; i++) {
         std::stringstream choiceFieldName;
         choiceFieldName << "tecplotfield_" << i;
@@ -325,7 +325,7 @@ ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mp
             "This data field from the tecplot file will be added to output port field_out_" + std::to_string(i) + ".",
             "", Parameter::Choice);
         m_fieldsOut[i] = createOutputPort("field_out_" + std::to_string(i), "data field");
-    }
+    } */
 
     observeParameter(m_filename);
 }
