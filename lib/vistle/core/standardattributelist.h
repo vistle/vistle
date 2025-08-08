@@ -2,6 +2,7 @@ A(Plugin, plugin);
 A(Species, species);
 A(Variant, variant);
 A(ModelFile, model_file);
+A(ModelRetainSeconds, model_retain_seconds);
 A(Part, part);
 A(Id, id);
 A(PartOf, part_of);

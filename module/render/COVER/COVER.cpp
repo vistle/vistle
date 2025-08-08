@@ -439,9 +439,21 @@ void COVER::removeObject(std::shared_ptr<vistle::RenderObject> vro)
         return;
     }
 
+    osg::ref_ptr<osg::Node> node = ro->node();
+    double retainSeconds = 0.;
+    if (auto retainSecondsAttr = ro->getAttribute(attribute::ModelRetainSeconds)) {
+        retainSeconds = std::stod(retainSecondsAttr);
+    }
+
     auto it = m_fileAttachmentMap.find(ro->getName());
     if (it != m_fileAttachmentMap.end()) {
-        coVRFileManager::instance()->unloadFile(it->second.c_str());
+        std::string filename = it->second;
+        if (retainSeconds <= 0. || !ro) {
+            coVRFileManager::instance()->unloadFile(filename.c_str());
+        } else {
+            auto unloadTime = cover->frameTime() + retainSeconds;
+            m_delayedFileUnloadMap[unloadTime].push_back(filename);
+        }
         m_fileAttachmentMap.erase(it);
     }
 
@@ -452,7 +464,6 @@ void COVER::removeObject(std::shared_ptr<vistle::RenderObject> vro)
         return;
     }
 
-    osg::ref_ptr<osg::Node> node = ro->node();
     if (node) {
         coVRPluginList::instance()->removeNode(node, false, node);
         Creator &cr = getCreator(pro->container->getCreator());
@@ -633,67 +644,82 @@ bool COVER::render()
 {
     updateStatus();
 
-    if (m_delayedObjects.empty())
-        return false;
+    bool didWork = false;
 
-    int numReady = 0;
-    for (size_t i = 0; i < m_delayedObjects.size(); ++i) {
-        auto &node_future = m_delayedObjects[i].node_future;
-        if (!node_future.valid()) {
-            std::cerr << "COVER::render(): future not valid" << std::endl;
-            break;
-        }
-        auto status = node_future.wait_for(std::chrono::seconds(0));
-#if !defined(__clang__) && defined(__GNUC__) && (__GNUC__ == 4) && (__GNUC_MINOR__ <= 6)
-        if (!status)
-            break;
-#else
-        if (status != std::future_status::ready)
-            break;
-#endif
-        ++numReady;
-    }
-
-    int numAdd = boost::mpi::all_reduce(comm(), numReady, boost::mpi::minimum<int>());
-
-    if (numAdd > 0)
-        m_requireUpdate = true;
-
-    //std::cerr << "adding " << numAdd << " delayed objects, " << m_delayedObjects.size() << " waiting" << std::endl;
-    for (int i = 0; i < numAdd; ++i) {
-        auto &node_future = m_delayedObjects.front().node_future;
-        auto &pro = m_delayedObjects.front().pro;
-        osg::Geode *geode = node_future.get();
-        if (pro->coverRenderObject && geode) {
-            int creatorId = pro->coverRenderObject->getCreator();
-            Creator &creator = getCreator(creatorId);
-
-            auto tr = m_delayedObjects.front().transform;
-            geode->setNodeMask(~(opencover::Isect::Update | opencover::Isect::Intersection));
-            geode->setName(pro->coverRenderObject->getName());
-            tr->addChild(geode);
-            pro->coverRenderObject->setNode(tr);
-            const std::string variant = pro->variant;
-            const int t = pro->timestep;
-            if (t >= 0) {
-                coVRAnimationManager::instance()->addSequence(creator.animated(variant));
+    if (!m_delayedObjects.empty()) {
+        didWork = true;
+        int numReady = 0;
+        for (size_t i = 0; i < m_delayedObjects.size(); ++i) {
+            auto &node_future = m_delayedObjects[i].node_future;
+            if (!node_future.valid()) {
+                std::cerr << "COVER::render(): future not valid" << std::endl;
+                break;
             }
-            osg::ref_ptr<osg::Group> parent = getParent(pro->coverRenderObject.get());
-            parent->addChild(tr);
-        } else if (!pro->coverRenderObject) {
-            std::cerr << rank() << ": discarding delayed object " << m_delayedObjects.front().name
-                      << " - already deleted" << std::endl;
-        } else if (!geode) {
-            //std::cerr << rank() << ": discarding delayed object " << pro->coverRenderObject->getName() << ": no node created" << std::endl;
+            auto status = node_future.wait_for(std::chrono::seconds(0));
+#if !defined(__clang__) && defined(__GNUC__) && (__GNUC__ == 4) && (__GNUC_MINOR__ <= 6)
+            if (!status)
+                break;
+#else
+            if (status != std::future_status::ready)
+                break;
+#endif
+            ++numReady;
         }
-        m_delayedObjects.pop_front();
+
+        int numAdd = boost::mpi::all_reduce(comm(), numReady, boost::mpi::minimum<int>());
+
+        if (numAdd > 0)
+            m_requireUpdate = true;
+
+        //std::cerr << "adding " << numAdd << " delayed objects, " << m_delayedObjects.size() << " waiting" << std::endl;
+        for (int i = 0; i < numAdd; ++i) {
+            auto &node_future = m_delayedObjects.front().node_future;
+            auto &pro = m_delayedObjects.front().pro;
+            osg::Geode *geode = node_future.get();
+            if (pro->coverRenderObject && geode) {
+                int creatorId = pro->coverRenderObject->getCreator();
+                Creator &creator = getCreator(creatorId);
+
+                auto tr = m_delayedObjects.front().transform;
+                geode->setNodeMask(~(opencover::Isect::Update | opencover::Isect::Intersection));
+                geode->setName(pro->coverRenderObject->getName());
+                tr->addChild(geode);
+                pro->coverRenderObject->setNode(tr);
+                const std::string variant = pro->variant;
+                const int t = pro->timestep;
+                if (t >= 0) {
+                    coVRAnimationManager::instance()->addSequence(creator.animated(variant));
+                }
+                osg::ref_ptr<osg::Group> parent = getParent(pro->coverRenderObject.get());
+                parent->addChild(tr);
+            } else if (!pro->coverRenderObject) {
+                std::cerr << rank() << ": discarding delayed object " << m_delayedObjects.front().name
+                          << " - already deleted" << std::endl;
+            } else if (!geode) {
+                //std::cerr << rank() << ": discarding delayed object " << pro->coverRenderObject->getName() << ": no node created" << std::endl;
+            }
+            m_delayedObjects.pop_front();
+        }
+
+        if (numAdd > 0) {
+            //updateStatus();
+        }
     }
 
-    if (numAdd > 0) {
-        //updateStatus();
+    auto now = cover->frameTime();
+    for (auto it = m_delayedFileUnloadMap.begin(); it != m_delayedFileUnloadMap.end();) {
+        didWork = true;
+        if (it->first <= now) {
+            for (const auto &filename: it->second) {
+                coVRFileManager::instance()->unloadFile(filename.c_str());
+            }
+            it = m_delayedFileUnloadMap.erase(it);
+        } else {
+            ++it;
+        }
     }
 
-    return true;
+    return didWork;
 }
 
 bool COVER::addColorMap(const std::string &species, Object::const_ptr colormap)

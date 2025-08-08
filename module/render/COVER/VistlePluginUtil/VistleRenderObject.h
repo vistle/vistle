@@ -43,7 +43,7 @@ public:
     bool fromCovise() const override { return false; }
 };
 
-
+// RenderObject created for each vistle::Object
 class V_PLUGINUTILEXPORT VistleRenderObject: public BaseRenderObject {
 public:
     VistleRenderObject(std::shared_ptr<const vistle::RenderObject> ro);
@@ -84,7 +84,7 @@ protected:
     mutable opencover::RenderObject *m_roNorm;
 };
 
-// pseudo RenderObject for handling module parameters
+// pseudo RenderObject for handling module parameters, created for each Vistle module
 class V_PLUGINUTILEXPORT ModuleRenderObject: public BaseRenderObject {
 public:
     ModuleRenderObject(const std::string &moduleName, int moduleId);
@@ -112,6 +112,7 @@ private:
     std::map<std::string, std::string> m_attributes;
 };
 
+// pseudo RenderObject for handling Variants, as configured by the Variant module
 class V_PLUGINUTILEXPORT VariantRenderObject: public BaseRenderObject {
 public:
     VariantRenderObject(const std::string &variantName,
