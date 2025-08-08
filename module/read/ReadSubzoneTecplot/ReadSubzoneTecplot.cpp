@@ -277,15 +277,16 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
             tecZoneVarGetNumValues(fileHandle, zone, var, &numValues);
             std::vector<float> values(numValues);
 
-            /* 
+            
             Vec<Scalar, 1>::ptr field(new Vec<Scalar, 1>(numValues));
             //std::shared_ptr<vistle::Object> field; //(new Vec<Scalar, 1>(numValues));
             // TODO: update readVariables method to output a Vec<Scalar, 1> object
             //Vec<Scalar, 1>::ptr field = readVariables(fileHandle, numValues, zone, var);
             tecZoneVarGetFloatValues(fileHandle, inputZone, var, 1, numValues, &values[0]);
-            for (int64_t i = 0; i < numValues; i++) {
-                field->x()[i] = values[i];
-            }
+            for (int64_t i = 0; i < 3; i++) {
+                //field->x()[i] = values[i];
+                std::cout << varName << ": " << values[i] << std::endl;
+            }/*
             //std::copy(values.begin(), values.end(), &field);
 
             //bool isNotEmpty = !values.empty();
