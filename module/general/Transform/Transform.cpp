@@ -176,6 +176,7 @@ bool Transform::compute()
     AnimationMode animation = (AnimationMode)p_animation->getValue();
     switch (animation) {
     case Animate:
+        timestep = -1;
         break;
     case Deanimate:
         timestep = -1;
@@ -223,6 +224,12 @@ bool Transform::compute()
             }
             addObject(data_out, nobj);
         }
+    }
+
+    switch (animation) {
+    case Animate:
+        timestep = 0;
+        break;
     }
 
     Matrix4 t = geo->getTransform();
