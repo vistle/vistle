@@ -2,7 +2,6 @@ vistle_find_package(OpenGL)
 vistle_find_package(GLEW)
 vistle_find_package(ZLIB)
 vistle_find_package(JPEGTURBO)
-#vistle_find_package(ZFP)
 
 #use_openmp()
 
@@ -59,11 +58,8 @@ if(ZLIB_FOUND)
     target_link_libraries(vistle_rhr PRIVATE ${ZLIB_LIBRARIES})
 endif()
 
-if(ZFP_FOUND)
-    target_compile_definitions(vistle_rhr PRIVATE HAVE_ZFP)
-    target_include_directories(vistle_rhr SYSTEM PRIVATE ${ZFP_INCLUDE_DIRS})
-    target_link_libraries(vistle_rhr PRIVATE ${ZFP_LIBRARIES})
-endif()
+target_include_directories(vistle_rhr SYSTEM PRIVATE ${ZFP_INCLUDE_DIRS})
+target_link_libraries(vistle_rhr PRIVATE ${ZFP_LIBRARIES})
 
 add_executable(depthtest depthtest.cpp depthcompare.cpp)
 target_link_libraries(depthtest PRIVATE vistle_rhr)
