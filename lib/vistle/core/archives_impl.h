@@ -70,38 +70,28 @@ inline CompressionSettings getCompressionSettings(const CompressionSettings &cs,
 
 template<typename T>
 struct lossy_type_map {
-#ifdef HAVE_ZFP
     static const zfp_type zfptypeid = zfp_type_none;
-#endif
     typedef void sz3type;
 };
 
 template<>
 struct lossy_type_map<int32_t> {
-#ifdef HAVE_ZFP
     static const zfp_type zfptypeid = zfp_type_int32;
-#endif
     typedef int32_t sz3type;
 };
 template<>
 struct lossy_type_map<int64_t> {
-#ifdef HAVE_ZFP
     static const zfp_type zfptypeid = zfp_type_int64;
-#endif
     typedef int64_t sz3type;
 };
 template<>
 struct lossy_type_map<float> {
-#ifdef HAVE_ZFP
     static const zfp_type zfptypeid = zfp_type_float;
-#endif
     typedef float sz3type;
 };
 template<>
 struct lossy_type_map<double> {
-#ifdef HAVE_ZFP
     static const zfp_type zfptypeid = zfp_type_double;
-#endif
     typedef double sz3type;
 };
 
@@ -316,12 +306,10 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::load(Archive &ar)
         ar &m_dim[0] & m_dim[1] & m_dim[2];
         buffer compressed;
         ar &compressed;
-#ifdef HAVE_ZFP
         Index dim[3];
         for (int c = 0; c < 3; ++c)
             dim[c] = m_dim[c] == 1 ? 0 : m_dim[c];
         decompressZfp<lossy_type_map<T>::zfptypeid>(static_cast<void *>(m_begin), compressed, dim);
-#endif
     } else if (compSz3) {
         ar &m_dim[0] & m_dim[1] & m_dim[2];
         buffer compressed;
@@ -366,7 +354,6 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::save(Archive &ar) const
         assert(!compPredict);
         assert(!compSz3);
         assert(!compBigWhoop);
-#ifdef HAVE_ZFP
         ZfpParameters param;
         param.mode = cs.zfpMode;
         param.rate = cs.zfpRate;
@@ -389,11 +376,6 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::save(Archive &ar) const
             compress = false;
             compressMode = Uncompressed;
         }
-#else
-        compZfp = false;
-        compress = false;
-        compressMode = Uncompressed;
-#endif
     } else if (compSz3) {
         assert(!compPredict);
         assert(!compZfp);
@@ -437,11 +419,9 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::save(Archive &ar) const
 }
 } // namespace detail
 
-#ifdef HAVE_ZFP
 using detail::ZfpParameters;
 using detail::compressZfp;
 using detail::decompressZfp;
-#endif
 
 using detail::compressSz3;
 using detail::decompressSz3;

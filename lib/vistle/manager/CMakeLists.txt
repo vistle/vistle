@@ -66,6 +66,9 @@ if(USE_QT)
     set(LIB_SOURCES ${LIB_SOURCES} ${QRC_SOURCES})
 endif()
 
+target_include_directories(vistle_clustermanager SYSTEM PRIVATE ${ZFP_INCLUDE_DIRS})
+vistle_target_link_libraries(vistle_clustermanager PRIVATE ${ZFP_LIBRARIES})
+
 vistle_target_link_libraries(
     vistle_clustermanager
     PRIVATE

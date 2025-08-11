@@ -18,13 +18,11 @@
 
 namespace vistle {
 
-#ifdef HAVE_ZFP
 namespace detail {
 
 template<zfp_type type>
 bool decompressZfp(void *dest, const buffer &compressed, const Index dim[3])
 {
-#ifdef HAVE_ZFP
     bool ok = true;
     bitstream *stream = stream_open(const_cast<char *>(compressed.data()), compressed.size());
     zfp_stream *zfp = zfp_stream_open(stream);
@@ -49,10 +47,6 @@ bool decompressZfp(void *dest, const buffer &compressed, const Index dim[3])
     zfp_field_free(field);
     stream_close(stream);
     return ok;
-#else
-    std::cerr << "cannot decompress array: no support for ZFP floating point compression" << std::endl;
-    return false;
-#endif
 }
 
 template<>
@@ -70,7 +64,6 @@ template<zfp_type type>
 bool compressZfp(buffer &compressed, const void *src, const Index dim[3], const Index typeSize,
                  const ZfpParameters &param)
 {
-#ifdef HAVE_ZFP
     int ndims = 1;
     size_t sz = dim[0];
     if (dim[1] != 0) {
@@ -129,10 +122,6 @@ bool compressZfp(buffer &compressed, const void *src, const Index dim[3], const 
               << sz * typeSize << " to " << zfpsize << " bytes" << std::endl;
 #endif
     return true;
-#else
-    assert("no support for ZFP floating point compression" == 0);
-    return false;
-#endif
 }
 
 template<>
@@ -154,6 +143,5 @@ template bool compressZfp<zfp_type_double>(buffer &compressed, const void *src, 
                                            const ZfpParameters &param);
 
 } // namespace detail
-#endif // HAVE_ZFP
 
 } // namespace vistle
