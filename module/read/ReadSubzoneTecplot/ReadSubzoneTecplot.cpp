@@ -77,7 +77,9 @@ bool ReadSubzoneTecplot::examine(const vistle::Parameter *param)
         tecDataSetGetNumZones(fileHandle, &numZones);
         //setPartitions(std::min(size_t(size() * 32), numZones));
         setPartitions(numZones);
+        //setNumPartitions(numZones);
 
+        // TODO: output warning that code is not defined for  geometries
         // check geometries in data:
         int32_t numGeoms = 0;
         tecGeomGetNumGeoms(fileHandle, &numGeoms);
@@ -153,33 +155,37 @@ Vec<Scalar, 1>::ptr ReadSubzoneTecplot::readVariables(void *fileHandle, int32_t 
 //template<typename T>
 StructuredGrid::ptr ReadSubzoneTecplot::createStructuredGrid(void *fileHandle, int32_t inputZone)
 {
-    // Read the number of values for each variable
-    int64_t numValues;
-    int32_t var = 1; //TODO:cs for-loop over variables
-    tecZoneVarGetNumValues(fileHandle, inputZone, var, &numValues);
     // Define grid:
+    // get size x, y, z of all zones
     int64_t m_numVert_x = 0;
     int64_t m_numVert_y = 0;
     int64_t m_numVert_z = 0;
+    int32_t numZones = 0;
+    tecDataSetGetNumZones(fileHandle, &numZones);
+
     tecZoneGetIJK(fileHandle, inputZone, &m_numVert_x, &m_numVert_y, &m_numVert_z);
     StructuredGrid::ptr str_grid = std::make_shared<StructuredGrid>(m_numVert_x, m_numVert_y, m_numVert_z);
 
     auto &xCoords = str_grid->x();
     auto &yCoords = str_grid->y();
     auto &zCoords = str_grid->z();
-    //vistle::shm_array<float, shm<float>::allocator<float>> &xCoords = str_grid->x();
-    //vistle::shm_array<float, shm<float>::allocator<float>> &yCoords = str_grid->y();
-    //vistle::shm_array<float, shm<float>::allocator<float>> &zCoords = str_grid->z();
 
-    // for (int64_t k = 0; k < m_numVert_z; k++)
-    // {
-    //     for (int64_t j = 0; j < m_numVert_y; j++)
-    //     {
-    //         for (int64_t i = 0; i < m_numVert_x; i++)
-    //         {
+    int32_t startIndex = 1; // TODO: is start index really 1?
 
-    // formula: C/C++ (zero-based): I-1 + (J-1) * IMax + (K-1) * IMax * JMax
-    //size_t n = i + j * m_numVert_x + k * m_numVert_x * m_numVert_y;
+    for (int i = 0; i < 1; ++i) {
+        std::cout << "x size before values: " << xCoords.size() << " " << std::endl;
+        std::cout << "y size before values: " << yCoords.size() << " " << std::endl;
+        std::cout << "z size before values: " << zCoords.size() << " " << std::endl;
+    }
+
+    // TODO: change for more than structured gird (zoneType=0) and do a for loop over zones
+    // PROBLEM: resizing defined grid is not possible and yields to segmentation fault
+    // Solution: crerate new grid for every zone OR evaluate the size of the grid before reading the variables
+    // Read the number of values for each variable
+    int64_t numValues;
+    int32_t var = 1; //TODO:cs for-loop over variables
+    tecZoneVarGetNumValues(fileHandle, inputZone, var, &numValues);
+    // Read the coordinates
     std::vector<double> result;
     //ReadSubzoneTecplot::readVariables(result, fileHandle, numValues, inputZone, var);
     // TODO: modify other cases so that they work like the float case and refactor
@@ -189,11 +195,12 @@ StructuredGrid::ptr ReadSubzoneTecplot::createStructuredGrid(void *fileHandle, i
     case FieldDataType_Float: {
         std::vector<float> values(numValues);
         int32_t var = 1;
-        int32_t startIndex = 1;
         //File Handle, Zone Index, // Variable Index, Start Index,
         // Number of Values
         tecZoneVarGetFloatValues(fileHandle, inputZone, var, startIndex, numValues, &values[0]);
         xCoords.resize(values.size());
+        //xCoords.resize(xCoords.size() + values.size());
+        //std::copy(values.begin(), values.end(), xCoords.begin() + xlastNumValues);
         std::copy(values.begin(), values.end(), xCoords.begin());
         var = 2;
         tecZoneVarGetNumValues(fileHandle, inputZone, var, &numValues);
@@ -206,62 +213,65 @@ StructuredGrid::ptr ReadSubzoneTecplot::createStructuredGrid(void *fileHandle, i
         zCoords.resize(values.size());
         std::copy(values.begin(), values.end(), zCoords.begin());
         // Show test values from x andd x and y variables
-        for (int i = 0; i < 5; ++i) {
-            std::cout << "x size" << xCoords.size() << " " << std::endl;
-            std::cout << "y size" << yCoords.size() << " " << std::endl;
-            std::cout << "z size" << zCoords.size() << " " << std::endl;
+        for (int i = 0; i < 1; ++i) {
+            std::cout << "x size: " << xCoords.size() << " " << std::endl;
+            std::cout << "y size: " << yCoords.size() << " " << std::endl;
+            std::cout << "z size: " << zCoords.size() << " " << std::endl;
         }
     } break;
     case FieldDataType_Double: {
         std::vector<double> values(numValues);
         var = 1;
-        tecZoneVarGetDoubleValues(fileHandle, inputZone, var, 1, numValues, &values[0]);
+        tecZoneVarGetDoubleValues(fileHandle, inputZone, var, startIndex, numValues, &values[0]);
         //ptrXcoords = values.data();
         var = 2;
-        tecZoneVarGetDoubleValues(fileHandle, inputZone, var, 1, numValues, &values[0]);
+        tecZoneVarGetDoubleValues(fileHandle, inputZone, var, startIndex, numValues, &values[0]);
         //ptrYcoords = values.data();
         var = 3;
-        tecZoneVarGetDoubleValues(fileHandle, inputZone, var, 1, numValues, &values[0]);
+        tecZoneVarGetDoubleValues(fileHandle, inputZone, var, startIndex, numValues, &values[0]);
         //ptrZcoords = values.data();
     } break;
     case FieldDataType_Int32: {
         std::vector<int32_t> values(numValues);
-        tecZoneVarGetInt32Values(fileHandle, inputZone, var, 1, numValues, &values[0]);
+        tecZoneVarGetInt32Values(fileHandle, inputZone, var, startIndex, numValues, &values[0]);
     } break;
     case FieldDataType_Int16: {
         std::vector<int16_t> values(numValues);
-        tecZoneVarGetInt16Values(fileHandle, inputZone, var, 1, numValues, &values[0]);
+        tecZoneVarGetInt16Values(fileHandle, inputZone, var, startIndex, numValues, &values[0]);
     } break;
     case FieldDataType_Byte: {
         std::vector<uint8_t> values(numValues);
-        tecZoneVarGetUInt8Values(fileHandle, inputZone, var, 1, numValues, &values[0]);
+        tecZoneVarGetUInt8Values(fileHandle, inputZone, var, startIndex, numValues, &values[0]);
     }
     } // close switch
-    //ptrXcoords[n] = values[n]; // 0 is X coordinate
-    //ptrYcoords[n] = j; // 1 is Y coordinate
-    //ptrZcoords[n] = k; // 2 is Z coordinate
-    /*                 ptrXcoords[i] = tecZoneVarGetNumValues(fileHandle, inputZone, 1, &numValues);
-                ptrYcoords[j * m_numVert_x + i] = j;
-                ptrZcoords[k * m_numVert_x * m_numVert_y + j * m_numVert_x + i] = k; */
-    /*            }
-        }
-    } */
 
     return str_grid;
 }
 
 bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
 {
-    int32_t inputZone = 1; // TODO: change for more than structured gird (zoneType=0) and do a for loop over zones
+    // Read grids of all zones:
+    int32_t numZones = 0;
+    tecDataSetGetNumZones(fileHandle, &numZones);
+
+
     StructuredGrid::ptr strGrid = NULL;
-    strGrid = ReadSubzoneTecplot::createStructuredGrid(fileHandle, inputZone);
+    strGrid = ReadSubzoneTecplot::createStructuredGrid(fileHandle, block+1);
+    //auto timestep = 0;
+    //tecZoneGetStrandID(fileHandle, zone, &timestep);
+    //strGrid1->setTimestep(timestep);
     token.applyMeta(strGrid);
     token.addObject(m_grid, strGrid);
+
+
+    return true;
 
     // TODO: define function that gives understandable strings for tecFileType
 
     // Drittelmodel variables: "CoordinateX,CoordinateY,CoordinateZ, (vertex coordinates)
     // VelocityX,VelocityY,VelocityZ,Density,Iblank,Lambda2 (cell-centered variables)
+    // Drittemodel variables surface: "CoordinateX,CoordinateY,CoordinateZ,VelocityX,
+    // VelocityY,VelocityZ,Density,Iblank,CoefPressure"
 
     // TODO: iterate over zones
     int32_t zone = 1; // TODO: change for more than structured gird (zoneType=0) and do a for loop over zones
@@ -277,16 +287,17 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
             tecZoneVarGetNumValues(fileHandle, zone, var, &numValues);
             std::vector<float> values(numValues);
 
-            
+
             Vec<Scalar, 1>::ptr field(new Vec<Scalar, 1>(numValues));
             //std::shared_ptr<vistle::Object> field; //(new Vec<Scalar, 1>(numValues));
             // TODO: update readVariables method to output a Vec<Scalar, 1> object
             //Vec<Scalar, 1>::ptr field = readVariables(fileHandle, numValues, zone, var);
+            auto inputZone = 1; // TODO: change for more than structured gird (zoneType=0) and do a for loop over zones
             tecZoneVarGetFloatValues(fileHandle, inputZone, var, 1, numValues, &values[0]);
             for (int64_t i = 0; i < 3; i++) {
                 //field->x()[i] = values[i];
                 std::cout << varName << ": " << values[i] << std::endl;
-            }/*
+            } /*
             //std::copy(values.begin(), values.end(), &field);
 
             //bool isNotEmpty = !values.empty();
@@ -321,7 +332,7 @@ ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mp
     setParallelizationMode(ParallelizeTimeAndBlocks);
 
 
-/* 
+    /* 
     for (int i = 0; i < NumPorts; i++) {
         std::stringstream choiceFieldName;
         choiceFieldName << "tecplotfield_" << i;
