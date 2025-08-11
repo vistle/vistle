@@ -77,14 +77,6 @@ public:
         }
     }
 };
-
-PYBIND11_EMBEDDED_MODULE(_redirector, m)
-{
-    py::class_<Redirector>(m, "redirector")
-        .def(py::init<>())
-        .def(py::init<bool>())
-        .def("write", &Redirector::write, "implement the write method to redirect stdout/err");
-}
 #endif
 
 static void clear()
@@ -130,19 +122,6 @@ static std::string raw_input(const std::string &prompt)
     VistleConsole::the()->setNormalPrompt(false);
     return ret;
 }
-
-#ifdef HAVE_PYTHON
-PYBIND11_EMBEDDED_MODULE(_console, m)
-{
-    m.def("clear", clear, "clear the console");
-    m.def("reset", pyreset, "reset the interpreter and clear the console");
-    m.def("save", save, "save commands up to now in given file");
-    m.def("load", load, "load commands from given file");
-    m.def("history", history, "shows the history");
-    m.def("quit", quit, "print information about quitting");
-    m.def("raw_input", raw_input, "handle raw input");
-}
-#endif
 
 void VistleConsole::printHistory()
 {
@@ -542,3 +521,30 @@ QStringList VistleConsole::suggestCommand(const QString &cmd, QString &prefix)
 }
 
 } // namespace gui
+
+
+#ifdef slots
+// work around slots being defined by Qt and being used as variable name in PYBIND11_EMBEDDED_MODULE
+#undef slots
+#endif
+
+#ifdef HAVE_PYTHON
+PYBIND11_EMBEDDED_MODULE(_redirector, m)
+{
+    py::class_<gui::Redirector>(m, "redirector")
+        .def(py::init<>())
+        .def(py::init<bool>())
+        .def("write", &gui::Redirector::write, "implement the write method to redirect stdout/err");
+}
+
+PYBIND11_EMBEDDED_MODULE(_console, m)
+{
+    m.def("clear", gui::clear, "clear the console");
+    m.def("reset", gui::pyreset, "reset the interpreter and clear the console");
+    m.def("save", gui::save, "save commands up to now in given file");
+    m.def("load", gui::load, "load commands from given file");
+    m.def("history", gui::history, "shows the history");
+    m.def("quit", gui::quit, "print information about quitting");
+    m.def("raw_input", gui::raw_input, "handle raw input");
+}
+#endif
