@@ -1149,8 +1149,6 @@ else()
     set(USE_SZ3 TRUE)
 endif()
 
-set(USE_BIGWHOOP TRUE)
-set(BIGWHOOP_FOUND TRUE)
 set(BIGWHOOP_INCLUDE_DIRS
     "${PROJECT_SOURCE_DIR}/lib/3rdparty/BigWhoop/include/library/private;${PROJECT_SOURCE_DIR}/lib/3rdparty/BigWhoop/include/library/public")
 
