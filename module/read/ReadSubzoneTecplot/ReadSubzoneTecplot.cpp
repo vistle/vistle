@@ -172,11 +172,9 @@ StructuredGrid::ptr ReadSubzoneTecplot::createStructuredGrid(void *fileHandle, i
 
     int32_t startIndex = 1; // TODO: is start index really 1?
 
-    for (int i = 0; i < 1; ++i) {
-        std::cout << "x size before values: " << xCoords.size() << " " << std::endl;
-        std::cout << "y size before values: " << yCoords.size() << " " << std::endl;
-        std::cout << "z size before values: " << zCoords.size() << " " << std::endl;
-    }
+    std::cout << "current zone : " << inputZone<< " " << std::endl;
+    std::cout << "size of current zone: " << yCoords.size() << " " << std::endl;
+
 
     // TODO: change for more than structured gird (zoneType=0) and do a for loop over zones
     // PROBLEM: resizing defined grid is not possible and yields to segmentation fault
@@ -256,10 +254,13 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
 
 
     StructuredGrid::ptr strGrid = NULL;
-    strGrid = ReadSubzoneTecplot::createStructuredGrid(fileHandle, block+1);
-    //auto timestep = 0;
-    //tecZoneGetStrandID(fileHandle, zone, &timestep);
-    //strGrid1->setTimestep(timestep);
+    strGrid = ReadSubzoneTecplot::createStructuredGrid(fileHandle, block + 1);
+    auto solutionTime = 0.0;
+    tecZoneGetSolutionTime(fileHandle, block + 1, &solutionTime);
+    strGrid->setTimestep(timestep);
+    std::cout << "reading zone number " << block + 1 << " of " << numZones << " zones" << std::endl;
+    std::cout << "timestep: " << timestep << std::endl;
+    std::cout << "solution time: " << solutionTime << std::endl;
     token.applyMeta(strGrid);
     token.addObject(m_grid, strGrid);
 
@@ -328,8 +329,8 @@ ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mp
     //m_u = createOutputPort("u", "u");
     //m_v = createOutputPort("v", "v");
 
-    //setParallelizationMode(Serial);
-    setParallelizationMode(ParallelizeTimeAndBlocks);
+    setParallelizationMode(Serial);
+    //setParallelizationMode(ParallelizeTimeAndBlocks); // Parallelization does not work, because it distortes the grid structure
 
 
     /* 
@@ -346,6 +347,8 @@ ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mp
     } */
 
     observeParameter(m_filename);
+    // TODO: close file after reading, when?
+    // tecFileReaderClose(&fileHandle);
 }
 
 ReadSubzoneTecplot::~ReadSubzoneTecplot()
