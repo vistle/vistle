@@ -21,13 +21,10 @@ VistleInteractor::VistleInteractor(const MessageSender *sender, const std::strin
 
 VistleInteractor::~VistleInteractor()
 {
+    m_stringParams.clear();
+    m_intVecParams.clear();
+    m_floatVecParams.clear();
     m_parameterMap.clear();
-    for (auto &i: intArrays) {
-        delete[] i;
-    }
-    for (auto &f: floatArrays) {
-        delete[] f;
-    }
 }
 
 const char *VistleInteractor::getModuleDisplayName() const
@@ -258,8 +255,9 @@ int VistleInteractor::getIntVectorParam(const std::string &paraName, int &numEle
 
     const IntParamVector &v = vparam->getValue();
     numElem = v.dim;
-    val = new int[numElem];
-    intArrays.push_back(val);
+    auto &result = m_intVecParams[paraName];
+    result.resize(numElem);
+    val = result.data();
     for (int i = 0; i < numElem; ++i) {
         val[i] = v[i];
     }
@@ -280,8 +278,9 @@ int VistleInteractor::getFloatVectorParam(const std::string &paraName, int &numE
 
     const ParamVector &v = vparam->getValue();
     numElem = v.dim;
-    val = new float[numElem];
-    floatArrays.push_back(val);
+    auto &result = m_floatVecParams[paraName];
+    result.resize(numElem);
+    val = result.data();
     for (int i = 0; i < numElem; ++i) {
         val[i] = v[i];
     }
@@ -301,7 +300,9 @@ int VistleInteractor::getStringParam(const std::string &paraName, const char *&v
         return -1;
     }
 
-    val = sparam->getValue().c_str();
+    auto &result = m_stringParams[paraName];
+    result = sparam->getValue();
+    val = result.c_str();
 
     return 0;
 }
