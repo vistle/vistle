@@ -23,6 +23,7 @@ private:
     bool read(Token &token, int timestep, int block) override;
     template<typename T = float> 
     Vec<Scalar, 1>::ptr readVariables(void* fileHandle, int32_t numValues, int32_t inputZone, int32_t var);
+    void setFieldChoices(void* fileHandle);
     //template<typename T>
     vistle::StructuredGrid::ptr createStructuredGrid(void* fileHandle, int32_t inputZone);
     vistle::StringParameter *m_filename;

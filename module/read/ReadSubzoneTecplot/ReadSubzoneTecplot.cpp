@@ -38,6 +38,44 @@ using vistle::Index;
 
 MODULE_MAIN(ReadSubzoneTecplot)
 
+const std::string Invalid("(NONE)");
+
+
+ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mpi::communicator comm)
+: Reader(name, moduleID, comm)
+{
+    std::cout << "CONSTRUCTOR: ReadSubzoneTecplot" << std::endl;
+    m_filename = addStringParameter("filename", "name of szTecplot file", "", vistle::Parameter::ExistingFilename);
+
+    m_grid = createOutputPort("grid_out", "grid or geometry");
+
+    setParallelizationMode(Serial);
+    //setParallelizationMode(ParallelizeTimeAndBlocks); // Parallelization does not work, because it distortes the grid structure
+
+    //int ports = std::min(NumPorts, NumVar-3); // not more ports than variables needed minus 3 because first 3 are coordinates
+    std::vector<std::string> varChoices{Reader::InvalidChoice};
+    for (int i = 0; i < NumPorts; i++) {
+        std::stringstream choiceFieldName;
+        choiceFieldName << "tecplotfield_" << i;
+
+
+        m_fieldChoice[i] = addStringParameter(
+            "tecplotfield_" + std::to_string(i),
+            "This data field from the tecplot file will be added to output port field_out_" + std::to_string(i) + ".",
+            "", Parameter::Choice);
+        //std::string varNameStr(varName); // problem: pointer does not exist, because read is called afterwards
+        std::cout << "CONSTRUCTOR in Read subzone before create output " << std::endl;
+        m_fieldsOut[i] = createOutputPort("field_out_" + std::to_string(i), "data field");
+    }
+
+    observeParameter(m_filename);
+    // TODO: close file after reading, when?
+    // tecFileReaderClose(&fileHandle);
+}
+
+ReadSubzoneTecplot::~ReadSubzoneTecplot()
+{}
+
 bool ReadSubzoneTecplot::examine(const vistle::Parameter *param)
 {
     if (param != nullptr && param != m_filename)
@@ -172,9 +210,11 @@ StructuredGrid::ptr ReadSubzoneTecplot::createStructuredGrid(void *fileHandle, i
 
     int32_t startIndex = 1; // TODO: is start index really 1?
 
-    std::cout << "current zone : " << inputZone<< " " << std::endl;
+    std::cout << "current zone : " << inputZone << " " << std::endl;
     std::cout << "size of current zone: " << yCoords.size() << " " << std::endl;
-
+    std::cout << "vertex x: " << m_numVert_x << " " << std::endl;
+    std::cout << "vertex y: " << m_numVert_y << " " << std::endl;
+    std::cout << "vertex z: " << m_numVert_z << " " << std::endl;
 
     // TODO: change for more than structured gird (zoneType=0) and do a for loop over zones
     // PROBLEM: resizing defined grid is not possible and yields to segmentation fault
@@ -246,12 +286,37 @@ StructuredGrid::ptr ReadSubzoneTecplot::createStructuredGrid(void *fileHandle, i
     return str_grid;
 }
 
+void ReadSubzoneTecplot::setFieldChoices(void *fileHandle)
+{
+    std::vector<std::string> choices;
+
+    // get number of variables
+    int32_t NumVar = 0;
+    tecDataSetGetNumVars(fileHandle, &NumVar);
+
+    //TODO: define choices
+    std::ostringstream outputStream;
+    for (int32_t var = 4; var <= NumVar; ++var) { // begin with 4 because first 3 are coordinates
+        char *name = NULL;
+        tecVarGetName(fileHandle, var, &name);
+        std::string nameStr(name);
+        choices.push_back(nameStr);
+        tecStringFree(&name);
+    }
+
+    std::vector<std::string> choicesPlusInvalid = choices;
+    choicesPlusInvalid.insert(choicesPlusInvalid.begin(), Invalid);
+    for (int i = 0; i < NumPorts; i++) {
+        setParameterChoices(m_fieldChoice[i], choicesPlusInvalid);
+    }
+}
+
 bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
 {
     // Read grids of all zones:
     int32_t numZones = 0;
     tecDataSetGetNumZones(fileHandle, &numZones);
-
+    int32_t zone = block + 1; // zone numbers start with 1, not 0
 
     StructuredGrid::ptr strGrid = NULL;
     strGrid = ReadSubzoneTecplot::createStructuredGrid(fileHandle, block + 1);
@@ -264,9 +329,6 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
     token.applyMeta(strGrid);
     token.addObject(m_grid, strGrid);
 
-
-    return true;
-
     // TODO: define function that gives understandable strings for tecFileType
 
     // Drittelmodel variables: "CoordinateX,CoordinateY,CoordinateZ, (vertex coordinates)
@@ -274,8 +336,10 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
     // Drittemodel variables surface: "CoordinateX,CoordinateY,CoordinateZ,VelocityX,
     // VelocityY,VelocityZ,Density,Iblank,CoefPressure"
 
-    // TODO: iterate over zones
-    int32_t zone = 1; // TODO: change for more than structured gird (zoneType=0) and do a for loop over zones
+    //Define options of variable ports
+    setFieldChoices(fileHandle);
+
+    // TODO: change for more than structured gird (zoneType=0)
     // check if solution is included in the file
     int32_t fileType;
     if (tecFileGetType(fileHandle, &fileType) != 1) {
@@ -293,63 +357,33 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
             //std::shared_ptr<vistle::Object> field; //(new Vec<Scalar, 1>(numValues));
             // TODO: update readVariables method to output a Vec<Scalar, 1> object
             //Vec<Scalar, 1>::ptr field = readVariables(fileHandle, numValues, zone, var);
-            auto inputZone = 1; // TODO: change for more than structured gird (zoneType=0) and do a for loop over zones
-            tecZoneVarGetFloatValues(fileHandle, inputZone, var, 1, numValues, &values[0]);
+            // TODO: change for more than structured gird (zoneType=0) and do a for loop over zones
+            int startIndex = 1;
+            tecZoneVarGetFloatValues(fileHandle, zone, var, startIndex, numValues, &values[0]);
+
             for (int64_t i = 0; i < 3; i++) {
                 //field->x()[i] = values[i];
                 std::cout << varName << ": " << values[i] << std::endl;
-            } /*
+            }
             //std::copy(values.begin(), values.end(), &field);
 
             //bool isNotEmpty = !values.empty();
+            //auto field = std::make_shared<Vec<Scalar, 1>>(numValues);
             if (field) {
                 field->addAttribute(vistle::attribute::Species, varName);
                 // map to the grid cell, because FLOWer data is cell-centered, though the coordinate system is vertex-centered
-                field->setMapping(vistle::DataBase::Element);
-                field->setGrid(strGrid); // gird yields assertion error, because it has dimensions 168*128*1
-
+                field->setMapping(vistle::DataBase::Vertex);
+                std::cout << "variable" << ": " << var << std::endl;
+                std::cout << "put at position" << ": " << var - 4 << std::endl;
+                field->setGrid(
+                    strGrid); // gird yields assertion error, because it has dimensions 168*128*1 / 96*8*1 not 97*9*1
                 token.applyMeta(field);
-                token.addObject(m_fieldsOut[var], field);
-            } */
+                //std::cout << "m_fieldsOut 0: " << m_fieldsOut[0] << std::endl;
+                std::cout << "Accessing m_fieldsOut at index: " << var - 4 << std::endl;
+                token.addObject(m_fieldsOut[var - 4], field);
+            }
         }
     }
 
     return true;
 }
-
-ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mpi::communicator comm)
-: Reader(name, moduleID, comm)
-{
-    m_filename = addStringParameter("filename", "name of szTecplot file", "", vistle::Parameter::ExistingFilename);
-
-    m_grid = createOutputPort("grid_out", "grid or geometry");
-    //m_p = createOutputPort("p", "pressure");
-    //m_rho = createOutputPort("rho", "rho");
-    //m_n = createOutputPort("n", "n");
-    //m_u = createOutputPort("u", "u");
-    //m_v = createOutputPort("v", "v");
-
-    setParallelizationMode(Serial);
-    //setParallelizationMode(ParallelizeTimeAndBlocks); // Parallelization does not work, because it distortes the grid structure
-
-
-    /* 
-    for (int i = 0; i < NumPorts; i++) {
-        std::stringstream choiceFieldName;
-        choiceFieldName << "tecplotfield_" << i;
-
-        m_fieldChoice[i] = addStringParameter(
-            "tecplotfield_" + std::to_string(i),
-            "This data field from the tecplot file will be added to output port field_out_" + std::to_string(i) + ".",
-            "", Parameter::Choice);
-        m_fieldsOut[i] = createOutputPort("field_out_" + std::to_string(i), "data field");
-
-    } */
-
-    observeParameter(m_filename);
-    // TODO: close file after reading, when?
-    // tecFileReaderClose(&fileHandle);
-}
-
-ReadSubzoneTecplot::~ReadSubzoneTecplot()
-{}
