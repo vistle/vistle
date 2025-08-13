@@ -21,6 +21,7 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
+#include <boost/core/span.hpp>
 
 #include <vistle/util/enum.h>
 #include <vistle/util/buffer.h>
@@ -42,6 +43,7 @@
 #include <yas/serialize.hpp>
 #include <yas/boost_types.hpp>
 #include <yas/types/concepts/array.hpp>
+#include "yas_span.h"
 
 namespace vistle {
 
@@ -381,13 +383,12 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::save(Archive &ar) const
         assert(!compZfp);
         assert(!compBigWhoop);
         size_t outSize = 0;
-        std::vector<T> input(m_begin, m_end);
-        if (char *compressedData = compressSz3<typename lossy_type_map<T>::sz3type>(outSize, input.data(), m_dim, cs)) {
-            buffer compressed(compressedData, compressedData + outSize);
-            delete[] compressedData;
+        if (char *compressedData = compressSz3<typename lossy_type_map<T>::sz3type>(outSize, m_begin, m_dim, cs)) {
+            boost::span compressed(compressedData, outSize);
             ar &compressMode;
             ar &m_dim[0] & m_dim[1] & m_dim[2];
             ar &compressed;
+            delete[] compressedData;
         } else {
             compSz3 = false;
             compress = false;

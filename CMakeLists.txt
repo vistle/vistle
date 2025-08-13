@@ -504,7 +504,7 @@ endif()
 
 vistle_find_package(
     Boost
-    1.66
+    1.78
     REQUIRED
     COMPONENTS
     system
