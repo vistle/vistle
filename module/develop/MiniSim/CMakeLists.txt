@@ -18,11 +18,11 @@ if(DIY_INCLUDE_DIR)
         vistle_insitu_adapter
         vistle_util)
 
-    if(NOT WIN32)
-        target_compile_options(MiniSim PRIVATE -Wno-sign-compare)
-    else()
+    if(WIN32)
         # On Windows, we need to set the character set to UTF-8
         target_compile_options(MiniSim PRIVATE /utf-8)
+    else()
+        target_compile_options(MiniSim PRIVATE -Wno-sign-compare)
     endif()
 
     target_compile_definitions(MiniSim PRIVATE VISTLE_ROOT="${CMAKE_BINARY_DIR}" VISTLE_BUILD_TYPE="")
