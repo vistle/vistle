@@ -1,3 +1,4 @@
+#include "dataflowview.h"
 #include "modulebrowser.h"
 #include "ui_modulebrowser.h"
 #include "module.h"
@@ -489,8 +490,10 @@ bool ModuleBrowser::eventFilter(QObject *object, QEvent *event)
 
 bool ModuleBrowser::handleKeyPress(QKeyEvent *event)
 {
-    if (!m_filterInFocus)
+    if (!m_filterInFocus) {
+        DataFlowView::the()->keyPressEvent(event);
         return false;
+    }
 
     bool press = false;
     if (event->type() == QEvent::KeyPress) {

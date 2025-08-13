@@ -86,6 +86,8 @@ public:
 
     typedef std::map<std::string, std::string> FileAttachmentMap;
     FileAttachmentMap m_fileAttachmentMap;
+    typedef std::map<double, std::vector<std::string>> DelayedFileUnloadMap;
+    DelayedFileUnloadMap m_delayedFileUnloadMap;
 
     typedef std::map<int, VistleInteractor *> InteractorMap;
     InteractorMap m_interactorMap;

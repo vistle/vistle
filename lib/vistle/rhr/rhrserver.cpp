@@ -860,12 +860,9 @@ struct EncodeTask {
                 message->format = rfbDepthViewer;
         }
 
-#ifdef HAVE_ZFP
         if (param.depthParam.depthCodec == CompressionParameters::DepthZfp) {
             message->compression |= rfbTileDepthZfp;
-        } else
-#endif
-            if (param.depthParam.depthCodec == CompressionParameters::DepthQuant) {
+        } else if (param.depthParam.depthCodec == CompressionParameters::DepthQuant) {
             message->format = param.depthParam.depthPrecision <= 16 ? rfbDepth16Bit : rfbDepth24Bit;
             message->compression |= rfbTileDepthQuantize;
         } else if (param.depthParam.depthCodec == CompressionParameters::DepthQuantPlanar) {

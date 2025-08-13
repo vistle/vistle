@@ -76,26 +76,29 @@ if(USE_SZ3)
     add_subdirectory(sz3)
 endif()
 
-if(USE_BIGWHOOP)
-    include_directories(${BIGWHOOP_INCLUDE_DIRS})
+#
+# BigWhoop
+#
+include_directories(${BIGWHOOP_INCLUDE_DIRS})
+add_subdirectory(BigWhoop)
 
-    add_subdirectory(BigWhoop)
+# enable POSIX features required by BigWhoop
+target_compile_definitions(bwclib PRIVATE _POSIX_C_SOURCE=200809L)
+if(WIN32 AND BUILD_SHARED_LIBS)
+    set_target_properties(bwclib PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
+endif()
+# we must call this command (taken from BigWhoop/src/library/CMakeLists.txt)
+# to generate the public header file for BigWhoop
+execute_process(
+    COMMAND python3 public_header.py ${PYTHON_ARGUMENT}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/BigWhoop
+    RESULT_VARIABLE result
+    ERROR_VARIABLE error_output)
 
-    # we must call this command (taken from BigWhoop/src/library/CMakeLists.txt)
-    # to generate the public header file for BigWhoop
-    execute_process(
-        COMMAND python3 public_header.py ${PYTHON_ARGUMENT}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/BigWhoop
-        RESULT_VARIABLE result
-        ERROR_VARIABLE error_output)
-    # enable POSIX features required by BigWhoop
-    target_compile_definitions(bwclib PRIVATE _POSIX_C_SOURCE=200809L)
-
-    if(CMAKE_BUILD_TYPE STREQUAL "Release")
-        find_package(OpenMP)
-        if(OpenMP_CXX_FOUND)
-            target_link_libraries(bwclib PRIVATE OpenMP::OpenMP_CXX)
-        endif()
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    find_package(OpenMP)
+    if(OpenMP_CXX_FOUND)
+        target_link_libraries(bwclib PRIVATE OpenMP::OpenMP_CXX)
     endif()
 endif()
 
@@ -245,9 +248,6 @@ if(NOT VISTLE_GUI_ONLY)
             CACHE INTERNAL "")
         if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
             add_compile_options(-Wno-variadic-macros -Wno-pedantic)
-        endif()
-        if(POLICY CMP0145)
-            set(CMAKE_POLICY_DEFAULT_CMP0145 OLD) # don't fail on include(Dart)
         endif()
         add_subdirectory(IceT)
     endif()

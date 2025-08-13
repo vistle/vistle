@@ -1,17 +1,12 @@
 #ifndef VISTLE_CORE_ARCHIVES_COMPRESS_H
 #define VISTLE_CORE_ARCHIVES_COMPRESS_H
 
-#ifdef HAVE_ZFP
 #include <zfp.h>
-#endif
-
 
 #include <vistle/util/buffer.h>
 #include "archives_config.h"
 
 namespace vistle {
-
-#ifdef HAVE_ZFP
 namespace detail {
 
 struct ZfpParameters {
@@ -74,7 +69,5 @@ extern template bool V_COREEXPORT compressZfp<zfp_type_double>(buffer &compresse
                                                                const Index typeSize, const ZfpParameters &param);
 
 } // namespace detail
-#endif
-
 } // namespace vistle
 #endif

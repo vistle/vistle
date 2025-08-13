@@ -891,7 +891,6 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
         auto np = m_geo->getAttribute(attribute::BinNumPrimitives);
         numPrimitives = atol(np.c_str());
     }
-    vistle::Points::const_ptr points = vistle::Points::as(m_geo);
 
     osg::Material *material = nullptr;
     if (m_ro && m_ro->hasSolidColor) {
@@ -1002,6 +1001,7 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
     case vistle::Object::POINTS: {
         m_options.indexedGeometry = false;
 
+        vistle::Points::const_ptr points = vistle::Points::as(m_geo);
         assert(points);
         const Index numVertices = points->getNumPoints();
 

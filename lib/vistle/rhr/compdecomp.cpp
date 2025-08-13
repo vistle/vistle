@@ -5,9 +5,7 @@
 #include <mutex>
 #include <memory>
 
-#ifdef HAVE_ZFP
 #include <zfp.h>
-#endif
 
 #ifdef HAVE_TURBOJPEG
 #include <turbojpeg.h>
@@ -56,7 +54,6 @@ buffer compressDepth(const float *depth, int x, int y, int w, int h, int stride,
                      vistle::DepthCompressionParameters &param)
 {
     const char *zbuf = reinterpret_cast<const char *>(depth);
-#ifdef HAVE_ZFP
     switch (param.depthCodec) {
     case vistle::CompressionParameters::DepthZfp: {
         buffer result;
@@ -99,7 +96,6 @@ buffer compressDepth(const float *depth, int x, int y, int w, int h, int stride,
         stream_close(stream);
         return result;
     }
-#endif
     case vistle::CompressionParameters::DepthQuant: {
         const int ds = 3; //msg.format == rfbDepth16Bit ? 2 : 3;
         size_t size = depthquant_size(DepthFloat, ds, w, h);

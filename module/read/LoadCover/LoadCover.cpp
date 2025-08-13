@@ -19,6 +19,8 @@ LoadCover::LoadCover(const std::string &name, int moduleID, mpi::communicator co
                                     "(*.stl)/Wavefront Obj (*.obj)/Autodesk FBX (*.fbx)/OpenSceneGraph (*.ive *.osg "
                                     "*.osga *.osgb *.osgt)/Virvo Volumetric Data (*.avf *.rvf *.xvf)");
     addIntParameter("rank", "rank of node where to load (-1: all nodes)", 0);
+    addFloatParameter("retain_seconds",
+                      "keep the generated scene graph object for this many seconds after being unloaded", 0.0);
 }
 
 LoadCover::~LoadCover()
@@ -53,6 +55,11 @@ bool LoadCover::prepare()
 
         Points::ptr points(new Points(size_t(0)));
         points->addAttribute(attribute::ModelFile, f);
+        auto retain = getFloatParameter("retain_seconds");
+        if (retain > 0.) {
+            std::string retains = std::to_string(retain);
+            points->addAttribute(attribute::ModelRetainSeconds, retains);
+        }
         updateMeta(points);
         addObject("grid_out", points);
     }

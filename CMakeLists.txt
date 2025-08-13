@@ -31,6 +31,10 @@ if(POLICY CMP0144)
     # make find_include/find_library search in uppercased <PackageName>_ROOT prefix
     cmake_policy(SET CMP0144 NEW)
 endif()
+if(POLICY CMP0167)
+    # use find_package(Boost) only in CONFIG mode
+    cmake_policy(SET CMP0167 NEW)
+endif()
 if(POLICY CMP0177)
     # normalize install DESTINATION paths
     cmake_policy(SET CMP0177 NEW)
@@ -1120,10 +1124,6 @@ if(VISTLE_INTERNAL_ZFP)
     if(OPENMP_FOUND)
         set(ZFP_LIBRARIES ${ZFP_LIBRARIES} ${OpenMP_CXX_LIBRARIES})
     endif()
-
-    set(ZFP_FOUND TRUE)
-    #add_definitions(-DHAVE_ZFP)
-    #include_directories(SYSTEM "${ZFP_INCLUDE_DIRS}")
 else()
     vistle_find_package(ZFP REQUIRED)
 endif()
@@ -1145,8 +1145,6 @@ else()
     set(USE_SZ3 TRUE)
 endif()
 
-set(USE_BIGWHOOP TRUE)
-set(BIGWHOOP_FOUND TRUE)
 set(BIGWHOOP_INCLUDE_DIRS
     "${PROJECT_SOURCE_DIR}/lib/3rdparty/BigWhoop/include/library/private;${PROJECT_SOURCE_DIR}/lib/3rdparty/BigWhoop/include/library/public")
 

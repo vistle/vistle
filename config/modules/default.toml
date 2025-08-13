@@ -35,6 +35,9 @@ _cache_mode=1
 [Tracer]
 _cache_mode=1
 
+[Transform]
+_cache_mode=1
+
 [TestCellSearch]
 _cache_mode=1
 

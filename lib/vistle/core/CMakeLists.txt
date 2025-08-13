@@ -201,11 +201,8 @@ vistle_target_link_libraries(
 target_link_libraries(vistle_core PRIVATE vistle_config)
 target_link_libraries(vistle_core PUBLIC Eigen3::Eigen)
 
-if(ZFP_FOUND)
-    target_compile_definitions(vistle_core PRIVATE HAVE_ZFP)
-    target_include_directories(vistle_core SYSTEM PRIVATE ${ZFP_INCLUDE_DIRS})
-    vistle_target_link_libraries(vistle_core PRIVATE ${ZFP_LIBRARIES})
-endif()
+target_include_directories(vistle_core SYSTEM PRIVATE ${ZFP_INCLUDE_DIRS})
+vistle_target_link_libraries(vistle_core PRIVATE ${ZFP_LIBRARIES})
 
 if(SZ3_FOUND)
     target_compile_definitions(vistle_core PRIVATE HAVE_SZ3)
@@ -213,11 +210,8 @@ if(SZ3_FOUND)
     vistle_target_link_libraries(vistle_core PRIVATE ${SZ3_LIBRARIES})
 endif()
 
-if(BIGWHOOP_FOUND)
-    target_compile_definitions(vistle_core PRIVATE HAVE_BIGWHOOP)
-    target_include_directories(vistle_core SYSTEM PRIVATE ${BIGWHOOP_INCLUDE_DIRS})
-    vistle_target_link_libraries(vistle_core PRIVATE bwclib)
-endif()
+target_include_directories(vistle_core SYSTEM PRIVATE ${BIGWHOOP_INCLUDE_DIRS})
+vistle_target_link_libraries(vistle_core PRIVATE bwclib)
 
 if(ZSTD_FOUND)
     target_compile_definitions(vistle_core PRIVATE HAVE_ZSTD)

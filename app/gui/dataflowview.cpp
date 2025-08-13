@@ -278,8 +278,6 @@ void DataFlowView::mouseReleaseEvent(QMouseEvent *event)
 void DataFlowView::createActions()
 {
     m_deleteAct = new QAction("Delete Selected", this);
-    m_deleteAct->setShortcuts(QKeySequence::Delete);
-    m_deleteAct->setShortcutContext(Qt::ApplicationShortcut);
     m_deleteAct->setStatusTip("Delete the selected modules and all their connections");
     connect(m_deleteAct, SIGNAL(triggered()), this, SLOT(deleteModules()));
 
@@ -533,5 +531,23 @@ bool DataFlowView::isSnapToGrid() const
     return m_snapToGrid;
 }
 
+void DataFlowView::keyPressEvent(QKeyEvent *event)
+{
+    for (auto &mod: selectedModules()) {
+        if (event->key() == Qt::Key_Delete) {
+            // Delete the selected modules
+            for (auto &mod: selectedModules()) {
+                mod->deleteModule();
+            }
+        } else if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) {
+            // Execute the selected module
+            for (auto &mod: selectedModules()) {
+                mod->execModule();
+            }
+        }
+    }
+
+    QGraphicsView::keyPressEvent(event);
+}
 
 } // namespace gui
