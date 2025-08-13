@@ -2024,12 +2024,12 @@ bool ClusterManager::handlePriv(const message::Barrier &barrier)
 
 bool ClusterManager::handlePriv(const message::BarrierReached &barrReached)
 {
-    assert(m_barrierActive);
 #ifdef BARRIER_DEBUG
     auto info = m_stateTracker.barrierInfo(barrReached.uuid());
     CERR << "BarrierReached [barrier " << barrReached.uuid() << ", module " << barrReached.senderId() << ":, " << info
          << "]" << std::endl;
 #endif
+    assert(m_barrierActive);
     if (barrReached.uuid() != m_barrierUuid) {
         CERR << "BARRIER: BarrierReached message " << barrReached << " ("
              << m_stateTracker.barrierInfo(barrReached.uuid()) << ") with wrong uuid, expected " << m_barrierUuid
