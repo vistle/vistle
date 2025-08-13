@@ -99,19 +99,19 @@ struct lossy_type_map<double> {
 
 template<typename S>
 struct Xor {
-    S operator()(S prev, S cur) { return cur ^ prev; }
+    S operator()(S cur, S prev) { return cur ^ prev; }
 };
 template<typename S>
 struct Add {
-    S operator()(S prev, S cur) { return cur + prev; }
+    S operator()(S cur, S prev) { return cur + prev; }
 };
 template<typename S>
 struct Sub {
-    S operator()(S prev, S cur) { return cur - prev; }
+    S operator()(S cur, S prev) { return cur - prev; }
 };
 template<typename S>
 struct Ident {
-    S operator()(S prev, S cur) { return cur; }
+    S operator()(S cur, S prev) { return cur; }
 };
 
 template<typename T>
@@ -126,7 +126,7 @@ struct PredictTransform<float> {
     using type = uint32_t;
     using Op = Xor<type>;
     using Rop = Op;
-    static constexpr bool use = false;
+    static constexpr bool use = true;
 };
 
 template<>
@@ -134,28 +134,28 @@ struct PredictTransform<double> {
     using type = uint64_t;
     using Op = Xor<type>;
     using Rop = Op;
-    static constexpr bool use = false;
+    static constexpr bool use = true;
 };
 template<>
 struct PredictTransform<char> {
     using type = uint8_t;
     using Op = Sub<type>;
     using Rop = Add<type>;
-    static constexpr bool use = false;
+    static constexpr bool use = true;
 };
 template<>
 struct PredictTransform<unsigned char> {
     using type = uint8_t;
     using Op = Sub<type>;
     using Rop = Add<type>;
-    static constexpr bool use = false;
+    static constexpr bool use = true;
 };
 template<>
 struct PredictTransform<signed char> {
     using type = uint8_t;
     using Op = Sub<type>;
     using Rop = Add<type>;
-    static constexpr bool use = false;
+    static constexpr bool use = true;
 };
 
 template<>
@@ -173,40 +173,26 @@ struct PredictTransform<unsigned long int> {
     using Rop = Add<type>;
     static constexpr bool use = true;
 };
-template<class T, class Op, bool reverse>
+template<class T, class Op>
 struct TransformStream {
-    typedef typename PredictTransform<T>::type Int;
+    typedef typename PredictTransform<T>::type Uint;
+    static_assert(sizeof(Uint) == sizeof(T), "TransformStream: Uint must have the same size as T");
 
-    Int prev;
-    bool first = true;
-    Int operator()(const T &t)
+    T operator()(const T &cur, const T &prev)
     {
-        if (first) {
-            first = false;
-            prev = *reinterpret_cast<const Int *>(&t);
-            return prev;
-        }
-        Int result = Op()(prev, *reinterpret_cast<const Int *>(&t));
-        prev = reverse ? result : *reinterpret_cast<const Int *>(&t);
-        return result;
+        Uint result = Op()(*reinterpret_cast<const Uint *>(&cur), *reinterpret_cast<const Uint *>(&prev));
+        return *reinterpret_cast<T *>(&result);
     }
 };
 
 template<class T>
-struct TransformStream<T, Ident<T>, false> {
-    typedef T Int;
-    Int operator()(const T &t) { return t; }
+struct TransformStream<T, Ident<T>> {
+    T operator()(const T &cur, const T &prev) { return cur; }
 };
 template<class T>
-struct TransformStream<T, Ident<T>, true> {
-    typedef T Int;
-    Int operator()(const T &t) { return t; }
-};
-
+using CompressStream = TransformStream<T, typename PredictTransform<T>::Op>;
 template<class T>
-using CompressStream = TransformStream<T, typename PredictTransform<T>::Op, false>;
-template<class T>
-using DecompressStream = TransformStream<T, typename PredictTransform<T>::Rop, true>;
+using DecompressStream = TransformStream<T, typename PredictTransform<T>::Rop>;
 
 template<class T>
 archive_helper<yas_tag>::ArrayWrapper<T>::ArrayWrapper(T *begin, T *end): m_begin(begin), m_end(end)
@@ -303,7 +289,9 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::load(Archive &ar)
 
     if (compPredict) {
         yas::detail::concepts::array::load<yas_flags>(ar, *this);
-        std::transform(m_begin, m_end, m_begin, DecompressStream<T>());
+        if (size() > 0) {
+            std::transform(m_begin + 1, m_end, m_begin, m_begin + 1, DecompressStream<T>());
+        }
     } else if (compZfp) {
         ar &m_dim[0] & m_dim[1] & m_dim[2];
         buffer compressed;
@@ -350,7 +338,10 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::save(Archive &ar) const
         ar &compressMode;
         std::vector<T> diff;
         diff.reserve(size());
-        std::transform(m_begin, m_end, std::back_inserter(diff), CompressStream<T>());
+        if (size() > 0) {
+            diff.push_back(*m_begin);
+            std::transform(m_begin + 1, m_end, m_begin, std::back_inserter(diff), CompressStream<T>());
+        }
         yas::detail::concepts::array::save<yas_flags>(ar, diff);
     } else if (compZfp) {
         assert(!compPredict);
