@@ -84,7 +84,9 @@ add_subdirectory(BigWhoop)
 
 # enable POSIX features required by BigWhoop
 target_compile_definitions(bwclib PRIVATE _POSIX_C_SOURCE=200809L)
-
+if(WIN32 AND BUILD_SHARED_LIBS)
+    set_target_properties(bwclib PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
+endif()
 # we must call this command (taken from BigWhoop/src/library/CMakeLists.txt)
 # to generate the public header file for BigWhoop
 execute_process(
