@@ -42,7 +42,6 @@ MODULE_MAIN(ReadSubzoneTecplot)
 ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mpi::communicator comm)
 : Reader(name, moduleID, comm)
 {
-    std::cout << "CONSTRUCTOR: ReadSubzoneTecplot" << std::endl;
     m_filename = addStringParameter("filename", "name of szTecplot file", "", vistle::Parameter::ExistingFilename);
 
     m_grid = createOutputPort("grid_out", "grid or geometry");
@@ -50,7 +49,6 @@ ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mp
     setParallelizationMode(Serial);
     //setParallelizationMode(ParallelizeTimeAndBlocks); // Parallelization does not work, because it distortes the grid structure
 
-    //int ports = std::min(NumPorts, NumVar-3); // not more ports than variables needed minus 3 because first 3 are coordinates
     std::vector<std::string> varChoices{Reader::InvalidChoice};
     for (int i = 0; i < NumPorts; i++) {
         std::stringstream choiceFieldName;
@@ -61,18 +59,17 @@ ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mp
             "tecplotfield_" + std::to_string(i),
             "This data field from the tecplot file will be added to output port field_out_" + std::to_string(i) + ".",
             "", Parameter::Choice);
-        //std::string varNameStr(varName); // problem: pointer does not exist, because read is called afterwards
-        std::cout << "CONSTRUCTOR in Read subzone before create output " << std::endl;
+
         m_fieldsOut[i] = createOutputPort("field_out_" + std::to_string(i), "data field");
     }
 
     observeParameter(m_filename);
-    // TODO: close file after reading, when?
-    // tecFileReaderClose(&fileHandle);
 }
 
 ReadSubzoneTecplot::~ReadSubzoneTecplot()
-{}
+{
+    tecFileReaderClose(&fileHandle);
+}
 
 bool ReadSubzoneTecplot::examine(const vistle::Parameter *param)
 {
@@ -308,18 +305,52 @@ void ReadSubzoneTecplot::setFieldChoices(void *fileHandle)
     }
 }
 
-template<typename T>
-std::vector<T> ReadSubzoneTecplot::setVarToVector(const T x, const T y, const T z, int32_t numValues)
-{ //TODO: set variables that begin the same and end X, Y, Z to a 3D vector
-    std::vector<T> result(numValues);
-    std::vector<T> values(numValues);
-    for (int64_t i = 0; i < numValues; i++) {
-        result[i] = values[i];
+template<typename T> 
+Vec<Scalar, 1>::ptr ReadSubzoneTecplot::combineVarstoOneOutput(std::vector<std::string> varNames, int32_t numValues)
+{ //TODO: set variables that begin the same and end X, Y, Z to a combined field
+    const std::vector<T> x;
+    const std::vector<T> y;
+    const std::vector<T> z;
+    Vec<Scalar, 1>::ptr result(new Vec<Scalar, 1>(numValues));
+    // Ensure all vectors have the same size
+    if (x.size() != y.size() || y.size() != z.size()) {
+        throw std::invalid_argument("Input vectors must have the same size");
+    }
+
+    std::cout << "add vectors to field" << std::endl;
+    for (size_t i = 0; i < x.size(); i++) {
+        result->x()[i] = x[i];
+        result->y()[i] = y[i];
+        result->z()[i] = z[i];
     }
     return result;
 }
 
-int ReadSubzoneTecplot::getIndexOfTecVar(const std::string &varName, void *fileHandle) const {
+std::vector<std::vector<size_t>> findSimilarStrings(const std::vector<std::string> &strings) {
+    std::unordered_map<std::string, std::vector<size_t>> prefixMap;
+    std::vector<std::vector<size_t>> result;
+
+    for (size_t i = 0; i < strings.size(); ++i) {
+        if (strings[i].size() > 1) {
+            // Remove the last character to create the prefix
+            std::string prefix = strings[i].substr(0, strings[i].size() - 1);
+            prefixMap[prefix].push_back(i);
+        }
+    }
+
+    // Collect groups of indices with the same prefix
+    for (const auto &entry : prefixMap) {
+        if (entry.second.size() > 1) { // Only include groups with more than one match
+            result.push_back(entry.second);
+        }
+    }
+
+    return result;
+}
+
+
+int ReadSubzoneTecplot::getIndexOfTecVar(const std::string &varName, void *fileHandle) const
+{
     // get number of variables
     int32_t NumVar = 0;
     tecDataSetGetNumVars(fileHandle, &NumVar);
@@ -339,6 +370,7 @@ int ReadSubzoneTecplot::getIndexOfTecVar(const std::string &varName, void *fileH
     return -1; // not found
 }
 
+//checks if choice is a valid input
 bool ReadSubzoneTecplot::emptyValue(vistle::StringParameter *ch) const
 {
     auto name = ch->getValue();
@@ -386,8 +418,7 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
 
             std::string name = m_fieldChoice[var]->getValue();
             if (!emptyValue(m_fieldChoice[var])) {
-                std::cout << "Reading variable: " << name << " on port: " << var
-                          << std::endl;
+                std::cout << "Reading variable: " << name << " on port: " << var << std::endl;
                 int32_t varInFile = getIndexOfTecVar(name, fileHandle);
                 tecVarGetName(fileHandle, varInFile, &varName);
                 tecZoneVarGetNumValues(fileHandle, zone, varInFile, &numValues);
@@ -424,10 +455,10 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
                 continue; // skip if the variable is not selected
             }
         } //close for loop over ports
-            // TODO: change for more than structured gird (zoneType=0) 
+        // TODO: change for more than structured gird (zoneType=0)
     } // close if fileType != 1
     else {
         std::cerr << "Tecplot does not contain solution variables but just a grid. " << std::endl;
-    }   
+    }
     return true;
 }

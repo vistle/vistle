@@ -12,7 +12,7 @@ public:
 
 private:
     static const int NumPorts = 5;
-    void* fileHandle;
+    void *fileHandle;
 
 #if 0
    bool changeParameter(const vistle::Parameter *p) override;
@@ -21,15 +21,16 @@ private:
 
     bool examine(const vistle::Parameter *param) override;
     bool read(Token &token, int timestep, int block) override;
-    template<typename T = float> 
-    Vec<Scalar, 1>::ptr readVariables(void* fileHandle, int32_t numValues, int32_t inputZone, int32_t var);
-    void setFieldChoices(void* fileHandle);
-    template<typename T>
-    std::vector<T> setVarToVector(const T x, const T y, const T z, int32_t numValues);
+    template<typename T = float>
+    Vec<Scalar, 1>::ptr readVariables(void *fileHandle, int32_t numValues, int32_t inputZone, int32_t var);
+    void setFieldChoices(void *fileHandle);
+    template<typename T = float>
+    Vec<Scalar, 1>::ptr combineVarstoOneOutput(std::vector<std::string> varNames, int32_t numValues);
     int getIndexOfTecVar(const std::string &varName, void *fileHandle) const;
     bool emptyValue(vistle::StringParameter *ch) const;
+    std::vector<std::vector<size_t>> findSimilarStrings(const std::vector<std::string> &strings);
     //template<typename T>
-    vistle::StructuredGrid::ptr createStructuredGrid(void* fileHandle, int32_t inputZone);
+    vistle::StructuredGrid::ptr createStructuredGrid(void *fileHandle, int32_t inputZone);
     vistle::StringParameter *m_filename;
     vistle::Port *m_grid = nullptr;
     vistle::StringParameter *m_fieldChoice[NumPorts];
