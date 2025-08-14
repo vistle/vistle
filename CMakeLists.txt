@@ -721,7 +721,7 @@ macro(vistle_add_library targetname visibility)
            AND NOT "${targetname}" STREQUAL "simV2runtime_ser")
             message(WARNING " missing prefix for " ${targetname}": vistle libraries must be prefixed with vistle_")
         endif()
-    elseif() # change the vistle_libname to vistle::libname in exported target
+    else() # change the vistle_libname to vistle::libname in exported target
         string(REPLACE "vistle_" "" target_suffix ${targetname})
         set_target_properties(${targetname} PROPERTIES EXPORT_NAME ${target_suffix})
         add_library(vistle::${target_suffix} ALIAS ${targetname})
