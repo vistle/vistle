@@ -38,8 +38,6 @@ using vistle::Index;
 
 MODULE_MAIN(ReadSubzoneTecplot)
 
-const std::string Invalid("(NONE)");
-
 
 ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mpi::communicator comm)
 : Reader(name, moduleID, comm)
@@ -288,8 +286,7 @@ StructuredGrid::ptr ReadSubzoneTecplot::createStructuredGrid(void *fileHandle, i
 
 void ReadSubzoneTecplot::setFieldChoices(void *fileHandle)
 {
-    std::vector<std::string> choices;
-
+    std::vector<std::string> choices{Reader::InvalidChoice};
     // get number of variables
     int32_t NumVar = 0;
     tecDataSetGetNumVars(fileHandle, &NumVar);
@@ -298,6 +295,7 @@ void ReadSubzoneTecplot::setFieldChoices(void *fileHandle)
     std::ostringstream outputStream;
     for (int32_t var = 4; var <= NumVar; ++var) { // begin with 4 because first 3 are coordinates
         char *name = NULL;
+        std::cout << "setFieldChoices: " << var << std::endl;
         tecVarGetName(fileHandle, var, &name);
         std::string nameStr(name);
         choices.push_back(nameStr);
@@ -305,10 +303,46 @@ void ReadSubzoneTecplot::setFieldChoices(void *fileHandle)
     }
 
     std::vector<std::string> choicesPlusInvalid = choices;
-    choicesPlusInvalid.insert(choicesPlusInvalid.begin(), Invalid);
     for (int i = 0; i < NumPorts; i++) {
         setParameterChoices(m_fieldChoice[i], choicesPlusInvalid);
     }
+}
+
+template<typename T>
+std::vector<T> ReadSubzoneTecplot::setVarToVector(const T x, const T y, const T z, int32_t numValues)
+{ //TODO: set variables that begin the same and end X, Y, Z to a 3D vector
+    std::vector<T> result(numValues);
+    std::vector<T> values(numValues);
+    for (int64_t i = 0; i < numValues; i++) {
+        result[i] = values[i];
+    }
+    return result;
+}
+
+int ReadSubzoneTecplot::getIndexOfTecVar(const std::string &varName, void *fileHandle) const {
+    // get number of variables
+    int32_t NumVar = 0;
+    tecDataSetGetNumVars(fileHandle, &NumVar);
+    std::cout << "getIndexOfTecVar: " << varName << std::endl;
+    for (int32_t var = 1; var <= NumVar; ++var) {
+        char *name = NULL;
+        tecVarGetName(fileHandle, var, &name);
+        if (name == nullptr) {
+            continue;
+        }
+        if (varName == name) {
+            tecStringFree(&name);
+            return var;
+        }
+        tecStringFree(&name);
+    }
+    return -1; // not found
+}
+
+bool ReadSubzoneTecplot::emptyValue(vistle::StringParameter *ch) const
+{
+    auto name = ch->getValue();
+    return name.empty() || name == Reader::InvalidChoice;
 }
 
 bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
@@ -345,45 +379,55 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
     if (tecFileGetType(fileHandle, &fileType) != 1) {
         int32_t NumVar = 0;
         tecDataSetGetNumVars(fileHandle, &NumVar);
-        for (int32_t var = 4; var < NumVar; var++) { // start with 4, because first 3 are coordinates
-            char *varName = NULL;
-            tecVarGetName(fileHandle, var, &varName);
-            int64_t numValues;
-            tecZoneVarGetNumValues(fileHandle, zone, var, &numValues);
-            std::vector<float> values(numValues);
+        // TODO: change to output just varChoices if not Invalid and not just as many variables as output ports
+        char *varName = NULL;
+        int64_t numValues;
+        for (int32_t var = 0; var < NumPorts; var++) { // loop over output ports
 
+            std::string name = m_fieldChoice[var]->getValue();
+            if (!emptyValue(m_fieldChoice[var])) {
+                std::cout << "Reading variable: " << name << " on port: " << var
+                          << std::endl;
+                int32_t varInFile = getIndexOfTecVar(name, fileHandle);
+                tecVarGetName(fileHandle, varInFile, &varName);
+                tecZoneVarGetNumValues(fileHandle, zone, varInFile, &numValues);
+                std::vector<float> values(
+                    numValues); //TODO: change to template type T (! does not work in read method but in seperate function)
+                int startIndex = 1;
+                // TODO: update readVariables method to output a Vec<Scalar, 1> object
+                //Vec<Scalar, 1>::ptr field = readVariables(fileHandle, numValues, zone, var);
+                tecZoneVarGetFloatValues(fileHandle, zone, varInFile, startIndex, numValues, &values[0]);
 
-            Vec<Scalar, 1>::ptr field(new Vec<Scalar, 1>(numValues));
-            //std::shared_ptr<vistle::Object> field; //(new Vec<Scalar, 1>(numValues));
-            // TODO: update readVariables method to output a Vec<Scalar, 1> object
-            //Vec<Scalar, 1>::ptr field = readVariables(fileHandle, numValues, zone, var);
-            // TODO: change for more than structured gird (zoneType=0) and do a for loop over zones
-            int startIndex = 1;
-            tecZoneVarGetFloatValues(fileHandle, zone, var, startIndex, numValues, &values[0]);
+                std::cout << "Variable name in file: " << varName << std::endl;
+                // copy data to the output vector
+                Vec<Scalar, 1>::ptr field(new Vec<Scalar, 1>(numValues));
+                for (size_t i = 0; i < numValues; i++) {
+                    field->x()[i] = values[i];
+                    //std::cout << "field->x()[" << i << "]: " << field->x()[i] << std::endl;
+                }
 
-            for (int64_t i = 0; i < 3; i++) {
-                //field->x()[i] = values[i];
-                std::cout << varName << ": " << values[i] << std::endl;
+                if (field) {
+                    field->addAttribute(vistle::attribute::Species, varName);
+                    // map to the grid cell, because FLOWer data is cell-centered, though the coordinate system is vertex-centered
+                    field->setMapping(vistle::DataBase::Element);
+                    field->setGrid(
+                        strGrid); // gird yields assertion error, because it has dimensions 168*128*1 / 96*8*1 not 97*9*1
+                    token.applyMeta(field);
+                    //std::cout << "m_fieldsOut 0: " << m_fieldsOut[0] << std::endl;
+                    std::cout << "Accessing m_fieldsOut at index: " << var << std::endl;
+                    token.addObject(m_fieldsOut[var], field);
+                }
+                tecStringFree(&varName);
+            } else {
+                std::cout << "Skipping variable: " << m_fieldChoice[var]->getValue() << " on position: " << var
+                          << std::endl;
+                continue; // skip if the variable is not selected
             }
-            //std::copy(values.begin(), values.end(), &field);
-
-            //bool isNotEmpty = !values.empty();
-            //auto field = std::make_shared<Vec<Scalar, 1>>(numValues);
-            if (field) {
-                field->addAttribute(vistle::attribute::Species, varName);
-                // map to the grid cell, because FLOWer data is cell-centered, though the coordinate system is vertex-centered
-                field->setMapping(vistle::DataBase::Vertex);
-                std::cout << "variable" << ": " << var << std::endl;
-                std::cout << "put at position" << ": " << var - 4 << std::endl;
-                field->setGrid(
-                    strGrid); // gird yields assertion error, because it has dimensions 168*128*1 / 96*8*1 not 97*9*1
-                token.applyMeta(field);
-                //std::cout << "m_fieldsOut 0: " << m_fieldsOut[0] << std::endl;
-                std::cout << "Accessing m_fieldsOut at index: " << var - 4 << std::endl;
-                token.addObject(m_fieldsOut[var - 4], field);
-            }
-        }
-    }
-
+        } //close for loop over ports
+            // TODO: change for more than structured gird (zoneType=0) 
+    } // close if fileType != 1
+    else {
+        std::cerr << "Tecplot does not contain solution variables but just a grid. " << std::endl;
+    }   
     return true;
 }

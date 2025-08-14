@@ -24,6 +24,10 @@ private:
     template<typename T = float> 
     Vec<Scalar, 1>::ptr readVariables(void* fileHandle, int32_t numValues, int32_t inputZone, int32_t var);
     void setFieldChoices(void* fileHandle);
+    template<typename T>
+    std::vector<T> setVarToVector(const T x, const T y, const T z, int32_t numValues);
+    int getIndexOfTecVar(const std::string &varName, void *fileHandle) const;
+    bool emptyValue(vistle::StringParameter *ch) const;
     //template<typename T>
     vistle::StructuredGrid::ptr createStructuredGrid(void* fileHandle, int32_t inputZone);
     vistle::StringParameter *m_filename;
