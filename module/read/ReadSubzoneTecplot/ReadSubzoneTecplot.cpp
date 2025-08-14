@@ -281,30 +281,6 @@ StructuredGrid::ptr ReadSubzoneTecplot::createStructuredGrid(void *fileHandle, i
     return str_grid;
 }
 
-void ReadSubzoneTecplot::setFieldChoices(void *fileHandle)
-{
-    std::vector<std::string> choices{Reader::InvalidChoice};
-    // get number of variables
-    int32_t NumVar = 0;
-    tecDataSetGetNumVars(fileHandle, &NumVar);
-
-    //TODO: define choices
-    std::ostringstream outputStream;
-    for (int32_t var = 4; var <= NumVar; ++var) { // begin with 4 because first 3 are coordinates
-        char *name = NULL;
-        std::cout << "setFieldChoices: " << var << std::endl;
-        tecVarGetName(fileHandle, var, &name);
-        std::string nameStr(name);
-        choices.push_back(nameStr);
-        tecStringFree(&name);
-    }
-
-    std::vector<std::string> choicesPlusInvalid = choices;
-    for (int i = 0; i < NumPorts; i++) {
-        setParameterChoices(m_fieldChoice[i], choicesPlusInvalid);
-    }
-}
-
 template<typename T> 
 Vec<Scalar, 1>::ptr ReadSubzoneTecplot::combineVarstoOneOutput(std::vector<std::string> varNames, int32_t numValues)
 { //TODO: set variables that begin the same and end X, Y, Z to a combined field
@@ -326,7 +302,7 @@ Vec<Scalar, 1>::ptr ReadSubzoneTecplot::combineVarstoOneOutput(std::vector<std::
     return result;
 }
 
-std::vector<std::vector<size_t>> findSimilarStrings(const std::vector<std::string> &strings) {
+std::vector<std::vector<size_t>> ReadSubzoneTecplot::findSimilarStrings(const std::vector<std::string> &strings) {
     std::unordered_map<std::string, std::vector<size_t>> prefixMap;
     std::vector<std::vector<size_t>> result;
 
@@ -340,7 +316,7 @@ std::vector<std::vector<size_t>> findSimilarStrings(const std::vector<std::strin
 
     // Collect groups of indices with the same prefix
     for (const auto &entry : prefixMap) {
-        if (entry.second.size() > 1) { // Only include groups with more than one match
+        if (entry.second.size() > 2) { // Only include groups with more than two matches
             result.push_back(entry.second);
         }
     }
@@ -348,7 +324,41 @@ std::vector<std::vector<size_t>> findSimilarStrings(const std::vector<std::strin
     return result;
 }
 
+void ReadSubzoneTecplot::setFieldChoices(void *fileHandle)
+{
+    std::vector<std::string> choices{Reader::InvalidChoice};
+    // get number of variables
+    int32_t NumVar = 0;
+    tecDataSetGetNumVars(fileHandle, &NumVar);
 
+    //TODO: define choices
+    std::ostringstream outputStream;
+    for (int32_t var = 4; var <= NumVar; ++var) { // begin with 4 because first 3 are coordinates
+        char *name = NULL;
+        std::cout << "setFieldChoices: " << var << std::endl;
+        tecVarGetName(fileHandle, var, &name);
+        std::string nameStr(name);
+        choices.push_back(nameStr);
+        tecStringFree(&name);
+    }
+
+    auto groups = findSimilarStrings(choices);
+
+    for (const auto &group : groups) {
+        std::cout << "The following variables are grouped to one output port: ";
+        for (size_t index : group) {
+            std::cout << index << " (" << choices[index] << ") ";
+        }
+        std::cout << std::endl;
+    }
+
+    std::vector<std::string> choicesPlusInvalid = choices;
+    for (int i = 0; i < NumPorts; i++) {
+        setParameterChoices(m_fieldChoice[i], choicesPlusInvalid);
+    }
+}
+
+// TODO: update getIndexOfTecVar to use the new choices (combined variables)
 int ReadSubzoneTecplot::getIndexOfTecVar(const std::string &varName, void *fileHandle) const
 {
     // get number of variables
