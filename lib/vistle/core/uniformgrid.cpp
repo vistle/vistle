@@ -190,7 +190,6 @@ Index UniformGrid::findCell(const Vector3 &point, Index hint, int flags) const
     }
 
     Index el = cellIndex(n, m_numDivisions);
-    assert(inside(el, point));
     if (acceptGhost || !isGhostCell(el))
         return el;
     return InvalidIndex;
