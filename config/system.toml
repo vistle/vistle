@@ -1,6 +1,11 @@
 [net]
 controlport = 31093
 
+[logfile]
+#unix = "/var/tmp/{user}/vistle/{host}_{port}_{id}_{name}.txt"
+#unix = "/var/tmp/{user}/vistle/{id}_{name}.txt"
+#unix = "{tmpdir}/{user}/vistle/{id}_{name}.txt"
+
 [mpirun]
 unix = "spawn_vistle.sh"
 windows = "spawn_vistle.bat"
