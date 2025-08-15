@@ -88,12 +88,14 @@ void ClusterManager::Module::block(const message::Message &msg) const
 #ifdef DEBUG
     std::cerr << "BLOCK: " << msg << std::endl;
 #endif
+    std::lock_guard<std::mutex> lock(messageMutex);
     blocked = true;
-    blockers.emplace_back(message::Buffer(msg));
+    blockers.emplace_back(msg);
 }
 
 void ClusterManager::Module::unblock(const message::Message &msg) const
 {
+    std::lock_guard<std::mutex> lock(messageMutex);
     assert(blocked);
     assert(!blockers.empty());
 
@@ -139,7 +141,7 @@ void ClusterManager::Module::unblock(const message::Message &msg) const
             }
         } else {
             const auto &uuid = blockers.front().uuid();
-            while (blockedMessages.front().buf.uuid() != uuid) {
+            while (!blockedMessages.empty() && blockedMessages.front().buf.uuid() != uuid) {
                 auto &mpl = blockedMessages.front();
                 assert((mpl.buf.payloadSize() == 0 && !mpl.payload) || (mpl.buf.payloadSize() > 0 && mpl.payload));
                 mpl.payload.ref();
@@ -183,6 +185,7 @@ bool ClusterManager::Module::send(const message::Message &msg, const MessagePayl
     } else {
         buf.setPayloadName(std::string());
     }
+    std::lock_guard<std::mutex> lock(messageMutex);
     if (blocked) {
         if (msg.payloadSize() > 0)
             blockedMessages.emplace_back(buf, payload);
@@ -199,6 +202,7 @@ bool ClusterManager::Module::send(const message::Message &msg, const MessagePayl
 
 bool ClusterManager::Module::update() const
 {
+    std::lock_guard<std::mutex> lock(messageMutex);
     if (sendQueue)
         return sendQueue->progress();
     return false;
