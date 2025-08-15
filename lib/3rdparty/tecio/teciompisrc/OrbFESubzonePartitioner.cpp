@@ -1,0 +1,19 @@
+#include "SzlFileLoader.h"
+#include "ThirdPartyHeadersBegin.h"
+#include <algorithm>
+#include <math.h>
+#include "ThirdPartyHeadersEnd.h"
+#include "FileDescription.h"
+#include "OrbFESubzonePartitioner.h"
+#include "AltTecUtil.h"
+#include "stringformat.h"
+#include "zoneUtil.h"
+namespace tecplot { namespace ___3931 { OrbFESubzonePartitioner::OrbFESubzonePartitioner( ___37&                          ___36, ___4633                          zone, ItemAddress64::SectionOffset_t       section, OrthogonalBisection::BisectionType_e bisectionType, ItemAddress64::ItemOffset_t          fixedSubzoneSize) : ___2675(zone) , m_fixedSubzoneSize(fixedSubzoneSize) , m_orb(zone, section, bisectionType, fixedSubzoneSize) { REQUIRE(___36.___4635(___2675 + 1)); REQUIRE(m_fixedSubzoneSize <= ItemAddress64::MAX_ITEM_OFFSET+1); REQUIRE(___3892( ___36.___4617(___2675 + 1), ___36.zoneGetDimension(___36.datasetGetUniqueID(),___2675 + 1))); partitionIntoSubzones(___36); } OrbFESubzonePartitioner::~OrbFESubzonePartitioner() { m_orb.___935(); m_szCoordsOfOrginalIndexes.___935(); } ___372 OrbFESubzonePartitioner::partitionIntoSubzones(___37& ___36) { size_t const messageSize = 200; char statusMessage[messageSize]; bool const bisectingNodeSubzones = m_orb.bisectionType() == OrthogonalBisection::BisectionType_ZoneNodes; snprintf(statusMessage, messageSize, "Determining %s subzones for zone %" PRIu64 "...", (bisectingNodeSubzones ? "node" : "cell"), uint64_t(___2675)+1); ___36.___3776(statusMessage);
+ #ifdef TIME_FE_DECOMPOSITION
+uint64_t startTimeInMS = ___715();
+ #endif
+bool ___2037 = m_orb.performBisection(___36);
+ #ifdef TIME_FE_DECOMPOSITION
+uint64_t endTimeInMS = ___715(); ___1929("Time to create %s subzones is %" PRIu64 " ms", (bisectingNodeSubzones ? "node" : "cell"), long(endTimeInMS-startTimeInMS));
+ #endif
+___2037 = ___2037 && m_orb.getSzCoordByOriginalItemArray(___36, m_szCoordsOfOrginalIndexes); return ___372(___2037); } ___81 OrbFESubzonePartitioner::numIndexes() const { ENSURE(m_orb.queryNumItems() >= 0); return static_cast<___81>(m_orb.queryNumItems() + m_orb.queryNumGhostItems()); } ItemAddress64::SubzoneOffset_t OrbFESubzonePartitioner::numSubzones() const { return m_orb.queryNumberDomains(); } ItemAddress64::ItemOffset_t OrbFESubzonePartitioner::numItemsInSubzone(ItemAddress64::SubzoneOffset_t ___3878) const { ItemAddress64::ItemOffset_t const szSize = m_orb.getDomainSize(___3878); ENSURE(szSize <= ItemAddress64::MAX_ITEM_OFFSET+1); return szSize; } ItemAddress64 const& OrbFESubzonePartitioner::itemAddressAtIndex(___81 index) const { REQUIRE(0 <= index && index < numIndexes()); ItemAddress64 const& szCoordinate = m_szCoordsOfOrginalIndexes[index]; ENSURE(IMPLICATION(static_cast<___4633>(szCoordinate.___2975()) == ___2675, szCoordinate.subzoneOffset() < numSubzones())); ENSURE(IMPLICATION(static_cast<___4633>(szCoordinate.___2975()) == ___2675, szCoordinate.itemOffset() < numItemsInSubzone(szCoordinate.subzoneOffset()))); ENSURE(IMPLICATION(static_cast<___4633>(szCoordinate.___2975()) == ___2675, indexAtItemAddress(szCoordinate) == index)); return szCoordinate; } ___81 OrbFESubzonePartitioner::baseIndex() const { return m_orb.queryBaseItem(); } ___81 OrbFESubzonePartitioner::indexAtItemAddress(ItemAddress64 const& ___2087) const { REQUIRE(___2087.subzoneOffset()<numSubzones()); REQUIRE(___2087.itemOffset()<numItemsInSubzone(___2087.subzoneOffset())); ___81 indexOffset = ___2087.subzoneOffset() * m_fixedSubzoneSize + ___2087.itemOffset(); ___81 index = m_orb.queryPositionbyOffset(indexOffset); ENSURE(index < numIndexes()); return index; } void OrbFESubzonePartitioner::setItemAddressAtIndex(___81 index, ItemAddress64 const& ___2087) { REQUIRE(0 <= index && index < numIndexes()); REQUIRE(___2087.___14() == ItemAddress64::SzlAddressType); m_szCoordsOfOrginalIndexes[index] = ___2087; } }}

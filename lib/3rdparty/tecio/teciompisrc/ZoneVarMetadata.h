@@ -1,0 +1,6 @@
+ #pragma once
+#include "ThirdPartyHeadersBegin.h"
+#include <vector>
+#include "ThirdPartyHeadersEnd.h"
+#include "SzlFileLoader.h"
+namespace tecplot { namespace ___3931 { class ___37; class ItemSetIterator; struct ___4704 { size_t m_numZones; size_t m_numVars; ___3814 m_zoneNames; ___471 m_zoneTypes; UInt8Array m_zoneFaceNeighborModes; ___1103 m_zoneSolutionTimes; UInt32Array m_zoneStrandIDs; ___4632 m_zoneParentZones; UInt64Array m_zoneIMaxOrNumNodes; UInt64Array m_zoneJMaxOrNumCells; UInt64Array m_zoneKMaxOrNumCorners; ___4632 m_zoneShareConnectivityWithZone; ___3814 m_varNames; VarZoneMinMaxArray m_vzMinMaxes; ___4388 m_vzValueLocations; ___4379 m_vzFieldDataTypes; ___4382 m_vzIsPassive; ___4385 m_vzShareVarWithZone; UInt8Array                    m_zoneNumSections; ___2238<Int64Array> m_zoneNumElemsPerSec; ___2238<UInt8Array> m_zoneCellShapePerSec; ___2238<UInt8Array> m_zoneGridOrderPerSec; ___2238<UInt8Array> m_zoneCellBasisFuncPerSec; ___1963 m_zoneDimension; ___4704(); ___4704( ___37&      ___36, ItemSetIterator& varIter, ItemSetIterator& zoneIter, bool             allowSharingBetweenFiles = false); bool alloc(size_t ___2844, size_t ___2841, std::vector<uint8_t> const& zoneNumSections); bool assign(___4704 const& ___2886, size_t zoneOffset); }; }}
