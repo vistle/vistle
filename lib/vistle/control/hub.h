@@ -194,6 +194,8 @@ private:
     std::chrono::steady_clock::time_point m_lastVrbStart;
     int m_vrbStartWait = 1;
 
+    std::string m_logfileFormat;
+
     struct ObservedChild {
         ObservedChild();
         ~ObservedChild();

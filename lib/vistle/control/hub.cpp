@@ -491,6 +491,15 @@ bool Hub::init(int argc, char *argv[])
     m_config.reset(new config::Access(m_name, m_name));
     m_config->setPrefix(m_dir->prefix());
 
+    if (auto env_logfile = getenv("VISTLE_LOGFILE")) {
+        m_logfileFormat = env_logfile;
+    } else {
+        m_logfileFormat = *m_config->value<std::string>("system", "logfile", platform, "");
+        if (m_logfileFormat.empty() && !platform_fallback.empty()) {
+            m_logfileFormat = *m_config->value<std::string>("system", "logfile", platform_fallback, "");
+        }
+    }
+
     m_basePort = *m_config->value<int64_t>("system", "net", "controlport", m_basePort);
 
     m_messageBacklog = *m_config->value<int64_t>("system", "hub", "messagebacklog", m_messageBacklog);
@@ -942,13 +951,91 @@ Hub::launchProcess(int type, const std::string &prog, const std::vector<std::str
         }
     }
 
+    std::string typePrefix;
+    switch (type) {
+    case Process::Manager:
+        typePrefix = "Mgr";
+        break;
+    case Process::Cleaner:
+        typePrefix = "Cln";
+        break;
+    case Process::GUI:
+        typePrefix = "UI";
+        break;
+    case Process::VRB:
+        typePrefix = "VRB";
+        break;
+    default:
+        typePrefix = "MOD";
+        break;
+    }
+
+    int moduleId = message::Id::isModule(type) ? type : message::Id::Invalid;
+    std::string logfile;
+    process::environment env = boost::this_process::environment();
+    process::environment childEnv = env;
+#ifdef VISTLE_USE_FMT
+    const auto *user = getenv("USER");
+    if (!user) {
+        user = getenv("USERNAME");
+    }
+    if (!user) {
+        user = "unknown";
+    }
+    const auto *tmpdir = getenv("TMPDIR");
+    if (!tmpdir) {
+        tmpdir = getenv("TEMP");
+    }
+    if (!tmpdir) {
+        tmpdir = "/tmp";
+    }
+    fmt::dynamic_format_arg_store<fmt::format_context> nargs;
+    nargs.push_back(fmt::arg("name", name));
+    nargs.push_back(fmt::arg("prog", prog));
+    nargs.push_back(fmt::arg("type", typePrefix));
+    nargs.push_back(fmt::arg("hub", m_hubId));
+    nargs.push_back(fmt::arg("port", m_port));
+    nargs.push_back(fmt::arg("host", hostname()));
+    nargs.push_back(fmt::arg("user", user));
+    nargs.push_back(fmt::arg("uid", getuid()));
+    nargs.push_back(fmt::arg("id", moduleId));
+    nargs.push_back(fmt::arg("tmpdir", tmpdir));
+    if (!m_logfileFormat.empty()) {
+        logfile = fmt::vformat(m_logfileFormat, nargs);
+    }
+#else
+    auto bopen = m_logfileFormat.find("{");
+    auto bclose = m_logfileFormat.find("}");
+    if (bopen == std::string::npos && bclose == std::string::npos) {
+        logfile = m_logfileFormat;
+    } else {
+        std::stringstream info;
+        info << "fmt library not available, cannot format logfile name: " << m_logfileFormat << std::endl;
+        sendInfo(info.str());
+        logfile.clear();
+    }
+#endif
+    if (logfile.empty()) {
+        if (childEnv.find("VISTLE_LOGFILE") != childEnv.end()) {
+            childEnv["VISTLE_LOGFILE"].clear();
+        }
+        if (m_verbose >= Verbosity::ManagerMessages) {
+            CERR << "logfile format is empty, not setting VISTLE_LOGFILE environment variable" << std::endl;
+        }
+    } else {
+        childEnv["VISTLE_LOGFILE"] = logfile;
+        if (m_verbose >= Verbosity::Manager) {
+            CERR << "setting VISTLE_LOGFILE to " << logfile << std::endl;
+        }
+    }
+
     std::shared_ptr<process::child> child;
     auto out = std::make_shared<process::ipstream>();
     auto err = std::make_shared<process::ipstream>();
     try {
         child = std::make_shared<process::child>(
-            path, process::args(args), terminate_with_parent(), process::std_out > *out, process::std_err > *err,
-            process::std_in < process::null, m_ioContext, process::on_exit(exit_handler));
+            path, process::args(args), terminate_with_parent(), process::environment(childEnv), process::std_out > *out,
+            process::std_err > *err, process::std_in < process::null, m_ioContext, process::on_exit(exit_handler));
     } catch (std::exception &ex) {
         std::stringstream info;
         info << "Failed to launch: " << path << ": " << ex.what();
@@ -962,50 +1049,36 @@ Hub::launchProcess(int type, const std::string &prog, const std::vector<std::str
         }
     }
 
-    auto consumeStream = [this, type, child](process::ipstream &str, message::SendText::TextType stream,
-                                             ObservedChild &obs, std::deque<ObservedChild::TaggedLine> &buf,
-                                             size_t &discardCount, std::mutex &mutex) mutable {
+
+    auto consumeStream = [this, type, typePrefix, child](process::ipstream &str, message::SendText::TextType stream,
+                                                         ObservedChild &obs, std::deque<ObservedChild::TaggedLine> &buf,
+                                                         size_t &discardCount, std::mutex &mutex) mutable {
         std::string line;
         while (child->running() && getline_multi_delim(str, line, "\n\r")) {
             std::string prefix;
+            bool print = false;
             switch (type) {
             case Process::Manager:
-                prefix = "[Mgr] ";
-                break;
             case Process::Cleaner:
-                prefix = "[Cln] ";
-                break;
             case Process::GUI:
-                prefix = "[UI] ";
-                break;
             case Process::VRB:
-                prefix = "[VRB] ";
+                prefix = "[" + typePrefix + "] ";
+                if (m_verbose >= Verbosity::Manager) {
+                    print = true;
+                }
                 break;
             default:
                 prefix = "[" + std::to_string(obs.moduleId) + "] ";
+                if (m_verbose >= Verbosity::Modules) {
+                    print = true;
+                }
                 break;
             }
-
-            switch (type) {
-            case Process::Manager:
-            case Process::Cleaner:
-            case Process::GUI:
-            case Process::VRB:
-                if (m_verbose >= Verbosity::Manager) {
-                    if (stream == message::SendText::Cout)
-                        std::cout << prefix + line << std::flush;
-                    else
-                        std::cerr << prefix + line << std::flush;
-                }
-                break;
-            default:
-                if (m_verbose >= Verbosity::Modules) {
-                    if (stream == message::SendText::Cout)
-                        std::cout << prefix + line << std::flush;
-                    else
-                        std::cerr << prefix + line << std::flush;
-                }
-                break;
+            if (print) {
+                if (stream == message::SendText::Cout)
+                    std::cout << prefix + line << std::flush;
+                else
+                    std::cerr << prefix + line << std::flush;
             }
             std::lock_guard<std::mutex> lock(mutex);
             if (obs.streamOutput) {
@@ -1019,7 +1092,6 @@ Hub::launchProcess(int type, const std::string &prog, const std::vector<std::str
         }
     };
 
-    int moduleId = message::Id::isModule(type) ? type : message::Id::Invalid;
     auto &obs = m_observedChildren[child->id()];
     obs.hub = this;
     obs.child = child;

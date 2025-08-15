@@ -19,6 +19,7 @@
 #include <boost/process/v1/io.hpp>
 #include <boost/process/v1/spawn.hpp>
 #include <boost/process/v1/extend.hpp>
+#include <boost/process/v1/env.hpp>
 
 namespace process = boost::process::v1;
 #else
