@@ -1,7 +1,10 @@
 #include "ShmMessage.h"
 #include <fstream>
 #include <vistle/insitu/core/exception.h>
+#include <boost/date_time/posix_time/posix_time.hpp>
+
 using namespace vistle::insitu::message;
+
 bool InSituShmMessage::sendMessage(InSituMessageType type, const vistle::buffer &vec) const
 { // not thread safe
 
