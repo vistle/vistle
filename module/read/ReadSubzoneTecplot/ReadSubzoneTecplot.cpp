@@ -281,12 +281,10 @@ StructuredGrid::ptr ReadSubzoneTecplot::createStructuredGrid(void *fileHandle, i
     return str_grid;
 }
 
-template<typename T> 
-Vec<Scalar, 1>::ptr ReadSubzoneTecplot::combineVarstoOneOutput(std::vector<std::string> varNames, int32_t numValues)
+template<typename T>
+Vec<Scalar, 1>::ptr ReadSubzoneTecplot::combineVarstoOneOutput(std::vector<T> x, std::vector<T> y, std::vector<T> z,
+                                                               int32_t numValues)
 { //TODO: set variables that begin the same and end X, Y, Z to a combined field
-    const std::vector<T> x;
-    const std::vector<T> y;
-    const std::vector<T> z;
     Vec<Scalar, 1>::ptr result(new Vec<Scalar, 1>(numValues));
     // Ensure all vectors have the same size
     if (x.size() != y.size() || y.size() != z.size()) {
@@ -302,29 +300,33 @@ Vec<Scalar, 1>::ptr ReadSubzoneTecplot::combineVarstoOneOutput(std::vector<std::
     return result;
 }
 
-std::vector<std::vector<size_t>> ReadSubzoneTecplot::findSimilarStrings(const std::vector<std::string> &strings) {
+std::unordered_map<std::string, std::vector<size_t>> ReadSubzoneTecplot::findSimilarStrings(const std::vector<std::string> &strings)
+{
     std::unordered_map<std::string, std::vector<size_t>> prefixMap;
-    std::vector<std::vector<size_t>> result;
 
     for (size_t i = 0; i < strings.size(); ++i) {
         if (strings[i].size() > 1) {
             // Remove the last character to create the prefix
             std::string prefix = strings[i].substr(0, strings[i].size() - 1);
-            prefixMap[prefix].push_back(i);
+            prefixMap[prefix].push_back(i + 3); //First 3 variables are coordinates, so we add 3 to the index
         }
     }
 
-    // Collect groups of indices with the same prefix
-    for (const auto &entry : prefixMap) {
-        if (entry.second.size() > 2) { // Only include groups with more than two matches
-            result.push_back(entry.second);
+    // Filter out prefixes with only one occurrence
+    for (auto it = prefixMap.begin(); it != prefixMap.end(); ) {
+        if (it->second.size() <= 1) {
+            it = prefixMap.erase(it); // Remove prefixes with only one match
+        } else {
+            ++it;
+            std::cout << "Added prefix: " << it->first << " with indices: ";
+            std::cout << it->second[0] << ", " << it->second[1] << ", " << it->second[2] << std::endl; 
         }
     }
 
-    return result;
+    return prefixMap;
 }
 
-void ReadSubzoneTecplot::setFieldChoices(void *fileHandle)
+std::unordered_map<std::string, std::vector<size_t>>  ReadSubzoneTecplot::setFieldChoices(void *fileHandle)
 {
     std::vector<std::string> choices{Reader::InvalidChoice};
     // get number of variables
@@ -344,23 +346,35 @@ void ReadSubzoneTecplot::setFieldChoices(void *fileHandle)
 
     auto groups = findSimilarStrings(choices);
 
-    for (const auto &group : groups) {
+    for (const auto &group: groups) {
         std::cout << "The following variables are grouped to one output port: ";
-        for (size_t index : group) {
-            std::cout << index << " (" << choices[index] << ") ";
+        for (size_t index: group.second) {
+            std::cout << index << " (" << group.first << ") ";
         }
         std::cout << std::endl;
     }
 
-    std::vector<std::string> choicesPlusInvalid = choices;
-    for (int i = 0; i < NumPorts; i++) {
-        setParameterChoices(m_fieldChoice[i], choicesPlusInvalid);
+    // Add the grouped variables to the choices
+
+    for (const auto &group: groups) {
+        std::string combinedName = group.first;//choices[group[0]].substr(0, choices[group[0]].size() - 1);
+        choices.push_back(combinedName);
     }
+
+    // Set the choices for each output port
+    for (int i = 0; i < NumPorts; i++) {
+        setParameterChoices(m_fieldChoice[i], choices);
+    }
+
+    return groups;
 }
 
 // TODO: update getIndexOfTecVar to use the new choices (combined variables)
-int ReadSubzoneTecplot::getIndexOfTecVar(const std::string &varName, void *fileHandle) const
+std::vector<int> ReadSubzoneTecplot::getIndexOfTecVar(const std::string &varName,
+                                                      const std::unordered_map<std::string, std::vector<size_t>> &indicesCombinedVariables,
+                                                      void *fileHandle) const
 {
+    std::vector<int> result;
     // get number of variables
     int32_t NumVar = 0;
     tecDataSetGetNumVars(fileHandle, &NumVar);
@@ -373,11 +387,25 @@ int ReadSubzoneTecplot::getIndexOfTecVar(const std::string &varName, void *fileH
         }
         if (varName == name) {
             tecStringFree(&name);
-            return var;
+            return result = {var}; // Return the index if the variable name matches
+        } else {
+            for (const auto &group: indicesCombinedVariables) {
+                std::string combinedName = group.first;
+
+                if (combinedName == varName) {
+                    // If the variable name matches a combined variable, return the first index in the group
+                    tecStringFree(&name);
+                    result = {(int)group.second[0], (int)group.second[1], (int)group.second[2]}; // Return the indices of the combined variable
+                    std::cout << "Found combined variable: " << combinedName << " with indices: " << group.second[0] << ", "
+                              << group.second[1] << ", " << group.second[2] << std::endl;
+                    return result;
+                }
+            }
         }
         tecStringFree(&name);
     }
-    return -1; // not found
+    result.push_back(-1); // not found
+    return result;
 }
 
 //checks if choice is a valid input
@@ -399,6 +427,7 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
     auto solutionTime = 0.0;
     tecZoneGetSolutionTime(fileHandle, block + 1, &solutionTime);
     strGrid->setTimestep(timestep);
+    strGrid->setMapping(vistle::DataBase::Vertex); // set mapping to vertex, because coordinates are vertex-centered
     std::cout << "reading zone number " << block + 1 << " of " << numZones << " zones" << std::endl;
     std::cout << "timestep: " << timestep << std::endl;
     std::cout << "solution time: " << solutionTime << std::endl;
@@ -413,7 +442,7 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
     // VelocityY,VelocityZ,Density,Iblank,CoefPressure"
 
     //Define options of variable ports
-    setFieldChoices(fileHandle);
+    auto indices = setFieldChoices(fileHandle);
 
     // TODO: change for more than structured gird (zoneType=0)
     // check if solution is included in the file
@@ -429,36 +458,57 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
             std::string name = m_fieldChoice[var]->getValue();
             if (!emptyValue(m_fieldChoice[var])) {
                 std::cout << "Reading variable: " << name << " on port: " << var << std::endl;
-                int32_t varInFile = getIndexOfTecVar(name, fileHandle);
-                tecVarGetName(fileHandle, varInFile, &varName);
-                tecZoneVarGetNumValues(fileHandle, zone, varInFile, &numValues);
-                std::vector<float> values(
-                    numValues); //TODO: change to template type T (! does not work in read method but in seperate function)
-                int startIndex = 1;
-                // TODO: update readVariables method to output a Vec<Scalar, 1> object
-                //Vec<Scalar, 1>::ptr field = readVariables(fileHandle, numValues, zone, var);
-                tecZoneVarGetFloatValues(fileHandle, zone, varInFile, startIndex, numValues, &values[0]);
+                std::vector<int> varInFile = getIndexOfTecVar(name, indices, fileHandle);
+                tecVarGetName(fileHandle, varInFile[0], &varName);
 
-                std::cout << "Variable name in file: " << varName << std::endl;
-                // copy data to the output vector
-                Vec<Scalar, 1>::ptr field(new Vec<Scalar, 1>(numValues));
-                for (size_t i = 0; i < numValues; i++) {
-                    field->x()[i] = values[i];
-                    //std::cout << "field->x()[" << i << "]: " << field->x()[i] << std::endl;
-                }
+                if (varInFile.size() == 1) {
+                    tecZoneVarGetNumValues(fileHandle, zone, varInFile[0], &numValues);
+                    std::vector<float> values(
+                        numValues); //TODO: change to template type T (! does not work in read method but in seperate function)
+                    int startIndex = 1;
+                    // TODO: update readVariables method to output a Vec<Scalar, 1> object
+                    //Vec<Scalar, 1>::ptr field = readVariables(fileHandle, numValues, zone, var);
+                    tecZoneVarGetFloatValues(fileHandle, zone, varInFile[0], startIndex, numValues, &values[0]);
 
-                if (field) {
-                    field->addAttribute(vistle::attribute::Species, varName);
-                    // map to the grid cell, because FLOWer data is cell-centered, though the coordinate system is vertex-centered
-                    field->setMapping(vistle::DataBase::Element);
-                    field->setGrid(
-                        strGrid); // gird yields assertion error, because it has dimensions 168*128*1 / 96*8*1 not 97*9*1
-                    token.applyMeta(field);
-                    //std::cout << "m_fieldsOut 0: " << m_fieldsOut[0] << std::endl;
-                    std::cout << "Accessing m_fieldsOut at index: " << var << std::endl;
-                    token.addObject(m_fieldsOut[var], field);
+                    std::cout << "Variable name in file: " << varName << std::endl;
+                    // copy data to the output vector
+                    Vec<Scalar, 1>::ptr field(new Vec<Scalar, 1>(numValues));
+                    for (size_t i = 0; i < numValues; i++) {
+                        field->x()[i] = values[i];
+                        //std::cout << "field->x()[" << i << "]: " << field->x()[i] << std::endl;
+                    }
+
+                    if (field) {
+                        field->addAttribute(vistle::attribute::Species, name);
+                        // map to the grid cell, because FLOWer data is cell-centered, though the coordinate system is vertex-centered
+                        field->setMapping(vistle::DataBase::Element);
+                        field->setGrid(strGrid);
+                        token.applyMeta(field);
+                        //std::cout << "m_fieldsOut 0: " << m_fieldsOut[0] << std::endl;
+                        std::cout << "Accessing m_fieldsOut at index: " << var << std::endl;
+                        token.addObject(m_fieldsOut[var], field);
+                    }
+                    tecStringFree(&varName);
+                } else if (varInFile.size() > 1) {
+                    // If the variable is a combined variable, read all indices
+                    std::cout << "Reading combined variable: " << name << " on port: " << var << std::endl;
+                    tecZoneVarGetNumValues(fileHandle, zone, varInFile[0], &numValues);
+                    int startIndex = 1;
+                    std::vector<float> xValues(numValues);
+                    std::vector<float> yValues(numValues);
+                    std::vector<float> zValues(numValues);
+                    tecZoneVarGetFloatValues(fileHandle, zone, varInFile[0], startIndex, numValues, &xValues[0]);
+                    tecZoneVarGetFloatValues(fileHandle, zone, varInFile[1], startIndex, numValues, &yValues[0]);
+                    tecZoneVarGetFloatValues(fileHandle, zone, varInFile[2], startIndex, numValues, &zValues[0]);
+                    Vec<Scalar, 1>::ptr field = combineVarstoOneOutput<float>(xValues, yValues, zValues, numValues);
+                    if (field) {
+                        field->addAttribute(vistle::attribute::Species, name);
+                        field->setMapping(vistle::DataBase::Element);
+                        field->setGrid(strGrid);
+                        token.applyMeta(field);
+                        token.addObject(m_fieldsOut[var], field);
+                    }
                 }
-                tecStringFree(&varName);
             } else {
                 std::cout << "Skipping variable: " << m_fieldChoice[var]->getValue() << " on position: " << var
                           << std::endl;

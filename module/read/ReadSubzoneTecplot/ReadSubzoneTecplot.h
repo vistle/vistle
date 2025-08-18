@@ -23,12 +23,15 @@ private:
     bool read(Token &token, int timestep, int block) override;
     template<typename T = float>
     Vec<Scalar, 1>::ptr readVariables(void *fileHandle, int32_t numValues, int32_t inputZone, int32_t var);
-    void setFieldChoices(void *fileHandle);
+    std::unordered_map<std::string, std::vector<size_t>> setFieldChoices(void *fileHandle);
+    std::vector<int>
+    getIndexOfTecVar(const std::string &varName,
+                     const std::unordered_map<std::string, std::vector<size_t>> &indicesCombinedVariables,
+                     void *fileHandle) const;
     template<typename T = float>
-    Vec<Scalar, 1>::ptr combineVarstoOneOutput(std::vector<std::string> varNames, int32_t numValues);
-    int getIndexOfTecVar(const std::string &varName, void *fileHandle) const;
+    Vec<Scalar, 1>::ptr combineVarstoOneOutput(std::vector<T> x, std::vector<T> y, std::vector<T> z, int32_t numValues);
     bool emptyValue(vistle::StringParameter *ch) const;
-    std::vector<std::vector<size_t>> findSimilarStrings(const std::vector<std::string> &strings);
+    std::unordered_map<std::string, std::vector<size_t>> findSimilarStrings(const std::vector<std::string> &strings);
     //template<typename T>
     vistle::StructuredGrid::ptr createStructuredGrid(void *fileHandle, int32_t inputZone);
     vistle::StringParameter *m_filename;
