@@ -507,7 +507,6 @@ vistle_find_package(
     1.78
     REQUIRED
     COMPONENTS
-    system
     serialization
     program_options
     date_time
@@ -518,7 +517,11 @@ vistle_find_package(
     timer
     ${BOOST_REQ}
     OPTIONAL_COMPONENTS
+    system
     ${BOOST_OPT})
+if(NOT TARGET Boost::system)
+    add_library(Boost::system ALIAS Boost::boost)
+endif()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-command-line-argument")
