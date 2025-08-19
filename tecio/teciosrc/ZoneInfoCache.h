@@ -1,0 +1,10 @@
+ #pragma once
+#include "ThirdPartyHeadersBegin.h"
+#include <vector>
+#include <boost/shared_ptr.hpp>
+#include <boost/unordered_map.hpp>
+#include "ThirdPartyHeadersEnd.h"
+#include "AltTecUtil.h"
+#include "basicTypes.h"
+#include "IJK.h"
+namespace tecplot { namespace ___3931 { class FESubzonePartitionerInterface; class ___37; class PartitionTecUtilDecorator; class ___1879; class ___1348; class ItemSetIterator; class ZoneInfoCache { public: ZoneInfoCache( ___37*                 ___36, ___1842 const&                  maxIJKSubzoneSize, ItemAddress64::ItemOffset_t feSubzoneSize); boost::shared_ptr<___1879> getIJKZoneInfo(___4633 zone); boost::shared_ptr<___1879> getIJKZonePartitionInfo( ___4633 zone, ___4633 ___2975); boost::shared_ptr<___1348> getFEZoneInfo(___4633 zone); boost::shared_ptr<___1348> getFEZonePartitionInfo( ___4633 zone, ___4633 ___2975, PartitionTecUtilDecorator& partitionTecUtilDecorator); void remove(___4633 zone); void clear(); void replaceDataSource(___37* ___36, ___3499 zonesToWrite); private: ___37*                       ___2335; ___1842 const                         m_maxIJKSubzoneSize; ItemAddress64::ItemOffset_t const m_feSubzoneSize; boost::unordered_map<___4633, boost::shared_ptr<___1879> >                                     m_ijkZoneInfos; boost::unordered_map<___4633, boost::unordered_map<___4633, boost::shared_ptr<___1879> > > m_ijkZonePartitionInfos; boost::unordered_map<___4633, boost::shared_ptr<___1348> >                                      m_feZoneInfos; boost::unordered_map<___4633, boost::unordered_map<___4633, boost::shared_ptr<___1348> > >  m_feZonePartitionInfos; template<typename ZoneInfoType> void storeForSharedZones( boost::unordered_map<___4633, boost::shared_ptr<ZoneInfoType> >& zoneInfos, boost::shared_ptr<ZoneInfoType>                zoneInfo, ___4633                                    zone); template <typename ZoneInfoType> void storeForSharedPartitions( boost::unordered_map<___4633, boost::unordered_map<___4633, boost::shared_ptr<ZoneInfoType> > >& zoneInfos, boost::shared_ptr<ZoneInfoType> zoneInfo, ___4633 zone, ___4633 ___2975); }; }}

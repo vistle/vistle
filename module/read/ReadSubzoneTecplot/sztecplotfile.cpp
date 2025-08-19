@@ -10,9 +10,16 @@
 //#include <Include/parallel.h>
 #include "topo.h"
 
+<<<<<<< HEAD
 // Includes from TecIO library
 //#include <TECIO.h>
 // add TecIO library to ./lib/3rdparty before compiling
+=======
+//#include <iag/debug.h>
+//#include <iag/problem.h>
+//#include <iag/stringutil.h>
+//#include <iag/tool.h>
+>>>>>>> a4e5dc83 (New reader for subzone Tecplot (.szplt))
 
 #include <fstream>
 #include <iostream>
@@ -23,9 +30,12 @@
 #include <string>
 #include <exception>
 
+<<<<<<< HEAD
 //Include TecIO for szPLot:
 //include <TECIO.h>
 
+=======
+>>>>>>> a4e5dc83 (New reader for subzone Tecplot (.szplt))
 
 #if defined(HAVE_STDINT_H)
 #include <stdint.h>
@@ -149,6 +159,7 @@ T SzTecplotFile::Impl::byteswap(T iVal)
 
 bool SzTecplotFile::Impl::open(std::string const &iFileName)
 {
+<<<<<<< HEAD
     //const std::string filename = m_filename->getValue();
     // size_t numZones = 0;
     // size_t test = 5;
@@ -225,6 +236,74 @@ bool SzTecplotFile::Impl::open(std::string const &iFileName)
     //         return false;
     //     }
     // }
+=======
+    if (mStream.is_open())
+        mStream.close();
+    mStream.open(iFileName.c_str(), std::ios::binary);
+    if (!mStream.good()) {
+        std::cerr << "Failed to open " << iFileName << " successfully.\n";
+        std::cerr << "stream state: " << mStream.rdstate() << ", fail=" << mStream.fail() << ", bad=" << mStream.bad()
+                  << ", eof=" << mStream.eof() << std::endl;
+        std::perror("opening");
+
+        return false;
+    }
+    char versionString[8];
+    mStream.read(versionString, sizeof(versionString));
+    // if (std::strncmp(versionString, "#!TDV", 5) || 
+    //     std::strncmp(versionString, "#!SZPLT ", 7)) {
+    //     std::cerr << "No tecplot binary file.\n";
+    //     return false;
+    // }
+    // READ first strings to get an impression of the new format:
+    char testString[32];
+    mStream.read(testString, sizeof(testString)); //'105BF $Revision:'
+
+    char testString1[16];
+    mStream.read(testString1, sizeof(testString1));
+
+    if (std::strncmp(versionString, "#!SZPLT ", 7)) {
+        std::cerr << "No tecplot binary file.\n";
+        return false;
+    }
+    mVersion = 0;
+    if (isdigit(versionString[5]))
+        mVersion = versionString[5] - '0';
+    if (isdigit(versionString[6]))
+        mVersion = mVersion * 10 + versionString[6] - '0';
+    if (isdigit(versionString[7]))
+        mVersion = mVersion * 10 + versionString[7] - '0';
+    std::cerr << " Version: " << versionString[5] << versionString[6] << "." << versionString[7] << " (" << mVersion
+              << ")\n";
+    if (mVersion > 112) {
+        std::cerr << "WARNING: Tecplot version newer than 360 2009 detected, hoping for compatibility...\n";
+    } else if (mVersion == 112) {
+        // 		std::cout << "  Tecplot version 360 2009 detected\n";
+    } else if (mVersion == 111) {
+        // 		std::cout << "  Tecplot version 360 2008 detected\n";
+    } else if (mVersion == 107) {
+        // 		std::cout << "  Tecplot version 360 detected\n";
+    } else if (mVersion == 102) {
+        // 		std::cout << "  Tecplot version 10 detected\n";
+    } else if (mVersion == 75) {
+        // 		std::cout << "  Tecplot version 9.2 detected\n";
+    } else {
+        std::cout << "WARNING: Unknown Tecplot version detected, hoping for compatibility...\n";
+    }
+    // integer with value "1" to detect little or big endian -----------
+    mOtherEndian = false; // ensure endianTest is fetched unchanged
+    int endianTest = fetchInt32();
+    if (endianTest != 1) {
+        if (endianTest == 16777216) {
+            mOtherEndian = true;
+        //} else if (endianTest == 1110782001) {  //endianTest for .szplt -> leads to process abortion
+        //    mOtherEndian = true;  
+        } else {
+            std::cerr << "Illegal endianness test value.\n";
+            return false;
+        }
+    }
+>>>>>>> a4e5dc83 (New reader for subzone Tecplot (.szplt))
     return true;
 }
 

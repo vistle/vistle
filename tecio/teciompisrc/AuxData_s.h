@@ -1,0 +1,10 @@
+ #pragma once
+#include "MASTER.h"
+#include "GLOBAL.h"
+#include "ThirdPartyHeadersBegin.h"
+#include <boost/make_shared.hpp>
+#include <boost/shared_ptr.hpp>
+#include <vector>
+#include "ThirdPartyHeadersEnd.h"
+#include "fileio.h"
+struct AuxData_s { typedef boost::shared_ptr<AuxData_s> Ptr; struct AuxDataItem { AuxDataItem(AuxDataType_e auxDataType, ___372 ___3359, std::string const& ___2683, std::string const& value) : m_auxDataType(auxDataType) , m_retain(___3359) , ___2493(___2683) , ___2665(value) {} AuxDataType_e m_auxDataType; ___372 m_retain; std::string ___2493; std::string ___2665; AuxDataItem() {} void writeToFile(tecplot::___3931::FileWriterInterface& outputFile, bool ___4477) const { tecplot::tecioszl::writeScalar(outputFile, (uint32_t)m_auxDataType, ___4477); tecplot::tecioszl::writeScalar(outputFile, m_retain, ___4477); tecplot::tecioszl::___4541(outputFile, ___2493, ___4477); tecplot::tecioszl::___4541(outputFile, ___2665, ___4477); } uint64_t sizeInFile(bool ___4477) const { return tecplot::tecioszl::scalarSizeInFile((uint32_t)m_auxDataType, ___4477) + tecplot::tecioszl::scalarSizeInFile(m_retain, ___4477) + tecplot::tecioszl::stringSizeInFile(___2493, ___4477) + tecplot::tecioszl::stringSizeInFile(___2665, ___4477); } AuxDataItem(tecplot::___3931::___1397& inputFile, bool readASCII) { READ_ENUM(m_auxDataType, AuxDataType_e, inputFile, readASCII); tecplot::tecioszl::readScalar(inputFile, m_retain, readASCII); tecplot::tecioszl::readString(inputFile, ___2493, readASCII); tecplot::tecioszl::readString(inputFile, ___2665, readASCII); } }; std::vector<AuxDataItem> m_auxDataItems; AuxData_s() {} void writeToFile(tecplot::___3931::FileWriterInterface& outputFile, bool ___4477) const { tecplot::tecioszl::writeVectorOfObjects(outputFile, m_auxDataItems, ___4477); } uint64_t sizeInFile(bool ___4477) const { return tecplot::tecioszl::vectorOfObjectsSizeInFile(m_auxDataItems, ___4477); } static Ptr makePtr(tecplot::___3931::___1397& inputFile, bool readASCII) { Ptr ___3356 = boost::make_shared<AuxData_s>(); tecplot::tecioszl::readVectorOfObjects(inputFile, ___3356->m_auxDataItems, readASCII); return ___3356; } };
