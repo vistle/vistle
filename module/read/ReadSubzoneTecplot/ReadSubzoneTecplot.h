@@ -12,6 +12,7 @@ public:
 
 private:
     static const int NumPorts = 5;
+    int numFiles = 0;
     void *fileHandle;
 
 #if 0
@@ -34,10 +35,12 @@ private:
     std::unordered_map<std::string, std::vector<size_t>> findSimilarStrings(const std::vector<std::string> &strings);
     //template<typename T>
     vistle::StructuredGrid::ptr createStructuredGrid(void *fileHandle, int32_t inputZone);
-    vistle::StringParameter *m_filename;
+    bool inspectDir();
+    vistle::StringParameter *m_filedir;
     vistle::Port *m_grid = nullptr;
     vistle::StringParameter *m_fieldChoice[NumPorts];
     vistle::Port *m_fieldsOut[NumPorts];
+    std::vector<std::string> fileList;
 };
 } // namespace vistle
 #endif
