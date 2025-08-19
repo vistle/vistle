@@ -11,6 +11,7 @@
 #include "topo.h"
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 // Includes from TecIO library
 //#include <TECIO.h>
 // add TecIO library to ./lib/3rdparty before compiling
@@ -20,6 +21,11 @@
 //#include <iag/stringutil.h>
 //#include <iag/tool.h>
 >>>>>>> a4e5dc83 (New reader for subzone Tecplot (.szplt))
+=======
+// Includes from TecIO library
+//#include <TECIO.h>
+// add TecIO library to ./lib/3rdparty before compiling
+>>>>>>> 0a328e4ca4839a30a171cceeb8087331664e992f
 
 #include <fstream>
 #include <iostream>
@@ -31,11 +37,17 @@
 #include <exception>
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 //Include TecIO for szPLot:
 //include <TECIO.h>
 
 =======
 >>>>>>> a4e5dc83 (New reader for subzone Tecplot (.szplt))
+=======
+//Include TecIO for szPLot:
+//include <TECIO.h>
+
+>>>>>>> 0a328e4ca4839a30a171cceeb8087331664e992f
 
 #if defined(HAVE_STDINT_H)
 #include <stdint.h>
@@ -160,6 +172,9 @@ T SzTecplotFile::Impl::byteswap(T iVal)
 bool SzTecplotFile::Impl::open(std::string const &iFileName)
 {
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 0a328e4ca4839a30a171cceeb8087331664e992f
     //const std::string filename = m_filename->getValue();
     // size_t numZones = 0;
     // size_t test = 5;
@@ -236,6 +251,7 @@ bool SzTecplotFile::Impl::open(std::string const &iFileName)
     //         return false;
     //     }
     // }
+<<<<<<< HEAD
 =======
     if (mStream.is_open())
         mStream.close();
@@ -304,6 +320,8 @@ bool SzTecplotFile::Impl::open(std::string const &iFileName)
         }
     }
 >>>>>>> a4e5dc83 (New reader for subzone Tecplot (.szplt))
+=======
+>>>>>>> 0a328e4ca4839a30a171cceeb8087331664e992f
     return true;
 }
 

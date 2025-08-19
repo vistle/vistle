@@ -164,6 +164,7 @@ bool TecplotFile::Impl::open(std::string const &iFileName)
     if (std::strncmp(versionString, "#!TDV", 5)) {
          std::cerr << "No tecplot binary file.\n";
          return false;
+<<<<<<< HEAD
 =======
     // if (std::strncmp(versionString, "#!TDV", 5) || 
     //     std::strncmp(versionString, "#!SZPLT ", 7)) {
@@ -181,6 +182,8 @@ bool TecplotFile::Impl::open(std::string const &iFileName)
         std::cerr << "No tecplot binary file.\n";
         return false;
 >>>>>>> a4e5dc83 (New reader for subzone Tecplot (.szplt))
+=======
+>>>>>>> 0a328e4ca4839a30a171cceeb8087331664e992f
     }
     mVersion = 0;
     if (isdigit(versionString[5]))
@@ -212,12 +215,16 @@ bool TecplotFile::Impl::open(std::string const &iFileName)
     if (endianTest != 1) {
         if (endianTest == 16777216) {
 <<<<<<< HEAD
+<<<<<<< HEAD
             mOtherEndian = true; 
 =======
             mOtherEndian = true;
         //} else if (endianTest == 1110782001) {  //endianTest for .szplt -> leads to process abortion
         //    mOtherEndian = true;  
 >>>>>>> a4e5dc83 (New reader for subzone Tecplot (.szplt))
+=======
+            mOtherEndian = true; 
+>>>>>>> 0a328e4ca4839a30a171cceeb8087331664e992f
         } else {
             std::cerr << "Illegal endianness test value.\n";
             return false;
