@@ -37,10 +37,10 @@ Transform::Transform(const std::string &name, int moduleID, mpi::communicator co
     data_out = createOutputPort("data_out", "output data");
     linkPorts(data_in, data_out);
 
+    p_translate = addVectorParameter("translate", "translation vector", ParamVector(0., 0., 0.));
+    p_scale = addVectorParameter("scale", "scaling factors", ParamVector(1., 1., 1.));
     p_rotation_axis_angle =
         addVectorParameter("rotation_axis_angle", "axis and angle of rotation", ParamVector(1., 0., 0., 0.));
-    p_scale = addVectorParameter("scale", "scaling factors", ParamVector(1., 1., 1.));
-    p_translate = addVectorParameter("translate", "translation vector", ParamVector(0., 0., 0.));
 
     p_keep_original = addIntParameter("keep_original", "whether to keep input", 0, Parameter::Boolean);
     p_repetitions = addIntParameter("repetitions", "how often the transformation should be repeated", 1);
@@ -166,10 +166,10 @@ bool Transform::compute()
     translateMat.col(3) << translate, 1;
 
     Matrix4 transform(Matrix4::Identity());
-    transform *= scaleMat;
-    transform *= mirrorMat;
-    transform *= rotMat;
     transform *= translateMat;
+    transform *= rotMat;
+    transform *= mirrorMat;
+    transform *= scaleMat;
 
     int repetitions = p_repetitions->getValue();
     int timestep = split.timestep;
