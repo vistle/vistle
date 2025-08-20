@@ -70,7 +70,7 @@ ReadSubzoneTecplot::~ReadSubzoneTecplot()
     tecFileReaderClose(&fileHandle);
 }
 
-bool ReadSubzoneTecplot::examine(const vistle::Parameter *param) //examine is not executed why?
+bool ReadSubzoneTecplot::examine(const vistle::Parameter *param)
 {
     std::cout << "examine called" << std::endl;
     if (param != nullptr || param == m_filedir) {
@@ -138,6 +138,7 @@ bool ReadSubzoneTecplot::examine(const vistle::Parameter *param) //examine is no
                 std::cerr << "Tecplot Module is just defined for structured grids " << std::endl;
                 return false;
             }
+            solutionTimes = orderSolutionTimes(fileList);
             tecFileReaderClose(&fileHandle);
         } catch (const std::exception &e) {
             std::cerr << "failed to read number of Variables and Zones of " << filename << ": " << e.what() << '\n';
@@ -477,6 +478,52 @@ bool ReadSubzoneTecplot::inspectDir()
     return true;
 }
 
+std::unordered_map<int, double> ReadSubzoneTecplot::orderSolutionTimes(std::vector<std::string> fileList) {
+    std::vector<std::pair<double, int>> solutionTimeTimestepPairs;
+
+    // Collect all solution times and their corresponding timesteps
+    for (const auto &file : fileList) {
+        try {
+            tecFileReaderOpen(file.c_str(), &fileHandle);
+
+            int32_t numZones = 0;
+            tecDataSetGetNumZones(fileHandle, &numZones);
+
+            for (int32_t zone = 1; zone <= numZones; ++zone) {
+                double solutionTime = 0.0;
+                tecZoneGetSolutionTime(fileHandle, zone, &solutionTime);
+                solutionTimeTimestepPairs.emplace_back(solutionTime, solutionTimeTimestepPairs.size());
+            }
+
+            tecFileReaderClose(&fileHandle);
+        } catch (const std::exception &e) {
+            sendError("Failed to read solution time from file %s: %s", file.c_str(), e.what());
+        }
+    }
+
+    // Sort and create the mapping in one step
+    std::unordered_map<int, double> orderedSolutionTimes;
+    std::sort(solutionTimeTimestepPairs.begin(), solutionTimeTimestepPairs.end());
+
+    for (size_t i = 0; i < solutionTimeTimestepPairs.size(); ++i) {
+        orderedSolutionTimes[i] = solutionTimeTimestepPairs[i].first;
+    }
+
+    return orderedSolutionTimes;
+}
+
+int ReadSubzoneTecplot::getTimestepForSolutionTime(std::unordered_map<int, double> &orderedSolutionTimes, double solutionTime) {
+    auto it = std::lower_bound(orderedSolutionTimes.begin(), orderedSolutionTimes.end(), solutionTime,
+                               [](const std::pair<int, double> &pair, double value) {
+                                   return pair.second < value; // Compare solution time
+                               });
+
+    if (it != orderedSolutionTimes.end() && it->second == solutionTime) {
+        return it->first; // Return the timestep if the solution time matches
+    }
+    return -1; // Return -1 if the solution time is not found
+}
+
 bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
 {
     // TODO: Update when surface and  valume dat is read at once
@@ -499,11 +546,12 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
             strGrid = ReadSubzoneTecplot::createStructuredGrid(fileHandle, zone);
             auto solutionTime = 0.0;
             tecZoneGetSolutionTime(fileHandle, zone, &solutionTime);
-            strGrid->setTimestep(timestep);
+            int step = getTimestepForSolutionTime(solutionTimes, solutionTime);
+            strGrid->setTimestep(step);
             strGrid->setMapping(
                 vistle::DataBase::Vertex); // set mapping to vertex, because coordinates are vertex-centered
             std::cout << "reading zone number " << zone << " of " << numZones << " zones" << std::endl;
-            std::cout << "timestep: " << timestep << std::endl;
+            std::cout << "timestep: " << step << std::endl;
             std::cout << "solution time: " << solutionTime << std::endl;
             token.applyMeta(strGrid);
             token.addObject(m_grid, strGrid);
