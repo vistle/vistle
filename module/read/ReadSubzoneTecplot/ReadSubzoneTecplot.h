@@ -30,7 +30,7 @@ private:
                      const std::unordered_map<std::string, std::vector<size_t>> &indicesCombinedVariables,
                      void *fileHandle) const;
     template<typename T = float>
-    Vec<Scalar, 1>::ptr combineVarstoOneOutput(std::vector<T> x, std::vector<T> y, std::vector<T> z, int32_t numValues);
+    Vec<Scalar, 3>::ptr combineVarstoOneOutput(std::vector<T> x, std::vector<T> y, std::vector<T> z, int32_t numValues);
     bool emptyValue(vistle::StringParameter *ch) const;
     std::unordered_map<std::string, std::vector<size_t>> findSimilarStrings(const std::vector<std::string> &strings);
     //template<typename T>

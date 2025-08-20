@@ -79,7 +79,6 @@ bool ReadSubzoneTecplot::examine(const vistle::Parameter *param)
             sendError("Directory %s does not exist or is not valid", m_filedir->getValue().c_str());
             return false;
         }
-        sendInfo("File %s is used as base", fileList.front().c_str());
 
         const std::string filename = fileList.front().c_str();
         try {
@@ -292,10 +291,10 @@ StructuredGrid::ptr ReadSubzoneTecplot::createStructuredGrid(void *fileHandle, i
 }
 
 template<typename T>
-Vec<Scalar, 1>::ptr ReadSubzoneTecplot::combineVarstoOneOutput(std::vector<T> x, std::vector<T> y, std::vector<T> z,
+Vec<Scalar, 3>::ptr ReadSubzoneTecplot::combineVarstoOneOutput(std::vector<T> x, std::vector<T> y, std::vector<T> z,
                                                                int32_t numValues)
 { //TODO: set variables that begin the same and end X, Y, Z to a combined field
-    Vec<Scalar, 1>::ptr result(new Vec<Scalar, 1>(numValues));
+    Vec<Scalar, 3>::ptr result(new Vec<Scalar, 3>(numValues));
     // Ensure all vectors have the same size
     if (x.size() != y.size() || y.size() != z.size()) {
         throw std::invalid_argument("Input vectors must have the same size");
@@ -626,7 +625,7 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
                                                      &yValues[0]);
                             tecZoneVarGetFloatValues(fileHandle, zone, varInFile[2], startIndex, numValues,
                                                      &zValues[0]);
-                            Vec<Scalar, 1>::ptr field =
+                            Vec<Scalar, 3>::ptr field =
                                 combineVarstoOneOutput<float>(xValues, yValues, zValues, numValues);
                             if (field) {
                                 field->addAttribute(vistle::attribute::Species, name);
