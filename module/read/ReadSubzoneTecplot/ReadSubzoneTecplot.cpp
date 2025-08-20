@@ -138,7 +138,8 @@ bool ReadSubzoneTecplot::examine(const vistle::Parameter *param)
                 std::cerr << "Tecplot Module is just defined for structured grids " << std::endl;
                 return false;
             }
-            solutionTimes = orderSolutionTimes(fileList);
+            // comment in for files that have no ordered filenames
+            //solutionTimes = orderSolutionTimes(fileList);
             tecFileReaderClose(&fileHandle);
         } catch (const std::exception &e) {
             std::cerr << "failed to read number of Variables and Zones of " << filename << ": " << e.what() << '\n';
@@ -546,12 +547,12 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
             strGrid = ReadSubzoneTecplot::createStructuredGrid(fileHandle, zone);
             auto solutionTime = 0.0;
             tecZoneGetSolutionTime(fileHandle, zone, &solutionTime);
-            int step = getTimestepForSolutionTime(solutionTimes, solutionTime);
-            strGrid->setTimestep(step);
+            //int step = getTimestepForSolutionTime(solutionTimes, solutionTime);
+            strGrid->setTimestep(timestep);
             strGrid->setMapping(
                 vistle::DataBase::Vertex); // set mapping to vertex, because coordinates are vertex-centered
             std::cout << "reading zone number " << zone << " of " << numZones << " zones" << std::endl;
-            std::cout << "timestep: " << step << std::endl;
+            std::cout << "timestep: " << timestep << std::endl;
             std::cout << "solution time: " << solutionTime << std::endl;
             token.applyMeta(strGrid);
             token.addObject(m_grid, strGrid);
