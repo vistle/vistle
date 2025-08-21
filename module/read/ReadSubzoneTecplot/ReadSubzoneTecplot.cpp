@@ -129,7 +129,6 @@ bool ReadSubzoneTecplot::examine(const vistle::Parameter *param)
             // Check zone type for each zone
             // 0 = ordered, 1 = line segment, 2 = triangle, 3 = quadrilateral, 4 = tetraheddron, 5 = brick,
             // 6 = polygon, 7 = polyhedron, 8  = Mixed(not used)
-            // TODO: implement function to check zone type for a specified zone and puts out a understandable string
             for (int32_t inputZone = 1; inputZone <= numZones; ++inputZone) {
                 // Retrieve zone characteristics
                 //int32_t zoneType;
@@ -157,7 +156,6 @@ bool ReadSubzoneTecplot::examine(const vistle::Parameter *param)
 // 6 = polygon, 7 = polyhedron, 8  = Mixed(not used)
 Byte ReadSubzoneTecplot::tecToVistleType(int tecType)
 {
-    //TODO: add support for bilinear and nonlinear HOPR cell types
     switch (tecType) {
     //case 0:
     //    return StructuredGrid;
@@ -185,48 +183,51 @@ Byte ReadSubzoneTecplot::tecToVistleType(int tecType)
 }
 
 
-template<typename T>
 Vec<Scalar, 1>::ptr ReadSubzoneTecplot::readVariables(void *fileHandle, int32_t numValues, int32_t inputZone,
                                                       int32_t var)
 {
-    //template<typename T>
-    //void ReadSubzoneTecplot::readVariables(std::vector<T> &values, void* fileHandle, int32_t numValues, int32_t inputZone, int32_t var) {
-    std::vector<T> values(numValues, T()); // Initialize with default values
-    // Read and write var data with specified chunk size
-    //for (size_t i = 0; i < numValues; i++)
-    //{
-    //t64_t numValuesToRead = std::min(numValuesPerRead, numValues - numValuesRead);
     int32_t varType;
     tecZoneVarGetType(fileHandle, inputZone, var, &varType);
     Vec<Scalar, 1>::ptr field(new Vec<Scalar, 1>(numValues));
     switch ((FieldDataType_e)varType) {
     case FieldDataType_Float: {
-        //std::vector<float> values(numValuesPerRead);
-
+        std::vector<float> values(numValues);
         tecZoneVarGetFloatValues(fileHandle, inputZone, var, 1, numValues, &values[0]);
-        for (int64_t i = 0; i < numValues; i++) {
+        for (size_t i = 0; i < numValues; i++) {
             field->x()[i] = values[i];
         }
     } break;
     case FieldDataType_Double: {
-        //std::vector<double> values(numValuesPerRead);
+        std::vector<double> values(numValues);
         tecZoneVarGetDoubleValues(fileHandle, inputZone, var, 1, numValues, &values[0]);
+        for (size_t i = 0; i < numValues; i++) {
+            field->x()[i] = values[i];
+        }
     } break;
     case FieldDataType_Int32: {
-        //std::vector<int32_t> values(numValuesPerRead);
+        std::vector<int32_t> values(numValues);
         tecZoneVarGetInt32Values(fileHandle, inputZone, var, 1, numValues, &values[0]);
+        for (size_t i = 0; i < numValues; i++) {
+            field->x()[i] = values[i];
+        }
     } break;
     case FieldDataType_Int16: {
-        //std::vector<int16_t> values(numValuesPerRead);
+        std::vector<int16_t> values(numValues);
         tecZoneVarGetInt16Values(fileHandle, inputZone, var, 1, numValues, &values[0]);
+        for (size_t i = 0; i < numValues; i++) {
+            field->x()[i] = values[i];
+        }
     } break;
     case FieldDataType_Byte: {
-        //std::vector<uint8_t> values(numValuesPerRead);
+        std::vector<uint8_t> values(numValues);
         tecZoneVarGetUInt8Values(fileHandle, inputZone, var, 1, numValues, &values[0]);
+        for (size_t i = 0; i < numValues; i++) {
+            field->x()[i] = values[i];
+        }
     }
     } // close switch
 
-    return field;
+   return field;
 }
 
 //template<typename T>
@@ -270,12 +271,8 @@ StructuredGrid::ptr ReadSubzoneTecplot::createStructuredGrid(void *fileHandle, i
     case FieldDataType_Float: {
         std::vector<float> values(numValues);
         int32_t var = 1;
-        //File Handle, Zone Index, // Variable Index, Start Index,
-        // Number of Values
         tecZoneVarGetFloatValues(fileHandle, inputZone, var, startIndex, numValues, &values[0]);
         xCoords.resize(values.size());
-        //xCoords.resize(xCoords.size() + values.size());
-        //std::copy(values.begin(), values.end(), xCoords.begin() + xlastNumValues);
         std::copy(values.begin(), values.end(), xCoords.begin());
         var = 2;
         tecZoneVarGetNumValues(fileHandle, inputZone, var, &numValues);
@@ -588,8 +585,6 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
             token.applyMeta(strGrid);
             token.addObject(m_grid, strGrid);
 
-            // TODO: define function that gives understandable strings for tecFileType
-
             //Define options of variable ports
             auto indices = setFieldChoices(fileHandle);
 
@@ -610,20 +605,8 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
 
                         if (varInFile.size() == 1) {
                             tecZoneVarGetNumValues(fileHandle, zone, varInFile[0], &numValues);
-                            std::vector<float> values(
-                                numValues); //TODO: change to template type T (! does not work in read method but in seperate function)
-                            int startIndex = 1;
-                            // TODO: update readVariables method to output a Vec<Scalar, 1> object
-                            //Vec<Scalar, 1>::ptr field = readVariables(fileHandle, numValues, zone, var);
-                            tecZoneVarGetFloatValues(fileHandle, zone, varInFile[0], startIndex, numValues, &values[0]);
-
+                            Vec<Scalar, 1>::ptr field = readVariables(fileHandle, numValues, zone, varInFile[0]);
                             std::cout << "Variable name in file: " << varName << std::endl;
-                            // copy data to the output vector
-                            Vec<Scalar, 1>::ptr field(new Vec<Scalar, 1>(numValues));
-                            for (size_t i = 0; i < numValues; i++) {
-                                field->x()[i] = values[i];
-                                //std::cout << "field->x()[" << i << "]: " << field->x()[i] << std::endl;
-                            }
 
                             if (field) {
                                 field->addAttribute(vistle::attribute::Species, name);

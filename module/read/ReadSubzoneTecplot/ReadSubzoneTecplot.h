@@ -23,7 +23,6 @@ private:
     bool examine(const vistle::Parameter *param) override;
     bool read(Token &token, int timestep, int block) override;
     Byte tecToVistleType(int tecType);
-    template<typename T = float>
     Vec<Scalar, 1>::ptr readVariables(void *fileHandle, int32_t numValues, int32_t inputZone, int32_t var);
     std::unordered_map<std::string, std::vector<size_t>> setFieldChoices(void *fileHandle);
     std::vector<int>
