@@ -256,66 +256,20 @@ StructuredGrid::ptr ReadSubzoneTecplot::createStructuredGrid(void *fileHandle, i
     std::cout << "vertex y: " << m_numVert_y << " " << std::endl;
     std::cout << "vertex z: " << m_numVert_z << " " << std::endl;
 
-    // TODO: change for more than structured gird (zoneType=0)
+    // TODO: change for more than structured gird (zoneType=0) -> test data needed
     // Read the number of values for each variable
     int64_t numValues;
     int32_t var = 1;
     tecZoneVarGetNumValues(fileHandle, inputZone, var, &numValues);
     // Read the coordinates
-    std::vector<double> result;
-    //ReadSubzoneTecplot::readVariables(result, fileHandle, numValues, inputZone, var);
-    // TODO: modify other cases so that they work like the float case and refactor
-    int32_t varType;
-    tecZoneVarGetType(fileHandle, inputZone, var, &varType);
-    switch ((FieldDataType_e)varType) {
-    case FieldDataType_Float: {
-        std::vector<float> values(numValues);
-        int32_t var = 1;
-        tecZoneVarGetFloatValues(fileHandle, inputZone, var, startIndex, numValues, &values[0]);
-        xCoords.resize(values.size());
-        std::copy(values.begin(), values.end(), xCoords.begin());
-        var = 2;
-        tecZoneVarGetNumValues(fileHandle, inputZone, var, &numValues);
-        tecZoneVarGetFloatValues(fileHandle, inputZone, var, startIndex, numValues, &values[0]);
-        yCoords.resize(values.size());
-        std::copy(values.begin(), values.end(), yCoords.begin());
-        var = 3;
-        tecZoneVarGetNumValues(fileHandle, inputZone, var, &numValues);
-        tecZoneVarGetFloatValues(fileHandle, inputZone, var, startIndex, numValues, &values[0]);
-        zCoords.resize(values.size());
-        std::copy(values.begin(), values.end(), zCoords.begin());
-        // Show test values from x andd x and y variables
-        for (int i = 0; i < 1; ++i) {
-            std::cout << "x size: " << xCoords.size() << " " << std::endl;
-            std::cout << "y size: " << yCoords.size() << " " << std::endl;
-            std::cout << "z size: " << zCoords.size() << " " << std::endl;
-        }
-    } break;
-    case FieldDataType_Double: {
-        std::vector<double> values(numValues);
-        var = 1;
-        tecZoneVarGetDoubleValues(fileHandle, inputZone, var, startIndex, numValues, &values[0]);
-        //ptrXcoords = values.data();
-        var = 2;
-        tecZoneVarGetDoubleValues(fileHandle, inputZone, var, startIndex, numValues, &values[0]);
-        //ptrYcoords = values.data();
-        var = 3;
-        tecZoneVarGetDoubleValues(fileHandle, inputZone, var, startIndex, numValues, &values[0]);
-        //ptrZcoords = values.data();
-    } break;
-    case FieldDataType_Int32: {
-        std::vector<int32_t> values(numValues);
-        tecZoneVarGetInt32Values(fileHandle, inputZone, var, startIndex, numValues, &values[0]);
-    } break;
-    case FieldDataType_Int16: {
-        std::vector<int16_t> values(numValues);
-        tecZoneVarGetInt16Values(fileHandle, inputZone, var, startIndex, numValues, &values[0]);
-    } break;
-    case FieldDataType_Byte: {
-        std::vector<uint8_t> values(numValues);
-        tecZoneVarGetUInt8Values(fileHandle, inputZone, var, startIndex, numValues, &values[0]);
-    }
-    } // close switch
+    Vec<Scalar, 1>::ptr field = readVariables(fileHandle, numValues, inputZone, var);
+    std::copy(field->x().begin(), field->x().end(), xCoords.begin());
+    var = 2;
+    field = readVariables(fileHandle, numValues, inputZone, var);
+    std::copy(field->x().begin(), field->x().end(), yCoords.begin());
+    var = 3;
+    field = readVariables(fileHandle, numValues, inputZone, var);
+    std::copy(field->x().begin(), field->x().end(), zCoords.begin());
 
     return str_grid;
 }
