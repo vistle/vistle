@@ -1,7 +1,4 @@
 #include "ReadSubzoneTecplot.h"
-#include "topo.h"
-#include "mesh.h"
-#include "sztecplotfile.h"
 
 #include <boost/algorithm/string/predicate.hpp>
 
