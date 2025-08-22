@@ -29,15 +29,19 @@ private:
     getIndexOfTecVar(const std::string &varName,
                      const std::unordered_map<std::string, std::vector<size_t>> &indicesCombinedVariables,
                      void *fileHandle) const;
-    template<typename T = float>
-    Vec<Scalar, 3>::ptr combineVarstoOneOutput(std::vector<T> x, std::vector<T> y, std::vector<T> z, int32_t numValues);
+    Vec<Scalar, 3>::ptr combineVarstoOneOutput(Vec<Scalar, 1>::ptr x, Vec<Scalar, 1>::ptr y, Vec<Scalar, 1>::ptr z,
+                                                               int32_t numValues);
     bool emptyValue(vistle::StringParameter *ch) const;
     std::unordered_map<std::string, std::vector<size_t>> findSimilarStrings(const std::vector<std::string> &strings);
-    //template<typename T>
+
     vistle::StructuredGrid::ptr createStructuredGrid(void *fileHandle, int32_t inputZone);
     bool inspectDir();
+
+    // orderSolutionTimes and getTimestepForSolutionTime can be used to order the solution times in the fileList
+    // if the times are not given in the file names.
     std::unordered_map<int, double> orderSolutionTimes(std::vector<std::string> fileList);
     int getTimestepForSolutionTime(std::unordered_map<int, double> &orderedSolutionTimes, double solutionTime);
+
     vistle::StringParameter *m_filedir;
     vistle::Port *m_grid = nullptr;
     vistle::StringParameter *m_fieldChoice[NumPorts];
