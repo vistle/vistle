@@ -161,8 +161,8 @@ bool TecplotFile::Impl::open(std::string const &iFileName)
     char versionString[8];
     mStream.read(versionString, sizeof(versionString));
     if (std::strncmp(versionString, "#!TDV", 5)) {
-         std::cerr << "No tecplot binary file.\n";
-         return false;
+        std::cerr << "No tecplot binary file.\n";
+        return false;
     }
     mVersion = 0;
     if (isdigit(versionString[5]))
@@ -193,7 +193,7 @@ bool TecplotFile::Impl::open(std::string const &iFileName)
     int endianTest = fetchInt32();
     if (endianTest != 1) {
         if (endianTest == 16777216) {
-            mOtherEndian = true; 
+            mOtherEndian = true;
         } else {
             std::cerr << "Illegal endianness test value.\n";
             return false;

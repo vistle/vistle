@@ -1,5 +1,5 @@
-#ifndef VISTLE_READSUBZONETECPLOT_READIAGTECPLOT_H
-#define VISTLE_READSUBZONETECPLOT_READIAGTECPLOT_H
+#ifndef VISTLE_READSUBZONETECPLOT_READSUBZONETECPLOT_H
+#define VISTLE_READSUBZONETECPLOT_READSUBZONETECPLOT_H
 
 #include <vistle/module/reader.h>
 #include <vistle/core/structuredgrid.h>
@@ -30,7 +30,7 @@ private:
                      const std::unordered_map<std::string, std::vector<size_t>> &indicesCombinedVariables,
                      void *fileHandle) const;
     Vec<Scalar, 3>::ptr combineVarstoOneOutput(Vec<Scalar, 1>::ptr x, Vec<Scalar, 1>::ptr y, Vec<Scalar, 1>::ptr z,
-                                                               int32_t numValues);
+                                               int32_t numValues);
     bool emptyValue(vistle::StringParameter *ch) const;
     std::unordered_map<std::string, std::vector<size_t>> findSimilarStrings(const std::vector<std::string> &strings);
 
