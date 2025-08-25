@@ -13,7 +13,7 @@ public:
 private:
     static const int NumPorts = 5;
     int numFiles = 0;
-    void *fileHandle;
+    // void *fileHandle; commenting to avoid a shared file handle -> gets clobbered by recurrent reads during parallel processing
 
 #if 0
    bool changeParameter(const vistle::Parameter *p) override;
