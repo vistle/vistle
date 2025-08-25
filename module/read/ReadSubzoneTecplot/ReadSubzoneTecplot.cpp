@@ -71,7 +71,7 @@ ReadSubzoneTecplot::~ReadSubzoneTecplot()
 bool ReadSubzoneTecplot::examine(const vistle::Parameter *param)
 {
     std::cout << "examine called" << std::endl;
-    if (param != nullptr || param == m_filedir) {
+    if (!param || param == m_filedir) {
         // Check if the directory is valid
         if (!inspectDir()) {
             sendError("Directory %s does not exist or is not valid", m_filedir->getValue().c_str());
