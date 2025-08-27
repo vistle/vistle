@@ -23,16 +23,16 @@ private:
    bool changeParameter(const vistle::Parameter *p) override;
    bool prepare() override;
 #endif
-
     bool examine(const vistle::Parameter *param) override;
     bool read(Token &token, int timestep, int block) override;
     Byte tecToVistleType(int tecType);
-    Vec<Scalar, 1>::ptr readVariables(void *fileHandle, int64_t numValues, int32_t inputZone, int32_t var); //modified int32_t -> int64_t (numValues) so huge zones dont overflow 32bit
+    Vec<Scalar, 1>::ptr
+    readVariables(void *fileHandle, int64_t numValues, int32_t inputZone,
+                  int32_t var); //modified int32_t -> int64_t (numValues) so huge zones dont overflow 32bit
     std::unordered_map<std::string, std::vector<int>> setFieldChoices(void *fileHandle);
-    std::vector<int>
-    getIndexOfTecVar(const std::string &varName,
-                     const std::unordered_map<std::string, std::vector<int>> &indicesCombinedVariables,
-                     void *fileHandle) const;
+    std::vector<int> getIndexOfTecVar(const std::string &varName,
+                                      const std::unordered_map<std::string, std::vector<int>> &indicesCombinedVariables,
+                                      void *fileHandle) const;
     Vec<Scalar, 3>::ptr combineVarstoOneOutput(Vec<Scalar, 1>::ptr x, Vec<Scalar, 1>::ptr y, Vec<Scalar, 1>::ptr z,
                                                int32_t numValues);
     bool emptyValue(vistle::StringParameter *ch) const;
@@ -55,11 +55,14 @@ private:
     std::vector<std::string> fileList;
     std::unordered_map<int, double> solutionTimes; // maps timestep to solution time
 
-    
-    std::unordered_map<std::string, std::vector<int>> m_indicesCombinedVariables; //cached combined variable indices for parallel-safe reads
 
-    
+    std::unordered_map<std::string, std::vector<int>>
+        m_indicesCombinedVariables; //cached combined variable indices for parallel-safe reads
+
+
     std::vector<std::string> m_varChoices; // cached choice labels
+
+    double time1; // Record start time for debugging MPI issues
 };
 } // namespace vistle
 #endif
