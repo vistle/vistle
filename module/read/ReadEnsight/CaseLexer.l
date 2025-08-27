@@ -58,6 +58,13 @@ gold[ \t]* {
     return( CaseParser::token::ENSIGHT_GOLD );
 }
 
+SCRIPTS[ \t]* {
+    return( CaseParser::token::SCRIPTS_SEC );
+}
+
+metadata[ \t]*: {
+    return( CaseParser::token::METADATA );
+}
 
 GEOMETRY[ \t]* {
     return( CaseParser::token::GEOMETRY_SEC );
