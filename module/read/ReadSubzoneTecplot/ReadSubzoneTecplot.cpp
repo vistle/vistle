@@ -726,22 +726,20 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
                     if (varInFile.size() == 1) {
                         tecZoneVarGetNumValues(fh, zone, varInFile[0], &numValues);
 
-                        Vec<Scalar, 1>::ptr field = readVariables(fh, numValues, zone, varInFile[0]);
-                        std::cout << "Variable name in file: " << (varName ? varName : "(null)") << std::endl;
-
-                        if (field) {
-                            // 0 = nodal (vertex), 1 = cell-centered (element)
+                        auto field = std::make_shared<Vec<Scalar, 1>>(numValues);
+                        if (!readVarIntoScalarArray(fh, zone, varInFile[0], field->x().data(), numValues)) {
+                            std::cerr << "Failed to read variable '" << name << "' var#" << varInFile[0] << "\n";
+                        } else {
                             int32_t loc = 0;
                             tecZoneVarGetValueLocation(fh, zone, varInFile[0], &loc);
 
                             field->addAttribute(vistle::attribute::Species, name);
-                            field->setMapping(loc == 0 ? vistle::DataBase::Vertex
-                                                    : vistle::DataBase::Element);
+                            field->setMapping(loc == 0 ? vistle::DataBase::Vertex : vistle::DataBase::Element);
                             field->setGrid(strGrid);
                             token.applyMeta(field);
-                            std::cout << "Accessing m_fieldsOut at index: " << var << std::endl;
                             token.addObject(m_fieldsOut[var], field);
                         }
+
 
                         if (varName) tecStringFree(&varName); // free in all paths
 
@@ -750,16 +748,26 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
                         std::cout << "Reading combined variable: " << name << " on port: " << var << std::endl;
 
                         tecZoneVarGetNumValues(fh, zone, varInFile[0], &numValues);
-                        const int startIndex = 1;
 
-                        std::vector<float> xValues(numValues), yValues(numValues), zValues(numValues);
-                        tecZoneVarGetFloatValues(fh, zone, varInFile[0], startIndex, numValues, xValues.data());
-                        tecZoneVarGetFloatValues(fh, zone, varInFile[1], startIndex, numValues, yValues.data());
-                        tecZoneVarGetFloatValues(fh, zone, varInFile[2], startIndex, numValues, zValues.data());
+                            std::vector<Scalar> vx(numValues), vy(numValues), vz(numValues);
+                            if (!readVarIntoScalarArray(fh, zone, varInFile[0], vx.data(), numValues)) {
+                                std::cerr << "Failed to read X of vector '" << name << "'\n";
+                            }
+                            if (!readVarIntoScalarArray(fh, zone, varInFile[1], vy.data(), numValues)) {
+                                std::cerr << "Failed to read Y of vector '" << name << "'\n";
+                            }
+                            if (!readVarIntoScalarArray(fh, zone, varInFile[2], vz.data(), numValues)) {
+                                std::cerr << "Failed to read Z of vector '" << name << "'\n";
+                            }
 
-                        Vec<Scalar, 3>::ptr field = combineVarstoOneOutput(xValues, yValues, zValues, numValues);
-                        if (field) {
-                            // decide mapping from location of first component (all three *should* match)
+                            auto field = std::make_shared<Vec<Scalar, 3>>(numValues);
+                            for (int64_t i = 0; i < numValues; ++i) {
+                                field->x()[i] = vx[i];
+                                field->y()[i] = vy[i];
+                                field->z()[i] = vz[i];
+                            }
+
+                            // decide mapping from component locations (should match)
                             int32_t locX = 0, locY = 0, locZ = 0;
                             tecZoneVarGetValueLocation(fh, zone, varInFile[0], &locX);
                             tecZoneVarGetValueLocation(fh, zone, varInFile[1], &locY);
@@ -770,15 +778,13 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
                             }
 
                             field->addAttribute(vistle::attribute::Species, name);
-                            field->setMapping(locX == 0 ? vistle::DataBase::Vertex
-                                                        : vistle::DataBase::Element);
+                            field->setMapping(locX == 0 ? vistle::DataBase::Vertex : vistle::DataBase::Element);
                             field->setGrid(strGrid);
                             token.applyMeta(field);
                             token.addObject(m_fieldsOut[var], field);
                         }
 
                         if (varName) tecStringFree(&varName); // free here too
-                    }
 
                     } else {
                         std::cout << "Skipping variable: " << m_fieldChoice[var]->getValue() << " on position: " << var
