@@ -168,7 +168,7 @@ void ModuleView::appendMessage(int senderId, int type, QString text)
 {
     if (senderId != m_id)
         return;
-    std::cerr << "appendMessage: " << text.toStdString() << std::endl;
+    //std::cerr << "appendMessage: " << text.toStdString() << std::endl;
 
     m_messages.push_back({type, text});
 #if 1
