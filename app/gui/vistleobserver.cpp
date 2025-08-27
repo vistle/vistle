@@ -209,7 +209,7 @@ void gui::VistleObserver::info(const std::string &text, vistle::message::SendTex
     emit info_s(msg, textType);
 
     t += "<br>";
-    std::cerr << "HTML: " << t.toStdString() << std::endl;
+    //std::cerr << "HTML: " << t.toStdString() << std::endl;
     emit message_s(senderId, textType, t);
 }
 
