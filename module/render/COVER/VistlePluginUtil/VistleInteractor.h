@@ -141,9 +141,10 @@ private:
     void sendMessage(const vistle::message::Message &msg) const;
     void sendParamMessage(const std::shared_ptr<vistle::Parameter> param) const;
 
-    // clean up arrays allocated for getVectorParam
-    mutable std::vector<int *> intArrays;
-    mutable std::vector<float *> floatArrays;
+    // clean up arrays allocated for getVectorParam/getStringParam
+    mutable std::map<std::string, std::vector<int>> m_intVecParams;
+    mutable std::map<std::string, std::vector<float>> m_floatVecParams;
+    mutable std::map<std::string, std::string> m_stringParams;
 };
 
 #endif

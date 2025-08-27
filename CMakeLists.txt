@@ -504,10 +504,9 @@ endif()
 
 vistle_find_package(
     Boost
-    1.66
+    1.78
     REQUIRED
     COMPONENTS
-    system
     serialization
     program_options
     date_time
@@ -518,7 +517,11 @@ vistle_find_package(
     timer
     ${BOOST_REQ}
     OPTIONAL_COMPONENTS
+    system
     ${BOOST_OPT})
+if(NOT TARGET Boost::system)
+    add_library(Boost::system ALIAS Boost::boost)
+endif()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-command-line-argument")
@@ -721,7 +724,7 @@ macro(vistle_add_library targetname visibility)
            AND NOT "${targetname}" STREQUAL "simV2runtime_ser")
             message(WARNING " missing prefix for " ${targetname}": vistle libraries must be prefixed with vistle_")
         endif()
-    elseif() # change the vistle_libname to vistle::libname in exported target
+    else() # change the vistle_libname to vistle::libname in exported target
         string(REPLACE "vistle_" "" target_suffix ${targetname})
         set_target_properties(${targetname} PROPERTIES EXPORT_NAME ${target_suffix})
         add_library(vistle::${target_suffix} ALIAS ${targetname})

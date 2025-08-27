@@ -179,6 +179,7 @@ private:
         bool prepared = false, reduced = true;
         int busyCount = 0;
         // handling of outgoing messages
+        mutable std::mutex messageMutex; // mutex for message handling
         mutable bool blocked = false; // any message is blocking and cannot be sent right away
         mutable std::deque<message::Buffer> blockers; // queue of blocking messages
         mutable std::deque<MessageWithPayload> blockedMessages; // again, but with payload
