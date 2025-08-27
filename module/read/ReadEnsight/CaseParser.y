@@ -70,6 +70,7 @@ struct {
 // work with untyped tokens
 
 %token FORMAT_SEC TYPE GEOMETRY_SEC MODEL MEASURED MATCH CH_CO_ONLY VARIABLE_SEC CONSTANT COMPLEX
+%token SCRIPTS_SEC METADATA
 %token SCALAR VECTOR PER_CASE PER_NODE PER_ELEMENT TIME_SEC TIME_SET NUM_OF_STEPS
 %token FN_ST_NUM FN_INCR
 %token TIME_VAL IDENTIFIER POINT_IDENTIFIER INTEGER DOUBLE STRING FILENAME IPADDRESS
@@ -100,6 +101,7 @@ sect_key: FORMAT_SEC
         | VARIABLE_SEC
         | TIME_SEC
         | FILE_SEC
+        | SCRIPTS_SEC
 
 spec: spec_line
     | spec spec_line
@@ -111,6 +113,7 @@ spec_line: type_spec
          | ts_spec
          | fs_spec
          | const_spec
+         | scripts_spec
 
 
 ts_spec: ts_hdr ts_opts
@@ -606,6 +609,7 @@ const_spec: CONSTANT var_rela POINT_IDENTIFIER INTEGER
           | CONSTANT var_rela INTEGER IDENTIFIER INTEGER
           | CONSTANT var_rela INTEGER IDENTIFIER DOUBLE
 
+scripts_spec: METADATA any_identifier
 
 %%
 // end of rule definition
