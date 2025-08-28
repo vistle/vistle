@@ -1,4 +1,3 @@
-
 set(TECIO_SHARED FALSE)
 set(TECIO_MPI TRUE)
 include(tecio.cmake)
