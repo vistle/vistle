@@ -11,8 +11,10 @@
 #include <vistle/core/uniformgrid.h>
 #include <vistle/core/rectilineargrid.h>
 #include <vistle/core/structuredgrid.h>
+#include <boost/mpi/communicator.hpp>
 
 #include <vistle/util/filesystem.h>
+#include <vistle/util/stopwatch.h>
 
 //Include TecIO for szPlot
 #if !defined TECIOMPI
@@ -22,7 +24,6 @@
 #if defined TECIOMPI
 #include <mpi.h>
 #endif
-#include <iterator>
 
 using namespace vistle;
 namespace fs = vistle::filesystem;
@@ -129,6 +130,7 @@ ReadSubzoneTecplot::~ReadSubzoneTecplot() = default;
 
 bool ReadSubzoneTecplot::examine(const vistle::Parameter *param)
 {
+    StopWatch w("ReadSubzoneTecplot::examine");
     std::cout << "examine called" << std::endl;
     if (!param || param == m_filedir) { // FIX: correct guard
         if (!inspectDir()) {
@@ -138,7 +140,12 @@ bool ReadSubzoneTecplot::examine(const vistle::Parameter *param)
 
         const std::string filename = fileList.front(); // small cleanup
         try {
+<<<<<<< HEAD
             setTimesteps(numFiles - 1);
+=======
+       
+            setTimesteps(numFiles);
+>>>>>>> 2789e14a (Test commit)
 
             // compute a stable partition count across ALL timesteps ---
             int32_t maxZones = 0;
@@ -684,10 +691,16 @@ int ReadSubzoneTecplot::getTimestepForSolutionTime(std::unordered_map<int, doubl
 
 bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
 {
+<<<<<<< HEAD
     // Test timeing:
     //auto time2 = MPI_Wtime(); // Record start time for debugging MPI issues
     //std::cout << "time elapsed since construction: " << time2 - time1 << std::endl;
 
+=======
+    auto debugMsg = "ReadSubzoneTecplot::read_" + std::to_string(timestep) + "_" + std::to_string(block);
+    StopWatch w(debugMsg.c_str());
+    std::cout << "Print test: " << std::endl;
+>>>>>>> 2789e14a (Test commit)
     if (timestep < 0 || timestep >= numFiles) {
         std::cout << "Constant timestep: " << timestep << std::endl;
         return true;
