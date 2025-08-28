@@ -160,7 +160,7 @@ bool TecplotFile::Impl::open(std::string const &iFileName)
     }
     char versionString[8];
     mStream.read(versionString, sizeof(versionString));
-<<<<<<< HEAD
+
     if (std::strncmp(versionString, "#!TDV", 5)) {
         std::cerr << "No tecplot binary file.\n";
         return false;
