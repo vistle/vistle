@@ -140,12 +140,7 @@ bool ReadSubzoneTecplot::examine(const vistle::Parameter *param)
 
         const std::string filename = fileList.front(); // small cleanup
         try {
-<<<<<<< HEAD
             setTimesteps(numFiles - 1);
-=======
-       
-            setTimesteps(numFiles);
->>>>>>> 2789e14a (Test commit)
 
             // compute a stable partition count across ALL timesteps ---
             int32_t maxZones = 0;

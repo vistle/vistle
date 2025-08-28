@@ -15,14 +15,6 @@ public:
     ~ReadSubzoneTecplot() override;
 
 private:
-<<<<<<< HEAD
-<<<<<<< HEAD
-    static const int NumPorts = 5;
-    void* fileHandle;
-=======
-    static const int NumPorts = 3;
->>>>>>> a4e5dc83 (New reader for subzone Tecplot (.szplt))
-=======
     static const int NumPorts = 5;
     int numFiles = 0;
     // void *fileHandle; commenting to avoid a shared file handle -> gets clobbered by recurrent reads during parallel processing
@@ -73,5 +65,4 @@ private:
     double time1; // Record start time for debugging MPI issues
 };
 } // namespace vistle
->>>>>>> 0a328e4ca4839a30a171cceeb8087331664e992f
 #endif
