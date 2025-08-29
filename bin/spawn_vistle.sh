@@ -30,8 +30,11 @@ for v in LIBRARY_PATH FRAMEWORK_PATH FALLBACK_LIBRARY_PATH FALLBACK_FRAMEWORK_PA
 done
 
 if [ -n "$VISTLE_LOGFILE" ]; then
-    mkdir -p $(dirname "$VISTLE_LOGFILE") || echo "Could not create directory for $VISTLE_LOGFILE" && exit 1
-    exec > $VISTLE_LOGFILE 2>&1
+    if mkdir -p $(dirname "$VISTLE_LOGFILE"); then
+        exec > $VISTLE_LOGFILE 2>&1
+    else
+        echo "Could not create directory for log file $VISTLE_LOGFILE"
+    fi
 fi
 
 function doexec() {
