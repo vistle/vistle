@@ -486,7 +486,8 @@ RemoteFileDialogPrivate::~RemoteFileDialogPrivate()
 
 void RemoteFileDialogPrivate::updateCursor(bool waiting)
 {
-    Q_Q(RemoteFileDialog);
+    //Q_Q(RemoteFileDialog);
+    //Q_UNUSED(q);
     if (waiting) {
         qFileDialogUi->listView->setCursor(Qt::WaitCursor);
         qFileDialogUi->treeView->setCursor(Qt::WaitCursor);
@@ -855,7 +856,7 @@ void RemoteFileDialog::setDirectoryUrl(const QUrl &directory)
 */
 QUrl RemoteFileDialog::directoryUrl() const
 {
-    Q_D(const RemoteFileDialog);
+    //Q_D(const RemoteFileDialog);
     return QUrl::fromLocalFile(directory());
 }
 
@@ -1108,7 +1109,7 @@ QStringList RemoteFileDialog::selectedFiles() const
 */
 QList<QUrl> RemoteFileDialog::selectedUrls() const
 {
-    Q_D(const RemoteFileDialog);
+    //Q_D(const RemoteFileDialog);
     QList<QUrl> urls;
     const QStringList selectedFileList = selectedFiles();
     urls.reserve(selectedFileList.size());
@@ -3431,7 +3432,7 @@ void RemoteFileDialogPrivate::_q_fileRenamed(const QString &path, const QString 
 
 void RemoteFileDialogPrivate::_q_directoryLoaded(const QString &path)
 {
-    Q_Q(RemoteFileDialog);
+    //Q_Q(RemoteFileDialog);
 
     if (currentHistoryLocation < 0) {
         qInfo() << "DIRECTORY loaded: no history<0, path = " << path;

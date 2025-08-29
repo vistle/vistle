@@ -66,6 +66,11 @@ public:
         case RTC_ERROR_CANCELLED:
             err = "The operation got cancelled by an Memory Monitor Callback or Progress Monitor Callback function.";
             break;
+#if RTC_VERSION >= 40303
+        case RTC_ERROR_LEVEL_ZERO_RAYTRACING_SUPPORT_MISSING:
+            err = "Error initialising SYCL support: GPU driver current and installed properly?";
+            break;
+#endif
         }
 
         CERR << "RTC error: " << desc << " - " << err << std::endl;
