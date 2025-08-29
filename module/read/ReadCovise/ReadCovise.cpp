@@ -35,10 +35,12 @@
 
 MODULE_MAIN(ReadCovise)
 
+#ifdef READ_DIRECTORY
 namespace {
 const std::string extension(".covise");
 const std::string NONE = vistle::Reader::InvalidChoice;
 } // namespace
+#endif
 
 using namespace vistle;
 

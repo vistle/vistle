@@ -750,10 +750,11 @@ Reader *Reader::Token::reader() const
 
 int Reader::ReaderTime::calc_numtime() const
 {
-    int numtime{-1};
-    auto calc = [=]() {
+    auto calc = [this]() {
         return (m_last - m_first) / m_inc + 1;
     };
+
+    int numtime{-1};
     if (m_inc > 0) {
         if (m_last >= m_first)
             numtime = calc();
