@@ -230,6 +230,8 @@ bool Transform::compute()
     case Animate:
         timestep = 0;
         break;
+    default:
+        break;
     }
 
     Matrix4 t = geo->getTransform();
