@@ -536,14 +536,10 @@ void DataFlowView::keyPressEvent(QKeyEvent *event)
     for (auto &mod: selectedModules()) {
         if (event->key() == Qt::Key_Delete) {
             // Delete the selected modules
-            for (auto &mod: selectedModules()) {
-                mod->deleteModule();
-            }
+            mod->deleteModule();
         } else if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) {
             // Execute the selected module
-            for (auto &mod: selectedModules()) {
-                mod->execModule();
-            }
+            mod->execModule();
         }
     }
 
