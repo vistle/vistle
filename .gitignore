@@ -19,4 +19,6 @@
 /.idea
 /.ipynb_checkpoints
 **/.nfs*
+/.cache
 __pycache__
+.cache/

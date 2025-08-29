@@ -1,0 +1,3 @@
+ #pragma once
+#include "ZoneHeaderWriterAbstract.h"
+namespace tecplot { namespace ___3931 { class ___37; struct NonSzZoneFileLocations; class FileWriterInterface; class ItemSetIterator; class NonSzZoneHeaderWriter : public ZoneHeaderWriterAbstract { public: NonSzZoneHeaderWriter( uint32_t                        fileVersion, ItemSetIterator&                varIter, ___4633                     zone, ___4633                     ___341, ___37&                     ___36, NonSzZoneFileLocations const& ___4608); virtual ~NonSzZoneHeaderWriter(); virtual uint64_t sizeInFile(bool ___2000) const; virtual ___372 write(FileWriterInterface& fileWriter) const; private: NonSzZoneFileLocations const& m_zoneFileLocations; }; }}
