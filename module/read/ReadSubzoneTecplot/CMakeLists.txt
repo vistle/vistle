@@ -1,5 +1,5 @@
 set(TECIO_SHARED FALSE)
-set(TECIO_MPI TRUE)
+set(TECIO_MPI FALSE)
 include(tecio.cmake)
 
 set(HEADERS ReadSubzoneTecplot.h)
@@ -13,7 +13,7 @@ target_link_libraries(ReadSubzoneTecplot vistle_tecio)
 
 # If tecio.cmake does NOT already do this, add:
 if(TECIO_MPI)
-  find_package(MPI REQUIRED)
-  target_compile_definitions(ReadSubzoneTecplot PRIVATE TECIOMPI)
-  target_link_libraries(ReadSubzoneTecplot MPI::MPI_CXX)
+    find_package(MPI REQUIRED)
+    target_compile_definitions(ReadSubzoneTecplot PRIVATE TECIOMPI)
+    target_link_libraries(ReadSubzoneTecplot MPI::MPI_CXX)
 endif()
