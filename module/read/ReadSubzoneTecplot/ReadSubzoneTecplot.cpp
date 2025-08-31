@@ -33,6 +33,9 @@ using vistle::Index;
 
 MODULE_MAIN(ReadSubzoneTecplot)
 
+
+
+
 namespace {
 // TODO: Might have to tune this value
 constexpr int64_t CHUNK_ELEMS = 1 << 20;
@@ -687,7 +690,7 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
         const std::string &filename = fileList[timestep];
         std::cout << "Using file: " << filename << std::endl;
         try {
-            thread_local void *fh = nullptr;
+            void *fh = nullptr;
             tecFileReaderOpen(filename.c_str(), &fh);
             sendInfo("Reading file %s for timestep %d", filename.c_str(), timestep);
             // Read grids of all zones:
@@ -709,11 +712,15 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
             //int step = getTimestepForSolutionTime(solutionTimes, solutionTime);
             strGrid->setTimestep(timestep);
 
-            int32_t loc = 0;
-            tecZoneVarGetValueLocation(fh, zone, 1, &loc);
-            strGrid->setMapping(
-                loc == 0 ? vistle::DataBase::Element
-                         : vistle::DataBase::Vertex); // set mapping to vertex, because coordinates are vertex-centered
+            // int32_t loc = 0;
+            // tecZoneVarGetValueLocation(fh, zone, 1, &loc);
+            // strGrid->setMapping(
+            //     loc == 0 ? vistle::DataBase::Element
+            //              : vistle::DataBase::Vertex); // set mapping to vertex, because coordinates are vertex-centered
+
+            // Coordinates are vertex-centered for structured zones
+            strGrid->setMapping(vistle::DataBase::Vertex);
+
             std::cout << "reading zone number " << zone << " of " << numZones << " zones" << std::endl;
             std::cout << "timestep: " << timestep << std::endl;
             std::cout << "solution time: " << solutionTime << std::endl;
@@ -766,7 +773,8 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
                                 tecZoneVarGetValueLocation(fh, zone, varInFile[0], &loc);
 
                                 field->addAttribute(vistle::attribute::Species, name);
-                                field->setMapping(loc == 0 ? vistle::DataBase::Element : vistle::DataBase::Vertex);
+                                // field->setMapping(loc == 0 ? vistle::DataBase::Element : vistle::DataBase::Vertex);
+                                field->setMapping(loc == 0 ? vistle::DataBase::Vertex : vistle::DataBase::Element);
                                 field->setGrid(strGrid);
                                 token.applyMeta(field);
                                 std::cout << "Accessing m_fieldsOut at index: " << var << std::endl;
