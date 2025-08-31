@@ -271,6 +271,7 @@ Byte ReadSubzoneTecplot::tecToVistleType(int tecType)
 
 // Helper that reads the values of a variables with index var from a tecplot file with the specified fh for
 // the given inputZone and returns a pointer to a Vec<Scalar, 1> containing the values in its x() array.
+/*
 Vec<Scalar, 1>::ptr ReadSubzoneTecplot::readVariables(void *fh, int64_t numValues, int32_t inputZone, int32_t var)
 {
     int32_t varType;
@@ -316,7 +317,8 @@ Vec<Scalar, 1>::ptr ReadSubzoneTecplot::readVariables(void *fh, int64_t numValue
 
     return field;
 }
-/* 
+    */
+
 Vec<Scalar, 1>::ptr ReadSubzoneTecplot::readVariables(void *fh, int64_t numValues,
                                                       int32_t inputZone, int32_t var)
 {
@@ -326,7 +328,7 @@ Vec<Scalar, 1>::ptr ReadSubzoneTecplot::readVariables(void *fh, int64_t numValue
     }
     return out;
 }
- */
+ 
 
 
 // Builds a structured grid from the first three variables in the tecplot file, which are assumed to be the
@@ -744,7 +746,7 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
                 std::cout << "File handle is valid." << std::endl;
             }
             // check if solution is included in the file
-            
+
             int32_t fileType = 0;
             tecFileGetType(fh, &fileType);
             if (fileType != 1 && !m_indicesCombinedVariables.empty()) {
