@@ -720,6 +720,8 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
             tecZoneGetSolutionTime(fh, zone, &solutionTime);
             //int step = getTimestepForSolutionTime(solutionTimes, solutionTime);
             strGrid->setTimestep(timestep);
+            strGrid->setBlock(block);
+
             strGrid->setMapping(vistle::DataBase::Vertex); //Coordinates are nodal, so the grid’s mapping should be Vertex
 
             // int32_t loc = 0;
@@ -793,6 +795,9 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
                             field->addAttribute(vistle::attribute::Species, name);
                             field->setMapping(loc == 0 ? vistle::DataBase::Vertex : vistle::DataBase::Element);
                             field->setGrid(strGrid);
+                            field->setBlock(block);
+                            field->setTimestep(timestep);   // harmless + explicit
+
                             token.applyMeta(field);
                             token.addObject(m_fieldsOut[var], field);
                         }
@@ -824,6 +829,9 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
                             field->addAttribute(vistle::attribute::Species, name);
                             field->setMapping(locX == 0 ? vistle::DataBase::Vertex : vistle::DataBase::Element);
                             field->setGrid(strGrid);
+                            field->setBlock(block);
+                            field->setTimestep(timestep);   // harmless + explicit
+
                             token.applyMeta(field);
                             token.addObject(m_fieldsOut[var], field);
                         }
