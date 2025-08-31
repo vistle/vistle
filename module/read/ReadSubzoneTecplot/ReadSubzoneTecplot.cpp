@@ -78,7 +78,8 @@ bool ReadSubzoneTecplot::examine(const vistle::Parameter *param)
 
         const std::string filename = fileList.front(); // small cleanup
         try {
-            setTimesteps(numFiles - 1);
+            setTimesteps(numFiles);
+            //setTimesteps(numfiles-1);This drops the last file and can desync scheduling when you later use ParallelizeTimeAndBlocks.
 
             // compute a stable partition count across ALL timesteps ---
             int32_t maxZones = 0;
