@@ -712,6 +712,7 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
             tecZoneGetSolutionTime(fh, zone, &solutionTime);
             //int step = getTimestepForSolutionTime(solutionTimes, solutionTime);
             strGrid->setTimestep(timestep);
+            strGrid->setMapping(vistle::DataBase::Vertex); //Coordinates are nodal, so the grid’s mapping should be Vertex
 
             // int32_t loc = 0;
             // tecZoneVarGetValueLocation(fh, zone, 1, &loc);
@@ -720,7 +721,7 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
             //              : vistle::DataBase::Vertex); // set mapping to vertex, because coordinates are vertex-centered
 
             // Coordinates are vertex-centered for structured zones
-            strGrid->setMapping(vistle::DataBase::Vertex);
+            
 
             std::cout << "reading zone number " << zone << " of " << numZones << " zones" << std::endl;
             std::cout << "timestep: " << timestep << std::endl;
@@ -753,78 +754,79 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
                 for (int32_t var = 0; var < NumPorts; var++) { // loop over output ports
                     std::cout << "Loop over port: " << var << std::endl;
 
-                    std::string name = m_fieldChoice[var]->getValue();
-                    if (!emptyValue(m_fieldChoice[var])) {
-                        std::cout << "Reading variable: " << name << " on port: " << var << std::endl;
-                        std::vector<int> varInFile = getIndexOfTecVar(name, m_indicesCombinedVariables, fh);
+                std::string name = m_fieldChoice[var]->getValue();
+                if (!emptyValue(m_fieldChoice[var])) {
+                    std::cout << "Reading variable: " << name << " on port: " << var << std::endl;
 
+                    std::vector<int> varInFile = getIndexOfTecVar(name, m_indicesCombinedVariables, fh);
+                    if (varInFile.empty() || varInFile[0] <= 0) {
+                        std::cerr << "Variable '" << name << "' not found in file — skipping port " << var << "\n";
+                        continue;
+                    }
+
+                    if (varInFile.size() == 1) {
+                        // scalar
+                        int64_t numValues = 0;
+                        tecZoneVarGetNumValues(fh, zone, varInFile[0], &numValues);
+
+                        char *varName = nullptr;
                         tecVarGetName(fh, varInFile[0], &varName);
 
-                        // varInFile is filled already; you also did: tecVarGetName(fh, varInFile[0], &varName);
+                        auto field = readVariables(fh, numValues, zone, varInFile[0]);
+                        std::cout << "Variable name in file: " << (varName ? varName : "(null)") << std::endl;
 
-                        if (varInFile.size() == 1) {
-                            tecZoneVarGetNumValues(fh, zone, varInFile[0], &numValues);
+                        if (field) {
+                            int32_t loc = 0; // 0=nodal(Vertex), 1=cell(Element)
+                            tecZoneVarGetValueLocation(fh, zone, varInFile[0], &loc);
 
-                            Vec<Scalar, 1>::ptr field = readVariables(fh, numValues, zone, varInFile[0]);
-                            std::cout << "Variable name in file: " << (varName ? varName : "(null)") << std::endl;
-
-                            if (field) {
-                                // 0 = nodal (vertex), 1 = cell-centered (element)
-                                int32_t loc = 0;
-                                tecZoneVarGetValueLocation(fh, zone, varInFile[0], &loc);
-
-                                field->addAttribute(vistle::attribute::Species, name);
-                                // field->setMapping(loc == 0 ? vistle::DataBase::Element : vistle::DataBase::Vertex);
-                                field->setMapping(loc == 0 ? vistle::DataBase::Vertex : vistle::DataBase::Element);
-                                field->setGrid(strGrid);
-                                token.applyMeta(field);
-                                std::cout << "Accessing m_fieldsOut at index: " << var << std::endl;
-                                token.addObject(m_fieldsOut[var], field);
-                            }
-
-                            if (varName)
-                                tecStringFree(&varName); // free in all paths
-
-                        } else if (varInFile.size() > 1) {
-                            // combined vector (X,Y,Z)
-                            std::cout << "Reading combined variable: " << name << " on port: " << var << std::endl;
-
-                            tecZoneVarGetNumValues(fh, zone, varInFile[0], &numValues);
-                            const int startIndex = 1;
-
-                            std::vector<float> xValues(numValues), yValues(numValues), zValues(numValues);
-                            tecZoneVarGetFloatValues(fh, zone, varInFile[0], startIndex, numValues, xValues.data());
-                            tecZoneVarGetFloatValues(fh, zone, varInFile[1], startIndex, numValues, yValues.data());
-                            tecZoneVarGetFloatValues(fh, zone, varInFile[2], startIndex, numValues, zValues.data());
-
-                            Vec<Scalar, 3>::ptr field = combineVarstoOneOutput(xValues, yValues, zValues, numValues);
-                            if (field) {
-                                // decide mapping from location of first component (all three *should* match)
-                                int32_t locX = 0, locY = 0, locZ = 0;
-                                tecZoneVarGetValueLocation(fh, zone, varInFile[0], &locX);
-                                tecZoneVarGetValueLocation(fh, zone, varInFile[1], &locY);
-                                tecZoneVarGetValueLocation(fh, zone, varInFile[2], &locZ);
-                                if (locX != locY || locX != locZ) {
-                                    std::cerr << "Warning: vector components have mixed locations (" << locX << ","
-                                              << locY << "," << locZ << "), using first.\n";
-                                }
-
-                                field->addAttribute(vistle::attribute::Species, name);
-                                field->setMapping(locX == 0 ? vistle::DataBase::Vertex : vistle::DataBase::Element);
-                                field->setGrid(strGrid);
-                                token.applyMeta(field);
-                                token.addObject(m_fieldsOut[var], field);
-                            }
-
-                            if (varName)
-                                tecStringFree(&varName); // free here too
+                            field->addAttribute(vistle::attribute::Species, name);
+                            field->setMapping(loc == 0 ? vistle::DataBase::Vertex : vistle::DataBase::Element);
+                            field->setGrid(strGrid);
+                            token.applyMeta(field);
+                            token.addObject(m_fieldsOut[var], field);
                         }
 
+                        if (varName) tecStringFree(&varName);
+
+                    } else if (varInFile.size() == 3) {
+                        // combined vector (X,Y,Z)
+                        int64_t numValues = 0;
+                        tecZoneVarGetNumValues(fh, zone, varInFile[0], &numValues);
+
+                        const int startIndex = 1;
+                        std::vector<float> xValues(numValues), yValues(numValues), zValues(numValues);
+                        tecZoneVarGetFloatValues(fh, zone, varInFile[0], startIndex, numValues, xValues.data());
+                        tecZoneVarGetFloatValues(fh, zone, varInFile[1], startIndex, numValues, yValues.data());
+                        tecZoneVarGetFloatValues(fh, zone, varInFile[2], startIndex, numValues, zValues.data());
+
+                        auto field = combineVarstoOneOutput(xValues, yValues, zValues, numValues);
+                        if (field) {
+                            int32_t locX=0, locY=0, locZ=0;
+                            tecZoneVarGetValueLocation(fh, zone, varInFile[0], &locX);
+                            tecZoneVarGetValueLocation(fh, zone, varInFile[1], &locY);
+                            tecZoneVarGetValueLocation(fh, zone, varInFile[2], &locZ);
+                            if (locX != locY || locX != locZ) {
+                                std::cerr << "Warning: vector components have mixed locations ("
+                                        << locX << "," << locY << "," << locZ << "), using first.\n";
+                            }
+
+                            field->addAttribute(vistle::attribute::Species, name);
+                            field->setMapping(locX == 0 ? vistle::DataBase::Vertex : vistle::DataBase::Element);
+                            field->setGrid(strGrid);
+                            token.applyMeta(field);
+                            token.addObject(m_fieldsOut[var], field);
+                        }
                     } else {
-                        std::cout << "Skipping variable: " << m_fieldChoice[var]->getValue() << " on position: " << var
-                                  << std::endl;
-                        continue; // skip if the variable is not selected
+                        std::cerr << "Unexpected index count (" << varInFile.size()
+                                << ") for variable '" << name << "', skipping.\n";
+                        continue;
                     }
+                } else {
+                    std::cout << "Skipping variable: " << m_fieldChoice[var]->getValue()
+                            << " on position: " << var << std::endl;
+                    continue;
+                }
+
                 } //close for loop over ports
             } // close if fileType != 1
             else {
