@@ -29,6 +29,12 @@ for v in LIBRARY_PATH FRAMEWORK_PATH FALLBACK_LIBRARY_PATH FALLBACK_FRAMEWORK_PA
     envvars="$envvars DYLD_${v} VISTLE_DYLD_${v}"
 done
 
+exe=$(basename "$1")
+if [ "$exe" = "ReadSubzoneTecplot" ] && [ -z "$MPISIZE" ]; then
+  MPISIZE=4
+fi
+
+
 if [ -n "$VISTLE_LOGFILE" ]; then
     if mkdir -p $(dirname "$VISTLE_LOGFILE"); then
         exec > $VISTLE_LOGFILE 2>&1
