@@ -744,8 +744,11 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
                 std::cout << "File handle is valid." << std::endl;
             }
             // check if solution is included in the file
-            int32_t fileType;
-            if (tecFileGetType(fh, &fileType) != 1 && !(m_indicesCombinedVariables.empty())) {
+            
+            int32_t fileType = 0;
+            tecFileGetType(fh, &fileType);
+            if (fileType != 1 && !m_indicesCombinedVariables.empty()) {
+
                 std::cout << "File contains solution" << std::endl;
                 int32_t NumVar = 0;
                 tecDataSetGetNumVars(fh, &NumVar);
