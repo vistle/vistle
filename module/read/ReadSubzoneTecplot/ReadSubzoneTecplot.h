@@ -17,6 +17,9 @@ public:
 private:
     static const int NumPorts = 5;
     int numFiles = 0;
+    // MPI rank info (for diagnostics & scheduling sanity checks)
+
+
     // void *fileHandle; commenting to avoid a shared file handle -> gets clobbered by recurrent reads during parallel processing
 
 #if 0

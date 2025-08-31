@@ -6,4 +6,4 @@ if not exist "%TEMP%\vistle" mkdir  "%TEMP%\vistle"
 if not "%5"=="" set FILENAME=%FILENAME%-%4-%5.log
 @REM start /min /WAIT "mpie" "%MSMPI_BIN%\mpiexec" -n %MPISIZE% %1 %2 %3 %4 %5 %6 %7 %8 %9
 "%MSMPI_BIN%\mpiexec" -n %MPISIZE% %1 %2 %3 %4 %5 %6 %7 %8 %9
-REM start /WAIT "mpi" 
+REM start /WAIT "mpi" ...this is the current content in my spawn_vistle.bat 

@@ -101,6 +101,10 @@ ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mp
 {
     //m_filename = addStringParameter("filename", "name of szTecplot file", "", vistle::Parameter::ExistingFilename);
     //auto time1 = MPI_Wtime(); // Record start time for debugging MPI issues
+    m_rank = comm.rank();
+    m_size = comm.size();
+    std::cerr << "[ReadSubzoneTecplot] rank " << m_rank << "/" << m_size << " starting\n";
+
     std::cout << "ReadSubzoneTecplot MPI_Wtime at construction: " << time1 << std::endl;
 
     m_filedir =
@@ -108,9 +112,8 @@ ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mp
 
     m_grid = createOutputPort("grid_out", "grid or geometry");
 
-    setParallelizationMode(Serial);
-    //setParallelizationMode(
-    //    ParallelizeTimeAndBlocks); // Parallelization does not work, leads to abortion errors
+    //setParallelizationMode(Serial);
+    setParallelizationMode(ParallelizeTimeAndBlocks); // Parallelization does not work, leads to abortion errors
 
     std::vector<std::string> varChoices{Reader::InvalidChoice};
     for (int i = 0; i < NumPorts; i++) {
@@ -684,6 +687,9 @@ int ReadSubzoneTecplot::getTimestepForSolutionTime(std::unordered_map<int, doubl
 
 bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
 {
+    std::cerr << "[ReadSubzoneTecplot] rank " << m_rank 
+          << " reading timestep=" << timestep << " block=" << block << "\n";
+
     if (timestep < 0 || timestep >= numFiles) {
         std::cout << "Constant timestep: " << timestep << std::endl;
         return true;

@@ -1,5 +1,5 @@
 set(TECIO_SHARED FALSE)
-set(TECIO_MPI FALSE)
+set(TECIO_MPI TRUE)
 include(tecio.cmake)
 
 set(HEADERS ReadSubzoneTecplot.h)
