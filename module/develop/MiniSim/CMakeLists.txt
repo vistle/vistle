@@ -9,14 +9,14 @@ if(DIY_INCLUDE_DIR)
     target_include_directories(MiniSim PRIVATE ${DIY_INCLUDE_DIR})
     target_link_libraries(
         MiniSim
-        Boost::boost
-        vistle_insitu_core
-        vistle_insitu_message
-        vistle_insitu_module
-        vistle_libsim_connect
-        vistle_module
-        vistle_insitu_adapter
-        vistle_util)
+        PRIVATE Boost::boost
+                vistle_insitu_core
+                vistle_insitu_message
+                vistle_insitu_module
+                vistle_libsim_connect
+                vistle_module
+                vistle_insitu_adapter
+                vistle_util)
 
     if(WIN32)
         # On Windows, we need to set the character set to UTF-8

@@ -24,21 +24,21 @@ add_module(
     archivemodel.cpp
     archivemodel.h)
 
-target_link_libraries(ReadFoam ${ZLIB_LIBRARIES})
+target_link_libraries(ReadFoam PRIVATE ${ZLIB_LIBRARIES})
 if(Boost_ZLIB_FOUND)
-    target_link_libraries(ReadFoam ${Boost_ZLIB_LIBRARIES})
+    target_link_libraries(ReadFoam PRIVATE ${Boost_ZLIB_LIBRARIES})
 endif()
 
 if(LibArchive_FOUND)
-    target_link_libraries(ReadFoam ${LibArchive_LIBRARIES})
+    target_link_libraries(ReadFoam PRIVATE ${LibArchive_LIBRARIES})
 endif()
 
 if(LIBZIP_FOUND)
-    target_link_libraries(ReadFoam ${LIBZIP_LIBRARIES})
+    target_link_libraries(ReadFoam PRIVATE ${LIBZIP_LIBRARIES})
 endif()
 
 if(ZLIB_FOUND)
-    target_link_libraries(ReadFoam ${ZLIB_LIBRARIES})
+    target_link_libraries(ReadFoam PRIVATE ${ZLIB_LIBRARIES})
 endif()
 
 #add_executable(foambounds bounds.cpp foamtoolbox.cpp)

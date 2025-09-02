@@ -9,5 +9,5 @@ set(SOURCES ReadWRFChem.cpp)
 
 add_module(ReadWrfChem "read WRF-Chem (Weather Research and Forecasting model coupled to Chemistry) data files" ${SOURCES} ${HEADERS})
 
-target_link_libraries(ReadWrfChem ${NETCDF_CXX_LIBRARIES})
+target_link_libraries(ReadWrfChem PRIVATE ${NETCDF_CXX_LIBRARIES})
 target_include_directories(ReadWrfChem SYSTEM PRIVATE ${NETCDF_CXX_INCLUDE_DIRS})

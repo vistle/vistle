@@ -9,4 +9,4 @@ link_directories(${ASSIMP_LIBRARY_DIRS})
 
 add_module(ReadModel "read polygonal geometry models with Assimp (STL, OBJ, 3DS, Collada, DXF, PLY, X3D, ...)" ReadModel.cpp)
 
-target_link_libraries(ReadModel ${ASSIMP_LIBRARIES})
+target_link_libraries(ReadModel PRIVATE ${ASSIMP_LIBRARIES})

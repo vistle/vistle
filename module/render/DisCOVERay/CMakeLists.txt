@@ -61,19 +61,19 @@ add_module(DisCOVERay ${description} ${RAY_HEADERS} ${RAY_SOURCES})
 
 target_link_libraries(
     DisCOVERay
-    DisCOVERay_ispc
-    ${BOOST_MPI}
-    vistle_module
-    vistle_renderer
-    vistle_rhr
-    vistle_config
-    ${ZLIB_LIBRARIES}
-    ${EMBREE_LIBRARY})
+    PRIVATE DisCOVERay_ispc
+            ${BOOST_MPI}
+            vistle_module
+            vistle_renderer
+            vistle_rhr
+            vistle_config
+            ${ZLIB_LIBRARIES}
+            ${EMBREE_LIBRARY})
 
 if(USE_LIBOMP AND LIBOMP)
-    target_link_libraries(DisCOVERay ${LIBOMP})
+    target_link_libraries(DisCOVERay PRIVATE ${LIBOMP})
 endif()
 
 if(USE_TBB)
-    target_link_libraries(DisCOVERay TBB::tbb)
+    target_link_libraries(DisCOVERay PRIVATE TBB::tbb)
 endif()

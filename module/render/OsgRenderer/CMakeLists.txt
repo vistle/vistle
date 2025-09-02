@@ -40,19 +40,19 @@ include_directories(SYSTEM ${OPENSCENEGRAPH_INCLUDE_DIRS} ${OPENGL_INCLUDE_DIRS}
 include_directories(../COVER)
 if(EGL_FOUND)
     include_directories(SYSTEM ${EGL_INCLUDE_DIRS})
-    target_link_libraries(OsgRenderer ${EGL_LIBRARIES})
+    target_link_libraries(OsgRenderer PRIVATE ${EGL_LIBRARIES})
 elseif(NOT APPLE AND X11_FOUND)
     add_definitions(-DUSE_X11)
     include_directories(SYSTEM ${X11_INCLUDES})
-    target_link_libraries(OsgRenderer ${X11_LIBRARIES})
+    target_link_libraries(OsgRenderer PRIVATE ${X11_LIBRARIES})
 endif()
 
 target_link_libraries(
     OsgRenderer
-    ${OPENSCENEGRAPH_LIBRARIES}
-    GLEW::GLEW
-    ${OPENGL_LIBRARIES}
-    vistle_module
-    vistle_renderer
-    vistle_rhr
-    ${ZLIB_LIBRARIES})
+    PRIVATE ${OPENSCENEGRAPH_LIBRARIES}
+            GLEW::GLEW
+            ${OPENGL_LIBRARIES}
+            vistle_module
+            vistle_renderer
+            vistle_rhr
+            ${ZLIB_LIBRARIES})
