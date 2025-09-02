@@ -5,7 +5,6 @@ endif()
 using(OpenGL)
 using(Boost)
 
-include_directories(..) # VistlePluginUtil
 include_directories(SYSTEM ${ICET_INCLUDE_DIRS})
 include_directories(SYSTEM ${MPI_INCLUDE_PATH})
 set(CMAKE_CXX_COMPILE_FLAGS ${CMAKE_CXX_COMPILE_FLAGS} ${MPI_COMPILE_FLAGS})
