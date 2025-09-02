@@ -101,6 +101,5 @@ set(util_mpi_SOURCES shmconfig.cpp)
 set(_util_mpi_SOURCES shmconfig.h)
 
 vistle_add_library(vistle_util_mpi EXPORT STATIC ${util_mpi_SOURCES} ${util_mpi_HEADERS})
-target_include_directories(vistle_util SYSTEM PRIVATE ${MPI_INCLUDE_DIRS})
 vistle_target_link_libraries(vistle_util_mpi PRIVATE ${BOOST_MPI})
 set_target_properties(vistle_util_mpi PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
