@@ -1,1 +1,2 @@
-add_module(Variant "add variant attribute" Variant.cpp)
+add_module(VariantModule "add variant attribute" Variant.cpp)
+set_target_properties(VariantModule PROPERTIES OUTPUT_NAME Variant)
