@@ -16,6 +16,12 @@
 #include <vistle/util/filesystem.h>
 #include <vistle/util/stopwatch.h>
 
+#include <unistd.h>     // getpid on Linux/macOS
+#ifdef _WIN32
+#include <processthreadsapi.h>
+#endif
+
+
 //Include TecIO for szPlot
 #if !defined TECIOMPI
 #include <TecioPLT.h>
@@ -103,6 +109,14 @@ ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mp
     //auto time1 = MPI_Wtime(); // Record start time for debugging MPI issues
     m_rank = comm.rank();
     m_size = comm.size();
+    #ifdef _WIN32
+    m_pid = GetCurrentProcessId();
+    #else
+    m_pid = static_cast<int>(getpid());
+    #endif
+    std::cerr << "[ReadSubzoneTecplot] pid " << m_pid
+            << " rank " << m_rank << "/" << m_size << " starting\n";
+
     std::cerr << "[ReadSubzoneTecplot] rank " << m_rank << "/" << m_size << " starting\n";
 
     std::cout << "ReadSubzoneTecplot MPI_Wtime at construction: " << time1 << std::endl;
@@ -112,8 +126,8 @@ ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mp
 
     m_grid = createOutputPort("grid_out", "grid or geometry");
 
-    //setParallelizationMode(Serial);
-    setParallelizationMode(ParallelizeTimeAndBlocks); // Parallelization does not work, leads to abortion errors
+    setParallelizationMode(Serial);
+    //setParallelizationMode(ParallelizeTimeAndBlocks); // Parallelization does not work, leads to abortion errors
 
     std::vector<std::string> varChoices{Reader::InvalidChoice};
     for (int i = 0; i < NumPorts; i++) {
@@ -687,176 +701,202 @@ int ReadSubzoneTecplot::getTimestepForSolutionTime(std::unordered_map<int, doubl
 
 bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
 {
-    std::cerr << "[ReadSubzoneTecplot] rank " << m_rank 
+    std::cerr << "[ReadSubzoneTecplot] pid " << m_pid
           << " reading timestep=" << timestep << " block=" << block << "\n";
 
+
+    // scheduler sometimes calls with constant/meta pass
     if (timestep < 0 || timestep >= numFiles) {
         std::cout << "Constant timestep: " << timestep << std::endl;
         return true;
-    } else {
-        std::cout << "Reading timestep: " << timestep << std::endl;
-        std::cout << "Size of fileList: " << fileList.size() << std::endl;
-        const std::string &filename = fileList[timestep];
-        std::cout << "Using file: " << filename << std::endl;
-        try {
-            void *fh = nullptr;
-            tecFileReaderOpen(filename.c_str(), &fh);
-            sendInfo("Reading file %s for timestep %d", filename.c_str(), timestep);
-            // Read grids of all zones:
-            int32_t numZones = 0;
-            tecDataSetGetNumZones(fh, &numZones);
-            int32_t zone = block + 1; // zone numbers start with 1, not 0
+    }
 
-            //Modified: new chunk ---skip blocks beyond this file's zone count
-            if (zone < 1 || zone > numZones) {
-                tecFileReaderClose(&fh);
-                return true; // nothing to output for this (timestep, block)
-            }
-            // -
+    std::cout << "Reading timestep: " << timestep << std::endl;
+    std::cout << "Size of fileList: " << fileList.size() << std::endl;
 
-            StructuredGrid::ptr strGrid = NULL;
-            strGrid = ReadSubzoneTecplot::createStructuredGrid(fh, zone);
-            auto solutionTime = 0.0;
-            tecZoneGetSolutionTime(fh, zone, &solutionTime);
-            //int step = getTimestepForSolutionTime(solutionTimes, solutionTime);
-            strGrid->setTimestep(timestep);
-            strGrid->setBlock(block);
+    const std::string &filename = fileList[timestep];
+    std::cout << "Using file: " << filename << std::endl;
 
-            strGrid->setMapping(vistle::DataBase::Vertex); //Coordinates are nodal, so the grid’s mapping should be Vertex
+    void *fh = nullptr;
 
-            // int32_t loc = 0;
-            // tecZoneVarGetValueLocation(fh, zone, 1, &loc);
-            // strGrid->setMapping(
-            //     loc == 0 ? vistle::DataBase::Element
-            //              : vistle::DataBase::Vertex); // set mapping to vertex, because coordinates are vertex-centered
+    // Open the file and bail out cleanly on failure
+    if (tecFileReaderOpen(filename.c_str(), &fh) != 0 || !fh) {
+        sendError("Failed to open TecIO file: %s", filename.c_str());
+        return false;
+    }
 
-            // Coordinates are vertex-centered for structured zones
-            
+    // Make sure the handle is always closed, no matter how we exit below
+    struct FhGuard {
+        void **h;
+        ~FhGuard() { if (h && *h) tecFileReaderClose(h); }
+    } fhguard{&fh};
 
-            std::cout << "reading zone number " << zone << " of " << numZones << " zones" << std::endl;
-            std::cout << "timestep: " << timestep << std::endl;
-            std::cout << "solution time: " << solutionTime << std::endl;
-            if (strGrid == nullptr) {
-                std::cerr << "Failed to create grid for zone " << zone << " in file " << filename << std::endl;
-                return false;
-            } else {
-                std::cout << "Grid exists." << std::endl;
-            }
-            token.applyMeta(strGrid);
-            token.addObject(m_grid, strGrid);
+    sendInfo("Reading file %s for timestep %d", filename.c_str(), timestep);
 
-            //Define options of variable ports
-            //auto indices = setFieldChoices(fh);
+    // If this instance never ran examine(), it might not have the combined-var map.
+    // Fill it once here so workers can resolve vector groups, too.
+    if (m_indicesCombinedVariables.empty()) {
+        m_indicesCombinedVariables = setFieldChoices(fh);
+        std::cerr << "[ReadSubzoneTecplot] rank " << m_rank
+                  << ": initialized combined variable groups ("
+                  << m_indicesCombinedVariables.size() << ")\n";
+    }
 
-            if (fh == nullptr) {
-                std::cerr << "File handle is null." << std::endl;
-            } else {
-                std::cout << "File handle is valid." << std::endl;
-            }
-            // check if solution is included in the file
+    // zones and basic checks
+    int32_t numZones = 0;
+    tecDataSetGetNumZones(fh, &numZones);
+    const int32_t zone = block + 1; // TecIO zones are 1-based
 
-            int32_t fileType = 0;
-            tecFileGetType(fh, &fileType);
-            if (fileType != 1 && !m_indicesCombinedVariables.empty()) {
-
-                std::cout << "File contains solution" << std::endl;
-                int32_t NumVar = 0;
-                tecDataSetGetNumVars(fh, &NumVar);
-                char *varName = NULL;
-                int64_t numValues;
-                for (int32_t var = 0; var < NumPorts; var++) { // loop over output ports
-                    std::cout << "Loop over port: " << var << std::endl;
-
-                std::string name = m_fieldChoice[var]->getValue();
-                if (!emptyValue(m_fieldChoice[var])) {
-                    std::cout << "Reading variable: " << name << " on port: " << var << std::endl;
-
-                    std::vector<int> varInFile = getIndexOfTecVar(name, m_indicesCombinedVariables, fh);
-                    if (varInFile.empty() || varInFile[0] <= 0) {
-                        std::cerr << "Variable '" << name << "' not found in file — skipping port " << var << "\n";
-                        continue;
-                    }
-
-                    if (varInFile.size() == 1) {
-                        // scalar
-                        int64_t numValues = 0;
-                        tecZoneVarGetNumValues(fh, zone, varInFile[0], &numValues);
-
-                        char *varName = nullptr;
-                        tecVarGetName(fh, varInFile[0], &varName);
-
-                        auto field = readVariables(fh, numValues, zone, varInFile[0]);
-                        std::cout << "Variable name in file: " << (varName ? varName : "(null)") << std::endl;
-
-                        if (field) {
-                            int32_t loc = 0; // 0=nodal(Vertex), 1=cell(Element)
-                            tecZoneVarGetValueLocation(fh, zone, varInFile[0], &loc);
-
-                            field->addAttribute(vistle::attribute::Species, name);
-                            field->setMapping(loc == 0 ? vistle::DataBase::Vertex : vistle::DataBase::Element);
-                            field->setGrid(strGrid);
-                            field->setBlock(block);
-                            field->setTimestep(timestep);   // harmless + explicit
-
-                            token.applyMeta(field);
-                            token.addObject(m_fieldsOut[var], field);
-                        }
-
-                        if (varName) tecStringFree(&varName);
-
-                    } else if (varInFile.size() == 3) {
-                        // combined vector (X,Y,Z)
-                        int64_t numValues = 0;
-                        tecZoneVarGetNumValues(fh, zone, varInFile[0], &numValues);
-
-                        const int startIndex = 1;
-                        std::vector<float> xValues(numValues), yValues(numValues), zValues(numValues);
-                        tecZoneVarGetFloatValues(fh, zone, varInFile[0], startIndex, numValues, xValues.data());
-                        tecZoneVarGetFloatValues(fh, zone, varInFile[1], startIndex, numValues, yValues.data());
-                        tecZoneVarGetFloatValues(fh, zone, varInFile[2], startIndex, numValues, zValues.data());
-
-                        auto field = combineVarstoOneOutput(xValues, yValues, zValues, numValues);
-                        if (field) {
-                            int32_t locX=0, locY=0, locZ=0;
-                            tecZoneVarGetValueLocation(fh, zone, varInFile[0], &locX);
-                            tecZoneVarGetValueLocation(fh, zone, varInFile[1], &locY);
-                            tecZoneVarGetValueLocation(fh, zone, varInFile[2], &locZ);
-                            if (locX != locY || locX != locZ) {
-                                std::cerr << "Warning: vector components have mixed locations ("
-                                        << locX << "," << locY << "," << locZ << "), using first.\n";
-                            }
-
-                            field->addAttribute(vistle::attribute::Species, name);
-                            field->setMapping(locX == 0 ? vistle::DataBase::Vertex : vistle::DataBase::Element);
-                            field->setGrid(strGrid);
-                            field->setBlock(block);
-                            field->setTimestep(timestep);   // harmless + explicit
-
-                            token.applyMeta(field);
-                            token.addObject(m_fieldsOut[var], field);
-                        }
-                    } else {
-                        std::cerr << "Unexpected index count (" << varInFile.size()
-                                << ") for variable '" << name << "', skipping.\n";
-                        continue;
-                    }
-                } else {
-                    std::cout << "Skipping variable: " << m_fieldChoice[var]->getValue()
-                            << " on position: " << var << std::endl;
-                    continue;
-                }
-
-                } //close for loop over ports
-            } // close if fileType != 1
-            else {
-                std::cerr << "Tecplot does not contain solution variables but just a grid. " << std::endl;
-            }
-            tecFileReaderClose(&fh);
-        } //close try
-        catch (const std::exception &e) {
-            sendError("Failed to read file %s: %s", filename.c_str(), e.what());
-            return false;
-        }
+    if (zone < 1 || zone > numZones) {
+        // nothing to do for this (timestep, block) here
         return true;
     }
+
+    // grid
+    StructuredGrid::ptr strGrid = createStructuredGrid(fh, zone);
+    double solutionTime = 0.0;
+    tecZoneGetSolutionTime(fh, zone, &solutionTime);
+
+    strGrid->setTimestep(timestep);
+    strGrid->setBlock(block);
+    // structured zones: coordinates are nodal
+    strGrid->setMapping(vistle::DataBase::Vertex);
+
+    std::cout << "reading zone number " << zone << " of " << numZones << " zones" << std::endl;
+    std::cout << "timestep: " << timestep << std::endl;
+    std::cout << "solution time: " << solutionTime << std::endl;
+
+    if (!strGrid) {
+        std::cerr << "Failed to create grid for zone " << zone << " in file " << filename << std::endl;
+        return false;
+    }
+
+    token.applyMeta(strGrid);
+    token.addObject(m_grid, strGrid);
+
+    // sanity
+    if (!fh) {
+        std::cerr << "File handle is null." << std::endl;
+        return false;
+    } else {
+        std::cout << "File handle is valid." << std::endl;
+    }
+
+    // solution vs. grid-only
+    int32_t fileType = 0;
+    tecFileGetType(fh, &fileType);
+
+    // fileType: 1=grid-only, 2=solution-only, 0=full dataset (TecIO docs)
+    if (fileType == 1) {
+        std::cerr << "Tecplot file contains only a grid (no solution variables)." << std::endl;
+        return true;
+    }
+
+    // nothing to read if we still don't have any valid variable groups
+    if (m_indicesCombinedVariables.empty()) {
+        std::cerr << "No variable choices available; skipping solution read." << std::endl;
+        return true;
+    }
+
+    // drive the output ports
+    int32_t NumVar = 0;
+    tecDataSetGetNumVars(fh, &NumVar);
+
+    for (int32_t port = 0; port < NumPorts; ++port) {
+        std::cout << "Loop over port: " << port << std::endl;
+
+        const std::string name = m_fieldChoice[port]->getValue();
+        if (emptyValue(m_fieldChoice[port])) {
+            std::cout << "Skipping variable: " << name << " on position: " << port << std::endl;
+            continue;
+        }
+
+        std::cout << "Reading variable: " << name << " on port: " << port << std::endl;
+
+        // resolve user choice to TecIO var indices (scalar -> size=1, vector -> size=3)
+        const std::vector<int> varInFile = getIndexOfTecVar(name, m_indicesCombinedVariables, fh);
+        if (varInFile.empty() || varInFile[0] <= 0) {
+            std::cerr << "Variable '" << name << "' not found in file — skipping port " << port << "\n";
+            continue;
+        }
+
+        if (varInFile.size() == 1) {
+            // scalar
+            int64_t numValues = 0;
+            tecZoneVarGetNumValues(fh, zone, varInFile[0], &numValues);
+
+            char *varName = nullptr;
+            tecVarGetName(fh, varInFile[0], &varName);
+
+            auto field = readVariables(fh, numValues, zone, varInFile[0]); // type-safe reader
+            std::cout << "Variable name in file: " << (varName ? varName : "(null)") << std::endl;
+
+            if (field) {
+                int32_t loc = 0; // 0=nodal(Vertex), 1=cell(Element)
+                tecZoneVarGetValueLocation(fh, zone, varInFile[0], &loc);
+
+                field->addAttribute(vistle::attribute::Species, name);
+                field->setMapping(loc == 0 ? vistle::DataBase::Vertex : vistle::DataBase::Element);
+                field->setGrid(strGrid);
+                field->setBlock(block);
+                field->setTimestep(timestep);
+
+                token.applyMeta(field);
+                token.addObject(m_fieldsOut[port], field);
+            }
+
+            if (varName) tecStringFree(&varName);
+
+        } else if (varInFile.size() == 3) {
+            // vector (X,Y,Z) – read each component and pack
+            int64_t numValues = 0;
+            tecZoneVarGetNumValues(fh, zone, varInFile[0], &numValues);
+
+            // NOTE: Using the generic reader to be robust to field type (float/double/int...)
+            auto fx = readVariables(fh, numValues, zone, varInFile[0]);
+            auto fy = readVariables(fh, numValues, zone, varInFile[1]);
+            auto fz = readVariables(fh, numValues, zone, varInFile[2]);
+
+            if (!fx || !fy || !fz) {
+                std::cerr << "Failed to read all vector components for '" << name << "'; skipping.\n";
+                continue;
+            }
+
+            // build output field (re-using your helper to avoid surprises)
+            std::vector<float> xVals(numValues), yVals(numValues), zVals(numValues);
+            for (int64_t i = 0; i < numValues; ++i) {
+                xVals[i] = static_cast<float>(fx->x()[i]);
+                yVals[i] = static_cast<float>(fy->x()[i]);
+                zVals[i] = static_cast<float>(fz->x()[i]);
+            }
+            auto field = combineVarstoOneOutput(xVals, yVals, zVals, static_cast<int32_t>(numValues));
+
+            if (field) {
+                int32_t locX = 0, locY = 0, locZ = 0;
+                tecZoneVarGetValueLocation(fh, zone, varInFile[0], &locX);
+                tecZoneVarGetValueLocation(fh, zone, varInFile[1], &locY);
+                tecZoneVarGetValueLocation(fh, zone, varInFile[2], &locZ);
+                if (locX != locY || locX != locZ) {
+                    std::cerr << "Warning: vector components have mixed locations ("
+                              << locX << "," << locY << "," << locZ << "), using first.\n";
+                }
+
+                field->addAttribute(vistle::attribute::Species, name);
+                field->setMapping(locX == 0 ? vistle::DataBase::Vertex : vistle::DataBase::Element);
+                field->setGrid(strGrid);
+                field->setBlock(block);
+                field->setTimestep(timestep);
+
+                token.applyMeta(field);
+                token.addObject(m_fieldsOut[port], field);
+            }
+
+        } else {
+            std::cerr << "Unexpected index count (" << varInFile.size()
+                      << ") for variable '" << name << "', skipping.\n";
+            continue;
+        }
+    } // for ports
+
+    return true; // fh closed by guard
 }

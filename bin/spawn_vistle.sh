@@ -34,7 +34,6 @@ if [ "$exe" = "ReadSubzoneTecplot" ] && [ -z "$MPISIZE" ]; then
   MPISIZE=4
 fi
 
-
 if [ -n "$VISTLE_LOGFILE" ]; then
     if mkdir -p $(dirname "$VISTLE_LOGFILE"); then
         exec > $VISTLE_LOGFILE 2>&1
