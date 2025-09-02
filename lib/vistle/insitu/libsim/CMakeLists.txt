@@ -51,12 +51,10 @@ function(createSimV2Lib libName)
 
     # By default, symbols provided by the sublibs that are not used by mainlib (which is all of them in this case)
     # are not used. This changes that.
-    if(NOT WIN32)
-        add_definitions("-fPIC")
-    endif()
+    set_target_properties(${libname} PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
     if(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive -fPIC")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
     endif()
 
     target_compile_features(${libName} PRIVATE cxx_std_14)
