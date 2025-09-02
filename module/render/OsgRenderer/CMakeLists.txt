@@ -9,7 +9,7 @@ if(NOT OPENSCENEGRAPH_FOUND OR NOT OPENGL_FOUND)
     return()
 endif()
 
-if(NOT GLEW_FOUND)
+if(NOT TARGET GLEW::GLEW)
     message("OsgRenderer: GLEW not found")
     return()
 endif()
@@ -36,7 +36,7 @@ else(WIN32)
     set_source_files_properties(OSGRenderer.cpp PROPERTIES COMPILE_FLAGS "-Wno-overloaded-virtual")
 endif(WIN32)
 
-include_directories(SYSTEM ${OPENSCENEGRAPH_INCLUDE_DIRS} ${GLEW_INCLUDE_DIR} ${OPENGL_INCLUDE_DIRS})
+include_directories(SYSTEM ${OPENSCENEGRAPH_INCLUDE_DIRS} ${OPENGL_INCLUDE_DIRS})
 include_directories(../COVER)
 if(EGL_FOUND)
     include_directories(SYSTEM ${EGL_INCLUDE_DIRS})
@@ -50,7 +50,7 @@ endif()
 target_link_libraries(
     OsgRenderer
     ${OPENSCENEGRAPH_LIBRARIES}
-    ${GLEW_LIBRARIES}
+    GLEW::GLEW
     ${OPENGL_LIBRARIES}
     vistle_module
     vistle_renderer
