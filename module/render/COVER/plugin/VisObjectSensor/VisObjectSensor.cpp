@@ -33,12 +33,6 @@ VisObjectSensorPlugin::~VisObjectSensorPlugin()
 
 bool VisObjectSensorPlugin::init()
 {
-#if 0
-    // register the VrmlNodeVisObjectSensor type
-    vrml::VrmlNamespace::addBuiltIn(VrmlNodeVisObjectSensor::defineType<VrmlNodeVisObjectSensor>());
-    vrml::VrmlNamespace::addBuiltIn(VrmlNodeVisObjectSensor::typeName(), VrmlNodeVisObjectSensor::initFields);
-#endif
-
     vrml::VrmlNamespace::addBuiltIn(VrmlNodeVisObjectSensor::defineType<VrmlNodeVisObjectSensor>());
     return true;
 }
@@ -238,7 +232,6 @@ void VrmlNodeVisObjectSensor::updateTransform()
         resetTransform();
         return;
     }
-
 
     auto &xforms = it->second;
     if (ts >= xforms.size() || xforms[ts] == nullptr) {
