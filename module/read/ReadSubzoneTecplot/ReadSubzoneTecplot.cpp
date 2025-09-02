@@ -126,8 +126,10 @@ ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mp
 
     m_grid = createOutputPort("grid_out", "grid or geometry");
 
+ 
     setParallelizationMode(Serial);
-    //setParallelizationMode(ParallelizeTimeAndBlocks); // Parallelization does not work, leads to abortion errors
+    //setParallelizationMode(ParallelizeTimeAndBlocks);
+
 
     std::vector<std::string> varChoices{Reader::InvalidChoice};
     for (int i = 0; i < NumPorts; i++) {
