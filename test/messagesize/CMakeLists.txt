@@ -6,4 +6,3 @@ target_link_libraries(
     PRIVATE MPI::MPI_CXX
     PRIVATE vistle_util
     PRIVATE vistle_core)
-include_directories(vistle_msgsize PRIVATE ../..)
