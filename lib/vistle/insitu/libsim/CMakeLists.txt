@@ -57,8 +57,6 @@ function(createSimV2Lib libName)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
     endif()
 
-    target_compile_features(${libName} PRIVATE cxx_std_14)
-
     vistle_target_link_libraries(
         ${libName}
         PRIVATE
