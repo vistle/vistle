@@ -1,7 +1,3 @@
-if(NOT VISTLE_INTERNAL_VISKORES)
-    add_definitions(-DVISTLE_EXTERNAL_VISKORES)
-endif()
-
 set(HEADERS SpheresOverlap.h algo/CellListsAlgorithm.h algo/ThicknessDeterminer.h algo/VtkmSpheresOverlap.h algo/worklet/PointLocatorCellLists.h
             algo/worklet/OverlapDetector.h)
 
