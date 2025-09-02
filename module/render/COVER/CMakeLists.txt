@@ -56,7 +56,7 @@ target_include_directories(
     PRIVATE plugin
     PRIVATE .
     PRIVATE ..)
-target_link_libraries(COVER vistle_cover)
+target_link_libraries(COVER PRIVATE vistle_cover)
 
 if(VISTLE_MULTI_PROCESS)
     add_module2(COVER_plugin FALSE "VR renderer for immersive environments" coverwrapper.cpp)
@@ -68,7 +68,7 @@ if(VISTLE_MULTI_PROCESS)
         PRIVATE plugin
         PRIVATE .
         PRIVATE ..)
-    target_link_libraries(COVER_plugin vistle_cover)
+    target_link_libraries(COVER_plugin PRIVATE vistle_cover)
     set_target_properties(COVER_plugin PROPERTIES OUTPUT_NAME "COVER")
 endif()
 

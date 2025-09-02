@@ -12,7 +12,7 @@ if(VISTLE_USE_SEPARABLE_COMPILATION)
 endif()
 
 add_vtkm_module(SpheresOverlap "create lines between overlapping spheres" ${HEADER} ${SOURCES})
-target_link_libraries(SpheresOverlap viskores::worklet)
+target_link_libraries(SpheresOverlap PRIVATE viskores::worklet)
 
 if(NOT VISTLE_USE_SEPARABLE_COMPILATION)
     target_compile_definitions(SpheresOverlap PRIVATE "NONSEPARABLE_COMPILATION")

@@ -22,8 +22,8 @@ add_module(ReadVtk "read VTK data" ReadVtk.cpp ReadVtk.h)
 
 include_directories(SYSTEM ${VTK_INCLUDE_DIRS})
 
-target_link_libraries(ReadVtk ${VTK_LIBRARIES} vistle_vtk)
+target_link_libraries(ReadVtk PRIVATE ${VTK_LIBRARIES} vistle_vtk)
 
 if(TINYXML2_FOUND)
-    target_link_libraries(ReadVtk ${TINYXML2_LIBRARIES})
+    target_link_libraries(ReadVtk PRIVATE ${TINYXML2_LIBRARIES})
 endif()
