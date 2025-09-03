@@ -11,4 +11,4 @@ include_directories(SYSTEM ${CFX_INCLUDE_DIRS})
 
 add_module(ReadCfx "read ANSYS CFX data" ReadCFX.cpp)
 
-target_link_libraries(ReadCfx ${CFX_LIBRARIES})
+target_link_libraries(ReadCfx PRIVATE ${CFX_LIBRARIES})
