@@ -207,6 +207,7 @@ bool Tracer::prepare()
 {
     m_haveTimeSteps = false;
 
+    m_realtimes.clear();
     grid_in.clear();
     celltree.clear();
     data_in0.clear();
@@ -290,6 +291,10 @@ bool Tracer::compute()
         }
     }
 
+    if (m_realtimes.size() < numSteps + 1) {
+        m_realtimes.resize(numSteps + 1, 0.);
+    }
+
     if (m_gridAttr.size() < numSteps + 1) {
         m_gridAttr.resize(numSteps + 1);
         m_gridTime.resize(numSteps + 1);
@@ -326,9 +331,21 @@ bool Tracer::compute()
         }
     }
 
-    collectAttributes(m_gridAttr[t + 1], m_gridTime[t + 1], grid);
+    auto &gmeta = m_gridTime[t + 1];
+    collectAttributes(m_gridAttr[t + 1], gmeta, grid);
+    double realtime = 0.;
     for (int i = 0; i < NumPorts; ++i) {
-        collectAttributes(m_dataAttr[i][t + 1], m_dataTime[i][t + 1], data[i]);
+        auto &dmeta = m_dataTime[i][t + 1];
+        collectAttributes(m_dataAttr[i][t + 1], dmeta, data[i]);
+        if (realtime == 0.) {
+            realtime = dmeta.realTime();
+        }
+    }
+    if (realtime == 0.) {
+        realtime = gmeta.realTime();
+    }
+    if (m_realtimes[t + 1] == 0.) {
+        m_realtimes[t + 1] = realtime;
     }
 
     grid_in[t + 1].push_back(grid);
@@ -532,6 +549,7 @@ bool Tracer::reduce(int timestep)
     global.module = this;
     global.int_mode = (IntegrationMethod)getIntParameter("integration");
     global.task_type = (TraceType)getIntParameter("taskType");
+    global.num_particles = numparticles;
     global.dt_step = m_dtStep->getValue();
     global.h_init = getFloatParameter("h_init");
     global.h_min = getFloatParameter("h_min");
@@ -617,7 +635,11 @@ bool Tracer::reduce(int timestep)
             rank = 0;
             break;
         case RankByTimestep:
-            rank = t % size();
+            if (global.task_type == Pathlines) {
+                rank = 0;
+            } else {
+                rank = t % size();
+            }
             break;
         }
 
@@ -825,8 +847,15 @@ bool Tracer::reduce(int timestep)
     }
     maxTime = mpi::all_reduce(comm(), maxTime, mpi::maximum<Scalar>());
     unsigned numout = 1;
+    double timestepWidth = 0.;
+    if (m_haveTimeSteps && timestep >= 0) {
+        timestepWidth = (m_realtimes.back() - m_realtimes.front()) / (numTimesteps() - 1);
+    }
+    if (timestepWidth <= 0.) {
+        timestepWidth = global.dt_step;
+    }
     if (taskType != Streamlines) {
-        numtime = maxTime / global.dt_step + 1;
+        numtime = maxTime / timestepWidth + 1;
         if (numtime < 1)
             numtime = 1;
         numout = numtime;
@@ -839,86 +868,93 @@ bool Tracer::reduce(int timestep)
             global.points.back()->y().reserve(allParticles.size());
             global.points.back()->z().reserve(allParticles.size());
             applyAttributes(global.points.back(), m_gridAttr[timestep + 1]);
+        } else if (taskType == Pathlines) {
+            global.lines.emplace_back(new Lines(0, 0, 0));
+            applyAttributes(global.lines.back(), m_gridAttr[timestep + 1]);
+            if (global.lines.size() > 1) {
+                // share coordinates between all timesteps, as the geometry just builds up
+                const auto &l0 = global.lines.front();
+                auto &l = global.lines.back();
+                for (int i = 0; i < 3; ++i) {
+                    l->d()->x[i] = l0->d()->x[i];
+                }
+            }
         } else {
             global.lines.emplace_back(new Lines(0, 0, 0));
             applyAttributes(global.lines.back(), m_gridAttr[timestep + 1]);
         }
 
-        if (global.computeVector) {
-            global.vecField.emplace_back(new Vec<Scalar, 3>(size_t(0)));
-            applyAttributes(global.vecField.back(), m_dataAttr[0][timestep + 1]);
-            if (taskType == MovingPoints) {
-                global.vecField.back()->x().reserve(allParticles.size());
-                global.vecField.back()->y().reserve(allParticles.size());
-                global.vecField.back()->z().reserve(allParticles.size());
-            }
-        }
-        for (int i = 1; i < NumPorts; ++i) {
+        for (int i = 0; i < NumPorts; ++i) {
             if (global.computeField[i]) {
                 if (data_dim[i] == 3) {
                     auto vec = std::make_shared<Vec<Scalar, 3>>(size_t(0));
+                    if (i == 0) {
+                        global.vecField.emplace_back(vec);
+                    }
                     global.fields[i].emplace_back(vec);
                     if (taskType == MovingPoints) {
                         vec->x().reserve(allParticles.size());
                         vec->y().reserve(allParticles.size());
                         vec->z().reserve(allParticles.size());
+                    } else if (taskType == Pathlines) {
+                        // also share mapped data between pathline timesteps
+                        const auto v0 = Vec<Scalar, 3>::as(global.fields[i].front());
+                        auto &v = vec;
+                        for (int i = 0; i < 3; ++i) {
+                            v->d()->x[i] = v0->d()->x[i];
+                        }
                     }
                 } else {
                     auto scal = std::make_shared<Vec<Scalar>>(size_t(0));
                     global.fields[i].emplace_back(scal);
                     if (taskType == MovingPoints) {
                         scal->x().reserve(allParticles.size());
+                    } else if (taskType == Pathlines) {
+                        // also share mapped data between pathline timesteps
+                        const auto s0 = Vec<Scalar>::as(global.fields[i].front());
+                        auto &s = scal;
+                        s->d()->x[0] = s0->d()->x[0];
                     }
                 }
             }
         }
-        if (global.computeId) {
-            global.idField.emplace_back(new Vec<Index>(size_t(0)));
+
+
+        auto initMetaField = [&]<typename S>(std::vector<typename Vec<S>::ptr> &fields, const S &dummy) {
+            auto f = std::make_shared<Vec<S>>(size_t(0));
             if (taskType == MovingPoints) {
-                global.idField.back()->x().reserve(allParticles.size());
+                f->x().reserve(allParticles.size());
+            } else if (taskType == Pathlines) {
+                if (!fields.empty()) {
+                    const auto f0 = Vec<S>::as(fields.front());
+                    f->d()->x[0] = f0->d()->x[0];
+                }
             }
+            fields.emplace_back(f);
+        };
+        if (global.computeId) {
+            initMetaField(global.idField, Index());
         }
         if (global.computeStep) {
-            global.stepField.emplace_back(new Vec<Index>(size_t(0)));
-            if (taskType == MovingPoints) {
-                global.stepField.back()->x().reserve(allParticles.size());
-            }
+            initMetaField(global.stepField, Index());
         }
         if (global.computeTime) {
-            global.timeField.emplace_back(new Vec<Scalar>(size_t(0)));
-            if (taskType == MovingPoints) {
-                global.timeField.back()->x().reserve(allParticles.size());
-            }
+            initMetaField(global.timeField, Scalar());
         }
         if (global.computeStepWidth) {
-            global.stepWidthField.emplace_back(new Vec<Scalar>(size_t(0)));
-            if (taskType == MovingPoints) {
-                global.stepWidthField.back()->x().reserve(allParticles.size());
-            }
+            initMetaField(global.stepWidthField, Scalar());
         }
         if (global.computeDist) {
-            global.distField.emplace_back(new Vec<Scalar>(size_t(0)));
-            if (taskType == MovingPoints) {
-                global.distField.back()->x().reserve(allParticles.size());
-            }
+            initMetaField(global.distField, Scalar());
         }
         if (global.computeStopReason) {
-            global.stopReasonField.emplace_back(new Vec<Index>(size_t(0)));
-            if (taskType == MovingPoints) {
-                global.stopReasonField.back()->x().reserve(allParticles.size());
-            }
+            initMetaField(global.stopReasonField, Index());
         }
         if (global.computeCellIndex) {
-            global.cellField.emplace_back(new Vec<Index>(size_t(0)));
-            if (taskType == MovingPoints) {
-                global.cellField.back()->x().reserve(allParticles.size());
-            }
+            initMetaField(global.cellField, Index());
         }
         if (global.computeBlockIndex) {
-            global.blockField.emplace_back(new Vec<Index>(size_t(0)));
-            if (taskType == MovingPoints) {
-                global.blockField.back()->x().reserve(allParticles.size());
-            }
+            initMetaField(global.blockField, Index());
         }
     }
 
@@ -938,16 +974,7 @@ bool Tracer::reduce(int timestep)
                 applyAttributes(global.lines[idx], m_gridAttr[timestep + 1]);
             }
         }
-        if (global.computeVector) {
-            if (taskType == Streamlines) {
-                assert(!global.vecField.empty());
-                applyAttributes(global.vecField.back(), m_dataAttr[0][timestep + 1]);
-            } else {
-                assert(global.vecField.size() > size_t(idx));
-                applyAttributes(global.vecField[idx], m_dataAttr[0][timestep + 1]);
-            }
-        }
-        for (int i = 1; i < NumPorts; ++i) {
+        for (int i = 0; i < NumPorts; ++i) {
             if (!global.computeField[i])
                 continue;
             if (taskType == Streamlines) {
@@ -1043,14 +1070,7 @@ bool Tracer::reduce(int timestep)
             }
         }
 
-        if (global.computeVector) {
-            global.vecField[i]->setGrid(geo);
-            global.vecField[i]->setMeta(meta);
-            updateMeta(global.vecField[i]);
-            addObject(m_outPort[0], global.vecField[i]);
-        }
-
-        for (int p = 1; p < NumPorts; ++p) {
+        for (int p = 0; p < NumPorts; ++p) {
             if (!global.computeField[p]) {
                 continue;
             }
@@ -1094,6 +1114,8 @@ bool Tracer::changeParameter(const Parameter *param)
 
         if (m_taskType->getValue() == Streamlines)
             setReducePolicy(message::ReducePolicy::PerTimestep);
+        else if (m_taskType->getValue() == Pathlines)
+            setReducePolicy(message::ReducePolicy::PerTimestepOrdered);
         else
             setReducePolicy(message::ReducePolicy::OverAll);
         switch (m_taskType->getValue()) {
