@@ -25,9 +25,11 @@ private:
 #endif
     bool examine(const vistle::Parameter *param) override;
     bool read(Token &token, int timestep, int block) override;
+    bool prepareRead() override;
+    bool finishRead() override;
     Byte tecToVistleType(int tecType);
     Vec<Scalar, 1>::ptr
-    readVariables(void *fileHandle, int64_t numValues, int32_t inputZone,
+    readVariables(void *fileHandle, int64_t numValues, const int32_t inputZone,
                   int32_t var); //modified int32_t -> int64_t (numValues) so huge zones dont overflow 32bit
     std::unordered_map<std::string, std::vector<int>> setFieldChoices(void *fileHandle);
     std::vector<int> getIndexOfTecVar(const std::string &varName,
