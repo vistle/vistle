@@ -59,7 +59,11 @@ private:
     vistle::IntParameter *m_useCelltree;
     vistle::IntParameter *m_particlePlacement = nullptr;
     vistle::FloatParameter *m_simplificationError = nullptr;
+    vistle::FloatParameter *m_dtStep = nullptr;
     vistle::IntParameter *m_verbose = nullptr;
+    vistle::IntParameter *m_traceDirection = nullptr;
+    vistle::IntParameter *m_startStyle = nullptr;
+    vistle::VectorParameter *m_direction = nullptr;
 
     bool m_haveTimeSteps = false;
     void addDescription(int kind, const std::string &name, const std::string &description);

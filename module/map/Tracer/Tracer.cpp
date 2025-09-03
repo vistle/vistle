@@ -27,7 +27,7 @@ using namespace vistle;
 namespace mpi = boost::mpi;
 
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(StartStyle, (Line)(Plane)(Cylinder))
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(StartStyle, (Line)(Plane) /*(Cylinder)*/)
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(TraceDirection, (Both)(Forward)(Backward))
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(ParticlePlacement, (InitialRank)(RankById)(RankByTimestep)(Rank0))
 
@@ -80,6 +80,23 @@ Tracer::Tracer(const std::string &name, int moduleID, mpi::communicator comm): M
         linkPorts(m_inPort[i], m_outPort[i]);
         setPortOptional(m_inPort[i], true);
     }
+
+#if 0
+    const char *TracerInteraction::P_DIRECTION = "direction";
+    const char *TracerInteraction::P_TDIRECTION = "tdirection";
+    const char *TracerInteraction::P_TASKTYPE = "taskType";
+    const char *TracerInteraction::P_STARTSTYLE = "startStyle";
+    const char *TracerInteraction::P_TRACE_LEN = "trace_len";
+    const char *TracerInteraction::P_FREE_STARTPOINTS = "FreeStartPoints";
+#endif
+
+    m_taskType = addIntParameter("taskType", "task type", Streamlines, Parameter::Choice);
+    V_ENUM_SET_CHOICES(m_taskType, TraceType);
+    m_traceDirection = addIntParameter("tdirection", "direction in which to trace", Both, Parameter::Choice);
+    V_ENUM_SET_CHOICES(m_traceDirection, TraceDirection);
+    m_dtStep = addFloatParameter(
+        "dt_step", "duration of a timestep (for moving points or when data does not specify realtime)", 1. / 25);
+    setParameterRange(m_dtStep, 0.0, 1e6);
     for (int i = 0; i < NumAddPorts; ++i) {
         m_addPort[i] = createOutputPort("add_data_out" + std::to_string(i), "computed field on same geometry");
         linkPorts(m_inPort[0], m_addPort[i]);
@@ -94,49 +111,35 @@ Tracer::Tracer(const std::string &name, int moduleID, mpi::communicator comm): M
     addDescription(TerminationReason, "stop_reason", "stream lines or points with reason for finishing trace");
     addDescription(CellIndex, "cell_index", "stream lines or points with cell index");
     addDescription(BlockIndex, "block_index", "stream lines or points with block index");
-
-#if 0
-    const char *TracerInteraction::P_DIRECTION = "direction";
-    const char *TracerInteraction::P_TDIRECTION = "tdirection";
-    const char *TracerInteraction::P_TASKTYPE = "taskType";
-    const char *TracerInteraction::P_STARTSTYLE = "startStyle";
-    const char *TracerInteraction::P_TRACE_LEN = "trace_len";
-    const char *TracerInteraction::P_FREE_STARTPOINTS = "FreeStartPoints";
-#endif
-
     m_verbose = addIntParameter("verbose", "verbose output", false, Parameter::Boolean);
 
-    m_taskType = addIntParameter("taskType", "task type", Streamlines, Parameter::Choice);
-    V_ENUM_SET_CHOICES(m_taskType, TraceType);
-    addVectorParameter("startpoint1", "1st initial point", ParamVector(0, 0.2, 0));
-    addVectorParameter("startpoint2", "2nd initial point", ParamVector(1, 0, 0));
-    addVectorParameter("direction", "direction for plane", ParamVector(1, 0, 0));
+    setCurrentParameterGroup("Seed Points");
     const Integer max_no_startp = 300;
     m_numStartpoints = addIntParameter("no_startp", "number of startpoints", 2);
     setParameterRange(m_numStartpoints, (Integer)1, max_no_startp);
-    m_maxStartpoints = addIntParameter("max_no_startp", "maximum number of startpoints", max_no_startp);
+    m_startStyle =
+        addIntParameter("startStyle", "initial particle position configuration", (Integer)Line, Parameter::Choice);
+    V_ENUM_SET_CHOICES(m_startStyle, StartStyle);
+    addVectorParameter("startpoint1", "1st initial point", ParamVector(0, 0.2, 0));
+    addVectorParameter("startpoint2", "2nd initial point", ParamVector(1, 0, 0));
+    m_direction = addVectorParameter("direction", "direction for plane", ParamVector(1, 0, 0));
+    m_maxStartpoints =
+        addIntParameter("max_no_startp", "maximum number of startpoints (for parameter/slider limits)", max_no_startp);
     setParameterRange(m_maxStartpoints, (Integer)2, (Integer)1000000);
-    addIntParameter("steps_max", "maximum number of integrations per particle", 1000);
-    setParameterRange("steps_max", (Integer)1, (Integer)1000000);
-    auto tl = addFloatParameter("trace_len", "maximum trace distance", 1.0);
-    setParameterMinimum(tl, 0.0);
+
+    setCurrentParameterGroup("Stop Conditions");
     auto tt = addFloatParameter("trace_time", "maximum trace time", 10000.0);
     setParameterMinimum(tt, 0.0);
-    IntParameter *traceDirection =
-        addIntParameter("tdirection", "direction in which to trace", Both, Parameter::Choice);
-    V_ENUM_SET_CHOICES(traceDirection, TraceDirection);
-    IntParameter *startStyle =
-        addIntParameter("startStyle", "initial particle position configuration", (Integer)Line, Parameter::Choice);
-    V_ENUM_SET_CHOICES(startStyle, StartStyle);
-    IntParameter *integration = addIntParameter("integration", "integration method", (Integer)RK32, Parameter::Choice);
-    V_ENUM_SET_CHOICES(integration, IntegrationMethod);
+    auto tl = addFloatParameter("trace_len", "maximum trace distance", 1.0);
+    setParameterMinimum(tl, 0.0);
+    addIntParameter("steps_max", "maximum number of integrations per particle", 1000);
+    setParameterRange("steps_max", (Integer)1, (Integer)1000000);
     addFloatParameter("min_speed", "minimum particle speed", 1e-4);
     setParameterRange("min_speed", 0.0, 1e6);
-    addFloatParameter("dt_step", "duration of a timestep (for moving points or when data does not specify realtime",
-                      1. / 25);
-    setParameterRange("dt_step", 0.0, 1e6);
 
     setCurrentParameterGroup("Step Length Control");
+    IntParameter *integration = addIntParameter("integration", "integration method", (Integer)RK32, Parameter::Choice);
+    V_ENUM_SET_CHOICES(integration, IntegrationMethod);
     addFloatParameter("h_init", "fixed step size for euler integration", 1e-03);
     setParameterRange("h_init", 0.0, 1e6);
     addFloatParameter("h_min", "minimum step size for rk32 integration", 1e-04);
@@ -453,10 +456,10 @@ bool Tracer::reduce(int timestep)
 
     //determine startpoints
     std::vector<Vector3> startpoints;
-    StartStyle startStyle = (StartStyle)getIntParameter("startStyle");
+    StartStyle startStyle = (StartStyle)m_startStyle->getValue();
     Vector3 startpoint1 = getVectorParameter("startpoint1");
     Vector3 startpoint2 = getVectorParameter("startpoint2");
-    Vector3 direction = getVectorParameter("direction");
+    Vector3 direction = m_direction->getValue();
     if (startStyle == Plane) {
         direction.normalize();
         Vector3 v = startpoint2 - startpoint1;
@@ -529,7 +532,7 @@ bool Tracer::reduce(int timestep)
     global.module = this;
     global.int_mode = (IntegrationMethod)getIntParameter("integration");
     global.task_type = (TraceType)getIntParameter("taskType");
-    global.dt_step = getFloatParameter("dt_step");
+    global.dt_step = m_dtStep->getValue();
     global.h_init = getFloatParameter("h_init");
     global.h_min = getFloatParameter("h_min");
     global.h_max = getFloatParameter("h_max");
@@ -1086,6 +1089,9 @@ bool Tracer::changeParameter(const Parameter *param)
     if (param == m_maxStartpoints) {
         setParameterRange(m_numStartpoints, (Integer)1, m_maxStartpoints->getValue());
     } else if (param == m_taskType) {
+        setParameterReadOnly(m_traceDirection, m_taskType->getValue() != Streamlines);
+        setParameterReadOnly(m_dtStep, m_taskType->getValue() == Streamlines);
+
         if (m_taskType->getValue() == Streamlines)
             setReducePolicy(message::ReducePolicy::PerTimestep);
         else
@@ -1104,6 +1110,8 @@ bool Tracer::changeParameter(const Parameter *param)
             setItemInfo("Points");
             break;
         }
+    } else if (param == m_startStyle) {
+        setParameterReadOnly(m_direction, m_startStyle->getValue() != Plane);
     }
     return Module::changeParameter(param);
 }
