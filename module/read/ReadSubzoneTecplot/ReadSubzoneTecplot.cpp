@@ -33,66 +33,6 @@ using vistle::Index;
 
 MODULE_MAIN(ReadSubzoneTecplot)
 
-namespace {
-// TODO: Might have to tune this value
-constexpr int64_t CHUNK_ELEMS = 1 << 20;
-
-// Read var into a Scalar* dest with chunking + type conversion
-bool readVarIntoScalarArray(void *fh, int32_t zone, int32_t var, vistle::Scalar *dst, int64_t n)
-{
-    int32_t vtype = 0;
-    tecZoneVarGetType(fh, zone, var, &vtype);
-
-    for (int64_t off = 0; off < n; off += CHUNK_ELEMS) {
-        int64_t cnt = std::min<int64_t>(CHUNK_ELEMS, n - off);
-        const int32_t startIndex = (int32_t)(off + 1); // TecIO is 1-based
-
-        switch ((FieldDataType_e)vtype) {
-        case FieldDataType_Float: {
-            std::vector<float> buf(cnt);
-            tecZoneVarGetFloatValues(fh, zone, var, startIndex, (int32_t)cnt, buf.data());
-            for (int64_t i = 0; i < cnt; ++i)
-                dst[off + i] = (vistle::Scalar)buf[i];
-            break;
-        }
-        case FieldDataType_Double: {
-            std::vector<double> buf(cnt);
-            tecZoneVarGetDoubleValues(fh, zone, var, startIndex, (int32_t)cnt, buf.data());
-            for (int64_t i = 0; i < cnt; ++i)
-                dst[off + i] = (vistle::Scalar)buf[i];
-            break;
-        }
-        case FieldDataType_Int32: {
-            std::vector<int32_t> buf(cnt);
-            tecZoneVarGetInt32Values(fh, zone, var, startIndex, (int32_t)cnt, buf.data());
-            for (int64_t i = 0; i < cnt; ++i)
-                dst[off + i] = (vistle::Scalar)buf[i];
-            break;
-        }
-        case FieldDataType_Int16: {
-            std::vector<int16_t> buf(cnt);
-            tecZoneVarGetInt16Values(fh, zone, var, startIndex, (int32_t)cnt, buf.data());
-            for (int64_t i = 0; i < cnt; ++i)
-                dst[off + i] = (vistle::Scalar)buf[i];
-            break;
-        }
-        case FieldDataType_Byte: {
-            std::vector<uint8_t> buf(cnt);
-            tecZoneVarGetUInt8Values(fh, zone, var, startIndex, (int32_t)cnt, buf.data());
-            for (int64_t i = 0; i < cnt; ++i)
-                dst[off + i] = (vistle::Scalar)buf[i];
-            break;
-        }
-        default:
-            std::cerr << "Unsupported TecIO var type: " << vtype << std::endl;
-            return false;
-        }
-    }
-    return true;
-}
-} // namespace
-
-
 ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mpi::communicator comm)
 : Reader(name, moduleID, comm)
 {
@@ -105,9 +45,8 @@ ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mp
 
     m_grid = createOutputPort("grid_out", "grid or geometry");
 
-    setParallelizationMode(Serial);
-    //setParallelizationMode(
-    //    ParallelizeTimeAndBlocks); // Parallelization does not work, leads to abortion errors
+    //setParallelizationMode(Serial);
+    setParallelizationMode(ParallelizeTimeAndBlocks); // Parallelization does not work, leads to abortion errors
 
     std::vector<std::string> varChoices{Reader::InvalidChoice};
     for (int i = 0; i < NumPorts; i++) {
@@ -235,6 +174,20 @@ bool ReadSubzoneTecplot::examine(const vistle::Parameter *param)
     return true;
 }
 
+bool ReadSubzoneTecplot::prepareRead()
+{
+    time1 = MPI_Wtime(); // Record start time for debugging MPI issues
+    //std::cout << "ReadSubzoneTecplot MPI_Wtime at prepareRead: " << time1 << std::endl;
+    return true;
+}
+
+bool ReadSubzoneTecplot::finishRead()
+{
+    //double time2 = MPI_Wtime(); // Record end time for debugging MPI issues
+    //std::cout << "ReadSubzoneTecplot MPI_Wtime at finishRead: " << time2 << std::endl;
+    //std::cout << "ReadSubzoneTecplot total time in seconds: " << time2 - time1 << std::endl;
+    return true;
+}
 // Check zone type for each zone
 // 0 = ordered, 1 = line segment, 2 = triangle, 3 = quadrilateral, 4 = tetraheddron, 5 = brick,
 // 6 = polygon, 7 = polyhedron, 8  = Mixed(not used)
@@ -268,7 +221,7 @@ Byte ReadSubzoneTecplot::tecToVistleType(int tecType)
 
 // Helper that reads the values of a variables with index var from a tecplot file with the specified fh for
 // the given inputZone and returns a pointer to a Vec<Scalar, 1> containing the values in its x() array.
-Vec<Scalar, 1>::ptr ReadSubzoneTecplot::readVariables(void *fh, int64_t numValues, int32_t inputZone, int32_t var)
+Vec<Scalar, 1>::ptr ReadSubzoneTecplot::readVariables(void *fh, int64_t numValues, const int32_t inputZone, int32_t var)
 {
     int32_t varType;
     tecZoneVarGetType(fh, inputZone, var, &varType);
@@ -313,17 +266,6 @@ Vec<Scalar, 1>::ptr ReadSubzoneTecplot::readVariables(void *fh, int64_t numValue
 
     return field;
 }
-/* 
-Vec<Scalar, 1>::ptr ReadSubzoneTecplot::readVariables(void *fh, int64_t numValues,
-                                                      int32_t inputZone, int32_t var)
-{
-    auto out = std::make_shared<Vec<Scalar, 1>>(numValues);
-    if (!readVarIntoScalarArray(fh, inputZone, var, out->x().data(), numValues)) {
-        std::cerr << "Failed to read var " << var << " for zone " << inputZone << "\n";
-    }
-    return out;
-}
- */
 
 
 // Builds a structured grid from the first three variables in the tecplot file, which are assumed to be the
