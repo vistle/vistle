@@ -46,6 +46,7 @@ private:
     std::vector<std::vector<vistle::Vec<vistle::Scalar, 3>::const_ptr>> data_in0;
     std::vector<std::vector<vistle::DataBase::const_ptr>> data_in[NumPorts];
     int data_dim[NumPorts];
+    std::vector<double> m_realtimes;
 
     std::vector<AttributeMap> m_gridAttr, m_dataAttr[NumPorts];
     std::vector<vistle::Meta> m_gridTime, m_dataTime[NumPorts];
@@ -92,6 +93,7 @@ private:
     TraceType task_type;
     IntegrationMethod int_mode;
     bool use_celltree;
+    int num_particles = 0;
 
     double simplification_error = 0.;
     double errtolrel, errtolabs;

@@ -381,7 +381,7 @@ void Particle<S>::addToOutput()
     if (m_segments.empty())
         return;
 
-    if (m_global.task_type == MovingPoints) {
+    if (m_global.task_type == MovingPoints || m_global.task_type == Pathlines) {
         Scalar prevTime(0);
         Scalar time(0);
         Index timestep = 0;
@@ -420,18 +420,68 @@ void Particle<S>::addToOutput()
                         pos = lerp(pos0, pos1, t);
                     }
 
+                    auto addToArray = [this, timestep](auto &field, auto value) {
+                        if (m_global.task_type == MovingPoints) {
+                            field->push_back(value);
+                        } else if (m_global.task_type == Pathlines) {
+                            if (field->size() < (timestep + 1) * m_global.num_particles) {
+                                field->resize((timestep + 1) * m_global.num_particles);
+                            }
+                            auto idx = static_cast<size_t>(timestep) * m_global.num_particles + id();
+                            field->at(idx) = value;
+                        }
+                    };
+
+                    auto addToScalar = [this, timestep](auto &field, auto value) {
+                        if (m_global.task_type == MovingPoints) {
+                            field->x().push_back(value);
+                        } else if (m_global.task_type == Pathlines) {
+                            if (field->getSize() < (timestep + 1) * m_global.num_particles) {
+                                field->setSize((timestep + 1) * m_global.num_particles);
+                            }
+                            auto idx = static_cast<size_t>(timestep) * m_global.num_particles + id();
+                            field->x()[idx] = value;
+                        }
+                    };
+
+                    auto addToVector = [this, timestep](auto &field, auto value) {
+                        if (m_global.task_type == MovingPoints) {
+                            field->x().push_back(value[0]);
+                            field->y().push_back(value[1]);
+                            field->z().push_back(value[2]);
+                        } else if (m_global.task_type == Pathlines) {
+                            if (field->getSize() < (timestep + 1) * m_global.num_particles) {
+                                field->setSize((timestep + 1) * m_global.num_particles);
+                            }
+                            auto idx = static_cast<size_t>(timestep) * m_global.num_particles + id();
+                            field->x()[idx] = value[0];
+                            field->y()[idx] = value[1];
+                            field->z()[idx] = value[2];
+                        }
+                    };
+
                     std::lock_guard<std::mutex> locker(m_global.mutex);
-                    auto points = m_global.points[timestep];
-                    points->x().push_back(pos[0]);
-                    points->y().push_back(pos[1]);
-                    points->z().push_back(pos[2]);
+                    Coords::ptr coords;
+                    Points::ptr points;
+                    Lines::ptr lines;
+                    if (m_global.task_type == MovingPoints) {
+                        points = m_global.points[timestep];
+                        coords = points;
+                    } else {
+                        lines = m_global.lines[timestep];
+                        coords = lines;
+                        for (Index t = 0; t < timestep; ++t) {
+                            auto i = static_cast<size_t>(t) * m_global.num_particles + id();
+                            lines->cl().push_back(i);
+                        }
+                        lines->el().push_back(lines->cl().size());
+                    }
+                    addToVector(coords, pos);
 
                     if (m_global.computeVector) {
                         Vector3 vel = lerp(vel0, vel1, t);
                         auto vout = m_global.vecField[timestep];
-                        vout->x().push_back(vel[0]);
-                        vout->y().push_back(vel[1]);
-                        vout->z().push_back(vel[2]);
+                        addToVector(vout, vel);
                     }
 
                     if (m_global.numScalars > 0) {
@@ -454,7 +504,7 @@ void Particle<S>::addToOutput()
                             const auto &scalars1 = seg.m_scalars[s];
                             const auto &scalars0 = prevSeg->m_scalars[s];
                             Scalar scal = lerp(scalars0[i], scalars1[i], t);
-                            scalars[s]->push_back(scal);
+                            addToArray(scalars[s], scal);
                         }
                     }
 
@@ -462,23 +512,23 @@ void Particle<S>::addToOutput()
                         const auto dist1 = seg.m_dists[i];
                         const auto dist0 = prevSeg->m_dists[prevIdx];
                         Scalar dist = lerp(dist0, dist1, t);
-                        m_global.distField[timestep]->x().push_back(dist);
+                        addToScalar(m_global.distField[timestep], dist);
                     }
 
                     if (m_global.computeStep)
-                        m_global.stepField[timestep]->x().push_back(seg.m_steps[i]);
+                        addToScalar(m_global.stepField[timestep], seg.m_steps[i]);
                     if (m_global.computeTime)
-                        m_global.timeField[timestep]->x().push_back(time);
+                        addToScalar(m_global.timeField[timestep], time);
                     if (m_global.computeStepWidth)
-                        m_global.stepWidthField[timestep]->x().push_back(seg.m_stepWidth[i]);
+                        addToScalar(m_global.stepWidthField[timestep], seg.m_stepWidth[i]);
                     if (m_global.computeId)
-                        m_global.idField[timestep]->x().push_back(m_startId);
+                        addToScalar(m_global.idField[timestep], m_startId);
                     if (m_global.computeStopReason)
-                        m_global.stopReasonField[timestep]->x().push_back(m_stopReason);
+                        addToScalar(m_global.stopReasonField[timestep], m_stopReason);
                     if (m_global.computeCellIndex)
-                        m_global.cellField[timestep]->x().push_back(seg.m_cellIndex[i]);
+                        addToScalar(m_global.cellField[timestep], seg.m_cellIndex[i]);
                     if (m_global.computeBlockIndex)
-                        m_global.blockField[timestep]->x().push_back(seg.m_blockIndex);
+                        addToScalar(m_global.blockField[timestep], seg.m_blockIndex);
 
                     time += m_global.dt_step;
                     ++timestep;
@@ -488,7 +538,22 @@ void Particle<S>::addToOutput()
                 prevIdx = i;
             }
         }
+        // for pathlines, repeat last full pathline instead of removing stopped particles from visualization
+        if (m_global.task_type == Pathlines) {
+            auto lastTimestep = timestep;
+            for (; timestep < m_global.lines.size(); ++timestep) {
+                auto lines = m_global.lines[timestep];
+                for (Index t = 0; t < lastTimestep; ++t) {
+                    auto i = static_cast<size_t>(t) * m_global.num_particles + id();
+                    lines->cl().push_back(i);
+                }
+                lines->el().push_back(lines->cl().size());
+            }
+        }
+    } else if (m_global.task_type == Streaklines) {
+        // TODO
     } else {
+        // streamlines
         Index numPoints = 0;
         for (auto &ent: m_segments) {
             const auto &seg = *ent.second;
