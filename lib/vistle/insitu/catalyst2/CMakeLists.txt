@@ -17,6 +17,14 @@ if(EXTERNAL_CONDUIT)
     if(NOT conduit_FOUND)
         return()
     endif()
+else()
+    # paraview-catalyst 2.0.0 on Arch linux brings catalyst, but not conduit.hpp, even though it's included by installed headers
+    get_target_property(CONDUIT_INCLUDE_DIRS catalyst::catalyst_headers INTERFACE_INCLUDE_DIRECTORIES)
+    find_file(CONDUIT_HPP conduit.hpp PATHS ${CONDUIT_INCLUDE_DIRS})
+    if(NOT CONDUIT_HPP)
+        message("Did not find `conduit.hpp` in `${CONDUIT_INCLUDE_DIRS}`, but found catalyst 2")
+        return()
+    endif()
 endif()
 
 # use this function call to create a Catalyst API implementation.
