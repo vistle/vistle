@@ -92,7 +92,7 @@ else
     VISTLE_BUILD_TYPE=RelWithDebInfo
 fi
 export VISTLE_BUILD_TYPE
-
+builddir="build"
 case "$VISTLE_BUILD_TYPE" in
 Debug|Sanitize)
     if [ "${ARCHSUFFIX%opt}" != "${ARCHSUFFIX}" ]; then
