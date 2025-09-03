@@ -12,4 +12,4 @@ add_module(
     anarirenderobject.h
     anarirenderobject.cpp)
 
-target_link_libraries(ANARemote anari::anari vistle_renderer vistle_rhr)
+target_link_libraries(ANARemote PRIVATE anari::anari vistle_renderer vistle_rhr)
