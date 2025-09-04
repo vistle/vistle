@@ -550,7 +550,6 @@ bool Tracer::reduce(int timestep)
     global.int_mode = (IntegrationMethod)getIntParameter("integration");
     global.task_type = (TraceType)getIntParameter("taskType");
     global.num_particles = numparticles;
-    global.dt_step = m_dtStep->getValue();
     global.h_init = getFloatParameter("h_init");
     global.h_min = getFloatParameter("h_min");
     global.h_max = getFloatParameter("h_max");
@@ -566,6 +565,17 @@ bool Tracer::reduce(int timestep)
     global.blocks.resize(numtime);
     global.cell_index_modulus = getIntParameter("cell_index_modulus");
     global.simplification_error = getFloatParameter("simplification_error");
+
+    global.dt_step = m_dtStep->getValue();
+    double timestepWidth = 0.;
+    if (m_haveTimeSteps && timestep >= 0) {
+        timestepWidth = (m_realtimes.back() - m_realtimes.front()) / (numTimesteps() - 1);
+    }
+    if (timestepWidth <= 0.) {
+        timestepWidth = global.dt_step;
+    } else {
+        global.dt_step = timestepWidth;
+    }
 
     global.computeVector = isConnected(*m_outPort[0]);
     global.computeField[0] = global.computeVector;
@@ -847,15 +857,12 @@ bool Tracer::reduce(int timestep)
     }
     maxTime = mpi::all_reduce(comm(), maxTime, mpi::maximum<Scalar>());
     unsigned numout = 1;
-    double timestepWidth = 0.;
-    if (m_haveTimeSteps && timestep >= 0) {
-        timestepWidth = (m_realtimes.back() - m_realtimes.front()) / (numTimesteps() - 1);
-    }
-    if (timestepWidth <= 0.) {
-        timestepWidth = global.dt_step;
-    }
     if (taskType != Streamlines) {
-        numtime = maxTime / timestepWidth + 1;
+        numtime = maxTime / global.dt_step + 1;
+        if (taskType == Pathlines && numtime < numTimesteps()) {
+            // make sure that pathlines remain visible until end of simulation
+            numtime = numTimesteps();
+        }
         if (numtime < 1)
             numtime = 1;
         numout = numtime;

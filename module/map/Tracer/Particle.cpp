@@ -42,8 +42,9 @@ Particle<S>::Particle(Index id, int rank, Index startId, const Vector3 &pos, boo
     m_scalars.resize(global.numScalars);
     m_integrator.enableCelltree(m_useCelltree);
 
-    if (!global.blocks[timestep].empty())
+    if (!global.blocks[timestep].empty()) {
         m_time = global.blocks[timestep][0]->m_grid->getRealTime();
+    }
 }
 
 template<class S>
