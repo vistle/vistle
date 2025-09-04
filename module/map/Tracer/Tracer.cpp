@@ -1034,27 +1034,27 @@ bool Tracer::reduce(int timestep)
         geo->setMeta(meta);
         updateMeta(geo);
 
-        for (int i = 0; i < NumAddPorts; ++i) {
+        for (int p = 0; p < NumAddPorts; ++p) {
             DataBase::ptr field;
-            if (m_addField[i]->getValue() == ParticleId) {
+            if (m_addField[p]->getValue() == ParticleId) {
                 field = global.idField[i];
-            } else if (m_addField[i]->getValue() == Step) {
+            } else if (m_addField[p]->getValue() == Step) {
                 field = global.stepField[i];
-            } else if (m_addField[i]->getValue() == Time) {
+            } else if (m_addField[p]->getValue() == Time) {
                 field = global.timeField[i];
-            } else if (m_addField[i]->getValue() == StepWidth) {
+            } else if (m_addField[p]->getValue() == StepWidth) {
                 field = global.stepWidthField[i];
-            } else if (m_addField[i]->getValue() == Distance) {
+            } else if (m_addField[p]->getValue() == Distance) {
                 field = global.distField[i];
-            } else if (m_addField[i]->getValue() == TerminationReason) {
+            } else if (m_addField[p]->getValue() == TerminationReason) {
                 field = global.stopReasonField[i];
-            } else if (m_addField[i]->getValue() == CellIndex) {
+            } else if (m_addField[p]->getValue() == CellIndex) {
                 field = global.cellField[i];
-            } else if (m_addField[i]->getValue() == BlockIndex) {
+            } else if (m_addField[p]->getValue() == BlockIndex) {
                 field = global.blockField[i];
             }
 
-            if (isConnected(*m_addPort[i])) {
+            if (isConnected(*m_addPort[p])) {
                 if (field) {
                     bool initField = true;
                     for (int j = 0; j < i; ++j) {
@@ -1070,9 +1070,9 @@ bool Tracer::reduce(int timestep)
                         field->addAttribute(attribute::Species, getFieldName(kind));
                         updateMeta(field);
                     }
-                    addObject(m_addPort[i], field);
+                    addObject(m_addPort[p], field);
                 } else {
-                    addObject(m_addPort[i], geo);
+                    addObject(m_addPort[p], geo);
                 }
             }
         }
