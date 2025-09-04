@@ -81,3 +81,6 @@
 [submodule "module/map/IsoSurface/cccl"]
 	path = module/map/IsoSurface/cccl
 	url = https://github.com/NVIDIA/cccl
+[submodule "module/read/ReadSubzoneTecplot/tecio"]
+	path = module/read/ReadSubzoneTecplot/tecio
+	url = https://github.com/karthikeya-ms/tecio
