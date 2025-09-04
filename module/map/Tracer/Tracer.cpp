@@ -874,10 +874,10 @@ bool Tracer::reduce(int timestep)
             global.points.back()->x().reserve(allParticles.size());
             global.points.back()->y().reserve(allParticles.size());
             global.points.back()->z().reserve(allParticles.size());
-            applyAttributes(global.points.back(), m_gridAttr[timestep + 1]);
+            applyAttributes(global.points.back(), m_gridAttr[0]);
         } else if (taskType == Pathlines) {
             global.lines.emplace_back(new Lines(0, 0, 0));
-            applyAttributes(global.lines.back(), m_gridAttr[timestep + 1]);
+            applyAttributes(global.lines.back(), m_gridAttr[0]);
             if (global.lines.size() > 1) {
                 // share coordinates between all timesteps, as the geometry just builds up
                 const auto &l0 = global.lines.front();
@@ -963,23 +963,18 @@ bool Tracer::reduce(int timestep)
         if (global.computeBlockIndex) {
             initMetaField(global.blockField, Index());
         }
-    }
 
-    {
         int idx = timestep;
         if (idx < 0)
             idx = 0;
-        if (taskType == MovingPoints) {
-            assert(global.points.size() > size_t(idx));
-            applyAttributes(global.points[idx], m_gridAttr[timestep + 1]);
+        if (taskType == Streamlines) {
+            assert(!global.lines.empty());
+            applyAttributes(global.lines.back(), m_gridAttr[timestep + 1]);
+        } else if (taskType == MovingPoints) {
+            applyAttributes(global.points.back(), m_gridAttr[0]);
         } else {
-            if (taskType == Streamlines) {
-                assert(!global.lines.empty());
-                applyAttributes(global.lines.back(), m_gridAttr[timestep + 1]);
-            } else {
-                assert(global.lines.size() > size_t(idx));
-                applyAttributes(global.lines[idx], m_gridAttr[timestep + 1]);
-            }
+            assert(global.lines.size() > size_t(idx));
+            applyAttributes(global.lines.back(), m_gridAttr[0]);
         }
         for (int i = 0; i < NumPorts; ++i) {
             if (!global.computeField[i])
@@ -989,7 +984,7 @@ bool Tracer::reduce(int timestep)
                 applyAttributes(global.fields[i].back(), m_dataAttr[i][timestep + 1]);
             } else {
                 assert(global.fields[i].size() > size_t(idx));
-                applyAttributes(global.fields[i][idx], m_dataAttr[i][timestep + 1]);
+                applyAttributes(global.fields[i].back(), m_dataAttr[i][0]);
             }
         }
     }
