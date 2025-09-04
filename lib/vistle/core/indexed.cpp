@@ -42,7 +42,7 @@ bool Indexed::checkImpl(std::ostream &os, bool quick) const
 
     VALIDATE(el()[getNumElements()] == getNumCorners());
     if (getNumElements() > 0) {
-        VALIDATE(el()[getNumElements() - 1] < getNumCorners());
+        VALIDATE(el()[getNumElements() - 1] <= getNumCorners());
     }
 
     if (getNumCorners() > 0) {
