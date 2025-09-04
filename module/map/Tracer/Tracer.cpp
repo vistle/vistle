@@ -1134,6 +1134,8 @@ bool Tracer::changeParameter(const Parameter *param)
             break;
         case Streaklines:
             setItemInfo("Streaklines");
+            if (rank() == 0)
+                sendError("Streaklines not implemented yet");
             break;
         case MovingPoints:
             setItemInfo("Points");
