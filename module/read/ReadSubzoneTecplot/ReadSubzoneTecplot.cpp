@@ -625,7 +625,7 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
             if (open_rc != 0 || !fh) {
                 sendError("Failed to open file %s (rc=%d)", filename.c_str(), open_rc);
                 return false;
-}
+            }
             //sendInfo("Reading file %s for timestep %d", filename.c_str(), timestep);
             // Read grids of all zones:
             int32_t numZones = 0;
@@ -674,15 +674,15 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
                         //std::cout << "Reading variable: " << name << " on port: " << var << std::endl;
                         std::vector<int> varInFile = getIndexOfTecVar(name, m_indicesCombinedVariables, fh);
 
-                                   // guard against invalid indices             
+                        // guard against invalid indices
                         if (varInFile.empty() || varInFile[0] < 1) {
                             std::cerr << "Skipping '" << name << "' (not present in this file/zone)\n";
                             continue;
                         }
-                        
 
 
-                        if (tecVarGetName(fh, varInFile[0], &varName) != 0) varName = nullptr;
+                        if (tecVarGetName(fh, varInFile[0], &varName) != 0)
+                            varName = nullptr;
 
 
                         // varInFile is filled already; you also did: tecVarGetName(fh, varInFile[0], &varName);
@@ -711,12 +711,13 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
 
                         } else if (varInFile.size() > 1) {
                             // combined vector (X,Y,Z)
-                                                        
+
                             if (varInFile.size() < 3 || varInFile[0] < 1 || varInFile[1] < 1 || varInFile[2] < 1) {
-                                std::cerr << "Skipping vector '" << name << "' (components missing in this file/zone)\n";
+                                std::cerr << "Skipping vector '" << name
+                                          << "' (components missing in this file/zone)\n";
                                 continue;
                             }
-                            
+
 
                             //std::cout << "Reading combined variable: " << name << " on port: " << var << std::endl;
 
