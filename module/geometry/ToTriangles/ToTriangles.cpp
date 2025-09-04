@@ -179,6 +179,96 @@ DataBase::ptr replicateData(DataBase::const_ptr src, Index nnelem, const Index *
     return result;
 }
 
+namespace {
+const int NumLat = 8;
+const int NumLong = 13;
+static_assert(NumLat >= 3, "too few vertices");
+static_assert(NumLong >= 3, "too few vertices");
+const Index TriPerSphere = NumLong * (NumLat - 2) * 2;
+const Index CoordPerSphere = NumLong * (NumLat - 2) + 2;
+
+void addSphere(Scalar cx, Scalar cy, Scalar cz, Scalar r, Index idx, Index *ti, Scalar *tx, Scalar *ty, Scalar *tz,
+               Scalar *nx, Scalar *ny, Scalar *nz)
+{
+    const float psi = M_PI / (NumLat - 1);
+    const float phi = M_PI * 2 / NumLong;
+
+    // create normals
+    {
+        Index ci = 0;
+        // south pole
+        nx[ci] = ny[ci] = Scalar(0);
+        nz[ci] = Scalar(-1);
+        ++ci;
+
+        float Psi = -M_PI * 0.5 + psi;
+        for (Index j = 0; j < NumLat - 2; ++j) {
+            float Phi = j * 0.5f * phi;
+            for (Index k = 0; k < NumLong; ++k) {
+                nx[ci] = sin(Phi) * cos(Psi);
+                ny[ci] = cos(Phi) * cos(Psi);
+                nz[ci] = sin(Psi);
+                ++ci;
+                Phi += phi;
+            }
+            Psi += psi;
+        }
+        // north pole
+        nx[ci] = ny[ci] = Scalar(0);
+        nz[ci] = Scalar(1);
+        ++ci;
+        assert(ci == CoordPerSphere);
+    }
+
+    // create coordinates from normals
+    for (Index ci = 0; ci < CoordPerSphere; ++ci) {
+        tx[ci] = nx[ci] * r + cx;
+        ty[ci] = ny[ci] * r + cy;
+        tz[ci] = nz[ci] * r + cz;
+    }
+
+    // create index list
+    {
+        Index ii = 0;
+        // indices for ring around south pole
+        Index ci = idx + 1;
+        for (Index k = 0; k < NumLong; ++k) {
+            ti[ii++] = ci + k;
+            ti[ii++] = ci + (k + 1) % NumLong;
+            ti[ii++] = idx;
+        }
+
+        ci = idx + 1;
+        for (Index j = 0; j < NumLat - 3; ++j) {
+            for (Index k = 0; k < NumLong; ++k) {
+                ti[ii++] = ci + k;
+                ti[ii++] = ci + k + NumLong;
+                ti[ii++] = ci + (k + 1) % NumLong;
+                ti[ii++] = ci + (k + 1) % NumLong;
+                ti[ii++] = ci + k + NumLong;
+                ti[ii++] = ci + NumLong + (k + 1) % NumLong;
+            }
+            ci += NumLong;
+        }
+        assert(ci == idx + 1 + NumLong * (NumLat - 3));
+        assert(ci + NumLong + 1 == idx + CoordPerSphere);
+
+        // indices for ring around north pole
+        for (Index k = 0; k < NumLong; ++k) {
+            ti[ii++] = ci + (k + 1) % NumLong;
+            ti[ii++] = ci + k;
+            ti[ii++] = idx + CoordPerSphere - 1;
+        }
+        assert(ii == 3 * TriPerSphere);
+
+        for (Index j = 0; j < 3 * TriPerSphere; ++j) {
+            assert(ti[j] >= idx);
+            assert(ti[j] < idx + CoordPerSphere);
+        }
+    }
+}
+} // namespace
+
 bool ToTriangles::compute()
 {
     auto container = expect<Object>("grid_in");
@@ -284,13 +374,6 @@ bool ToTriangles::compute()
                 ndata = replicateData(data, 2);
             }
         } else if (points && radius && p_transformSpheres->getValue()) {
-            const int NumLat = 8;
-            const int NumLong = 13;
-            static_assert(NumLat >= 3, "too few vertices");
-            static_assert(NumLong >= 3, "too few vertices");
-            Index TriPerSphere = NumLong * (NumLat - 2) * 2;
-            Index CoordPerSphere = NumLong * (NumLat - 2) + 2;
-
             Index n = points->getNumPoints();
             auto x = &points->x()[0];
             auto y = &points->y()[0];
@@ -308,81 +391,14 @@ bool ToTriangles::compute()
             auto ny = norm->y().data();
             auto nz = norm->z().data();
 
-            const float psi = M_PI / (NumLat - 1);
-            const float phi = M_PI * 2 / NumLong;
             for (Index i = 0; i < n; ++i) {
-                // create normals
-                {
-                    Index ci = i * CoordPerSphere;
-                    // south pole
-                    nx[ci] = ny[ci] = 0.f;
-                    nz[ci] = -1.f;
-                    ++ci;
+                addSphere(x[i], y[i], z[i], r[i], i * CoordPerSphere, &ti[i * 3 * TriPerSphere],
+                          &tx[i * CoordPerSphere], &ty[i * CoordPerSphere], &tz[i * CoordPerSphere],
+                          &nx[i * CoordPerSphere], &ny[i * CoordPerSphere], &nz[i * CoordPerSphere]);
 
-                    float Psi = -M_PI * 0.5 + psi;
-                    for (Index j = 0; j < NumLat - 2; ++j) {
-                        float Phi = j * 0.5f * phi;
-                        for (Index k = 0; k < NumLong; ++k) {
-                            nx[ci] = sin(Phi) * cos(Psi);
-                            ny[ci] = cos(Phi) * cos(Psi);
-                            nz[ci] = sin(Psi);
-                            ++ci;
-                            Phi += phi;
-                        }
-                        Psi += psi;
-                    }
-                    // north pole
-                    nx[ci] = ny[ci] = 0.f;
-                    nz[ci] = 1.f;
-                    ++ci;
-                    assert(ci == (i + 1) * CoordPerSphere);
-                }
-
-                // create coordinates from normals
-                for (Index ci = i * CoordPerSphere; ci < (i + 1) * CoordPerSphere; ++ci) {
-                    tx[ci] = nx[ci] * r[i] + x[i];
-                    ty[ci] = ny[ci] * r[i] + y[i];
-                    tz[ci] = nz[ci] * r[i] + z[i];
-                }
-
-                // create index list
-                {
-                    Index ii = i * 3 * TriPerSphere;
-                    // indices for ring around south pole
-                    Index ci = i * CoordPerSphere + 1;
-                    for (Index k = 0; k < NumLong; ++k) {
-                        ti[ii++] = ci + k;
-                        ti[ii++] = ci + (k + 1) % NumLong;
-                        ti[ii++] = i * CoordPerSphere;
-                    }
-
-                    ci = i * CoordPerSphere + 1;
-                    for (Index j = 0; j < NumLat - 3; ++j) {
-                        for (Index k = 0; k < NumLong; ++k) {
-                            ti[ii++] = ci + k;
-                            ti[ii++] = ci + k + NumLong;
-                            ti[ii++] = ci + (k + 1) % NumLong;
-                            ti[ii++] = ci + (k + 1) % NumLong;
-                            ti[ii++] = ci + k + NumLong;
-                            ti[ii++] = ci + NumLong + (k + 1) % NumLong;
-                        }
-                        ci += NumLong;
-                    }
-                    assert(ci == i * CoordPerSphere + 1 + NumLong * (NumLat - 3));
-                    assert(ci + NumLong + 1 == (i + 1) * CoordPerSphere);
-
-                    // indices for ring around north pole
-                    for (Index k = 0; k < NumLong; ++k) {
-                        ti[ii++] = ci + (k + 1) % NumLong;
-                        ti[ii++] = ci + k;
-                        ti[ii++] = (i + 1) * CoordPerSphere - 1;
-                    }
-                    assert(ii == (i + 1) * 3 * TriPerSphere);
-
-                    for (Index j = 0; j < 3 * TriPerSphere; ++j) {
-                        assert(ti[i * 3 * TriPerSphere + j] >= i * CoordPerSphere);
-                        assert(ti[i * 3 * TriPerSphere + j] < (i + 1) * CoordPerSphere);
-                    }
+                for (Index j = 0; j < 3 * TriPerSphere; ++j) {
+                    assert(ti[i * 3 * TriPerSphere + j] >= i * CoordPerSphere);
+                    assert(ti[i * 3 * TriPerSphere + j] < (i + 1) * CoordPerSphere);
                 }
             }
             norm->setMeta(obj->meta());
@@ -399,9 +415,22 @@ bool ToTriangles::compute()
 
             const Index *cl = nullptr;
             Index numEl = lines->getNumElements();
+            Index numEmptyEl = 0, numSinglePointEl = 0;
+            auto el = &lines->el()[0];
+            for (Index i = 0; i < numEl; ++i) {
+                const Index begin = el[i], end = el[i + 1];
+                if (end == begin) {
+                    ++numEmptyEl;
+                } else if (end == begin + 1) {
+                    ++numSinglePointEl;
+                }
+            }
             Index numPoint = lines->getNumCoords();
             Index numConn = lines->getNumCorners();
-            if (numConn == 0) {
+            if (numEl == 0 || numEl == numEmptyEl) {
+                numPoint = 0;
+                numConn = 0;
+            } else if (numConn == 0) {
                 numConn = numPoint;
             } else {
                 cl = &lines->cl()[0];
@@ -410,7 +439,6 @@ bool ToTriangles::compute()
             auto y = &lines->y()[0];
             auto z = &lines->z()[0];
             auto r = &radius->x()[0];
-            auto el = &lines->el()[0];
             // we ignore connection style altogether and simplify start and end style
             auto startStyle = lines->startStyle();
             if (startStyle != Lines::Open) {
@@ -419,6 +447,10 @@ bool ToTriangles::compute()
             auto endStyle = lines->endStyle();
             if (endStyle != Lines::Arrow && endStyle != Lines::Open) {
                 endStyle = Lines::Flat;
+            }
+            if (numEl == 0 || numConn == 0 || numPoint == 0) {
+                startStyle = Lines::Open;
+                endStyle = Lines::Open;
             }
 
             Index numCoordStart = 0, numCoordEnd = 0;
@@ -435,9 +467,15 @@ bool ToTriangles::compute()
                 numIndEnd = 3 * NumSect;
             }
 
-            const Index numSeg = (numConn - numEl);
-            const Index numVert = numSeg * 3 * TriPerSection + numEl * (numIndStart + numIndEnd);
-            const Index numCoord = numVert > 0 ? numConn * NumSect + numEl * (numCoordStart + numCoordEnd) : 0;
+            const Index numSeg = numConn - (numEl - numEmptyEl);
+            const Index numVert = numSeg * 3 * TriPerSection +
+                                  (numEl - numEmptyEl - numSinglePointEl) * (numIndStart + numIndEnd) +
+                                  numSinglePointEl * 3 * TriPerSphere;
+            const Index numCoord = numVert > 0
+                                       ? (numConn - numSinglePointEl) * NumSect +
+                                             (numEl - numEmptyEl - numSinglePointEl) * (numCoordStart + numCoordEnd) +
+                                             numSinglePointEl * CoordPerSphere
+                                       : 0;
 
             if (perElement) {
                 mult.reserve(numEl);
@@ -445,210 +483,223 @@ bool ToTriangles::compute()
             }
 
             tri.reset(new Triangles(numVert, numCoord));
+            Normals::ptr norm(new Normals(numCoord));
+            assert(norm->getSize() == tri->getSize());
+
             auto tx = tri->x().data();
             auto ty = tri->y().data();
             auto tz = tri->z().data();
             auto ti = tri->cl().data();
 
-            Normals::ptr norm(new Normals(numCoord));
-            assert(norm->getSize() == tri->getSize());
             auto nx = norm->x().data();
             auto ny = norm->y().data();
             auto nz = norm->z().data();
 
             Index ci = 0; // coord index
             Index ii = 0; // index index
-            if (numCoord > 0) {
-                for (Index i = 0; i < numEl; ++i) {
-                    const Index begin = el[i], end = el[i + 1];
-                    if (perElement) {
-                        Index ntri = numIndStart / 3 + (end - begin - 1) * TriPerSection + numIndEnd / 3;
-                        mult.push_back(ntri);
+            for (Index i = 0; i < numEl; ++i) {
+                const Index begin = el[i], end = el[i + 1];
+                if (perElement) {
+                    Index ntri = numIndStart / 3 + (end - begin - 1) * TriPerSection + numIndEnd / 3;
+                    if (begin == end) {
+                        ntri = 0;
+                    } else if (begin + 1 == end) {
+                        ntri = TriPerSphere;
+                    }
+                    mult.push_back(ntri);
+                }
+
+                Vector3 normal, dir;
+                for (Index k = begin; k < end; ++k) {
+                    Index idx = cl ? cl[k] : k;
+                    Index nidx = (cl && k + 1 < end) ? cl[k + 1] : k + 1;
+                    Index pidx = (cl && k > 0) ? cl[k - 1] : k - 1;
+                    auto curRad = radiusPerElement ? r[i] : r[idx];
+                    Vector3 cur(x[idx], y[idx], z[idx]);
+
+                    if (end == begin + 1) {
+                        // single point element: draw a sphere
+                        addSphere(cur[0], cur[1], cur[2], curRad, ci, &ti[ii], &tx[ci], &ty[ci], &tz[ci], &nx[ci],
+                                  &ny[ci], &nz[ci]);
+                        ci += CoordPerSphere;
+                        ii += 3 * TriPerSphere;
+                        break;
                     }
 
-                    Vector3 normal, dir;
-                    for (Index k = begin; k < end; ++k) {
-                        Index idx = cl ? cl[k] : k;
-                        Index nidx = (cl && k + 1 < end) ? cl[k + 1] : k + 1;
-                        Index pidx = (cl && k > 0) ? cl[k - 1] : k - 1;
-                        auto curRad = radiusPerElement ? r[i] : r[idx];
-                        Vector3 cur(x[idx], y[idx], z[idx]);
-                        Vector3 next = k + 1 < end ? Vector3(x[nidx], y[nidx], z[nidx]) : cur;
-
-                        Vector3 l1 = next - cur;
-                        auto len1 = l1.norm(), len2 = Scalar();
-                        bool first = false, last = false;
-                        if (k == begin) {
-                            first = true;
+                    Vector3 next = k + 1 < end ? Vector3(x[nidx], y[nidx], z[nidx]) : cur;
+                    Vector3 l1 = next - cur;
+                    auto len1 = l1.norm(), len2 = Scalar();
+                    bool first = false, last = false;
+                    if (k == begin) {
+                        first = true;
+                        dir = l1.normalized();
+                    } else if (k + 1 == end) {
+                        last = true;
+                        // keep previous direction for final segment
+                    } else {
+                        Vector3 l2(x[idx] - x[pidx], y[idx] - y[pidx], z[idx] - z[pidx]);
+                        len2 = l2.norm();
+                        if (len2 > 100 * len1) {
+                            dir = l2.normalized();
+                        } else if (len1 > 100 * len2) {
                             dir = l1.normalized();
-                        } else if (k + 1 == end) {
-                            last = true;
-                            // keep previous direction for final segment
                         } else {
-                            Vector3 l2(x[idx] - x[pidx], y[idx] - y[pidx], z[idx] - z[pidx]);
-                            len2 = l2.norm();
-                            if (len2 > 100 * len1) {
-                                dir = l2.normalized();
-                            } else if (len1 > 100 * len2) {
-                                dir = l1.normalized();
-                            } else {
-                                dir = (l1.normalized() + l2.normalized()).normalized();
-                            }
+                            dir = (l1.normalized() + l2.normalized()).normalized();
+                        }
+                    }
+
+                    if (first || normal.norm() < Scalar(0.5)) {
+                        normal = dir.cross(Vector3(0, 0, 1)).normalized();
+                        if (normal.norm() < Scalar(0.5)) {
+                            // try another direction
+                            normal = dir.cross(Vector3(0, 1, 0)).normalized();
+                        }
+                    } else if (len1 > 1e-4 || len2 > 1e-4) {
+                        normal = (normal - dir.dot(normal) * dir).normalized();
+                    }
+
+                    Quaternion qrot(AngleAxis(2. * M_PI / NumSect, dir));
+                    const auto rot = qrot.toRotationMatrix();
+                    const auto rot2 = Quaternion(AngleAxis(M_PI / NumSect, dir)).toRotationMatrix();
+
+                    // start cap
+                    if (first && startStyle == Lines::Flat) {
+                        tx[ci] = cur[0];
+                        ty[ci] = cur[1];
+                        tz[ci] = cur[2];
+                        nx[ci] = dir[0];
+                        ny[ci] = dir[1];
+                        nz[ci] = dir[2];
+                        ++ci;
+
+                        for (Index l = 0; l < NumSect; ++l) {
+                            ti[ii++] = ci - 1;
+                            ti[ii++] = ci + l;
+                            ti[ii++] = ci + (l + 1) % NumSect;
                         }
 
-                        if (first || normal.norm() < Scalar(0.5)) {
-                            normal = dir.cross(Vector3(0, 0, 1)).normalized();
-                            if (normal.norm() < Scalar(0.5)) {
-                                // try another direction
-                                normal = dir.cross(Vector3(0, 1, 0)).normalized();
-                            }
-                        } else if (len1 > 1e-4 || len2 > 1e-4) {
-                            normal = (normal - dir.dot(normal) * dir).normalized();
+                        Vector3 rad = normal;
+                        for (Index l = 0; l < NumSect; ++l) {
+                            nx[ci] = dir[0];
+                            ny[ci] = dir[1];
+                            nz[ci] = dir[2];
+                            Vector3 p = cur + curRad * rad;
+                            rad = rot * rad;
+                            tx[ci] = p[0];
+                            ty[ci] = p[1];
+                            tz[ci] = p[2];
+                            ++ci;
                         }
+                    }
 
-                        Quaternion qrot(AngleAxis(2. * M_PI / NumSect, dir));
-                        const auto rot = qrot.toRotationMatrix();
-                        const auto rot2 = Quaternion(AngleAxis(M_PI / NumSect, dir)).toRotationMatrix();
+                    // indices
+                    if (!last) {
+                        for (Index l = 0; l < NumSect; ++l) {
+                            ti[ii++] = ci + l;
+                            ti[ii++] = ci + (l + 1) % NumSect;
+                            ti[ii++] = ci + (l + 1) % NumSect + NumSect;
+                            ti[ii++] = ci + l;
+                            ti[ii++] = ci + (l + 1) % NumSect + NumSect;
+                            ti[ii++] = ci + l + NumSect;
+                        }
+                    }
 
-                        // start cap
-                        if (first && startStyle == Lines::Flat) {
+                    // coordinates and normals
+                    auto n = normal;
+                    for (Index l = 0; l < NumSect; ++l) {
+                        nx[ci] = n[0];
+                        ny[ci] = n[1];
+                        nz[ci] = n[2];
+                        Vector3 p = cur + curRad * n;
+                        n = rot * n;
+                        tx[ci] = p[0];
+                        ty[ci] = p[1];
+                        tz[ci] = p[2];
+                        ++ci;
+                    }
+
+                    // end cap/arrow
+                    if (last && endStyle != Lines::Open) {
+                        if (endStyle == Lines::Arrow) {
+                            Index tipStart = ci;
+                            for (Index l = 0; l < NumSect; ++l) {
+                                tx[ci] = tx[ci - NumSect];
+                                ty[ci] = ty[ci - NumSect];
+                                tz[ci] = tz[ci - NumSect];
+                                nx[ci] = dir[0];
+                                ny[ci] = dir[1];
+                                nz[ci] = dir[2];
+                                ++ci;
+                            }
+
+                            Scalar tipSize = 2.0;
+
+                            Vector3 n = normal;
+                            Vector3 tip = cur + tipSize * dir * curRad;
+                            for (Index l = 0; l < NumSect; ++l) {
+                                Vector3 norm = (n + dir).normalized();
+                                Vector3 p = cur + tipSize * curRad * n;
+                                n = rot * n;
+
+                                nx[ci] = norm[0];
+                                ny[ci] = norm[1];
+                                nz[ci] = norm[2];
+                                tx[ci] = p[0];
+                                ty[ci] = p[1];
+                                tz[ci] = p[2];
+                                ++ci;
+                            }
+
+                            n = rot2 * normal;
+                            for (Index l = 0; l < NumSect; ++l) {
+                                Vector3 norm = (n + dir).normalized();
+                                n = rot * n;
+
+                                nx[ci] = norm[0];
+                                ny[ci] = norm[1];
+                                nz[ci] = norm[2];
+                                tx[ci] = tip[0];
+                                ty[ci] = tip[1];
+                                tz[ci] = tip[2];
+                                ++ci;
+                            }
+
+                            for (Index l = 0; l < NumSect; ++l) {
+                                ti[ii++] = tipStart + l;
+                                ti[ii++] = tipStart + (l + 1) % NumSect;
+                                ti[ii++] = tipStart + NumSect + (l + 1) % NumSect;
+
+                                ti[ii++] = tipStart + NumSect + (l + 1) % NumSect;
+                                ti[ii++] = tipStart + NumSect + l;
+                                ti[ii++] = tipStart + l;
+
+                                ti[ii++] = tipStart + NumSect + l;
+                                ti[ii++] = tipStart + NumSect + (l + 1) % NumSect;
+                                ti[ii++] = tipStart + 2 * NumSect + l;
+                            }
+                        } else if (endStyle == Lines::Flat) {
+                            for (Index l = 0; l < NumSect; ++l) {
+                                tx[ci] = tx[ci - NumSect];
+                                ty[ci] = ty[ci - NumSect];
+                                tz[ci] = tz[ci - NumSect];
+                                nx[ci] = dir[0];
+                                ny[ci] = dir[1];
+                                nz[ci] = dir[2];
+                                ++ci;
+                            }
+
                             tx[ci] = cur[0];
                             ty[ci] = cur[1];
                             tz[ci] = cur[2];
                             nx[ci] = dir[0];
                             ny[ci] = dir[1];
                             nz[ci] = dir[2];
+                            for (Index l = 0; l < NumSect; ++l) {
+                                ti[ii++] = ci - NumSect + l;
+                                ti[ii++] = ci - NumSect + (l + 1) % NumSect;
+                                ti[ii++] = ci;
+                            }
                             ++ci;
-
-                            for (Index l = 0; l < NumSect; ++l) {
-                                ti[ii++] = ci - 1;
-                                ti[ii++] = ci + l;
-                                ti[ii++] = ci + (l + 1) % NumSect;
-                            }
-
-                            Vector3 rad = normal;
-                            for (Index l = 0; l < NumSect; ++l) {
-                                nx[ci] = dir[0];
-                                ny[ci] = dir[1];
-                                nz[ci] = dir[2];
-                                Vector3 p = cur + curRad * rad;
-                                rad = rot * rad;
-                                tx[ci] = p[0];
-                                ty[ci] = p[1];
-                                tz[ci] = p[2];
-                                ++ci;
-                            }
-                        }
-
-                        // indices
-                        if (!last) {
-                            for (Index l = 0; l < NumSect; ++l) {
-                                ti[ii++] = ci + l;
-                                ti[ii++] = ci + (l + 1) % NumSect;
-                                ti[ii++] = ci + (l + 1) % NumSect + NumSect;
-                                ti[ii++] = ci + l;
-                                ti[ii++] = ci + (l + 1) % NumSect + NumSect;
-                                ti[ii++] = ci + l + NumSect;
-                            }
-                        }
-
-                        // coordinates and normals
-                        auto n = normal;
-                        for (Index l = 0; l < NumSect; ++l) {
-                            nx[ci] = n[0];
-                            ny[ci] = n[1];
-                            nz[ci] = n[2];
-                            Vector3 p = cur + curRad * n;
-                            n = rot * n;
-                            tx[ci] = p[0];
-                            ty[ci] = p[1];
-                            tz[ci] = p[2];
-                            ++ci;
-                        }
-
-                        // end cap/arrow
-                        if (last && endStyle != Lines::Open) {
-                            if (endStyle == Lines::Arrow) {
-                                Index tipStart = ci;
-                                for (Index l = 0; l < NumSect; ++l) {
-                                    tx[ci] = tx[ci - NumSect];
-                                    ty[ci] = ty[ci - NumSect];
-                                    tz[ci] = tz[ci - NumSect];
-                                    nx[ci] = dir[0];
-                                    ny[ci] = dir[1];
-                                    nz[ci] = dir[2];
-                                    ++ci;
-                                }
-
-                                Scalar tipSize = 2.0;
-
-                                Vector3 n = normal;
-                                Vector3 tip = cur + tipSize * dir * curRad;
-                                for (Index l = 0; l < NumSect; ++l) {
-                                    Vector3 norm = (n + dir).normalized();
-                                    Vector3 p = cur + tipSize * curRad * n;
-                                    n = rot * n;
-
-                                    nx[ci] = norm[0];
-                                    ny[ci] = norm[1];
-                                    nz[ci] = norm[2];
-                                    tx[ci] = p[0];
-                                    ty[ci] = p[1];
-                                    tz[ci] = p[2];
-                                    ++ci;
-                                }
-
-                                n = rot2 * normal;
-                                for (Index l = 0; l < NumSect; ++l) {
-                                    Vector3 norm = (n + dir).normalized();
-                                    n = rot * n;
-
-                                    nx[ci] = norm[0];
-                                    ny[ci] = norm[1];
-                                    nz[ci] = norm[2];
-                                    tx[ci] = tip[0];
-                                    ty[ci] = tip[1];
-                                    tz[ci] = tip[2];
-                                    ++ci;
-                                }
-
-                                for (Index l = 0; l < NumSect; ++l) {
-                                    ti[ii++] = tipStart + l;
-                                    ti[ii++] = tipStart + (l + 1) % NumSect;
-                                    ti[ii++] = tipStart + NumSect + (l + 1) % NumSect;
-
-                                    ti[ii++] = tipStart + NumSect + (l + 1) % NumSect;
-                                    ti[ii++] = tipStart + NumSect + l;
-                                    ti[ii++] = tipStart + l;
-
-                                    ti[ii++] = tipStart + NumSect + l;
-                                    ti[ii++] = tipStart + NumSect + (l + 1) % NumSect;
-                                    ti[ii++] = tipStart + 2 * NumSect + l;
-                                }
-                            } else if (endStyle == Lines::Flat) {
-                                for (Index l = 0; l < NumSect; ++l) {
-                                    tx[ci] = tx[ci - NumSect];
-                                    ty[ci] = ty[ci - NumSect];
-                                    tz[ci] = tz[ci - NumSect];
-                                    nx[ci] = dir[0];
-                                    ny[ci] = dir[1];
-                                    nz[ci] = dir[2];
-                                    ++ci;
-                                }
-
-                                tx[ci] = cur[0];
-                                ty[ci] = cur[1];
-                                tz[ci] = cur[2];
-                                nx[ci] = dir[0];
-                                ny[ci] = dir[1];
-                                nz[ci] = dir[2];
-                                for (Index l = 0; l < NumSect; ++l) {
-                                    ti[ii++] = ci - NumSect + l;
-                                    ti[ii++] = ci - NumSect + (l + 1) % NumSect;
-                                    ti[ii++] = ci;
-                                }
-                                ++ci;
-                            }
                         }
                     }
                 }
