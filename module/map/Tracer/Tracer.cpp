@@ -404,6 +404,11 @@ bool Tracer::reduce(int timestep)
         return true;
     }
 
+    if (timestep >= 0 && reducePolicy() != message::ReducePolicy::PerTimestep) {
+        // nothing to do until the final timestep
+        return true;
+    }
+
     size_t minsize = std::max(numTimesteps() + 1, timestep + 2);
     if (m_gridAttr.size() < minsize) {
         m_gridAttr.resize(minsize);
