@@ -72,6 +72,8 @@ ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mp
     }
 
     observeParameter(m_filedir); // examine method is called when parameter is changed
+    observeParameter(m_first);
+    observeParameter(m_last);
 }
 
 ReadSubzoneTecplot::~ReadSubzoneTecplot() = default;
@@ -90,7 +92,9 @@ bool ReadSubzoneTecplot::examine(const vistle::Parameter *param)
 
         const std::string filename = fileList.front(); // small cleanup
         try {
-            setTimesteps(numFiles - 1);
+            // Set timesteps to user input:
+            m_fileChoice = setTimestepChoice(numFiles);
+            //setTimesteps(numFiles - 1);
 
             // compute a stable partition count across ALL timesteps ---
             int32_t maxZones = 0;
@@ -230,6 +234,33 @@ bool ReadSubzoneTecplot::examine(const vistle::Parameter *param)
         }
     }
     return true;
+}
+
+//TODO: deal with last step -1 case
+std::vector<int> ReadSubzoneTecplot::setTimestepChoice(int numFiles)
+{
+    std::vector<int> indices;
+
+    auto first = m_first->getValue();
+    auto last = m_last->getValue();
+    auto increment = m_increment->getValue();
+
+    if (last <= numFiles && first <= last && increment > 0) {
+        for (int i = first; i < last; i += increment) {
+            indices.push_back(i);
+            std::cout << "Add file index: " << i << std::endl;
+        }
+    } else {
+        sendError("Invalid timestep range selected. Directory contains " + std::to_string(numFiles) +
+                  " files. Resetting to full range.");
+
+        for (int i = 0; i < numFiles; i += 1) {
+            indices.push_back(i);
+        }
+    }
+    setTimesteps(indices.size()); // Set timesteps to number of selected files
+
+    return indices;
 }
 
 bool ReadSubzoneTecplot::prepareRead()
@@ -694,7 +725,8 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
     } else {
         //std::cout << "Reading timestep: " << timestep << std::endl;
         //std::cout << "Size of fileList: " << fileList.size() << std::endl;
-        const std::string &filename = fileList[timestep];
+        int i = m_fileChoice[timestep];
+        const std::string &filename = fileList[i];
         //std::cout << "Using file: " << filename << std::endl;
         try {
             void *fh = nullptr;

@@ -44,6 +44,7 @@ private:
 
     vistle::StructuredGrid::ptr createStructuredGrid(void *fileHandle, int32_t inputZone);
     bool inspectDir();
+    std::vector<int> setTimestepChoice(int numFiles);
 
     // orderSolutionTimes and getTimestepForSolutionTime can be used to order the solution times in the fileList
     // if the times are not given in the file names.
@@ -56,6 +57,7 @@ private:
     vistle::Port *m_fieldsOut[NumPorts];
     std::vector<std::string> fileList;
     std::unordered_map<int, double> solutionTimes; // maps timestep to solution time
+    std::vector<int> m_fileChoice; // user-selected timesteps to read
 
 
     std::unordered_map<std::string, std::vector<int>>
