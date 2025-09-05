@@ -54,8 +54,8 @@ ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mp
 
     m_grid = createOutputPort("grid_out", "grid or geometry");
 
-    //setParallelizationMode(Serial);
-    setParallelizationMode(ParallelizeTimeAndBlocks); // Parallelization does not work, leads to abortion errors
+    setParallelizationMode(Serial);
+    //setParallelizationMode(ParallelizeTimeAndBlocks); // Parallelization does not work, leads to abortion errors
 
     std::vector<std::string> varChoices{Reader::InvalidChoice};
     for (int i = 0; i < NumPorts; i++) {
@@ -72,8 +72,11 @@ ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mp
     }
 
     observeParameter(m_filedir); // examine method is called when parameter is changed
-    observeParameter(m_first);
-    observeParameter(m_last);
+    setParameterRange(m_first, Integer(0), Integer(10000));
+    setParameterRange(m_last, Integer(-1), Integer(10000));
+    setParameterRange(m_increment, Integer(1), Integer(10000));
+    //observeParameter(m_first);
+    //observeParameter(m_last);
 }
 
 ReadSubzoneTecplot::~ReadSubzoneTecplot() = default;
@@ -244,8 +247,10 @@ std::vector<int> ReadSubzoneTecplot::setTimestepChoice(int numFiles)
     auto first = m_first->getValue();
     auto last = m_last->getValue();
     auto increment = m_increment->getValue();
+    sendInfo("Timestep range selected: first %d, last %d, increment %d", first, last, increment);
+    sendInfo("Number of possible timesteps:" + std::to_string(numFiles));
 
-    if (last <= numFiles && first <= last && increment > 0) {
+    if (last < numFiles && first <= last && increment > 0) {
         for (int i = first; i < last; i += increment) {
             indices.push_back(i);
             std::cout << "Add file index: " << i << std::endl;
@@ -256,9 +261,13 @@ std::vector<int> ReadSubzoneTecplot::setTimestepChoice(int numFiles)
 
         for (int i = 0; i < numFiles; i += 1) {
             indices.push_back(i);
+            std::cout << "Add file index: " << i << std::endl;
         }
     }
     setTimesteps(indices.size()); // Set timesteps to number of selected files
+    /*     setParameterRange(m_first, Integer(0), Integer(numFiles - 1));
+    setParameterRange(m_last, Integer(-1), Integer(numFiles - 1));
+    setParameterRange(m_increment, Integer(1), Integer(numFiles - 1)); */
 
     return indices;
 }
