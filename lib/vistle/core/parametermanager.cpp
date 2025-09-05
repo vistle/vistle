@@ -540,6 +540,8 @@ StringParamVector ParameterManager::getStringVectorParameter(const std::string &
 
 bool ParameterManager::setParameterReadOnly(Parameter *param, bool readOnly)
 {
+    if (!param)
+        return false;
     param->setReadOnly(readOnly);
     return updateParameter(param->getName(), param, nullptr, Parameter::Other);
 }
