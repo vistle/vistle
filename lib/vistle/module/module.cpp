@@ -943,10 +943,10 @@ bool Module::addObject(const std::string &portName, vistle::Object::const_ptr ob
 
 bool Module::addObject(Port *port, vistle::Object::const_ptr object)
 {
-    assert(!object || object->getCreator() == id());
-
     if (!object)
         return false;
+
+    assert(object->getCreator() == id());
 
     m_withOutput.insert(port);
 
