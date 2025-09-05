@@ -30,6 +30,8 @@ ToTriangles::ToTriangles(const std::string &name, int moduleID, mpi::communicato
 
     p_transformSpheres =
         addIntParameter("transform_spheres", "also generate triangles for sphere impostors", false, Parameter::Boolean);
+    p_tessellationQuality = addIntParameter("quality", "tessellation quality", 2);
+    setParameterRange(p_tessellationQuality, Integer(0), Integer(10));
 
     addResultCache(m_resultCache);
 }
@@ -49,6 +51,7 @@ struct ReplicateData {
     Index numMult = 0;
     const Index *const mult = nullptr;
     Index numTri = 0;
+    Index numVert = 0;
     Index nStart = 0, nEnd = 0;
     ReplicateData(DataBase::const_ptr obj, DataBase::ptr &result, Index mult, Index nConn, const Index *cl, Index nElem,
                   const Index *el, Index nStart, Index nEnd)
@@ -64,8 +67,9 @@ struct ReplicateData {
     {
         assert(nElem == 0 || el);
     }
-    ReplicateData(DataBase::const_ptr obj, DataBase::ptr &result, Index numMult, const Index *mult, Index numTri)
-    : object(obj), result(result), numMult(numMult), mult(mult), numTri(numTri)
+    ReplicateData(DataBase::const_ptr obj, DataBase::ptr &result, Index numMult, const Index *mult, Index numTri,
+                  Index numVert)
+    : object(obj), result(result), numMult(numMult), mult(mult), numTri(numTri), numVert(numVert)
     {}
     template<typename S>
     void operator()(S)
@@ -82,7 +86,7 @@ struct ReplicateData {
             if (mapping == DataBase::Element)
                 sz = numTri;
             else
-                sz = numMult;
+                sz = numVert;
         }
         typename V::ptr out(new V(sz));
         for (int i = 0; i < Dim; ++i) {
@@ -92,7 +96,7 @@ struct ReplicateData {
             if (mult) {
                 if (mapping == DataBase::Vertex) {
                     assert(nElem <= in->getSize());
-                    for (Index j = 0; j < nElem; ++j) {
+                    for (Index j = 0; j < numMult; ++j) {
                         Index idx = j;
                         for (Index k = 0; k < mult[j]; ++k) {
                             assert(dout - out->x(i).data() < out->getSize());
@@ -164,11 +168,11 @@ DataBase::ptr replicateData(DataBase::const_ptr src, Index mult, Index nConn = 0
     return result;
 }
 
-DataBase::ptr replicateData(DataBase::const_ptr src, Index nnelem, const Index *mult, Index numTri)
+DataBase::ptr replicateData(DataBase::const_ptr src, Index nnelem, const Index *mult, Index numTri, Index numVert = 0)
 {
     DataBase::ptr result;
-    boost::mpl::for_each<Scalars>(ReplicateData<1>(src, result, nnelem, mult, numTri));
-    boost::mpl::for_each<Scalars>(ReplicateData<3>(src, result, nnelem, mult, numTri));
+    boost::mpl::for_each<Scalars>(ReplicateData<1>(src, result, nnelem, mult, numTri, numVert));
+    boost::mpl::for_each<Scalars>(ReplicateData<3>(src, result, nnelem, mult, numTri, numVert));
     if (auto tex = Texture1D::as(src)) {
         auto vec1 = Vec<Scalar, 1>::as(Object::ptr(result));
         assert(vec1);
@@ -180,93 +184,106 @@ DataBase::ptr replicateData(DataBase::const_ptr src, Index nnelem, const Index *
 }
 
 namespace {
-const int NumLat = 8;
-const int NumLong = 13;
-static_assert(NumLat >= 3, "too few vertices");
-static_assert(NumLong >= 3, "too few vertices");
-const Index TriPerSphere = NumLong * (NumLat - 2) * 2;
-const Index CoordPerSphere = NumLong * (NumLat - 2) + 2;
 
-void addSphere(Scalar cx, Scalar cy, Scalar cz, Scalar r, Index idx, Index *ti, Scalar *tx, Scalar *ty, Scalar *tz,
-               Scalar *nx, Scalar *ny, Scalar *nz)
-{
-    const float psi = M_PI / (NumLat - 1);
-    const float phi = M_PI * 2 / NumLong;
+struct SphereGenerator {
+    static const int MinNumLat = 4;
+    static const int MinNumLong = 7;
+    static_assert(MinNumLat >= 3, "too few vertices");
+    static_assert(MinNumLong >= 3, "too few vertices");
 
-    // create normals
+    Index NumLat = MinNumLat;
+    Index NumLong = MinNumLong;
+    Index TriPerSphere = MinNumLong * (MinNumLat - 2) * 2;
+    Index CoordPerSphere = MinNumLong * (MinNumLat - 2) + 2;
+
+    SphereGenerator(int quality)
+    : NumLat(MinNumLat + quality)
+    , NumLong(MinNumLong + 2 * quality)
+    , TriPerSphere(NumLong * (NumLat - 2) * 2)
+    , CoordPerSphere(NumLong * (NumLat - 2) + 2)
+    {}
+
+    void addSphere(Scalar cx, Scalar cy, Scalar cz, Scalar r, Index idx, Index *ti, Scalar *tx, Scalar *ty, Scalar *tz,
+                   Scalar *nx, Scalar *ny, Scalar *nz)
     {
-        Index ci = 0;
-        // south pole
-        nx[ci] = ny[ci] = Scalar(0);
-        nz[ci] = Scalar(-1);
-        ++ci;
+        const float psi = M_PI / (NumLat - 1);
+        const float phi = M_PI * 2 / NumLong;
 
-        float Psi = -M_PI * 0.5 + psi;
-        for (Index j = 0; j < NumLat - 2; ++j) {
-            float Phi = j * 0.5f * phi;
-            for (Index k = 0; k < NumLong; ++k) {
-                nx[ci] = sin(Phi) * cos(Psi);
-                ny[ci] = cos(Phi) * cos(Psi);
-                nz[ci] = sin(Psi);
-                ++ci;
-                Phi += phi;
+        // create normals
+        {
+            Index ci = 0;
+            // south pole
+            nx[ci] = ny[ci] = Scalar(0);
+            nz[ci] = Scalar(-1);
+            ++ci;
+
+            float Psi = -M_PI * 0.5 + psi;
+            for (Index j = 0; j < NumLat - 2; ++j) {
+                float Phi = j * 0.5f * phi;
+                for (Index k = 0; k < NumLong; ++k) {
+                    nx[ci] = sin(Phi) * cos(Psi);
+                    ny[ci] = cos(Phi) * cos(Psi);
+                    nz[ci] = sin(Psi);
+                    ++ci;
+                    Phi += phi;
+                }
+                Psi += psi;
             }
-            Psi += psi;
-        }
-        // north pole
-        nx[ci] = ny[ci] = Scalar(0);
-        nz[ci] = Scalar(1);
-        ++ci;
-        assert(ci == CoordPerSphere);
-    }
-
-    // create coordinates from normals
-    for (Index ci = 0; ci < CoordPerSphere; ++ci) {
-        tx[ci] = nx[ci] * r + cx;
-        ty[ci] = ny[ci] * r + cy;
-        tz[ci] = nz[ci] * r + cz;
-    }
-
-    // create index list
-    {
-        Index ii = 0;
-        // indices for ring around south pole
-        Index ci = idx + 1;
-        for (Index k = 0; k < NumLong; ++k) {
-            ti[ii++] = ci + k;
-            ti[ii++] = ci + (k + 1) % NumLong;
-            ti[ii++] = idx;
+            // north pole
+            nx[ci] = ny[ci] = Scalar(0);
+            nz[ci] = Scalar(1);
+            ++ci;
+            assert(ci == CoordPerSphere);
         }
 
-        ci = idx + 1;
-        for (Index j = 0; j < NumLat - 3; ++j) {
+        // create coordinates from normals
+        for (Index ci = 0; ci < CoordPerSphere; ++ci) {
+            tx[ci] = nx[ci] * r + cx;
+            ty[ci] = ny[ci] * r + cy;
+            tz[ci] = nz[ci] * r + cz;
+        }
+
+        // create index list
+        {
+            Index ii = 0;
+            // indices for ring around south pole
+            Index ci = idx + 1;
             for (Index k = 0; k < NumLong; ++k) {
                 ti[ii++] = ci + k;
-                ti[ii++] = ci + k + NumLong;
                 ti[ii++] = ci + (k + 1) % NumLong;
-                ti[ii++] = ci + (k + 1) % NumLong;
-                ti[ii++] = ci + k + NumLong;
-                ti[ii++] = ci + NumLong + (k + 1) % NumLong;
+                ti[ii++] = idx;
             }
-            ci += NumLong;
-        }
-        assert(ci == idx + 1 + NumLong * (NumLat - 3));
-        assert(ci + NumLong + 1 == idx + CoordPerSphere);
 
-        // indices for ring around north pole
-        for (Index k = 0; k < NumLong; ++k) {
-            ti[ii++] = ci + (k + 1) % NumLong;
-            ti[ii++] = ci + k;
-            ti[ii++] = idx + CoordPerSphere - 1;
-        }
-        assert(ii == 3 * TriPerSphere);
+            ci = idx + 1;
+            for (Index j = 0; j < NumLat - 3; ++j) {
+                for (Index k = 0; k < NumLong; ++k) {
+                    ti[ii++] = ci + k;
+                    ti[ii++] = ci + k + NumLong;
+                    ti[ii++] = ci + (k + 1) % NumLong;
+                    ti[ii++] = ci + (k + 1) % NumLong;
+                    ti[ii++] = ci + k + NumLong;
+                    ti[ii++] = ci + NumLong + (k + 1) % NumLong;
+                }
+                ci += NumLong;
+            }
+            assert(ci == idx + 1 + NumLong * (NumLat - 3));
+            assert(ci + NumLong + 1 == idx + CoordPerSphere);
 
-        for (Index j = 0; j < 3 * TriPerSphere; ++j) {
-            assert(ti[j] >= idx);
-            assert(ti[j] < idx + CoordPerSphere);
+            // indices for ring around north pole
+            for (Index k = 0; k < NumLong; ++k) {
+                ti[ii++] = ci + (k + 1) % NumLong;
+                ti[ii++] = ci + k;
+                ti[ii++] = idx + CoordPerSphere - 1;
+            }
+            assert(ii == 3 * TriPerSphere);
+
+            for (Index j = 0; j < 3 * TriPerSphere; ++j) {
+                assert(ti[j] >= idx);
+                assert(ti[j] < idx + CoordPerSphere);
+            }
         }
     }
-}
+};
 } // namespace
 
 bool ToTriangles::compute()
@@ -278,6 +295,9 @@ bool ToTriangles::compute()
     if (!obj) {
         return true;
     }
+
+    int quality = p_tessellationQuality->getValue();
+    SphereGenerator gen(quality);
 
     vistle::Object::ptr result;
     if (auto entry = m_resultCache.getOrLock(container->getName(), result)) {
@@ -380,25 +400,25 @@ bool ToTriangles::compute()
             auto z = &points->z()[0];
             auto r = &radius->x()[0];
 
-            tri.reset(new Triangles(n * 3 * TriPerSphere, n * CoordPerSphere));
+            tri.reset(new Triangles(n * 3 * gen.TriPerSphere, n * gen.CoordPerSphere));
             auto tx = tri->x().data();
             auto ty = tri->y().data();
             auto tz = tri->z().data();
             auto ti = tri->cl().data();
 
-            Normals::ptr norm(new Normals(n * CoordPerSphere));
+            Normals::ptr norm(new Normals(n * gen.CoordPerSphere));
             auto nx = norm->x().data();
             auto ny = norm->y().data();
             auto nz = norm->z().data();
 
             for (Index i = 0; i < n; ++i) {
-                addSphere(x[i], y[i], z[i], r[i], i * CoordPerSphere, &ti[i * 3 * TriPerSphere],
-                          &tx[i * CoordPerSphere], &ty[i * CoordPerSphere], &tz[i * CoordPerSphere],
-                          &nx[i * CoordPerSphere], &ny[i * CoordPerSphere], &nz[i * CoordPerSphere]);
+                gen.addSphere(x[i], y[i], z[i], r[i], i * gen.CoordPerSphere, &ti[i * 3 * gen.TriPerSphere],
+                              &tx[i * gen.CoordPerSphere], &ty[i * gen.CoordPerSphere], &tz[i * gen.CoordPerSphere],
+                              &nx[i * gen.CoordPerSphere], &ny[i * gen.CoordPerSphere], &nz[i * gen.CoordPerSphere]);
 
-                for (Index j = 0; j < 3 * TriPerSphere; ++j) {
-                    assert(ti[i * 3 * TriPerSphere + j] >= i * CoordPerSphere);
-                    assert(ti[i * 3 * TriPerSphere + j] < (i + 1) * CoordPerSphere);
+                for (Index j = 0; j < 3 * gen.TriPerSphere; ++j) {
+                    assert(ti[i * 3 * gen.TriPerSphere + j] >= i * gen.CoordPerSphere);
+                    assert(ti[i * 3 * gen.TriPerSphere + j] < (i + 1) * gen.CoordPerSphere);
                 }
             }
             norm->setMeta(obj->meta());
@@ -406,11 +426,12 @@ bool ToTriangles::compute()
             tri->setNormals(norm);
 
             if (data) {
-                ndata = replicateData(data, CoordPerSphere);
+                ndata = replicateData(data, gen.CoordPerSphere);
             }
         } else if (lines && radius) {
-            const int NumSect = 7;
-            static_assert(NumSect >= 3, "too few sectors");
+            const int MinNumSect = 3;
+            static_assert(MinNumSect >= 3, "too few sectors");
+            int NumSect = MinNumSect + quality;
             Index TriPerSection = NumSect * 2;
 
             const Index *cl = nullptr;
@@ -470,16 +491,22 @@ bool ToTriangles::compute()
             const Index numSeg = numConn - (numEl - numEmptyEl);
             const Index numVert = numSeg * 3 * TriPerSection +
                                   (numEl - numEmptyEl - numSinglePointEl) * (numIndStart + numIndEnd) +
-                                  numSinglePointEl * 3 * TriPerSphere;
+                                  numSinglePointEl * 3 * gen.TriPerSphere;
             const Index numCoord = numVert > 0
                                        ? (numConn - numSinglePointEl) * NumSect +
                                              (numEl - numEmptyEl - numSinglePointEl) * (numCoordStart + numCoordEnd) +
-                                             numSinglePointEl * CoordPerSphere
+                                             numSinglePointEl * gen.CoordPerSphere
                                        : 0;
 
-            if (perElement) {
-                mult.reserve(numEl);
-                useMultiplicity = true;
+            if (data) {
+                if (perElement) {
+                    mult.reserve(numEl);
+                    useMultiplicity = true;
+                } else if (numEmptyEl + numSinglePointEl > 0) {
+                    // need to replicate data for start/end caps and single point elements
+                    mult.reserve(numPoint);
+                    useMultiplicity = true;
+                }
             }
 
             tri.reset(new Triangles(numVert, numCoord));
@@ -499,12 +526,12 @@ bool ToTriangles::compute()
             Index ii = 0; // index index
             for (Index i = 0; i < numEl; ++i) {
                 const Index begin = el[i], end = el[i + 1];
-                if (perElement) {
+                if (useMultiplicity && perElement) {
                     Index ntri = numIndStart / 3 + (end - begin - 1) * TriPerSection + numIndEnd / 3;
                     if (begin == end) {
                         ntri = 0;
                     } else if (begin + 1 == end) {
-                        ntri = TriPerSphere;
+                        ntri = gen.TriPerSphere;
                     }
                     mult.push_back(ntri);
                 }
@@ -519,10 +546,13 @@ bool ToTriangles::compute()
 
                     if (end == begin + 1) {
                         // single point element: draw a sphere
-                        addSphere(cur[0], cur[1], cur[2], curRad, ci, &ti[ii], &tx[ci], &ty[ci], &tz[ci], &nx[ci],
-                                  &ny[ci], &nz[ci]);
-                        ci += CoordPerSphere;
-                        ii += 3 * TriPerSphere;
+                        gen.addSphere(cur[0], cur[1], cur[2], curRad, ci, &ti[ii], &tx[ci], &ty[ci], &tz[ci], &nx[ci],
+                                      &ny[ci], &nz[ci]);
+                        ci += gen.CoordPerSphere;
+                        ii += 3 * gen.TriPerSphere;
+
+                        if (useMultiplicity && !perElement)
+                            mult.push_back(gen.CoordPerSphere);
                         break;
                     }
 
@@ -546,6 +576,17 @@ bool ToTriangles::compute()
                         } else {
                             dir = (l1.normalized() + l2.normalized()).normalized();
                         }
+                    }
+
+                    if (useMultiplicity && !perElement) {
+                        Index ncoord = NumSect;
+                        if (first) {
+                            ncoord += numCoordStart;
+                        }
+                        if (last) {
+                            ncoord += numCoordEnd;
+                        }
+                        mult.push_back(ncoord);
                     }
 
                     if (first || normal.norm() < Scalar(0.5)) {
@@ -771,7 +812,7 @@ bool ToTriangles::compute()
 
             if (data) {
                 if (useMultiplicity) {
-                    ndata = replicateData(data, mult.size(), mult.data(), tri->getNumElements());
+                    ndata = replicateData(data, mult.size(), mult.data(), tri->getNumElements(), tri->getNumCoords());
                 }
                 if (!ndata) {
                     ndata = data->clone();
