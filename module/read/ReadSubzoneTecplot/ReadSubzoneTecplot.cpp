@@ -646,6 +646,8 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
             tecZoneGetSolutionTime(fh, zone, &solutionTime);
             //int step = getTimestepForSolutionTime(solutionTimes, solutionTime);
             strGrid->setTimestep(timestep);
+            strGrid->setMapping(
+                vistle::DataBase::Vertex); //Coordinates are nodal, so the grid’s mapping should be Vertex
 
             int32_t loc = 0;
             tecZoneVarGetValueLocation(fh, zone, 1, &loc);
@@ -672,67 +674,52 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
 
                     std::string name = m_fieldChoice[var]->getValue();
                     if (!emptyValue(m_fieldChoice[var])) {
-                        //std::cout << "Reading variable: " << name << " on port: " << var << std::endl;
-                        std::vector<int> varInFile = getIndexOfTecVar(name, m_indicesCombinedVariables, fh);
+                        std::cout << "Reading variable: " << name << " on port: " << var << std::endl;
 
-                        // guard against invalid indices
-                        if (varInFile.empty() || varInFile[0] < 1) {
-                            std::cerr << "Skipping '" << name << "' (not present in this file/zone)\n";
+                        std::vector<int> varInFile = getIndexOfTecVar(name, m_indicesCombinedVariables, fh);
+                        if (varInFile.empty() || varInFile[0] <= 0) {
+                            std::cerr << "Variable '" << name << "' not found in file — skipping port " << var << "\n";
                             continue;
                         }
 
-
-                        if (tecVarGetName(fh, varInFile[0], &varName) != 0)
-                            varName = nullptr;
-
-
-                        // varInFile is filled already; you also did: tecVarGetName(fh, varInFile[0], &varName);
-
                         if (varInFile.size() == 1) {
+                            // scalar
+                            int64_t numValues = 0;
                             tecZoneVarGetNumValues(fh, zone, varInFile[0], &numValues);
 
-                            Vec<Scalar, 1>::ptr field = readVariables(fh, numValues, zone, varInFile[0]);
-                            //std::cout << "Variable name in file: " << (varName ? varName : "(null)") << std::endl;
+                            char *varName = nullptr;
+                            tecVarGetName(fh, varInFile[0], &varName);
+
+                            auto field = readVariables(fh, numValues, zone, varInFile[0]);
+                            std::cout << "Variable name in file: " << (varName ? varName : "(null)") << std::endl;
 
                             if (field) {
-                                // 0 = nodal (vertex), 1 = cell-centered (element)
-                                int32_t loc = 0;
+                                int32_t loc = 0; // 0=nodal(Vertex), 1=cell(Element)
                                 tecZoneVarGetValueLocation(fh, zone, varInFile[0], &loc);
 
                                 field->addAttribute(vistle::attribute::Species, name);
                                 field->setMapping(loc == 0 ? vistle::DataBase::Vertex : vistle::DataBase::Element);
                                 field->setGrid(strGrid);
                                 token.applyMeta(field);
-                                std::cout << "Accessing m_fieldsOut at index: " << var << std::endl;
                                 token.addObject(m_fieldsOut[var], field);
                             }
 
                             if (varName)
-                                tecStringFree(&varName); // free in all paths
+                                tecStringFree(&varName);
 
-                        } else if (varInFile.size() > 1) {
+                        } else if (varInFile.size() == 3) {
                             // combined vector (X,Y,Z)
-
-                            if (varInFile.size() < 3 || varInFile[0] < 1 || varInFile[1] < 1 || varInFile[2] < 1) {
-                                std::cerr << "Skipping vector '" << name
-                                          << "' (components missing in this file/zone)\n";
-                                continue;
-                            }
-
-
-                            //std::cout << "Reading combined variable: " << name << " on port: " << var << std::endl;
-
+                            int64_t numValues = 0;
                             tecZoneVarGetNumValues(fh, zone, varInFile[0], &numValues);
-                            const int startIndex = 1;
 
+                            const int startIndex = 1;
                             std::vector<float> xValues(numValues), yValues(numValues), zValues(numValues);
                             tecZoneVarGetFloatValues(fh, zone, varInFile[0], startIndex, numValues, xValues.data());
                             tecZoneVarGetFloatValues(fh, zone, varInFile[1], startIndex, numValues, yValues.data());
                             tecZoneVarGetFloatValues(fh, zone, varInFile[2], startIndex, numValues, zValues.data());
 
-                            Vec<Scalar, 3>::ptr field = combineVarstoOneOutput(xValues, yValues, zValues, numValues);
+                            auto field = combineVarstoOneOutput(xValues, yValues, zValues, numValues);
                             if (field) {
-                                // decide mapping from location of first component (all three *should* match)
                                 int32_t locX = 0, locY = 0, locZ = 0;
                                 tecZoneVarGetValueLocation(fh, zone, varInFile[0], &locX);
                                 tecZoneVarGetValueLocation(fh, zone, varInFile[1], &locY);
@@ -748,16 +735,17 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
                                 token.applyMeta(field);
                                 token.addObject(m_fieldsOut[var], field);
                             }
-
-                            if (varName)
-                                tecStringFree(&varName); // free here too
+                        } else {
+                            std::cerr << "Unexpected index count (" << varInFile.size() << ") for variable '" << name
+                                      << "', skipping.\n";
+                            continue;
                         }
-
                     } else {
-                        //std::cout << "Skipping variable: " << m_fieldChoice[var]->getValue() << " on position: " << var
-                        //          << std::endl;
-                        continue; // skip if the variable is not selected
+                        std::cout << "Skipping variable: " << m_fieldChoice[var]->getValue() << " on position: " << var
+                                  << std::endl;
+                        continue;
                     }
+
                 } //close for loop over ports
             } // close if fileType != 1
             else {
