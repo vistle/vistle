@@ -1229,7 +1229,9 @@ bool ClusterManager::handlePriv(const message::Execute &exec)
     assert(exec.getModule() >= Id::ModuleBase);
     RunningMap::iterator i = m_runningMap.find(exec.getModule());
     if (i == m_runningMap.end()) {
-        CERR << "did not find module to be executed: " << exec.getModule() << std::endl;
+        if (isLocal(exec.getModule())) {
+            CERR << "did not find module to be executed: " << exec.getModule() << std::endl;
+        }
         return true;
     }
 
