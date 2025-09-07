@@ -2873,6 +2873,7 @@ bool Hub::handlePriv(const message::Spawn &spawn)
         newId = Id::ModuleBase + m_moduleCount;
         ++m_moduleCount;
         notify.setSpawnId(newId);
+        notify.setMirroringId(newId);
         std::string suffix = "[" + std::to_string(newId) + "]";
 
         session.setCurrentParameterGroup("Workflow", false);
