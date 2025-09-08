@@ -13,6 +13,7 @@ private:
     virtual bool compute();
 
     vistle::IntParameter *p_transformSpheres = nullptr;
+    vistle::IntParameter *p_tessellationQuality = nullptr;
     vistle::ResultCache<vistle::Object::ptr> m_resultCache;
 };
 

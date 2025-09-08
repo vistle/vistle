@@ -3956,6 +3956,7 @@ bool Hub::handlePriv(const message::Barrier &barrier)
     }
     assert(!m_barrierActive);
     assert(m_reachedSet.empty());
+    m_numBarrierParticipants = m_stateTracker.getNumRunning();
     if (m_stateTracker.getNumRunning() > 0) {
         m_barrierActive = true;
         m_barrierUuid = barrier.uuid();
@@ -3970,7 +3971,7 @@ bool Hub::handlePriv(const message::Barrier &barrier)
 
 bool Hub::handlePriv(const message::BarrierReached &reached)
 {
-    if (m_verbose >= Verbosity::Modules) {
+    if (m_verbose >= Verbosity::Modules || !m_barrierActive) {
         CERR << "Barrier " << reached.uuid() << " (" << m_stateTracker.barrierInfo(reached.uuid()) << ") reached by "
              << reached.senderId() << " (now " << m_reachedSet.size() << " of " << m_stateTracker.getNumRunning()
              << " modules)" << std::endl;
@@ -3980,7 +3981,7 @@ bool Hub::handlePriv(const message::BarrierReached &reached)
     // message must be received from local manager and each slave
     if (m_isMaster) {
         m_reachedSet.insert(reached.senderId());
-        if (m_reachedSet.size() == m_stateTracker.getNumRunning()) {
+        if (m_reachedSet.size() == m_numBarrierParticipants) {
             m_barrierActive = false;
             m_reachedSet.clear();
             auto r = make.message<message::BarrierReached>(reached.uuid());

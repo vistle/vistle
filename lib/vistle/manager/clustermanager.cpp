@@ -1440,6 +1440,11 @@ bool ClusterManager::addObjectDestination(const message::AddObject &addObj, Obje
 
         auto it = m_stateTracker.runningMap.find(destId);
         if (it == m_stateTracker.runningMap.end()) {
+            if (m_stateTracker.quitMap.find(destId) != m_stateTracker.quitMap.end()) {
+                CERR << "port connection to module " << destId << ":" << destPort->getName() << ", which has crashed"
+                     << std::endl;
+                continue;
+            }
             CERR << "port connection to module " << destId << ":" << destPort->getName() << ", which is not running"
                  << std::endl;
             assert("port connection to module that is not running" == 0);
