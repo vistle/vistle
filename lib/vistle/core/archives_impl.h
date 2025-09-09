@@ -181,7 +181,9 @@ struct TransformStream {
     T operator()(const T &cur, const T &prev)
     {
         Uint result = Op()(*reinterpret_cast<const Uint *>(&cur), *reinterpret_cast<const Uint *>(&prev));
-        return *reinterpret_cast<T *>(&result);
+        T retval;
+        memcpy(&retval, &result, sizeof(T));
+        return retval;
     }
 };
 

@@ -1296,10 +1296,8 @@ Normals::ptr Leveller::normresult()
     return m_normals;
 }
 
-DataBase::ptr Leveller::mapresult(int i) const
+DataBase::ptr Leveller::mapresult(unsigned i) const
 {
-    if (i < 0)
-        return DataBase::ptr();
     if (i >= m_fields.size())
         return DataBase::ptr();
 
