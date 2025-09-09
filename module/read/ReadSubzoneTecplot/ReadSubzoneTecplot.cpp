@@ -1016,8 +1016,8 @@ ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mp
 
     m_grid = createOutputPort("grid_out", "grid or geometry");
 
-    //setParallelizationMode(Serial);
-    setParallelizationMode(ParallelizeTimeAndBlocks); // Parallelization does not work, leads to abortion errors
+    setParallelizationMode(Serial);
+    //setParallelizationMode(ParallelizeTimeAndBlocks); // Parallelization does not work, leads to abortion errors
 
     std::vector<std::string> varChoices{Reader::InvalidChoice};
     for (int i = 0; i < NumPorts; i++) {
@@ -1612,9 +1612,6 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
 
             int32_t loc = 0;
             tecZoneVarGetValueLocation(fh, zone, 1, &loc);
-            strGrid->setMapping(
-                loc == 0 ? vistle::DataBase::Element
-                         : vistle::DataBase::Vertex); // set mapping to vertex, because coordinates are vertex-centered
             //std::cout << "reading zone number " << zone << " of " << numZones << " zones" << std::endl;
             //std::cout << "timestep: " << timestep << std::endl;
             //std::cout << "solution time: " << solutionTime << std::endl;
@@ -1663,7 +1660,7 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
                                 tecZoneVarGetValueLocation(fh, zone, varInFile[0], &loc);
 
                                 field->addAttribute(vistle::attribute::Species, name);
-                                field->setMapping(loc == 0 ? vistle::DataBase::Vertex : vistle::DataBase::Element);
+                                field->setMapping(loc == 0 ? vistle::DataBase::Element : vistle::DataBase::Vertex);
                                 field->setGrid(strGrid);
                                 token.applyMeta(field);
                                 std::cout << "Accessing m_fieldsOut at index: " << var << std::endl;
@@ -1706,7 +1703,7 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
                                 }
 
                                 field->addAttribute(vistle::attribute::Species, name);
-                                field->setMapping(locX == 0 ? vistle::DataBase::Vertex : vistle::DataBase::Element);
+                                field->setMapping(locX == 0 ? vistle::DataBase::Element : vistle::DataBase::Vertex);
                                 field->setGrid(strGrid);
                                 token.applyMeta(field);
                                 token.addObject(m_fieldsOut[var], field);

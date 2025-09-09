@@ -1,0 +1,9 @@
+mpirun -x PATH -x PYTHONPATH -x COVISE_PATH -x COVISEDIR -x ARCHSUFFIX -x VISTLE_KEY -x LD_LIBRARY_PATH -np 1 --bind-to none /home/rosba/vistle/build/bin/vistle_manager --from-vistle rosba-83f3 31093 0
+VistleManager: my rank is 0
+comm [0/1] connecting to hub on localhost:31093... ok.
+created Vistle executor
+ClusterManager [0/1] Identify message: uuid: ceedb314-8369-4a4b-af30-8ab085885daa, type: IDENTIFY (2), size: 598+0, sender: -10, UI: 0, dest: -5, bcast: 0/1, identity: REQUEST
+comm [0/1] got id -10
+data [0/1] connecting to local hub...
+data [0/1] connected to local hub
+ClusterManager [0/1] handle: uuid: 45559d8f-5221-4d48-bbcd-6fe77b069d86, type: TRACE (7), size: 129+0, sender: -10, UI: 0, dest: -5, bcast: 0/1, module: 0, type: INVALID
