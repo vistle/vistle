@@ -888,7 +888,7 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
                                 }
 
                                 field->addAttribute(vistle::attribute::Species, name);
-                                field->setMapping(locX == 0 ? vistle::DataBase::Vertex : vistle::DataBase::Element);
+                                field->setMapping(locX == 0 ? vistle::DataBase::Element : vistle::DataBase::Vertex);
                                 field->setGrid(strGrid);
                                 token.applyMeta(field);
                                 token.addObject(m_fieldsOut[var], field);
