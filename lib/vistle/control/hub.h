@@ -272,7 +272,7 @@ private:
     message::Type m_traceMessages;
 
     bool m_barrierActive = false;
-    int m_numBarrierParticipants = 0;
+    unsigned m_numBarrierParticipants = 0;
     message::uuid_t m_barrierUuid;
     typedef std::set<int> ModuleSet;
     ModuleSet m_reachedSet;
