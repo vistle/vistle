@@ -85,8 +85,7 @@ bool ReadSubzoneTecplot::examine(const vistle::Parameter *param)
         const std::string filename = fileList.front(); // small cleanup
         try {
             // Set timesteps to user input:
-            m_fileChoice = setTimestepChoice(numFiles);
-            //setTimesteps(numFiles - 1);
+            setTimesteps(numFiles);
 
             // compute a stable partition count across ALL timesteps ---
             int32_t maxZones = 0;
@@ -718,8 +717,7 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
     } else {
         //std::cout << "Reading timestep: " << timestep << std::endl;
         //std::cout << "Size of fileList: " << fileList.size() << std::endl;
-        int i = m_fileChoice[timestep];
-        const std::string &filename = fileList[i];
+        const std::string &filename = fileList[timestep];
         //std::cout << "Using file: " << filename << std::endl;
         try {
             void *fh = nullptr;
