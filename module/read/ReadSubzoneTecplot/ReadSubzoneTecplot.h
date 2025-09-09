@@ -44,7 +44,6 @@ private:
 
     vistle::StructuredGrid::ptr createStructuredGrid(void *fileHandle, int32_t inputZone);
     bool inspectDir();
-    std::vector<int> setTimestepChoice(int numFiles);
 
     // orderSolutionTimes and getTimestepForSolutionTime can be used to order the solution times in the fileList
     // if the times are not given in the file names.
