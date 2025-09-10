@@ -1183,8 +1183,7 @@ vistle_find_package(
     # vtkFiltersCore
     # vtkImagingCore
     # vtkCommonExecutionModel
-    NO_MODULE
-    QUIET)
+    NO_MODULE)
 
 option(VISTLE_64BIT_INDICES "use 64-bit integers for array indices" OFF)
 option(VISTLE_DOUBLE_PRECISION "use double instead of float for coordinates and data arrays" OFF)
