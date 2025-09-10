@@ -10,7 +10,7 @@ Reader::Reader(const std::string &name, const int moduleID, mpi::communicator co
     m_first = addIntParameter("first_step", "first timestep to read", 0);
     setParameterRange(m_first, Integer(0), std::numeric_limits<Integer>::max());
 
-    m_last = addIntParameter("last_step", "last timestep to read (-1: last)", -1);
+    m_last = addIntParameter("last_step", "last timestep to read (-1: last available)", -1);
     setParameterRange(m_last, Integer(-1), std::numeric_limits<Integer>::max());
 
     m_increment = addIntParameter("step_increment", "number of steps to increment", 1);

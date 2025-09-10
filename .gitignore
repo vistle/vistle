@@ -20,3 +20,5 @@
 /.ipynb_checkpoints
 **/.nfs*
 __pycache__
+CMakeCache.txt
+CMakeFiles/*

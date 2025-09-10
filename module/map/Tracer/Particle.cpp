@@ -224,7 +224,7 @@ void Particle<S>::EmitData()
         m_currentSegment->m_steps.push_back(m_stp);
     assert(m_global.numScalars == m_scalars.size());
     assert(m_currentSegment->m_scalars.size() == m_scalars.size());
-    for (int i = 0; i < m_scalars.size(); ++i) {
+    for (unsigned i = 0; i < m_scalars.size(); ++i) {
         m_currentSegment->m_scalars[i].push_back(m_scalars[i]);
     }
     if (m_global.computeStepWidth)
@@ -258,7 +258,7 @@ bool Particle<S>::Step()
     m_v = inter(m_block->m_vx, m_block->m_vy, m_block->m_vz);
     GridInterface::Interpolator otherInter;
     bool haveOtherInter = false;
-    for (int i = 0; i < m_block->m_scal.size(); ++i) {
+    for (unsigned i = 0; i < m_block->m_scal.size(); ++i) {
         if (m_block->m_scalmap[i] == m_block->m_vecmap) {
             m_scalars[i] = inter(m_block->m_scal[i]);
         } else {
@@ -860,7 +860,7 @@ double Segment::interpolationError(Index i0, Index i1, Index i) const
             err = e;
     }
 
-    for (int k = 0; k < m_scalars.size(); ++k) {
+    for (unsigned k = 0; k < m_scalars.size(); ++k) {
         if (m_scalars[k].size() != m_xhist.size()) {
             continue;
         }
@@ -930,7 +930,7 @@ void Segment::simplify(double relerr)
         skipVector(m_xhist, use);
         skipVector(m_vhist, use);
         skipVector(m_stepWidth, use);
-        for (int i = 0; i < m_scalars.size(); ++i) {
+        for (unsigned i = 0; i < m_scalars.size(); ++i) {
             skipVector(m_scalars[i], use);
         }
         skipVector(m_steps, use);

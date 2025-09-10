@@ -342,7 +342,7 @@ std::vector<Object::ptr> IsoSurface::work(vistle::Object::const_ptr grid, vistle
     }
     result = cachedResult.grid;
 #endif
-    for (int i = 0; i < mapresult.size(); ++i) {
+    for (unsigned i = 0; i < mapresult.size(); ++i) {
         if (!result || result->isEmpty()) {
             results.push_back(Object::ptr());
             continue;

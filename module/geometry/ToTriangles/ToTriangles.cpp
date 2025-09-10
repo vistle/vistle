@@ -429,9 +429,9 @@ bool ToTriangles::compute()
                 ndata = replicateData(data, gen.CoordPerSphere);
             }
         } else if (lines && radius) {
-            const int MinNumSect = 3;
+            const unsigned MinNumSect = 3;
             static_assert(MinNumSect >= 3, "too few sectors");
-            int NumSect = MinNumSect + quality;
+            unsigned NumSect = MinNumSect + quality;
             Index TriPerSection = NumSect * 2;
 
             const Index *cl = nullptr;

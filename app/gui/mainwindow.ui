@@ -222,8 +222,8 @@
    <addaction name="actionSelect_All"/>
    <addaction name="actionDelete"/>
    <addaction name="separator"/>
-   <addaction name="actionViewOrig"/>
    <addaction name="actionViewAll"/>
+   <addaction name="actionViewOrig"/>
    <addaction name="actionArrange"/>
   </widget>
   <widget class="QDockWidget" name="modulesDock">
