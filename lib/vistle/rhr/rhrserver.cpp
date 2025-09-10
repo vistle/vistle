@@ -236,7 +236,8 @@ void RhrServer::updateVariants(
             m_localVariants.erase(it);
         if (isConnected()) {
             variantMsg msg;
-            strncpy(msg.name, var.c_str(), sizeof(msg.name));
+            strncpy(msg.name, var.c_str(), sizeof(msg.name) - 1);
+            msg.name[sizeof(msg.name) - 1] = '\0';
             msg.remove = 1;
             send(msg);
         }
@@ -249,7 +250,8 @@ void RhrServer::updateVariants(
         }
         if (isConnected()) {
             variantMsg msg;
-            strncpy(msg.name, var.first.c_str(), sizeof(msg.name));
+            strncpy(msg.name, var.first.c_str(), sizeof(msg.name) - 1);
+            msg.name[sizeof(msg.name) - 1] = '\0';
             if (var.second != vistle::RenderObject::DontChange) {
                 msg.configureVisibility = 1;
                 msg.visible = var.second == vistle::RenderObject::Visible ? 1 : 0;
@@ -719,7 +721,8 @@ void RhrServer::preFrame()
                 }
                 for (auto &var: m_localVariants) {
                     variantMsg msg;
-                    strncpy(msg.name, var.first.c_str(), sizeof(msg.name));
+                    strncpy(msg.name, var.first.c_str(), sizeof(msg.name) - 1);
+                    msg.name[sizeof(msg.name) - 1] = '\0';
                     msg.visible = var.second;
                     send(msg);
                 }
