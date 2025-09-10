@@ -5,7 +5,7 @@
 
 vistle_install_docs(README.md) # install unconditionally
 
-vistle_find_package(catalyst 2 COMPONENTS SDK)
+vistle_find_package(catalyst 2 COMPONENTS SDK CONFIG)
 
 if(NOT catalyst_FOUND)
     return()

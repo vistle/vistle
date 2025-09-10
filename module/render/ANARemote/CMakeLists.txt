@@ -1,4 +1,4 @@
-vistle_find_package(anari)
+vistle_find_package(anari CONFIG)
 if(NOT anari_FOUND)
     return()
 endif()
