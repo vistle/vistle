@@ -16,6 +16,7 @@
 #include <vistle/util/filesystem.h>
 #include <vistle/util/stopwatch.h>
 #include <mutex>
+#include <algorithm>
 
 
 //Include TecIO for szPlot
@@ -50,6 +51,25 @@ ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mp
 
     m_grid = createOutputPort("grid_out", "grid or geometry");
 
+    m_staticGeometry = addIntParameter(
+    "static_geometry",
+    "Freeze blade geometry (0 = dynamic, 1 = static from reference timestep)",
+    0,                    // default unchecked
+    Parameter::Boolean );
+
+        
+
+    m_staticRefTimestep = addIntParameter(
+        "static_ref_timestep",
+        "Timestep index to take the static geometry from (0-based)",
+        0 /* default */);
+
+    
+    observeParameter(m_staticGeometry);
+    observeParameter(m_staticRefTimestep);
+    sendInfo("ReadSubzoneTecplot: registered static_geometry + static_ref_timestep");
+
+
     setParallelizationMode(Serial);
     //setParallelizationMode(ParallelizeTimeAndBlocks); // Parallelization does not work, leads to abortion errors
 
@@ -67,10 +87,13 @@ ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mp
         m_fieldsOut[i] = createOutputPort("field_out_" + std::to_string(i), "data field");
     }
 
+
     observeParameter(m_filedir); // examine method is called when parameter is changed
 }
 
 ReadSubzoneTecplot::~ReadSubzoneTecplot() = default;
+
+
 
 
 bool ReadSubzoneTecplot::examine(const vistle::Parameter *param)
@@ -711,6 +734,27 @@ int ReadSubzoneTecplot::getTimestepForSolutionTime(std::unordered_map<int, doubl
 
 bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
 {
+    if (timestep < 0 && m_staticGeometry->getValue() == 1) {
+        const int refTs = std::max(0, std::min(static_cast<int>(fileList.size())-1, static_cast<int>(m_staticRefTimestep->getValue())));
+        void *fh_ref = nullptr;
+        { std::lock_guard<std::mutex> lk(g_tecio_mutex); tecFileReaderOpen(fileList[refTs].c_str(), &fh_ref); }
+        if (!fh_ref) return true;
+
+        int32_t numZonesRef = 0;
+        { std::lock_guard<std::mutex> lk(g_tecio_mutex); tecDataSetGetNumZones(fh_ref, &numZonesRef); }
+
+        const int zone = block + 1;
+        if (zone >= 1 && zone <= numZonesRef) {
+            auto g0 = createStructuredGrid(fh_ref, zone);
+            // leave it constant (no timestep set)
+            token.applyMeta(g0);
+            token.addObject(m_grid, g0);
+        }
+        { std::lock_guard<std::mutex> lk(g_tecio_mutex); tecFileReaderClose(&fh_ref); }
+        return true;
+    }
+
+
     if (timestep < 0 || timestep >= numFiles) {
         //std::cout << "Constant timestep: " << timestep << std::endl;
         return true;
@@ -752,28 +796,72 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
 
             // -
 
-            StructuredGrid::ptr strGrid = NULL;
-            strGrid = ReadSubzoneTecplot::createStructuredGrid(fh, zone);
+            StructuredGrid::ptr strGrid;
+
+            if (m_staticGeometry->getValue() == 1) {
+                // clamp reference timestep
+                // safe clamp of reference timestep into [0, nfiles-1]
+                const int nfiles = static_cast<int>(fileList.size());
+                const int hi = std::max(0, nfiles - 1);
+                const int refTs = std::clamp<int>(m_staticRefTimestep->getValue(), 0, hi);
+
+                // open the reference file just to read geometry for this zone
+                void *fh_ref = nullptr;
+                {
+                    std::lock_guard<std::mutex> lk(g_tecio_mutex);
+                    tecFileReaderOpen(fileList[refTs].c_str(), &fh_ref);
+                }
+                if (!fh_ref) {
+                    sendError("Static geometry: failed to open reference timestep file %s", fileList[refTs].c_str());
+                    return false;
+                }
+
+                // Build grid from reference timestep, same zone index
+                strGrid = createStructuredGrid(fh_ref, zone);
+
+                {
+                    std::lock_guard<std::mutex> lk(g_tecio_mutex);
+                    tecFileReaderClose(&fh_ref);
+                }
+            } else {
+                // dynamic geometry from current timestep
+                strGrid = createStructuredGrid(fh, zone);
+            }
+
+            // time/meta + publish
             auto solutionTime = 0.0;
             {
                 std::lock_guard<std::mutex> lk(g_tecio_mutex);
                 tecZoneGetSolutionTime(fh, zone, &solutionTime);
             }
-
-            //int step = getTimestepForSolutionTime(solutionTimes, solutionTime);
             strGrid->setTimestep(timestep);
 
-            int32_t loc = 0;
-            {
-                std::lock_guard<std::mutex> lk(g_tecio_mutex);
-                tecZoneVarGetValueLocation(fh, zone, 1, &loc);
-            }
-
-            //std::cout << "reading zone number " << zone << " of " << numZones << " zones" << std::endl;
-            //std::cout << "timestep: " << timestep << std::endl;
-            //std::cout << "solution time: " << solutionTime << std::endl;
             token.applyMeta(strGrid);
             token.addObject(m_grid, strGrid);
+
+
+            // StructuredGrid::ptr strGrid = NULL;
+            // strGrid = ReadSubzoneTecplot::createStructuredGrid(fh, zone);
+            // auto solutionTime = 0.0;
+            // {
+            //     std::lock_guard<std::mutex> lk(g_tecio_mutex);
+            //     tecZoneGetSolutionTime(fh, zone, &solutionTime);
+            // }
+
+            // //int step = getTimestepForSolutionTime(solutionTimes, solutionTime);
+            // strGrid->setTimestep(timestep);
+
+            // int32_t loc = 0;
+            // {
+            //     std::lock_guard<std::mutex> lk(g_tecio_mutex);
+            //     tecZoneVarGetValueLocation(fh, zone, 1, &loc);
+            // }
+
+            // //std::cout << "reading zone number " << zone << " of " << numZones << " zones" << std::endl;
+            // //std::cout << "timestep: " << timestep << std::endl;
+            // //std::cout << "solution time: " << solutionTime << std::endl;
+            // token.applyMeta(strGrid);
+            // token.addObject(m_grid, strGrid);
 
             //Define options of variable ports
             //auto indices = setFieldChoices(fh);
