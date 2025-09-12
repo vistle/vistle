@@ -1,4 +1,4 @@
-set(TECIO_SHARED FALSE)
+set(TECIO_SHARED TRUE)
 set(TECIO_MPI FALSE)
 include(tecio.cmake)
 
