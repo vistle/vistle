@@ -15,6 +15,10 @@ public:
     ~ReadSubzoneTecplot() override;
 
 private:
+    vistle::IntParameter *m_staticGeometry = nullptr; // 0 dynamic, 1 static
+    vistle::IntParameter *m_staticRefTimestep = nullptr; // 0-based
+
+
     static const int NumPorts = 5;
     int numFiles = 0;
     // void *fileHandle; commenting to avoid a shared file handle -> gets clobbered by recurrent reads during parallel processing
@@ -56,6 +60,7 @@ private:
     vistle::Port *m_fieldsOut[NumPorts];
     std::vector<std::string> fileList;
     std::unordered_map<int, double> solutionTimes; // maps timestep to solution time
+    std::vector<int> m_fileChoice; // user-selected timesteps to read
 
 
     std::unordered_map<std::string, std::vector<int>>

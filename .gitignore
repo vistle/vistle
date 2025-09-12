@@ -3,6 +3,7 @@
 /.debug
 /.buildtype
 /.spack
+/.cache
 /.flavor
 /scratch
 /build
