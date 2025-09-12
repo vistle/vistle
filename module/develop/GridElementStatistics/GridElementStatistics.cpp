@@ -43,13 +43,13 @@ bool GridElementStatistics::compute()
         return true;
     }
 
+    sendInfo("---");
     sendInfo("element index: %lu of block %d", (unsigned long)elementIndex, grid->getBlock());
     sendInfo("element type: %s", UnstructuredGrid::toString(UnstructuredGrid::Type(grid->tl()[elementIndex])));
     sendInfo("element dimensionality: %d", UnstructuredGrid::Dimensionality[grid->tl()[elementIndex]]);
     sendInfo("edge length: %f", grid->cellEdgeLength(elementIndex));
     sendInfo("surface: %f", grid->cellSurface(elementIndex));
     sendInfo("volume: %f", grid->cellVolume(elementIndex));
-    sendInfo("");
 
     auto highlight = std::make_shared<Vec<Scalar, 1>>(grid->getNumElements());
     std::fill(highlight->x().begin(), highlight->x().end(), 0);

@@ -1057,7 +1057,7 @@ bool Tracer::reduce(int timestep)
             if (isConnected(*m_addPort[p])) {
                 if (field) {
                     bool initField = true;
-                    for (int j = 0; j < i; ++j) {
+                    for (unsigned j = 0; j < i; ++j) {
                         if (m_addField[j]->getValue() == m_addField[i]->getValue()) {
                             initField = false;
                             break;
