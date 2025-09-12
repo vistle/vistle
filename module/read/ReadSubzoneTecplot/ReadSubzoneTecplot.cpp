@@ -51,20 +51,16 @@ ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mp
 
     m_grid = createOutputPort("grid_out", "grid or geometry");
 
-    m_staticGeometry = addIntParameter(
-    "static_geometry",
-    "Freeze blade geometry (0 = dynamic, 1 = static from reference timestep)",
-    0,                    // default unchecked
-    Parameter::Boolean );
+    m_staticGeometry =
+        addIntParameter("static_geometry", "Freeze blade geometry (0 = dynamic, 1 = static from reference timestep)",
+                        0, // default unchecked
+                        Parameter::Boolean);
 
-        
 
-    m_staticRefTimestep = addIntParameter(
-        "static_ref_timestep",
-        "Timestep index to take the static geometry from (0-based)",
-        0 /* default */);
+    m_staticRefTimestep = addIntParameter("static_ref_timestep",
+                                          "Timestep index to take the static geometry from (0-based)", 0 /* default */);
 
-    
+
     observeParameter(m_staticGeometry);
     observeParameter(m_staticRefTimestep);
     sendInfo("ReadSubzoneTecplot: registered static_geometry + static_ref_timestep");
@@ -92,8 +88,6 @@ ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mp
 }
 
 ReadSubzoneTecplot::~ReadSubzoneTecplot() = default;
-
-
 
 
 bool ReadSubzoneTecplot::examine(const vistle::Parameter *param)
@@ -735,13 +729,21 @@ int ReadSubzoneTecplot::getTimestepForSolutionTime(std::unordered_map<int, doubl
 bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
 {
     if (timestep < 0 && m_staticGeometry->getValue() == 1) {
-        const int refTs = std::max(0, std::min(static_cast<int>(fileList.size())-1, static_cast<int>(m_staticRefTimestep->getValue())));
+        const int refTs = std::max(
+            0, std::min(static_cast<int>(fileList.size()) - 1, static_cast<int>(m_staticRefTimestep->getValue())));
         void *fh_ref = nullptr;
-        { std::lock_guard<std::mutex> lk(g_tecio_mutex); tecFileReaderOpen(fileList[refTs].c_str(), &fh_ref); }
-        if (!fh_ref) return true;
+        {
+            std::lock_guard<std::mutex> lk(g_tecio_mutex);
+            tecFileReaderOpen(fileList[refTs].c_str(), &fh_ref);
+        }
+        if (!fh_ref)
+            return true;
 
         int32_t numZonesRef = 0;
-        { std::lock_guard<std::mutex> lk(g_tecio_mutex); tecDataSetGetNumZones(fh_ref, &numZonesRef); }
+        {
+            std::lock_guard<std::mutex> lk(g_tecio_mutex);
+            tecDataSetGetNumZones(fh_ref, &numZonesRef);
+        }
 
         const int zone = block + 1;
         if (zone >= 1 && zone <= numZonesRef) {
@@ -750,7 +752,10 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
             token.applyMeta(g0);
             token.addObject(m_grid, g0);
         }
-        { std::lock_guard<std::mutex> lk(g_tecio_mutex); tecFileReaderClose(&fh_ref); }
+        {
+            std::lock_guard<std::mutex> lk(g_tecio_mutex);
+            tecFileReaderClose(&fh_ref);
+        }
         return true;
     }
 

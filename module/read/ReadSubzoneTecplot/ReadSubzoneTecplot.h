@@ -15,8 +15,8 @@ public:
     ~ReadSubzoneTecplot() override;
 
 private:
-    vistle::IntParameter *m_staticGeometry = nullptr;     // 0 dynamic, 1 static
-    vistle::IntParameter *m_staticRefTimestep = nullptr;  // 0-based
+    vistle::IntParameter *m_staticGeometry = nullptr; // 0 dynamic, 1 static
+    vistle::IntParameter *m_staticRefTimestep = nullptr; // 0-based
 
 
     static const int NumPorts = 5;
