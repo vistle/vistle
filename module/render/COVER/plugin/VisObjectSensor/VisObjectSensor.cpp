@@ -90,7 +90,7 @@ void VisObjectSensorPlugin::addObject(const RenderObject *container, osg::Group 
     auto &data = it->second;
 
     auto &xforms = m_xformToData[xformName];
-    if (ts >= xforms.size()) {
+    if (size_t(ts) >= xforms.size()) {
         xforms.resize(ts + 1, nullptr);
     }
     xforms[ts] = &data;
@@ -108,7 +108,7 @@ void VisObjectSensorPlugin::removeObject(const char *objName, bool replaceFlag)
     auto xit = m_xformToData.find(data.transformName);
     if (xit != m_xformToData.end()) {
         auto &xforms = xit->second;
-        if (xforms.size() > data.timestep) {
+        if (data.timestep < 0 || xforms.size() > size_t(data.timestep)) {
             xforms[data.timestep] = nullptr;
         }
         while (!xforms.empty() && xforms.back() == nullptr) {
@@ -203,7 +203,7 @@ void VrmlNodeVisObjectSensor::render(vrml::Viewer *viewer)
 void VrmlNodeVisObjectSensor::updateTransform()
 {
     //static const vistle::Matrix4 ToVrml = vistle::Matrix4::Rotation(0, 0, 1, M_PI / 2);
-    static const vistle::Matrix4 ToVrml = vistle::Matrix4::Identity(4, 4);
+    //static const vistle::Matrix4 ToVrml = vistle::Matrix4::Identity(4, 4);
 
     auto resetTransform = [this]() {
         if (d_translation.x() != 0 || d_translation.y() != 0 || d_translation.z() != 0)
@@ -234,7 +234,7 @@ void VrmlNodeVisObjectSensor::updateTransform()
     }
 
     auto &xforms = it->second;
-    if (ts >= xforms.size() || xforms[ts] == nullptr) {
+    if (size_t(ts) >= xforms.size() || xforms[ts] == nullptr) {
         // keep the last transform
         return;
     }

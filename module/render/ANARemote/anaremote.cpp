@@ -237,6 +237,7 @@ std::vector<std::string> Anari::getRendererTypes(anari::Library lib, anari::Devi
         const char **deviceSubtypes = anariGetDeviceSubtypes(lib);
         if (deviceSubtypes != nullptr) {
             while (const char *dstype = *deviceSubtypes++) {
+                (void)dstype;
                 const char **rendererTypes = anariGetObjectSubtypes(dev, ANARI_RENDERER);
                 while (rendererTypes && *rendererTypes) {
                     const char *rendererType = *rendererTypes++;
