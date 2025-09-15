@@ -40,10 +40,6 @@
 #include <QDialog>
 #include <QListWidget>
 
-#if QT_VERSION < 0x040000
-#error "supports only Qt 4.0 or greater"
-#endif
-
 /**
  * Subclasssing QListWidget
  *

@@ -810,11 +810,7 @@ QString RemoteFileSystemModelPrivate::size(const QModelIndex &index) const
 
 QString RemoteFileSystemModelPrivate::size(qint64 bytes)
 {
-#if QT_VERSION >= 0x050A00
     return QLocale::system().formattedDataSize(bytes);
-#else
-    return QString::number(bytes);
-#endif
 }
 
 /*!
