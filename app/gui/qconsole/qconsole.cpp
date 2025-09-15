@@ -141,13 +141,9 @@ void QConsole::reset(const QString &welcomeText)
 {
     clear();
     //set the style of the QTextEdit
-#ifdef __APPLE__
-    setCurrentFont(QFont("Monaco"));
-#else
-    QFont f;
-    f.setFamily("Courier");
-    setCurrentFont(f);
-#endif
+    QFont mono("monospace");
+    mono.setStyleHint(QFont::Monospace);
+    setCurrentFont(mono);
 
     append(welcomeText);
     append("");
