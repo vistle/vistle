@@ -301,13 +301,8 @@ bool Particle<S>::isTracing(bool wait)
     }
 
     auto status = m_progressFuture.wait_for(std::chrono::milliseconds(wait ? 10 : 0));
-#if !defined(__clang__) && defined(__GNUC__) && (__GNUC__ == 4) && (__GNUC_MINOR__ <= 6)
-    if (!status)
-        return true;
-#else
     if (status != std::future_status::ready)
         return true;
-#endif
 
     m_tracing = false;
     m_progress = m_progressFuture.get();

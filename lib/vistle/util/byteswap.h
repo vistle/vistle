@@ -75,7 +75,7 @@ struct swap_bytes<T, 4> // for 32 bit
 {
     inline T operator()(T val)
     {
-#if defined(_USE_BUILTIN_BSWAPS) && defined(__GNUC__) && ((__GNUC__ == 4 && __GNUC_MINOR__ >= 3) || __GNUC__ > 4)
+#if defined(_USE_BUILTIN_BSWAPS) && defined(__GNUC__)
         return __builtin_bswap32(val);
 #else
         return ((((val)&0xff000000) >> 24) | (((val)&0x00ff0000) >> 8) | (((val)&0x0000ff00) << 8) |
@@ -109,7 +109,7 @@ struct swap_bytes<T, 8> // for 64 bit
 {
     inline T operator()(T val)
     {
-#if defined(_USE_BUILTIN_BSWAPS) && defined(__GNUC__) && ((__GNUC__ == 4 && __GNUC_MINOR__ >= 3) || __GNUC__ > 4)
+#if defined(_USE_BUILTIN_BSWAPS) && defined(__GNUC__)
         return __builtin_bswap64(val);
 #else
         return ((((val)&0xff00000000000000ull) >> 56) | (((val)&0x00ff000000000000ull) >> 40) |
