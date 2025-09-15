@@ -388,10 +388,14 @@ void Particle<S>::addToOutput()
             if (seg.m_num < 0) {
                 continue;
             }
+            auto N = seg.m_xhist.size();
+            if (N == 0) {
+                // skip empty segments
+                continue;
+            }
             if (!prevSeg)
                 prevSeg = ent.second;
 
-            auto N = seg.m_xhist.size();
             //std::cerr << "particle " << seg.m_id << ", N=" << N << " steps" << std::endl;
             for (Index i = 0; i < N; ++i) {
                 auto nextTime = seg.m_times[i];
