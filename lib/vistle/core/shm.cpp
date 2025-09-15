@@ -44,13 +44,7 @@ size_t memorySize<8>()
         std::cerr << "running under valgrind: reducing shmem size" << std::endl;
         return (size_t)1 << 32;
     } else {
-#if defined(__APPLE__)
-        return (size_t)1 << 40;
-#elif defined(_WIN32)
-        return (size_t)1 << 30; // 1 GB
-#else
-        return (size_t)1 << 40; // 1 TB
-#endif
+        return (size_t)1 << 42;
     }
 }
 
