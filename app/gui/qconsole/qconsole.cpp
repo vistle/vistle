@@ -44,16 +44,13 @@ QSize PopupListWidget::sizeHint() const
     QAbstractItemDelegate *delegate = this->itemDelegate();
     const QStyleOptionViewItem sovi;
     int left, top, right, bottom = 0;
-#if QT_VERSION >= 0x040600
     QMargins margin = this->contentsMargins();
 
     top = margin.top();
     bottom = margin.bottom();
     left = margin.left();
     right = margin.right();
-#else
-    getContentsMargins(&left, &top, &right, &bottom);
-#endif
+
     const int vOffset = top + bottom;
     const int hOffset = left + right;
 
