@@ -656,13 +656,8 @@ bool COVER::render()
                 break;
             }
             auto status = node_future.wait_for(std::chrono::seconds(0));
-#if !defined(__clang__) && defined(__GNUC__) && (__GNUC__ == 4) && (__GNUC_MINOR__ <= 6)
-            if (!status)
-                break;
-#else
             if (status != std::future_status::ready)
                 break;
-#endif
             ++numReady;
         }
 
