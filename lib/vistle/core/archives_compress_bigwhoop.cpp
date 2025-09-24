@@ -2,6 +2,7 @@
 
 #include "index.h"
 #include "archives_compress_bigwhoop.h"
+#include <cstring>
 
 namespace vistle {
 namespace detail {
