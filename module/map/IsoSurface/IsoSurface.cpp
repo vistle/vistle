@@ -299,7 +299,7 @@ std::vector<Object::ptr> IsoSurface::work(vistle::Object::const_ptr grid, vistle
 
 #ifndef CUTTINGSURFACE
     auto minmax = dataS->getMinMax();
-    {
+    if (minmax.first[0] <= minmax.second[0]) {
         std::lock_guard<std::mutex> guard(m_mutex);
         if (minmax.first[0] < m_min)
             m_min = minmax.first[0];
