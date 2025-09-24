@@ -238,7 +238,7 @@ macro(add_module_doc_target modulename CATEGORY)
 
     foreach(file ${WORKFLOWS})
         get_filename_component(workflow ${file} NAME_WLE)
-        message("Workflow: ${modulename} ${workflow} ${file}")
+        #message("Workflow: ${modulename} ${workflow} ${file}")
 
         set(output_dir ${VISTLE_DOCUMENTATION_SOURCE_DIR}/module/${category}/${modulename})
 
