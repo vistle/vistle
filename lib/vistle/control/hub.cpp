@@ -2495,7 +2495,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                 }
                 {
 #ifdef MODULE_THREAD
-                    modId = 0;
+                    modId = Process::Manager;
 #endif
                     long mpipid = 0;
 #ifdef VISTLE_USE_MPI
@@ -2512,9 +2512,6 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                     if (!found) {
                         std::stringstream str;
                         str << "Did not find launcher PID to debug module id " << modId << " on " << m_name;
-#ifdef MODULE_THREAD
-                        str << " -> " << modId;
-#endif
                         sendError(str.str());
                         break;
                     }
