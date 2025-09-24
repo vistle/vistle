@@ -994,10 +994,11 @@ Index Leveller::calculateSurface(Data &data)
 bool Leveller::process()
 {
 #ifndef CUTTINGSURFACE
-    Vec<Scalar>::const_ptr dataobj = Vec<Scalar>::as(m_data);
-    if (!dataobj)
+    if (!m_data)
         return false;
-    auto bounds = dataobj->getMinMax();
+    if (m_data->getSize() == 0)
+        return true;
+    std::pair<Vector1, Vector1> bounds = m_data->getMinMax();
     if (bounds.first[0] <= bounds.second[0]) {
         if (m_isoValue < bounds.first[0] || m_isoValue > bounds.second[0])
             return true;
@@ -1052,7 +1053,7 @@ bool Leveller::process()
                                                         m_coord->y().data(), m_coord->z().data())
                                  : m_isocontrol.newFunc(m_grid->getTransform(), dims, coords[0], coords[1], coords[2]);
 #else
-    IsoDataFunctor isofunc = m_isocontrol.newFunc(m_grid->getTransform(), &dataobj->x()[0]);
+    IsoDataFunctor isofunc = m_isocontrol.newFunc(m_grid->getTransform(), m_data->x().data());
 #endif
 
     std::unique_ptr<HostData> HD_ptr;

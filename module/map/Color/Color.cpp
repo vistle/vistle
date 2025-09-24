@@ -372,18 +372,18 @@ template<class V>
 void updateMinMax(typename V::const_ptr &v, Scalar &min, Scalar &max)
 {
     auto mmv = v->getMinMax();
-    std::tuple<Scalar, Scalar> mm{mmv.first[0], mmv.second[0]};
-    if (min > std::get<0>(mm))
-        min = std::get<0>(mm);
-    if (max < std::get<1>(mm))
-        max = std::get<1>(mm);
+    if (mmv.first[0] <= mmv.second[0]) {
+        std::tuple<Scalar, Scalar> mm{mmv.first[0], mmv.second[0]};
+        if (min > std::get<0>(mm))
+            min = std::get<0>(mm);
+        if (max < std::get<1>(mm))
+            max = std::get<1>(mm);
+    }
 }
 } // namespace
 
 void Color::getMinMax(vistle::DataBase::const_ptr object, vistle::Scalar &min, vistle::Scalar &max)
 {
-    const ssize_t numElements = object->getSize();
-
     if (Vec<Byte>::const_ptr scal = Vec<Byte>::as(object)) {
         updateMinMax<Vec<Byte>>(scal, min, max);
     } else if (Vec<Index>::const_ptr scal = Vec<Index>::as(object)) {
@@ -403,6 +403,7 @@ void Color::getMinMax(vistle::DataBase::const_ptr object, vistle::Scalar &min, v
 #ifdef USE_OPENMP
 #pragma omp for
 #endif
+            const ssize_t numElements = object->getSize();
             for (ssize_t index = 0; index < numElements; index++) {
                 Scalar v = Vector3(x[index], y[index], z[index]).norm();
                 if (v < tmin)
