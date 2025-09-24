@@ -55,7 +55,7 @@ void Integrator<S>::UpdateBlock()
     if (BlockData *bl = m_ptcl->m_block) {
         Vec<Scalar, 3>::const_ptr vecfld = bl->getVecFld();
         for (int i = 0; i < 3; ++i)
-            m_v[i] = &vecfld->x(i)[0];
+            m_v[i] = vecfld->x(i).data();
     } else {
         m_v[0] = m_v[1] = m_v[2] = nullptr;
     }

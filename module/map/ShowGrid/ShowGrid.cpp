@@ -102,7 +102,7 @@ bool ShowGrid::compute()
                 auto ix = unstr->x().data();
                 auto iy = unstr->y().data();
                 auto iz = unstr->z().data();
-                const Index *icl = &unstr->cl()[0];
+                const Index *icl = unstr->cl().data();
 
                 Index begin = 0, end = unstr->getNumElements();
                 if (cellnrmin >= 0) {
@@ -252,7 +252,7 @@ bool ShowGrid::compute()
                 }
             } else if (auto poly = Polygons::as(grid)) {
                 if (showTypes[UnstructuredGrid::QUAD]) {
-                    const Index *icl = &poly->cl()[0];
+                    const Index *icl = poly->cl().data();
                     auto ix = poly->x().data();
                     auto iy = poly->y().data();
                     auto iz = poly->z().data();
@@ -310,7 +310,7 @@ bool ShowGrid::compute()
                     auto iz = quad->z().data();
                     const Index *icl = nullptr;
                     if (quad->getNumCorners() > 0) {
-                        icl = &quad->cl()[0];
+                        icl = quad->cl().data();
                     }
                     auto vert = [icl](Index idx) {
                         return icl ? icl[idx] : idx;
@@ -363,7 +363,7 @@ bool ShowGrid::compute()
                     auto iy = tri->y().data();
                     auto iz = tri->z().data();
                     if (tri->getNumCorners() > 0) {
-                        icl = &tri->cl()[0];
+                        icl = tri->cl().data();
                     }
                     auto vert = [icl](Index idx) {
                         return icl ? icl[idx] : idx;
@@ -410,7 +410,7 @@ bool ShowGrid::compute()
             }
         } else {
             if (auto unstr = UnstructuredGrid::as(grid)) {
-                const Index *icl = &unstr->cl()[0];
+                const Index *icl = unstr->cl().data();
 
                 Index begin = 0, end = unstr->getNumElements();
                 if (cellnrmin >= 0) {
@@ -537,9 +537,9 @@ bool ShowGrid::compute()
                 } else {
                     const Index numVert = str->getNumVertices();
                     lines->setSize(numVert);
-                    auto x = &lines->x()[0];
-                    auto y = &lines->y()[0];
-                    auto z = &lines->z()[0];
+                    auto x = lines->x().data();
+                    auto y = lines->y().data();
+                    auto z = lines->z().data();
 
                     for (Index i = 0; i < numVert; ++i) {
                         auto v = str->getVertex(i);
@@ -550,7 +550,7 @@ bool ShowGrid::compute()
                 }
             } else if (auto poly = Polygons::as(grid)) {
                 if (showTypes[UnstructuredGrid::QUAD]) {
-                    const Index *icl = &poly->cl()[0];
+                    const Index *icl = poly->cl().data();
 
                     Index begin = 0, end = poly->getNumElements();
                     if (cellnrmin >= 0)
@@ -583,7 +583,7 @@ bool ShowGrid::compute()
                 if (showTypes[UnstructuredGrid::QUAD]) {
                     auto nelem = quad->getNumElements();
                     if (quad->getNumCorners() > 0) {
-                        const Index *icl = &quad->cl()[0];
+                        const Index *icl = quad->cl().data();
                         for (Index i = 0; i < nelem; ++i) {
                             if (!showCell(i))
                                 continue;
@@ -627,7 +627,7 @@ bool ShowGrid::compute()
                 if (showTypes[UnstructuredGrid::TRIANGLE]) {
                     auto nelem = tri->getNumElements();
                     if (tri->getNumCorners() > 0) {
-                        const Index *icl = &tri->cl()[0];
+                        const Index *icl = tri->cl().data();
                         for (Index i = 0; i < nelem; ++i) {
                             if (!showCell(i))
                                 continue;

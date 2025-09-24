@@ -113,9 +113,9 @@ bool SplitPolyhedra::compute()
     UnstructuredGrid::ptr simple;
     std::vector<Index> elementMapping;
     if (auto entry = m_grids.getOrLock(grid->getName(), simple)) {
-        const Index *iel = &grid->el()[0];
-        const Index *icl = &grid->cl()[0];
-        const Byte *itl = &grid->tl()[0];
+        const Index *iel = grid->el().data();
+        const Index *icl = grid->cl().data();
+        const Byte *itl = grid->tl().data();
         const Index nelem = grid->getNumElements();
         simple = std::make_shared<UnstructuredGrid>(0, 0, 0);
         simple->d()->x[0] = grid->d()->x[0];

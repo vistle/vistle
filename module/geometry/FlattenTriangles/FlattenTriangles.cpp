@@ -36,10 +36,10 @@ struct Flatten {
     Index N = 0;
     const Index *cl = nullptr;
     Flatten(Triangles::const_ptr tri, DataBase::const_ptr obj, DataBase::ptr result)
-    : tri(tri), object(obj), result(result), N(tri->getNumCorners()), cl(&tri->cl()[0])
+    : tri(tri), object(obj), result(result), N(tri->getNumCorners()), cl(tri->cl().data())
     {}
     Flatten(Quads::const_ptr quad, DataBase::const_ptr obj, DataBase::ptr result)
-    : quad(quad), object(obj), result(result), N(quad->getNumCorners()), cl(&quad->cl()[0])
+    : quad(quad), object(obj), result(result), N(quad->getNumCorners()), cl(quad->cl().data())
     {}
     template<typename S>
     void operator()(S)

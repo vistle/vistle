@@ -146,23 +146,23 @@ bool VistlePlugin::destroy()
 void VistlePlugin::notify(coVRPlugin::NotificationLevel level, const char *message)
 {
     std::vector<char> text(strlen(message) + 1);
-    memcpy(&text[0], message, text.size());
+    memcpy(text.data(), message, text.size());
     if (text.size() > 1 && text[text.size() - 2] == '\n')
         text[text.size() - 2] = '\0';
     if (text[0] == '\0')
         return;
-    std::cerr << &text[0] << std::endl;
+    std::cerr << text.data() << std::endl;
     if (m_module) {
         switch (level) {
         case coVRPlugin::Info:
-            m_module->sendInfo("%s", &text[0]);
+            m_module->sendInfo("%s", text.data());
             break;
         case coVRPlugin::Warning:
-            m_module->sendWarning("%s", &text[0]);
+            m_module->sendWarning("%s", text.data());
             break;
         case coVRPlugin::Error:
         case coVRPlugin::Fatal:
-            m_module->sendError("%s", &text[0]);
+            m_module->sendError("%s", text.data());
             break;
         }
     }

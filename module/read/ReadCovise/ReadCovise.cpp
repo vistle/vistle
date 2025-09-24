@@ -390,8 +390,8 @@ AttributeList ReadCovise::readAttributes(const int fd)
     if (num > 0 && size > 0) {
         std::vector<char *> key(num), value(num);
         std::vector<char> buf(size);
-        key[0] = &buf[0];
-        covReadAttributes(fd, &key[0], &value[0], num, size);
+        key[0] = buf.data();
+        covReadAttributes(fd, key.data(), value.data(), num, size);
 
         for (int i = 0; i < num; ++i) {
             attributes.push_back(std::pair<std::string, std::string>(key[i], value[i]));
@@ -474,8 +474,8 @@ Object::ptr ReadCovise::readSTRGRD(Token &token, const int port, int fd, const b
     } else {
         size_t numVertices = dim[0] * dim[1] * dim[2];
         std::vector<float> v_x(numVertices), v_y(numVertices), v_z(numVertices);
-        float *_x = v_x.data(), *_y = v_y.data(), *_z = v_z.data();
-        covReadSTRGRD(fd, dim[0], dim[1], dim[2], _x, _y, _z);
+        float *xx = v_x.data(), *yy = v_y.data(), *zz = v_z.data();
+        covReadSTRGRD(fd, dim[0], dim[1], dim[2], xx, yy, zz);
         StructuredGrid::ptr str(new StructuredGrid(dim[0], dim[1], dim[2]));
         Scalar *x = str->x().data(), *y = str->y().data(), *z = str->z().data();
         size_t idx = 0;
@@ -484,9 +484,9 @@ Object::ptr ReadCovise::readSTRGRD(Token &token, const int port, int fd, const b
             for (Index j = 0; j < vdim[1]; ++j) {
                 for (Index i = 0; i < vdim[2]; ++i) {
                     auto vidx = StructuredGrid::vertexIndex(k, j, i, vdim);
-                    x[vidx] = _x[idx];
-                    y[vidx] = _y[idx];
-                    z[vidx] = _z[idx];
+                    x[vidx] = xx[idx];
+                    y[vidx] = yy[idx];
+                    z[vidx] = zz[idx];
                     ++idx;
                 }
             }
@@ -540,11 +540,11 @@ Object::ptr ReadCovise::readUNSGRD(Token &token, const int port, int fd, const b
         auto _cl = v_cl.data();
 
         std::vector<float> v_x(numVertices), v_y(numVertices), v_z(numVertices);
-        float *_x = v_x.data(), *_y = v_y.data(), *_z = v_z.data();
-        covReadUNSGRD(fd, numElements, numCorners, numVertices, _el, _cl, _tl, _x, _y, _z);
+        float *xx = v_x.data(), *yy = v_y.data(), *zz = v_z.data();
+        covReadUNSGRD(fd, numElements, numCorners, numVertices, _el, _cl, _tl, xx, yy, zz);
 
         Index *el = usg->el().data();
-        Byte *tl = &usg->tl()[0];
+        Byte *tl = usg->tl().data();
         for (int index = 0; index < numElements; index++) {
             el[index] = _el[index];
             assert(_tl[index] <= TYPE_POLYHEDRON);
@@ -558,9 +558,9 @@ Object::ptr ReadCovise::readUNSGRD(Token &token, const int port, int fd, const b
 
         auto x = usg->x().data(), y = usg->y().data(), z = usg->z().data();
         for (int index = 0; index < numVertices; ++index) {
-            x[index] = _x[index];
-            y[index] = _y[index];
-            z[index] = _z[index];
+            x[index] = xx[index];
+            y[index] = yy[index];
+            z[index] = zz[index];
         }
 
         return usg;
@@ -579,11 +579,11 @@ Object::ptr ReadCovise::readBYTEDT(Token &token, const int port, int fd, const b
         covSkipBYTEDT(fd, numElements);
     } else {
         Vec<Byte>::ptr array(new Vec<Byte>(numElements));
-        std::vector<Byte> _x(numElements);
-        covReadBYTEDT(fd, numElements, &_x[0]);
+        std::vector<Byte> xx(numElements);
+        covReadBYTEDT(fd, numElements, xx.data());
         auto x = array->x().data();
         for (int i = 0; i < numElements; ++i)
-            x[i] = _x[i];
+            x[i] = xx[i];
 
         return array;
     }
@@ -601,11 +601,11 @@ Object::ptr ReadCovise::readINTDT(Token &token, const int port, int fd, const bo
         covSkipINTDT(fd, numElements);
     } else {
         Vec<Index>::ptr array(new Vec<Index>(numElements));
-        std::vector<int> _x(numElements);
-        covReadINTDT(fd, numElements, &_x[0]);
+        std::vector<int> xx(numElements);
+        covReadINTDT(fd, numElements, xx.data());
         auto x = array->x().data();
         for (int i = 0; i < numElements; ++i)
-            x[i] = _x[i];
+            x[i] = xx[i];
 
         return array;
     }
@@ -623,11 +623,11 @@ Object::ptr ReadCovise::readUSTSDT(Token &token, const int port, int fd, const b
         covSkipUSTSDT(fd, numElements);
     } else {
         Vec<Scalar>::ptr array(new Vec<Scalar>(numElements));
-        std::vector<float> _x(numElements);
-        covReadUSTSDT(fd, numElements, &_x[0]);
+        std::vector<float> xx(numElements);
+        covReadUSTSDT(fd, numElements, xx.data());
         auto x = array->x().data();
         for (int i = 0; i < numElements; ++i)
-            x[i] = _x[i];
+            x[i] = xx[i];
 
         return array;
     }
@@ -645,15 +645,15 @@ Object::ptr ReadCovise::readUSTVDT(Token &token, const int port, int fd, const b
         covSkipUSTVDT(fd, numElements);
     } else {
         Vec<Scalar, 3>::ptr array(new Vec<Scalar, 3>(numElements));
-        std::vector<float> _x(numElements), _y(numElements), _z(numElements);
-        covReadUSTVDT(fd, numElements, &_x[0], &_y[0], &_z[0]);
+        std::vector<float> xx(numElements), yy(numElements), zz(numElements);
+        covReadUSTVDT(fd, numElements, xx.data(), yy.data(), zz.data());
         Scalar *x = array->x().data();
         Scalar *y = array->y().data();
         Scalar *z = array->z().data();
         for (int i = 0; i < numElements; ++i) {
-            x[i] = _x[i];
-            y[i] = _y[i];
-            z[i] = _z[i];
+            x[i] = xx[i];
+            y[i] = yy[i];
+            z[i] = zz[i];
         }
 
         return array;
@@ -676,8 +676,8 @@ Object::ptr ReadCovise::readSTRSDT(Token &token, const int port, int fd, const b
         covSkipSTRSDT(fd, numElements, sx, sy, sz);
     } else {
         Vec<Scalar>::ptr array(new Vec<Scalar>(n));
-        std::vector<float> _x(n);
-        covReadSTRSDT(fd, n, &_x[0], sx, sy, sz);
+        std::vector<float> xx(n);
+        covReadSTRSDT(fd, n, xx.data(), sx, sy, sz);
         auto x = array->x().data();
         const Index vdim[3] = {static_cast<Index>(sx), static_cast<Index>(sy), static_cast<Index>(sz)};
         Index idx = 0;
@@ -685,7 +685,7 @@ Object::ptr ReadCovise::readSTRSDT(Token &token, const int port, int fd, const b
             for (Index j = 0; j < vdim[1]; ++j) {
                 for (Index i = 0; i < vdim[2]; ++i) {
                     auto vidx = StructuredGrid::vertexIndex(k, j, i, vdim);
-                    x[vidx] = _x[idx];
+                    x[vidx] = xx[idx];
                     ++idx;
                 }
             }
@@ -713,8 +713,8 @@ Object::ptr ReadCovise::readSTRVDT(Token &token, const int port, int fd, const b
         covSkipSTRVDT(fd, numElements, sx, sy, sz);
     } else {
         Vec<Scalar, 3>::ptr array(new Vec<Scalar, 3>(n));
-        std::vector<float> _x(n), _y(n), _z(n);
-        covReadSTRVDT(fd, n, &_x[0], &_y[0], &_z[0], sx, sy, sz);
+        std::vector<float> xx(n), yy(n), zz(n);
+        covReadSTRVDT(fd, n, xx.data(), yy.data(), zz.data(), sx, sy, sz);
         auto x = array->x().data();
         auto y = array->y().data();
         auto z = array->z().data();
@@ -724,9 +724,9 @@ Object::ptr ReadCovise::readSTRVDT(Token &token, const int port, int fd, const b
             for (Index j = 0; j < vdim[1]; ++j) {
                 for (Index i = 0; i < vdim[2]; ++i) {
                     auto vidx = StructuredGrid::vertexIndex(k, j, i, vdim);
-                    x[vidx] = _x[idx];
-                    y[vidx] = _y[idx];
-                    z[vidx] = _z[idx];
+                    x[vidx] = xx[idx];
+                    y[vidx] = yy[idx];
+                    z[vidx] = zz[idx];
                     ++idx;
                 }
             }
@@ -751,17 +751,17 @@ Object::ptr ReadCovise::readPOINTS(Token &token, const int port, int fd, const b
     } else {
         Points::ptr points(new Points(numCoords));
 
-        std::vector<float> _x(numCoords), _y(numCoords), _z(numCoords);
+        std::vector<float> xx(numCoords), yy(numCoords), zz(numCoords);
 
-        covReadPOINTS(fd, numCoords, &_x[0], &_y[0], &_z[0]);
+        covReadPOINTS(fd, numCoords, xx.data(), yy.data(), zz.data());
 
         auto *x = points->x().data();
         auto *y = points->y().data();
         auto *z = points->z().data();
         for (int index = 0; index < numCoords; index++) {
-            x[index] = _x[index];
-            y[index] = _y[index];
-            z[index] = _z[index];
+            x[index] = xx[index];
+            y[index] = yy[index];
+            z[index] = zz[index];
         }
 
         return points;
@@ -785,9 +785,9 @@ Object::ptr ReadCovise::readLINES(Token &token, const int port, int fd, const bo
 
         std::vector<int> _el(numElements);
         std::vector<int> _cl(numCorners);
-        std::vector<float> _x(numVertices), _y(numVertices), _z(numVertices);
+        std::vector<float> xx(numVertices), yy(numVertices), zz(numVertices);
 
-        covReadLINES(fd, numElements, &_el[0], numCorners, &_cl[0], numVertices, &_x[0], &_y[0], &_z[0]);
+        covReadLINES(fd, numElements, _el.data(), numCorners, _cl.data(), numVertices, xx.data(), yy.data(), zz.data());
 
         auto el = lines->el().data();
         for (int index = 0; index < numElements; index++)
@@ -800,9 +800,9 @@ Object::ptr ReadCovise::readLINES(Token &token, const int port, int fd, const bo
 
         auto x = lines->x().data(), y = lines->y().data(), z = lines->z().data();
         for (int index = 0; index < numVertices; index++) {
-            x[index] = _x[index];
-            y[index] = _y[index];
-            z[index] = _z[index];
+            x[index] = xx[index];
+            y[index] = yy[index];
+            z[index] = zz[index];
         }
 
         return lines;
@@ -826,9 +826,10 @@ Object::ptr ReadCovise::readPOLYGN(Token &token, const int port, int fd, const b
 
         std::vector<int> _el(numElements);
         std::vector<int> _cl(numCorners);
-        std::vector<float> _x(numVertices), _y(numVertices), _z(numVertices);
+        std::vector<float> xx(numVertices), yy(numVertices), zz(numVertices);
 
-        covReadPOLYGN(fd, numElements, &_el[0], numCorners, &_cl[0], numVertices, &_x[0], &_y[0], &_z[0]);
+        covReadPOLYGN(fd, numElements, _el.data(), numCorners, _cl.data(), numVertices, xx.data(), yy.data(),
+                      zz.data());
 
         auto el = polygons->el().data();
         for (int index = 0; index < numElements; index++)
@@ -841,9 +842,9 @@ Object::ptr ReadCovise::readPOLYGN(Token &token, const int port, int fd, const b
 
         auto x = polygons->x().data(), y = polygons->y().data(), z = polygons->z().data();
         for (int index = 0; index < numVertices; index++) {
-            x[index] = _x[index];
-            y[index] = _y[index];
-            z[index] = _z[index];
+            x[index] = xx[index];
+            y[index] = yy[index];
+            z[index] = zz[index];
         }
 
         return polygons;

@@ -2206,12 +2206,12 @@ void Dyna3DReader<wordsize, INTEGER, REAL>::createGeometry(Reader::Token &token,
         UnstructuredGrid::ptr grid_out(new UnstructuredGrid(numelem[ID], numcon[ID], numcoo[ID]));
         grid_out->addAttribute(attribute::Id, std::to_string(ID + 1));
         grid_out->addAttribute(attribute::Part, std::to_string(Materials[ID]));
-        auto el = &grid_out->el()[0];
-        auto cl = &grid_out->cl()[0];
-        auto tl = &grid_out->tl()[0];
-        auto x_c = &grid_out->x()[0];
-        auto y_c = &grid_out->y()[0];
-        auto z_c = &grid_out->z()[0];
+        auto el = grid_out->el().data();
+        auto cl = grid_out->cl().data();
+        auto tl = grid_out->tl().data();
+        auto x_c = grid_out->x().data();
+        auto y_c = grid_out->y().data();
+        auto z_c = grid_out->z().data();
 
         // initialize element numbering
         int elemNo = 0; // COVISE element list entry
@@ -2401,12 +2401,12 @@ void Dyna3DReader<wordsize, INTEGER, REAL>::createStateObjects(vistle::Reader::T
 
         UnstructuredGrid::ptr grid_out(
             new UnstructuredGrid(numelem[ID] - delElem[ID], numcon[ID] - delCon[ID], numcoo[ID]));
-        auto el = &grid_out->el()[0];
-        auto cl = &grid_out->cl()[0];
-        auto tl = &grid_out->tl()[0];
-        auto x_c = &grid_out->x()[0];
-        auto y_c = &grid_out->y()[0];
-        auto z_c = &grid_out->z()[0];
+        auto el = grid_out->el().data();
+        auto cl = grid_out->cl().data();
+        auto tl = grid_out->tl().data();
+        auto x_c = grid_out->x().data();
+        auto y_c = grid_out->y().data();
+        auto z_c = grid_out->z().data();
 
         grid_out->addAttribute(attribute::Id, std::to_string(ID + 1));
         grid_out->addAttribute(attribute::Part, std::to_string(Materials[ID]));
@@ -2415,9 +2415,9 @@ void Dyna3DReader<wordsize, INTEGER, REAL>::createStateObjects(vistle::Reader::T
         Scalar *vx_out = nullptr, *vy_out = nullptr, *vz_out = nullptr;
         if (nodalDataType != No_Node_Data) {
             Vertex_out.reset(new Vec<Scalar, 3>(numcoo[ID]));
-            vx_out = &Vertex_out->x()[0];
-            vy_out = &Vertex_out->y()[0];
-            vz_out = &Vertex_out->z()[0];
+            vx_out = Vertex_out->x().data();
+            vy_out = Vertex_out->y().data();
+            vz_out = Vertex_out->z().data();
         }
 
         Vec<Scalar>::ptr Scalar_out;
@@ -2428,7 +2428,7 @@ void Dyna3DReader<wordsize, INTEGER, REAL>::createStateObjects(vistle::Reader::T
             } else {
                 Scalar_out.reset(new Vec<Scalar>(numelem[ID] - delElem[ID]));
             }
-            s_el = &Scalar_out->x()[0];
+            s_el = Scalar_out->x().data();
         }
 
         // initialize element numbering

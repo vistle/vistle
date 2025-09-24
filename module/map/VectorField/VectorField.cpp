@@ -144,8 +144,8 @@ bool VectorField::compute()
     const AttachmentPoint att = (AttachmentPoint)m_attachmentPoint->getValue();
 
     Lines::ptr lines(new Lines(numPoints, 2 * numPoints, 2 * numPoints));
-    const auto px = &coords->x()[0], py = &coords->y()[0], pz = &coords->z()[0];
-    const auto vx = &vecs->x()[0], vy = &vecs->y()[0], vz = &vecs->z()[0];
+    const auto px = coords->x().data(), py = coords->y().data(), pz = coords->z().data();
+    const auto vx = vecs->x().data(), vy = vecs->y().data(), vz = vecs->z().data();
     auto lx = lines->x().data(), ly = lines->y().data(), lz = lines->z().data();
     auto el = lines->el().data(), cl = lines->cl().data();
 

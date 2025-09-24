@@ -612,8 +612,8 @@ private:
     union {
         Integer v_int;
         Float v_scalar;
-        Float v_vector[MaxDimension];
-        Integer v_ivector[MaxDimension];
+        std::array<Float, MaxDimension> v_vector;
+        std::array<Integer, MaxDimension> v_ivector;
         param_value_t v_string;
     };
     param_name_t name; //!< parameter name

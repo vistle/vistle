@@ -87,9 +87,9 @@ std::pair<Vector3, Vector3> Ngons<N>::elementBounds(Index elem) const
 {
     const Index *cl = nullptr;
     if (getNumCorners() > 0)
-        cl = &this->cl()[0];
+        cl = this->cl().data();
     const Index begin = elem * N, end = begin + N;
-    const Scalar *x[3] = {&this->x()[0], &this->y()[0], &this->z()[0]};
+    const Scalar *x[3] = {this->x().data(), this->y().data(), this->z().data()};
 
     const Scalar smax = std::numeric_limits<Scalar>::max();
     Vector3 min(smax, smax, smax), max(-smax, -smax, -smax);
@@ -112,7 +112,7 @@ std::vector<Index> Ngons<N>::cellVertices(Index elem) const
     result.reserve(N);
     const Index *cl = nullptr;
     if (getNumCorners() > 0)
-        cl = &this->cl()[0];
+        cl = this->cl().data();
     const Index begin = elem * N, end = begin + N;
     for (Index i = begin; i < end; ++i) {
         Index v = i;
@@ -126,9 +126,9 @@ std::vector<Index> Ngons<N>::cellVertices(Index elem) const
 template<int N>
 Vector3 Ngons<N>::cellCenter(Index elem) const
 {
-    const Scalar *x = &this->x()[0];
-    const Scalar *y = &this->y()[0];
-    const Scalar *z = &this->z()[0];
+    const Scalar *x = this->x().data();
+    const Scalar *y = this->y().data();
+    const Scalar *z = this->z().data();
     auto verts = cellVertices(elem);
     Vector3 center(0, 0, 0);
     if (verts.empty())
@@ -161,7 +161,7 @@ Ngons<N>::Celltree::const_ptr Ngons<N>::getCelltree() const
         refresh();
         const Index *corners = nullptr;
         if (getNumCorners() > 0)
-            corners = &cl()[0];
+            corners = cl().data();
         createCelltree(getNumElements(), corners);
     }
 
@@ -183,7 +183,7 @@ void Ngons<N>::createCelltree(Index nelem, const Index *cl) const
 
     std::vector<Celltree::AABB> bounds(nelem);
 
-    const Scalar *coords[3] = {&x()[0], &y()[0], &z()[0]};
+    const Scalar *coords[3] = {x().data(), y().data(), z().data()};
     Vector3 gmin = vmax, gmax = vmin;
     for (Index i = 0; i < nelem; ++i) {
         Scalar min[3]{smax, smax, smax};

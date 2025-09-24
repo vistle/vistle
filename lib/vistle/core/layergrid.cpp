@@ -220,7 +220,7 @@ void LayerGrid::createCelltree(Index dims[3]) const
     const Index nelem = getNumElements();
     std::vector<Celltree::AABB> bounds(nelem);
 
-    const Scalar *z = &this->z()[0];
+    const Scalar *z = this->z().data();
     Vector3 gmin = vmax, gmax = vmin;
     for (Index el = 0; el < nelem; ++el) {
         Scalar min[3]{smax, smax, smax};
@@ -310,7 +310,7 @@ void LayerGrid::setNormals(Normals::const_ptr normals)
 std::pair<Vector3, Vector3> LayerGrid::cellBounds(Index elem) const
 {
     const Scalar smax = std::numeric_limits<Scalar>::max();
-    const Scalar *z = &this->z()[0];
+    const Scalar *z = this->z().data();
     auto cl = cellVertices(elem, m_numDivisions);
     auto n = cellCoordinates(elem, m_numDivisions);
     Vector3 min(m_min[0] + n[0] * m_dist[0], m_min[1] + n[1] * m_dist[1], smax);
@@ -324,7 +324,7 @@ std::pair<Vector3, Vector3> LayerGrid::cellBounds(Index elem) const
 
 std::vector<Vector3> LayerGrid::cellCorners(Index elem) const
 {
-    const Scalar *z = &this->z()[0];
+    const Scalar *z = this->z().data();
     auto n = cellCoordinates(elem, m_numDivisions);
     auto cl = cellVertices(elem, m_numDivisions);
     std::vector<Vector3> corners;

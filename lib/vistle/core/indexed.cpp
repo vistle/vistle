@@ -113,7 +113,7 @@ Indexed::Celltree::const_ptr Indexed::getCelltree() const
     Data::mutex_lock_type lock(d()->attachment_mutex);
     if (!hasAttachment("celltree")) {
         refresh();
-        createCelltree(getNumElements(), &el()[0], &cl()[0]);
+        createCelltree(getNumElements(), el().data(), cl().data());
     }
 
     m_celltree = Celltree::as(getAttachment("celltree"));
@@ -133,7 +133,7 @@ void Indexed::createCelltree(Index nelem, const Index *el, const Index *cl) cons
 
     std::vector<Celltree::AABB> bounds(nelem);
 
-    const Scalar *coords[3] = {&x()[0], &y()[0], &z()[0]};
+    const Scalar *coords[3] = {x().data(), y().data(), z().data()};
     Vector3 gmin = vmax, gmax = vmin;
     for (Index i = 0; i < nelem; ++i) {
         Scalar min[3]{smax, smax, smax};
@@ -201,8 +201,8 @@ void Indexed::createVertexOwnerList() const
     Index numcoord = getNumVertices();
 
     VertexOwnerList::ptr vol(new VertexOwnerList(numcoord));
-    const auto cl = &this->cl()[0];
-    const auto el = &this->el()[0];
+    const auto *cl = this->cl().data();
+    const auto *el = this->el().data();
     auto vertexList = vol->vertexList().data();
 
     std::fill(vol->vertexList().begin(), vol->vertexList().end(), 0);
@@ -378,12 +378,12 @@ bool Indexed::validateCelltree() const
 
 std::pair<Vector3, Vector3> Indexed::elementBounds(Index elem) const
 {
-    const Index *el = &this->el()[0];
+    const Index *el = this->el().data();
     const Index *cl = nullptr;
     if (getNumCorners() > 0)
-        cl = &this->cl()[0];
+        cl = this->cl().data();
     const Index begin = el[elem], end = el[elem + 1];
-    const Scalar *x[3] = {&this->x()[0], &this->y()[0], &this->z()[0]};
+    const Scalar *x[3] = {this->x().data(), this->y().data(), this->z().data()};
 
     const Scalar smax = std::numeric_limits<Scalar>::max();
     Vector3 min(smax, smax, smax), max(-smax, -smax, -smax);
@@ -401,15 +401,15 @@ std::pair<Vector3, Vector3> Indexed::elementBounds(Index elem) const
 
 Index Indexed::cellNumVertices(Index elem) const
 {
-    const Index *el = &this->el()[0];
+    const Index *el = this->el().data();
     const Index begin = el[elem], end = el[elem + 1];
     return end - begin;
 }
 
 std::vector<Index> Indexed::cellVertices(Index elem) const
 {
-    const Index *el = &this->el()[0];
-    const Index *cl = &this->cl()[0];
+    const Index *el = this->el().data();
+    const Index *cl = this->cl().data();
     const Index begin = el[elem], end = el[elem + 1];
     return std::vector<Index>(&cl[begin], &cl[end]);
 }
@@ -422,9 +422,9 @@ Index Indexed::cellNumFaces(Index elem) const
 
 Vector3 Indexed::cellCenter(Index elem) const
 {
-    const Scalar *x = &this->x()[0];
-    const Scalar *y = &this->y()[0];
-    const Scalar *z = &this->z()[0];
+    const Scalar *x = this->x().data();
+    const Scalar *y = this->y().data();
+    const Scalar *z = this->z().data();
     auto verts = cellVertices(elem);
     Vector3 center(0, 0, 0);
     if (verts.empty())

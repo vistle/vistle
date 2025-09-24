@@ -28,11 +28,11 @@ PlaneClip::PlaneClip(Triangles::const_ptr grid, IsoDataFunctor decider)
 {
     if (grid->getNumCorners() > 0) {
         haveCornerList = true;
-        cl = &grid->cl()[0];
+        cl = grid->cl().data();
     }
-    x = &grid->x()[0];
-    y = &grid->y()[0];
-    z = &grid->z()[0];
+    x = grid->x().data();
+    y = grid->y().data();
+    z = grid->z().data();
 
     m_outTri = Triangles::ptr(new Triangles(Object::Initialized));
     m_outTri->setMeta(grid->meta());
@@ -57,11 +57,11 @@ PlaneClip::PlaneClip(Polygons::const_ptr grid, IsoDataFunctor decider)
 , out_z(nullptr)
 , out_d(nullptr)
 {
-    el = &grid->el()[0];
-    cl = &grid->cl()[0];
-    x = &grid->x()[0];
-    y = &grid->y()[0];
-    z = &grid->z()[0];
+    el = grid->el().data();
+    cl = grid->cl().data();
+    x = grid->x().data();
+    y = grid->y().data();
+    z = grid->z().data();
 
     m_outPoly = Polygons::ptr(new Polygons(Object::Initialized));
     m_outPoly->setMeta(grid->meta());
@@ -73,7 +73,7 @@ void PlaneClip::addData(Object::const_ptr obj)
     m_data.push_back(obj);
     auto data = Vec<Scalar, 1>::as(obj);
     if (data) {
-        d = &data->x()[0];
+        d = data->x().data();
 
         m_outData = Vec<Scalar>::ptr(new Vec<Scalar>(Object::Initialized));
         m_outData->setMeta(data->meta());

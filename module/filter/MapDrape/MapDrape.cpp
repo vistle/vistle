@@ -68,7 +68,7 @@ struct GetCoord;
 template<>
 struct GetCoord<Coords> {
     const Scalar *ix[3];
-    GetCoord(typename Coords::const_ptr &in): ix{&in->x()[0], &in->y()[0], &in->z()[0]} {}
+    GetCoord(typename Coords::const_ptr &in): ix{in->x().data(), in->y().data(), in->z().data()} {}
     Vector3 operator()(Index i) { return Vector3(ix[0][i], ix[1][i], ix[2][i]); }
 };
 
@@ -276,9 +276,9 @@ bool MapDrape::compute()
             if (!outCoords) {
 #endif
             if (auto inCoords = Coords::as(geo)) {
-                xc = &inCoords->x()[0];
-                yc = &inCoords->y()[0];
-                zc = &inCoords->z()[0];
+                xc = inCoords->x().data();
+                yc = inCoords->y().data();
+                zc = inCoords->z().data();
 
                 outCoords = inCoords->clone();
                 updateMeta(outCoords);

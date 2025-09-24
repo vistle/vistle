@@ -20,9 +20,9 @@ BlockData::BlockData(Index i, Object::const_ptr grid, Vec<Scalar, 3>::const_ptr 
     m_velocityTransform = m_transform.block<3, 3>(0, 0);
 
     if (m_vecfld) {
-        m_vx = &m_vecfld->x()[0];
-        m_vy = &m_vecfld->y()[0];
-        m_vz = &m_vecfld->z()[0];
+        m_vx = m_vecfld->x().data();
+        m_vy = m_vecfld->y().data();
+        m_vz = m_vecfld->z().data();
 
         m_vecmap = m_vecfld->guessMapping();
         if (m_vecmap == DataBase::Unspecified)
@@ -44,11 +44,11 @@ BlockData::BlockData(Index i, Object::const_ptr grid, Vec<Scalar, 3>::const_ptr 
 
         if (auto sca = Vec<Scalar>::as(f)) {
             m_scalmap.push_back(m);
-            m_scal.push_back(&sca->x()[0]);
+            m_scal.push_back(sca->x().data());
         } else if (auto vec = Vec<Scalar, 3>::as(f)) {
             for (int dim = 0; dim < 3; ++dim) {
                 m_scalmap.push_back(m);
-                m_scal.push_back(&vec->x(dim)[0]);
+                m_scal.push_back(vec->x(dim).data());
             }
         }
     }

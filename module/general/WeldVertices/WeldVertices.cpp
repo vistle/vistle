@@ -269,13 +269,13 @@ bool WeldVertices::compute(const std::shared_ptr<BlockTask> &task) const
         return true;
     }
 
-    const auto ix = &coord->x()[0];
-    const auto iy = &coord->y()[0];
-    const auto iz = &coord->z()[0];
+    const auto ix = coord->x().data();
+    const auto iy = coord->y().data();
+    const auto iz = coord->z().data();
     ncoord->setSize(remap.size());
-    auto nx = &ncoord->x()[0];
-    auto ny = &ncoord->y()[0];
-    auto nz = &ncoord->z()[0];
+    auto nx = ncoord->x().data();
+    auto ny = ncoord->y().data();
+    auto nz = ncoord->z().data();
     for (Index i = 0; i < remap.size(); ++i) {
         nx[i] = ix[remap[i]];
         ny[i] = iy[remap[i]];

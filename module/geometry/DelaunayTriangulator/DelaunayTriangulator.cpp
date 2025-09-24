@@ -143,9 +143,9 @@ struct MakePoint2: public CGAL::cpp98::unary_function<vistle::Index, std::pair<P
 
 Triangles::ptr computeConvexHull(Points::const_ptr &points)
 {
-    const auto *x = &points->x()[0];
-    const auto *y = &points->y()[0];
-    const auto *z = &points->z()[0];
+    const auto *x = points->x().data();
+    const auto *y = points->y().data();
+    const auto *z = points->z().data();
 
     Delaunay3 T(
         boost::make_transform_iterator(boost::counting_iterator<Index>(0), MakePoint3(x, y, z)),
@@ -205,9 +205,9 @@ Triangles::ptr computeConvexHull(Points::const_ptr &points)
 
 Triangles::ptr computeTri(Points::const_ptr &points, Method projAxis)
 {
-    const auto *x = &points->x()[0];
-    const auto *y = &points->y()[0];
-    const auto *z = &points->z()[0];
+    const auto *x = points->x().data();
+    const auto *y = points->y().data();
+    const auto *z = points->z().data();
 
     const vistle::Scalar *X = x, *Y = y;
     switch (projAxis) {

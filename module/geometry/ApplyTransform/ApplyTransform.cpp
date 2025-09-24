@@ -45,8 +45,8 @@ bool ApplyTransform::compute()
                 clone->setTransform(vistle::Matrix4::Identity());
                 Index ncoords = coords->getSize();
                 clone->setSize(ncoords);
-                auto *x = &coords->x()[0], *y = &coords->y()[0], *z = &coords->z()[0];
-                auto *nx = &clone->x()[0], *ny = &clone->y()[0], *nz = &clone->z()[0];
+                auto *x = coords->x().data(), *y = coords->y().data(), *z = coords->z().data();
+                auto *nx = clone->x().data(), *ny = clone->y().data(), *nz = clone->z().data();
                 for (Index i = 0; i < ncoords; ++i) {
                     auto p = T * Vector4(x[i], y[i], z[i], Scalar(1));
                     nx[i] = p[0] / p[3];

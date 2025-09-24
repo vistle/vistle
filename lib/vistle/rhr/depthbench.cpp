@@ -111,7 +111,8 @@ void measure(vistle::DepthCompressionParameters depthParam, const std::string &n
             std::cerr << "decompression error" << std::endl;
         }
         double ddur = Clock::time() - dstart;
-        double psnr = depthcompare((const char *)depth, (const char *)&dequant[0], DepthFloat, 4, 0, 0, w, h, w, false);
+        double psnr =
+            depthcompare((const char *)depth, (const char *)dequant.data(), DepthFloat, 4, 0, 0, w, h, w, false);
 
 #ifdef TOTALTIME
         dtotal += ddur;
@@ -134,8 +135,8 @@ void measure(vistle::DepthCompressionParameters depthParam, const std::string &n
         if (!vistle::decompressTile(reinterpret_cast<char *>(dequant0.data()), comptest, param, 0, 0, w, h, w)) {
             std::cerr << "decompression error" << std::endl;
         }
-        double psnr0 =
-            depthcompare((const char *)&dequant[0], (const char *)&dequant0[0], DepthFloat, 4, 0, 0, w, h, w, false);
+        double psnr0 = depthcompare((const char *)dequant.data(), (const char *)dequant0.data(), DepthFloat, 4, 0, 0, w,
+                                    h, w, false);
         if (i == 0)
             std::cout << "PSNR: " << psnr << " dB (recompressed: " << psnr0 << " dB): size=" << compressedSize << " "
                       << compressedSize / osize * 100 << "%"

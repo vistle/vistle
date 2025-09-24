@@ -227,7 +227,7 @@ bool VistleManagerPlugin::destroy()
 void VistleManagerPlugin::notify(coVRPlugin::NotificationLevel level, const char *message)
 {
     std::vector<char> text(strlen(message) + 1);
-    memcpy(&text[0], message, text.size());
+    memcpy(text.data(), message, text.size());
     if (text.size() > 1 && text[text.size() - 2] == '\n')
         text[text.size() - 2] = '\0';
     if (text[0] == '\0')

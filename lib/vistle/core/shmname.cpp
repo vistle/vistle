@@ -11,7 +11,7 @@ shm_name_t::shm_name_t(const std::string &s)
     assert(len < name.size());
     if (len >= name.size())
         len = name.size() - 1;
-    strncpy(name.data(), &s[0], len);
+    strncpy(name.data(), s.data(), len);
     name[len] = '\0';
 }
 

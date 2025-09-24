@@ -44,7 +44,7 @@ public:
         m_symbols.add_variable("p.x", m_position[0]);
         m_symbols.add_variable("p.y", m_position[1]);
         m_symbols.add_variable("p.z", m_position[2]);
-        m_symbols.add_vector("p", &m_position[0], 3);
+        m_symbols.add_vector("p", m_position.data(), 3);
 
         m_resultDim = 1;
         m_symbols.add_vector("result", m_result.data(), m_resultDim);
@@ -68,7 +68,7 @@ public:
         m_compiled = false;
         m_vector[name] = &val;
         auto dim = val.size();
-        m_symbols.add_vector(name, &val[0], dim);
+        m_symbols.add_vector(name, val.data(), dim);
         if (dim >= 1)
             m_symbols.add_variable(name + ".x", val[0]);
         if (dim >= 2)

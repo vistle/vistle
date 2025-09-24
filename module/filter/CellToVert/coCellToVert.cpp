@@ -275,24 +275,24 @@ DataBase::ptr coCellToVert::interpolate(Object::const_ptr geo_in, DataBase::cons
         num_elem = pgrid_in->getNumElements();
         num_point = pgrid_in->getNumCoords();
         num_conn = pgrid_in->getNumCorners();
-        conn_list = &pgrid_in->cl()[0];
-        elem_list = &pgrid_in->el()[0];
+        conn_list = pgrid_in->cl().data();
+        elem_list = pgrid_in->el().data();
         if (auto ugrid_in = UnstructuredGrid::as(pgrid_in)) {
             unstructured = true;
-            type_list = &ugrid_in->tl()[0];
+            type_list = ugrid_in->tl().data();
         }
     } else if (auto tri = Triangles::as(geo_in)) {
         num_point = tri->getNumCoords();
         num_conn = tri->getNumCorners();
         num_elem = num_conn > 0 ? num_conn / 3 : num_point / 3;
         if (num_conn > 0)
-            conn_list = &tri->cl()[0];
+            conn_list = tri->cl().data();
     } else if (auto qua = Quads::as(geo_in)) {
         num_point = qua->getNumCoords();
         num_conn = qua->getNumCorners();
         num_elem = num_conn > 0 ? num_conn / 4 : num_point / 4;
         if (num_conn > 0)
-            conn_list = &qua->cl()[0];
+            conn_list = qua->cl().data();
     }
 
     const Index dataSize = data_in->getSize();
@@ -311,7 +311,7 @@ DataBase::ptr coCellToVert::interpolate(Object::const_ptr geo_in, DataBase::cons
 
     if (auto tex_in = Texture1D::as(data_in)) {
         numComp = 1;
-        in_data[0] = &tex_in->x()[0];
+        in_data[0] = tex_in->x().data();
 
         Texture1D::ptr tex(new Texture1D(0, 0., 1.));
         tex->d()->pixels = tex_in->d()->pixels;
@@ -320,16 +320,16 @@ DataBase::ptr coCellToVert::interpolate(Object::const_ptr geo_in, DataBase::cons
         data_return = tex;
     } else if (auto s_data_in = Vec<Scalar>::as(data_in)) {
         numComp = 1;
-        in_data[0] = &s_data_in->x()[0];
+        in_data[0] = s_data_in->x().data();
 
         Vec<Scalar>::ptr sdata(new Vec<Scalar>(num_point));
         out_data[0] = sdata->x().data();
         data_return = sdata;
     } else if (auto v_data_in = Vec<Scalar, 3>::as(data_in)) {
         numComp = 3;
-        in_data[0] = &v_data_in->x()[0];
-        in_data[1] = &v_data_in->y()[0];
-        in_data[2] = &v_data_in->z()[0];
+        in_data[0] = v_data_in->x().data();
+        in_data[1] = v_data_in->y().data();
+        in_data[2] = v_data_in->z().data();
 
         Vec<Scalar, 3>::ptr vdata(new Vec<Scalar, 3>(num_point));
         out_data[0] = vdata->x().data();
@@ -338,16 +338,16 @@ DataBase::ptr coCellToVert::interpolate(Object::const_ptr geo_in, DataBase::cons
         data_return = vdata;
     } else if (auto s_data_in = Vec<Index>::as(data_in)) {
         numComp = 1;
-        in_data_i[0] = &s_data_in->x()[0];
+        in_data_i[0] = s_data_in->x().data();
 
         Vec<Index>::ptr sdata(new Vec<Index>(num_point));
         out_data_i[0] = sdata->x().data();
         data_return = sdata;
     } else if (auto v_data_in = Vec<Index, 3>::as(data_in)) {
         numComp = 3;
-        in_data_i[0] = &v_data_in->x()[0];
-        in_data_i[1] = &v_data_in->y()[0];
-        in_data_i[2] = &v_data_in->z()[0];
+        in_data_i[0] = v_data_in->x().data();
+        in_data_i[1] = v_data_in->y().data();
+        in_data_i[2] = v_data_in->z().data();
 
         Vec<Index, 3>::ptr vdata(new Vec<Index, 3>(num_point));
         out_data_i[0] = vdata->x().data();
@@ -356,16 +356,16 @@ DataBase::ptr coCellToVert::interpolate(Object::const_ptr geo_in, DataBase::cons
         data_return = vdata;
     } else if (auto s_data_in = Vec<Byte>::as(data_in)) {
         numComp = 1;
-        in_data_b[0] = &s_data_in->x()[0];
+        in_data_b[0] = s_data_in->x().data();
 
         Vec<Byte>::ptr sdata(new Vec<Byte>(num_point));
         out_data_b[0] = sdata->x().data();
         data_return = sdata;
     } else if (auto v_data_in = Vec<Byte>::as(data_in)) {
         numComp = 3;
-        in_data_b[0] = &v_data_in->x()[0];
-        in_data_b[1] = &v_data_in->y()[0];
-        in_data_b[2] = &v_data_in->z()[0];
+        in_data_b[0] = v_data_in->x().data();
+        in_data_b[1] = v_data_in->y().data();
+        in_data_b[2] = v_data_in->z().data();
 
         Vec<Byte, 3>::ptr vdata(new Vec<Byte, 3>(num_point));
         out_data_b[0] = vdata->x().data();

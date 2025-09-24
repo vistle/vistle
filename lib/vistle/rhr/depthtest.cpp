@@ -30,7 +30,7 @@ void measure(const std::string &name, const float *depth, size_t sz, int precisi
 #endif
     for (int i = 0; i < num_runs; ++i) {
         double start = Clock::time();
-        depthquant(&quant[0], (const char *)&depth[0], DepthFloat, precision, 0, 0, sz, sz);
+        depthquant(quant.data(), (const char *)&depth[0], DepthFloat, precision, 0, 0, sz, sz);
         double dur = Clock::time() - start;
 
 #ifdef TOTALTIME
@@ -46,7 +46,7 @@ void measure(const std::string &name, const float *depth, size_t sz, int precisi
         depthdequant((char *)&dequant[0], &quant[0], DepthFloat, precision, 0, 0, sz, sz);
         double ddur = Clock::time() - dstart;
         double psnr =
-            depthcompare((const char *)depth, (const char *)&dequant[0], DepthFloat, 4, 0, 0, sz, sz, sz, false);
+            depthcompare((const char *)depth, (const char *)dequant.data(), DepthFloat, 4, 0, 0, sz, sz, sz, false);
 
 #ifdef TOTALTIME
         dtotal += ddur;
@@ -65,11 +65,11 @@ void measure(const std::string &name, const float *depth, size_t sz, int precisi
 
         // check for idempotence
         std::vector<char> quant2(csz);
-        depthquant(&quant2[0], (const char *)&dequant[0], DepthFloat, precision, 0, 0, sz, sz);
+        depthquant(&quant2[0], (const char *)dequant.data(), DepthFloat, precision, 0, 0, sz, sz);
         std::vector<float> dequant2(num_pix);
-        depthdequant((char *)&dequant2[0], &quant2[0], DepthFloat, precision, 0, 0, sz, sz);
-        double psnr2 =
-            depthcompare((const char *)&dequant[0], (const char *)&dequant2[0], DepthFloat, 4, 0, 0, sz, sz, sz, false);
+        depthdequant((char *)dequant2.data(), quant2.data(), DepthFloat, precision, 0, 0, sz, sz);
+        double psnr2 = depthcompare((const char *)dequant.data(), (const char *)dequant2.data(), DepthFloat, 4, 0, 0,
+                                    sz, sz, sz, false);
         if (i == 0)
             std::cout << "PSNR: " << psnr << " dB (recompressed: " << psnr2 << " dB)" << std::endl;
     }
@@ -112,12 +112,12 @@ int main(int argc, char *argv[])
         depth_uni[i] = 0.3f;
     }
 
-    measure("uniform", &depth_uni[0], sz, 4, num_runs);
-    measure("uniform", &depth_uni[0], sz, 2, num_runs);
-    measure("far", &depth_far[0], sz, 4, num_runs);
-    measure("far", &depth_far[0], sz, 2, num_runs);
-    measure("random", &depth_rand[0], sz, 4, num_runs);
-    measure("random", &depth_rand[0], sz, 2, num_runs);
+    measure("uniform", depth_uni.data(), sz, 4, num_runs);
+    measure("uniform", depth_uni.data(), sz, 2, num_runs);
+    measure("far", depth_far.data(), sz, 4, num_runs);
+    measure("far", depth_far.data(), sz, 2, num_runs);
+    measure("random", depth_rand.data(), sz, 4, num_runs);
+    measure("random", depth_rand.data(), sz, 2, num_runs);
 
     return 0;
 }

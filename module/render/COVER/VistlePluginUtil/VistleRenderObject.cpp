@@ -229,7 +229,7 @@ const float *VistleRenderObject::getFloat(Field::Id idx) const
 
     if (auto scal = vistle::Vec<float>::as(m_obj)) {
         if (idx == Field::X || idx == Field::Channel0 || idx == Field::Red) {
-            return &scal->x()[0];
+            return scal->x().data();
         }
     }
 

@@ -1468,18 +1468,18 @@ bool SetParameter::apply(std::shared_ptr<vistle::Parameter> param) const
             pfloat->setMaximum(v_scalar);
     } else if (auto pvec = std::dynamic_pointer_cast<VectorParameter>(param)) {
         if (rt == Parameter::Value)
-            pvec->setValue(ParamVector(dim, &v_vector[0]), initialize, delayed);
+            pvec->setValue(ParamVector(dim, v_vector.data()), initialize, delayed);
         if (rt == Parameter::Minimum)
-            pvec->setMinimum(ParamVector(dim, &v_vector[0]));
+            pvec->setMinimum(ParamVector(dim, v_vector.data()));
         if (rt == Parameter::Maximum)
-            pvec->setMaximum(ParamVector(dim, &v_vector[0]));
+            pvec->setMaximum(ParamVector(dim, v_vector.data()));
     } else if (auto pivec = std::dynamic_pointer_cast<IntVectorParameter>(param)) {
         if (rt == Parameter::Value)
-            pivec->setValue(IntParamVector(dim, &v_ivector[0]), initialize);
+            pivec->setValue(IntParamVector(dim, v_ivector.data()), initialize);
         if (rt == Parameter::Minimum)
-            pivec->setMinimum(IntParamVector(dim, &v_ivector[0]));
+            pivec->setMinimum(IntParamVector(dim, v_ivector.data()));
         if (rt == Parameter::Maximum)
-            pivec->setMaximum(IntParamVector(dim, &v_ivector[0]));
+            pivec->setMaximum(IntParamVector(dim, v_ivector.data()));
     } else if (auto pstring = std::dynamic_pointer_cast<StringParameter>(param)) {
         if (rt == Parameter::Value)
             pstring->setValue(v_string.data(), initialize, delayed);

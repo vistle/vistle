@@ -75,10 +75,10 @@ struct PrimitiveAdapter {
     PrimitiveAdapter(typename Geo::const_ptr geo)
     : m_geo(geo)
     , m_numPrim(geo->getNumElements())
-    , m_x(&geo->x()[0])
-    , m_y(&geo->y()[0])
-    , m_z(&geo->z()[0])
-    , m_cl(m_geo->getNumCorners() > 0 ? &m_geo->cl()[0] : nullptr)
+    , m_x(geo->x().data())
+    , m_y(geo->y().data())
+    , m_z(geo->z().data())
+    , m_cl(m_geo->getNumCorners() > 0 ? m_geo->cl().data() : nullptr)
     {}
 
     Index getNumCoords() const { return m_geo->getNumCoords(); }
@@ -133,11 +133,11 @@ template<>
 PrimitiveAdapter<Indexed>::PrimitiveAdapter(Indexed::const_ptr geo)
 : m_geo(geo)
 , m_numPrim(geo->getNumElements())
-, m_x(&geo->x()[0])
-, m_y(&geo->y()[0])
-, m_z(&geo->z()[0])
-, m_el(&geo->el()[0])
-, m_cl(m_geo->getNumCorners() > 0 ? &m_geo->cl()[0] : nullptr)
+, m_x(geo->x().data())
+, m_y(geo->y().data())
+, m_z(geo->z().data())
+, m_el(geo->el().data())
+, m_cl(m_geo->getNumCorners() > 0 ? m_geo->cl().data() : nullptr)
 {}
 
 template<>
@@ -293,9 +293,9 @@ template<class Geometry, class Mapped, bool normalize>
 struct DataAdapter<Geometry, osg::Vec3Array, Mapped, normalize> {
     DataAdapter(typename Geometry::const_ptr tri, typename Mapped::const_ptr mapped)
     : size(mapped->getSize())
-    , x(size > 0 ? &mapped->x()[0] : nullptr)
-    , y(size > 0 ? &mapped->y()[0] : nullptr)
-    , z(size > 0 ? &mapped->z()[0] : nullptr)
+    , x(size > 0 ? mapped->x().data() : nullptr)
+    , y(size > 0 ? mapped->y().data() : nullptr)
+    , z(size > 0 ? mapped->z().data() : nullptr)
     , mapping(mapped->guessMapping(tri))
     {}
     osg::Vec3 getValue(Index idx)
@@ -314,9 +314,9 @@ template<class Geometry, bool normalize>
 struct DataAdapter<Geometry, osg::FloatArray, const vistle::Vec<Scalar, 3>, normalize> {
     DataAdapter(typename Geometry::const_ptr tri, typename vistle::Vec<Scalar, 3>::const_ptr mapped)
     : size(mapped->getSize())
-    , x(size > 0 ? &mapped->x()[0] : nullptr)
-    , y(size > 0 ? &mapped->y()[0] : nullptr)
-    , z(size > 0 ? &mapped->z()[0] : nullptr)
+    , x(size > 0 ? mapped->x().data() : nullptr)
+    , y(size > 0 ? mapped->y().data() : nullptr)
+    , z(size > 0 ? mapped->z().data() : nullptr)
     , mapping(mapped->guessMapping(tri))
     {}
     float getValue(Index idx) { return Vector3(x[idx], y[idx], z[idx]).norm(); }
@@ -328,7 +328,7 @@ struct DataAdapter<Geometry, osg::FloatArray, const vistle::Vec<Scalar, 3>, norm
 template<class Geometry, bool normalize>
 struct DataAdapter<Geometry, osg::FloatArray, const vistle::Vec<Index>, normalize> {
     DataAdapter(typename Geometry::const_ptr tri, typename vistle::Vec<Index>::const_ptr mapped)
-    : size(mapped->getSize()), x(size > 0 ? &mapped->x()[0] : nullptr), mapping(mapped->guessMapping(tri))
+    : size(mapped->getSize()), x(size > 0 ? mapped->x().data() : nullptr), mapping(mapped->guessMapping(tri))
     {}
     float getValue(Index idx) { return x[idx]; }
     vistle::Index size = 0;
@@ -339,7 +339,7 @@ struct DataAdapter<Geometry, osg::FloatArray, const vistle::Vec<Index>, normaliz
 template<class Geometry, class Mapped, bool normalize>
 struct DataAdapter<Geometry, osg::FloatArray, Mapped, normalize> {
     DataAdapter(typename Geometry::const_ptr tri, typename Mapped::const_ptr mapped)
-    : size(mapped->getSize()), x(size > 0 ? &mapped->x()[0] : nullptr), mapping(mapped->guessMapping(tri))
+    : size(mapped->getSize()), x(size > 0 ? mapped->x().data() : nullptr), mapping(mapped->guessMapping(tri))
     {}
     float getValue(Index idx) { return x[idx]; }
     vistle::Index size = 0;
@@ -394,7 +394,7 @@ Array *applyTriangle(typename Geometry::const_ptr tri, MappedPtr mapped, const O
 
     const Index *cl = nullptr;
     if (tri->getNumCorners() > 0)
-        cl = &tri->cl()[0];
+        cl = tri->cl().data();
     bool buildConn = bin.ntri == InvalidIndex;
     if (buildConn) {
         bin.ntri = 0;
@@ -474,10 +474,10 @@ osg::Vec3Array *computeNormals(typename Geometry::const_ptr geometry, const Opti
     const Index numCoords = geometry->getNumCoords();
     const Index numPrim = geometry->getNumElements();
 
-    const Index *cl = &geometry->cl()[0];
-    const vistle::Scalar *x = &geometry->x()[0];
-    const vistle::Scalar *y = &geometry->y()[0];
-    const vistle::Scalar *z = &geometry->z()[0];
+    const Index *cl = geometry->cl().data();
+    const vistle::Scalar *x = geometry->x().data();
+    const vistle::Scalar *y = geometry->y().data();
+    const vistle::Scalar *z = geometry->z().data();
 
     osg::Vec3Array *normals = new osg::Vec3Array;
     if (numCorners > 0) {
@@ -714,7 +714,7 @@ osg::FloatArray *buildArray(typename MappedObject::const_ptr data, Coords::const
         tc = new osg::FloatArray;
         const Index *cl = nullptr;
         if (indexed && indexed->getNumCorners() > 0)
-            cl = &indexed->cl()[0];
+            cl = indexed->cl().data();
         if (options.indexedGeometry || !cl) {
             const auto numCoords = coords->getSize();
             const auto ntc = data->getSize();
@@ -729,7 +729,7 @@ osg::FloatArray *buildArray(typename MappedObject::const_ptr data, Coords::const
                       << std::endl;
             }
         } else if (indexed && cl) {
-            const auto el = &indexed->el()[0];
+            const auto el = indexed->el().data();
             const auto numElements = indexed->getNumElements();
             for (Index index = 0; index < numElements; ++index) {
                 const Index num = el[index + 1] - el[index];
@@ -742,7 +742,7 @@ osg::FloatArray *buildArray(typename MappedObject::const_ptr data, Coords::const
     } else if (mapping == vistle::DataBase::Element) {
         tc = new osg::FloatArray;
         if (indexed) {
-            const auto el = &indexed->el()[0];
+            const auto el = indexed->el().data();
             const auto numElements = indexed->getNumElements();
             for (Index index = 0; index < numElements; ++index) {
                 const Index num = el[index + 1] - el[index];
@@ -1008,9 +1008,9 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
         auto radius = points->radius();
 
         debug << "Points: [ #v " << numVertices << (radius ? " with radius" : "") << " ]";
-        const vistle::Scalar *x = &points->x()[0];
-        const vistle::Scalar *y = &points->y()[0];
-        const vistle::Scalar *z = &points->z()[0];
+        const vistle::Scalar *x = points->x().data();
+        const vistle::Scalar *y = points->y().data();
+        const vistle::Scalar *z = points->z().data();
 
         state->setAttribute(new osg::Point(2.0f), osg::StateAttribute::ON);
 
@@ -1039,7 +1039,7 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
 #ifdef COVER_PLUGIN
             if (radius) {
                 haveSpheres = true;
-                const vistle::Scalar *r = &radius->x()[0];
+                const vistle::Scalar *r = radius->x().data();
 
                 osg::ref_ptr<osg::FloatArray> rad = new osg::FloatArray();
                 rad->reserve(numVertices);
@@ -1320,7 +1320,7 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
         debug << "Polygons: [ #c " << numCorners << ", #e " << numElements << ", #v " << numVertices
               << ", indexed=" << (m_options.indexedGeometry ? "t" : "f") << " ]";
 
-        const Index *el = &polygons->el()[0];
+        const Index *el = polygons->el().data();
 
         osg::ref_ptr<osg::Vec3Array> gnormals;
         if (!cached && !normals)
@@ -1404,11 +1404,11 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
             geom->setVertexArray(cache.vertices.front());
             geom->addPrimitiveSet(cache.primitives.front());
         } else {
-            const Index *el = &lines->el()[0];
-            const Index *cl = numCorners > 0 ? &lines->cl()[0] : nullptr;
-            const vistle::Scalar *x = &lines->x()[0];
-            const vistle::Scalar *y = &lines->y()[0];
-            const vistle::Scalar *z = &lines->z()[0];
+            const Index *el = lines->el().data();
+            const Index *cl = numCorners > 0 ? lines->cl().data() : nullptr;
+            const vistle::Scalar *x = lines->x().data();
+            const vistle::Scalar *y = lines->y().data();
+            const vistle::Scalar *z = lines->z().data();
 
             osg::ref_ptr<osg::DrawArrayLengths> primitives = new osg::DrawArrayLengths(osg::PrimitiveSet::LINE_STRIP);
 
@@ -1528,7 +1528,7 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
                 osg::ref_ptr<osg::Image> image = new osg::Image();
                 image->setName(nodename + ".img");
                 image->setImage(tex->getWidth(), 1, 1, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE,
-                                const_cast<unsigned char *>(&tex->pixels()[0]), osg::Image::NO_DELETE);
+                                const_cast<unsigned char *>(tex->pixels().data()), osg::Image::NO_DELETE);
                 osgTex->setImage(image);
 
                 state->setTextureAttributeAndModes(TfTexUnit, osgTex, osg::StateAttribute::ON);

@@ -245,7 +245,7 @@ bool readArray(File &file, const std::string &name, T *p, const size_t num)
             std::vector<D> buf(bufsiz);
             for (size_t i = 0; i < num; i += bufsiz) {
                 const size_t nread = i + bufsiz <= num ? bufsiz : num - i;
-                if (!readArrayChunk(file.fp, &buf[0], nread))
+                if (!readArrayChunk(file.fp, buf.data(), nread))
                     return false;
                 for (size_t j = 0; j < nread; ++j) {
                     p[i + j] = buf[j];
@@ -725,9 +725,9 @@ std::vector<RectilinearGrid::ptr> ReadItlrBin::readGridBlocks(const std::string 
         grid->setGlobalIndexOffset(SplitDim, b.begin);
         for (int i = 0; i < 3; ++i) {
             if (i == SplitDim) {
-                std::copy(coords[i].begin() + b.begin, coords[i].begin() + b.end, &grid->coords(i)[0]);
+                std::copy(coords[i].begin() + b.begin, coords[i].begin() + b.end, grid->coords(i).data());
             } else {
-                std::copy(coords[i].begin(), coords[i].end(), &grid->coords(i)[0]);
+                std::copy(coords[i].begin(), coords[i].end(), grid->coords(i).data());
             }
         }
 
@@ -790,7 +790,7 @@ DataBase::ptr ReadItlrBin::readFieldBlock(const std::string &filename, int part)
             return DataBase::ptr();
         }
         Vec<Scalar>::ptr vec(new Vec<Scalar>(size));
-        if (!readFloatArray(file, arrayname1, &vec->x()[0], size)) {
+        if (!readFloatArray(file, arrayname1, vec->x().data(), size)) {
             sendError("failed to read data from %s", filename.c_str());
             return DataBase::ptr();
         }
@@ -804,7 +804,7 @@ DataBase::ptr ReadItlrBin::readFieldBlock(const std::string &filename, int part)
                 sendError("failed to skip data from %s", filename.c_str());
                 return DataBase::ptr();
             }
-            if (!readFloatArray(file, arraynames3[c], &vec3->x(c)[0], size)) {
+            if (!readFloatArray(file, arraynames3[c], vec3->x(c).data(), size)) {
                 sendError("failed to read data from %s", filename.c_str());
                 return DataBase::ptr();
             }
