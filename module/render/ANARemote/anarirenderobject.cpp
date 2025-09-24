@@ -121,7 +121,7 @@ struct ArrayAccess<D, vistle::Vec<Scalar, 3>> {
     const vistle::Scalar *x = nullptr, *y = nullptr, *z = nullptr;
 
     ArrayAccess(const vistle::Vec<Scalar, 3>::const_ptr &src)
-    : sz(src->getSize()), x(&src->x()[0]), y(&src->y()[0]), z(&src->z()[0])
+    : sz(src->getSize()), x(src->x().data()), y(src->y().data()), z(src->z().data())
     {}
     vistle::Index size() const { return sz; }
     D operator[](vistle::Index i) const
@@ -136,7 +136,7 @@ struct ArrayAccess<float, vistle::Vec<Scalar, 3>> {
     const vistle::Scalar *x = nullptr, *y = nullptr, *z = nullptr;
 
     ArrayAccess(const vistle::Vec<Scalar, 3>::const_ptr &src)
-    : sz(src->getSize()), x(&src->x()[0]), y(&src->y()[0]), z(&src->z()[0])
+    : sz(src->getSize()), x(src->x().data()), y(src->y().data()), z(src->z().data())
     {}
     vistle::Index size() const { return sz; }
     float operator[](vistle::Index i) const { return sqrtf(x[i] * x[i] + y[i] * y[i] + z[i] * z[i]); }
@@ -147,7 +147,7 @@ struct ArrayAccess<D, vistle::Vec<S>> {
     vistle::Index sz = vistle::InvalidIndex;
     const S *x = nullptr;
 
-    ArrayAccess(const typename vistle::Vec<S>::const_ptr &src): sz(src->getSize()), x(&src->x()[0]) {}
+    ArrayAccess(const typename vistle::Vec<S>::const_ptr &src): sz(src->getSize()), x(src->x().data()) {}
     vistle::Index size() const { return sz; }
     D operator[](vistle::Index i) const { return D(x[i]); }
 };
@@ -203,7 +203,7 @@ void AnariRenderObject::create(anari::Device device)
             if (auto begin = anari::mapParameterArray<anari::std_types::uvec3>(device, geom, "primitive.index",
                                                                                tri->getNumCorners() / 3)) {
                 auto end = begin + tri->getNumCorners() / 3;
-                const auto *cl = &tri->cl()[0];
+                const auto *cl = tri->cl().data();
                 for (auto it = begin; it != end; ++it) {
                     *it = {unsigned(*cl++), unsigned(*cl++), unsigned(*cl++)};
                 }
@@ -217,7 +217,7 @@ void AnariRenderObject::create(anari::Device device)
             if (auto begin = anari::mapParameterArray<anari::std_types::uvec4>(device, geom, "primitive.index",
                                                                                quad->getNumCorners() / 4)) {
                 auto end = begin + quad->getNumCorners() / 4;
-                const auto *cl = &quad->cl()[0];
+                const auto *cl = quad->cl().data();
                 for (auto it = begin; it != end; ++it) {
                     *it = {unsigned(*cl++), unsigned(*cl++), unsigned(*cl++), unsigned(*cl++)};
                 }
@@ -232,8 +232,8 @@ void AnariRenderObject::create(anari::Device device)
         useNormals =
             normals && normals->guessMapping(poly) == vistle::DataBase::Vertex; // FIXME: remap per-primitive normals
         if (auto begin = anari::mapParameterArray<anari::std_types::uvec3>(device, geom, "primitive.index", ntri)) {
-            const auto *cl = &poly->cl()[0];
-            const auto *el = &poly->el()[0];
+            const auto *cl = poly->cl().data();
+            const auto *el = poly->el().data();
 
             auto it = begin;
             for (Index i = 0; i < poly->getNumElements(); ++i) {
@@ -271,12 +271,12 @@ void AnariRenderObject::create(anari::Device device)
 
         if (nPoints > 0) {
             flattenCoordinates = true;
-            cl = &line->cl()[0];
+            cl = line->cl().data();
             numCorners = nPoints;
         }
 
         if (auto begin = anari::mapParameterArray<Index>(device, geom, "primitive.index", nPoints - nStrips)) {
-            const auto *el = &line->el()[0];
+            const auto *el = line->el().data();
             auto it = begin;
             for (Index e = 0; e < nStrips; ++e) {
                 for (Index idx = el[e]; idx < el[e + 1] - 1; ++idx) {
@@ -330,9 +330,9 @@ void AnariRenderObject::create(anari::Device device)
         attr += ".color";
         if (auto begin = anari::mapParameterArray<anari::std_types::bvec4>(device, geom, attr.c_str(), t->getSize())) {
             auto end = begin + t->getSize();
-            const auto *ct = &t->pixels()[0];
+            const auto *ct = t->pixels().data();
             auto w = t->getWidth();
-            const auto *tc = &t->coords()[0];
+            const auto *tc = t->coords().data();
             for (auto it = begin; it != end; ++it) {
                 Index idx = std::min(Index(*tc++ * w), w - 1);
                 *it = {ct[idx * 4], ct[idx * 4 + 1], ct[idx * 4 + 2], ct[idx * 4 + 3]};
@@ -417,7 +417,7 @@ void AnariColorMap::create(anari::Device dev)
             if (auto begin =
                     anari::mapParameterArray<anari::std_types::bvec4>(device, sampler, "image", tex->getWidth())) {
                 auto end = begin + tex->getWidth();
-                const auto *ct = &tex->pixels()[0];
+                const auto *ct = tex->pixels().data();
                 for (auto it = begin; it != end; ++it) {
                     *it = {ct[0], ct[1], ct[2], ct[3]};
                     ct += 4;

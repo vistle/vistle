@@ -402,9 +402,9 @@ void DomainSurface::renumberVertices(Coords::const_ptr coords, Indexed::ptr poly
         }
         mapped.clear();
 
-        const Scalar *xcoord = &coords->x()[0];
-        const Scalar *ycoord = &coords->y()[0];
-        const Scalar *zcoord = &coords->z()[0];
+        const Scalar *xcoord = coords->x().data();
+        const Scalar *ycoord = coords->y().data();
+        const Scalar *zcoord = coords->z().data();
         auto &px = poly->x();
         auto &py = poly->y();
         auto &pz = poly->z();
@@ -443,9 +443,9 @@ void DomainSurface::renumberVertices(Coords::const_ptr coords, Quads::ptr quad, 
         }
         mapped.clear();
 
-        const Scalar *xcoord = &coords->x()[0];
-        const Scalar *ycoord = &coords->y()[0];
-        const Scalar *zcoord = &coords->z()[0];
+        const Scalar *xcoord = coords->x().data();
+        const Scalar *ycoord = coords->y().data();
+        const Scalar *zcoord = coords->z().data();
         auto &px = quad->x();
         auto &py = quad->y();
         auto &pz = quad->z();
@@ -588,9 +588,9 @@ DomainSurface::Result<Polygons> DomainSurface::createSurface(vistle::Unstructure
     const bool showqua = getIntParameter("quad");
 
     const Index num_elem = m_grid_in->getNumElements();
-    const Index *el = &m_grid_in->el()[0];
-    const Index *cl = &m_grid_in->cl()[0];
-    const Byte *tl = &m_grid_in->tl()[0];
+    const Index *el = m_grid_in->el().data();
+    const Index *cl = m_grid_in->cl().data();
+    const Byte *tl = m_grid_in->tl().data();
 
     Polygons::ptr m_grid_out(new Polygons(0, 0, 0));
     result.surface = m_grid_out;

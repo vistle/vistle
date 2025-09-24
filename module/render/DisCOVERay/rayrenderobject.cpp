@@ -80,7 +80,7 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
             data->perPrimitiveMapping = 1;
     }
     if (auto t = Texture1D::as(this->mapdata)) {
-        data->texCoords = &t->coords()[0];
+        data->texCoords = t->coords().data();
 
         cmap.reset(new ispc::ColorMapData);
         data->cmap = cmap.get();
@@ -93,16 +93,16 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
 
         std::cerr << "texcoords from texture" << std::endl;
     } else if (auto s = Vec<Scalar, 1>::as(this->mapdata)) {
-        data->texCoords = &s->x()[0];
+        data->texCoords = s->x().data();
 
         std::cerr << "texcoords from scalar field" << std::endl;
 
     } else if (auto vec = Vec<Scalar, 3>::as(this->mapdata)) {
         tcoord.resize(vec->getSize());
         data->texCoords = tcoord.data();
-        const Scalar *x = &vec->x()[0];
-        const Scalar *y = &vec->y()[0];
-        const Scalar *z = &vec->z()[0];
+        const Scalar *x = vec->x().data();
+        const Scalar *y = vec->y().data();
+        const Scalar *z = vec->z().data();
         for (auto it = tcoord.begin(); it != tcoord.end(); ++it) {
             *it = sqrtf(*x * *x + *y * *y + *z * *z);
             ++x;
@@ -113,7 +113,7 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
         tcoord.resize(iscal->getSize());
         data->texCoords = tcoord.data();
         vistle::Scalar *d = tcoord.data();
-        for (const Index *i = &iscal->x()[0], *end = i + iscal->getSize(); i < end; ++i) {
+        for (const Index *i = iscal->x().data(), *end = i + iscal->getSize(); i < end; ++i) {
             *d++ = *i;
         }
     }
@@ -166,7 +166,7 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
                 ++ii;
             }
         } else {
-            const auto *cl = &quads->cl()[0];
+            const auto *cl = quads->cl().data();
             Index ii = 0;
             for (Index i = 0; i < numElem; ++i) {
                 if (ghost && ghost[i] == vistle::cell::GHOST)
@@ -287,9 +287,9 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
         }
         //std::cerr << "Points: #sph: " << np << std::endl;
         data->spheres = new ispc::Sphere[np];
-        auto x = &point->x()[0];
-        auto y = &point->y()[0];
-        auto z = &point->z()[0];
+        auto x = point->x().data();
+        auto y = point->y().data();
+        auto z = point->z().data();
         auto s = data->spheres;
         for (Index i = 0; i < np; ++i) {
             s[i].p.x = x[i];
@@ -318,11 +318,11 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
         data->primitiveFlags = new unsigned int[nPoints];
         data->spheres = new ispc::Sphere[nPoints];
 
-        auto el = &line->el()[0];
-        auto cl = nPoints > 0 ? &line->cl()[0] : nullptr;
-        auto x = &line->x()[0];
-        auto y = &line->y()[0];
-        auto z = &line->z()[0];
+        auto el = line->el().data();
+        auto cl = nPoints > 0 ? line->cl().data() : nullptr;
+        auto x = line->x().data();
+        auto y = line->y().data();
+        auto z = line->z().data();
         auto s = data->spheres;
         auto p = data->primitiveFlags;
         Index idx = 0;
@@ -391,7 +391,7 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
                 data->normalsPerPrimitiveMapping = 1;
 
             for (int c = 0; c < 3; ++c) {
-                data->normals[c] = &this->normals->x(c)[0];
+                data->normals[c] = this->normals->x(c).data();
             }
         }
 

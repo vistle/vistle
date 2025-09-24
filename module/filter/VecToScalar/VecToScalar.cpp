@@ -80,9 +80,9 @@ Vec<Scalar>::ptr VecToScalar::extract(Vec<Scalar, 3>::const_ptr &data, const Ind
 
 Vec<Scalar>::ptr VecToScalar::calculateAbsolute(Vec<Scalar, 3>::const_ptr &data)
 {
-    const Scalar *in_data_0 = &data->x()[0];
-    const Scalar *in_data_1 = &data->y()[0];
-    const Scalar *in_data_2 = &data->z()[0];
+    const Scalar *in_data_0 = data->x().data();
+    const Scalar *in_data_1 = data->y().data();
+    const Scalar *in_data_2 = data->z().data();
     Index dataSize = data->getSize();
     Vec<Scalar>::ptr dataOut(new Vec<Scalar>(dataSize));
     Scalar *out_data = dataOut->x().data();

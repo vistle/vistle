@@ -1029,12 +1029,12 @@ bool ReadFOAM::buildGhostCells(int processor, GhostMode mode)
     auto &boundaries = *m_boundaries[processor];
 
     UnstructuredGrid::ptr grid = m_currentgrid[processor];
-    const auto el = &grid->el()[0];
-    const auto cl = &grid->cl()[0];
-    const auto tl = &grid->tl()[0];
-    const auto x = &grid->x()[0];
-    const auto y = &grid->y()[0];
-    const auto z = &grid->z()[0];
+    const auto el = grid->el().data();
+    const auto cl = grid->cl().data();
+    const auto tl = grid->tl().data();
+    const auto x = grid->x().data();
+    const auto y = grid->y().data();
+    const auto z = grid->z().data();
 
     for (const auto &b: boundaries.procboundaries) {
         Index neighborProc = b.neighborProc;

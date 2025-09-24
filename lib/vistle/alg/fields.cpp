@@ -68,7 +68,7 @@ typename Vec<T, Dim>::ptr remapDataTempl(typename Vec<T, Dim>::const_ptr &in, co
     const T *data_in[Dim];
     T *data_out[Dim];
     for (int d = 0; d < Dim; ++d) {
-        data_in[d] = &in->x(d)[0];
+        data_in[d] = in->x(d).data();
         data_out[d] = out->x(d).data();
     }
 

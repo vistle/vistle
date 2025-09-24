@@ -157,7 +157,7 @@ private:
             for (int c = 0; c < Dim; ++c) {
                 S min = module->min[c];
                 S max = module->max[c];
-                const S *x = &in->x(c)[0];
+                const S *x = in->x(c).data();
                 Index imin = InvalidIndex, imax = InvalidIndex;
                 for (Index index = 0; index < size; index++) {
                     if (x[index] < min) {
@@ -310,7 +310,7 @@ bool Extrema::compute()
 #ifdef BOUNDINGBOX
     if (auto coord = Coords::as(obj)) {
         const Index num = coord->getNumCoords();
-        const Scalar *x = &coord->x()[0], *y = &coord->y()[0], *z = &coord->z()[0];
+        const Scalar *x = coord->x().data(), *y = coord->y().data(), *z = coord->z().data();
         auto t = obj->getTransform();
         if (t.isIdentity()) {
             for (Index i = 0; i < num; ++i) {

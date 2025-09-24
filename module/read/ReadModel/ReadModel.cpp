@@ -138,8 +138,8 @@ Object::ptr ReadModel::load(const std::string &name) const
                     }
                     Polygons::ptr poly(new Polygons(numFace, numIndex, numVert));
                     coords = poly;
-                    auto *el = &poly->el()[0];
-                    auto *cl = indexed ? &poly->cl()[0] : nullptr;
+                    auto *el = poly->el().data();
+                    auto *cl = indexed ? poly->cl().data() : nullptr;
                     Index idx = 0, vertCount = 0;
                     for (unsigned int f = 0; f < numFace; ++f) {
                         el[idx++] = vertCount;
@@ -156,7 +156,7 @@ Object::ptr ReadModel::load(const std::string &name) const
                     Triangles::ptr tri(new Triangles(numIndex, numVert));
                     coords = tri;
                     if (indexed) {
-                        auto *cl = &tri->cl()[0];
+                        auto *cl = tri->cl().data();
                         Index vertCount = 0;
                         for (unsigned int f = 0; f < numFace; ++f) {
                             const auto &face = mesh->mFaces[f];
@@ -174,7 +174,7 @@ Object::ptr ReadModel::load(const std::string &name) const
             if (coords) {
                 Scalar *x[3] = {nullptr, nullptr, nullptr};
                 for (int c = 0; c < 3; ++c) {
-                    x[c] = &coords->x(c)[0];
+                    x[c] = coords->x(c).data();
                 }
                 for (Index i = 0; i < mesh->mNumVertices; ++i) {
                     const auto &vert = mesh->mVertices[i];
@@ -187,7 +187,7 @@ Object::ptr ReadModel::load(const std::string &name) const
                     Normals::ptr normals(new Normals(mesh->mNumVertices));
                     Scalar *n[3] = {nullptr, nullptr, nullptr};
                     for (int c = 0; c < 3; ++c) {
-                        n[c] = &normals->x(c)[0];
+                        n[c] = normals->x(c).data();
                     }
                     for (Index i = 0; i < mesh->mNumVertices; ++i) {
                         const auto &norm = mesh->mNormals[i];

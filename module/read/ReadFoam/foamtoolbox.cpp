@@ -1172,7 +1172,7 @@ bool readVectorArrayBinary(std::istream &stream, T *x, T *y, T *z, const size_t 
     for (size_t i=0; i<lines; i+=bufsiz)
     {
         const size_t nread = i+bufsiz <= lines ? bufsiz : lines-i;
-        if (!readArrayChunkBinary(stream, &buf[0], 3*nread))
+        if (!readArrayChunkBinary(stream, buf.data(), 3*nread))
             return false;
         for (size_t j=0; j<nread; ++j)
         {
@@ -1249,7 +1249,7 @@ bool readArrayBinary(std::istream &stream, T *p, const size_t lines)
        for (size_t i=0; i<lines; i+=bufsiz)
        {
           const size_t nread = i+bufsiz <= lines ? bufsiz : lines-i;
-          if (!readArrayChunkBinary(stream, &buf[0], nread))
+          if (!readArrayChunkBinary(stream, buf.data(), nread))
              return false;
           for (size_t j=0; j<nread; ++j)
           {
@@ -1268,7 +1268,7 @@ bool readListBinary(std::istream &stream, std::vector<T> &vec)
     stream >> n;
     stream.ignore(std::numeric_limits<std::streamsize>::max(), '(');
     vec.resize(n);
-    readArrayBinary<T, D>(stream, &vec[0], n);
+    readArrayBinary<T, D>(stream, vec.data(), n);
     stream.ignore(std::numeric_limits<std::streamsize>::max(), ')');
     return stream.good();
 }
@@ -1350,7 +1350,7 @@ bool readIndexCompactListArrayBinary(std::istream &stream, std::vector<T> *p, co
 {
     expect('(');
     std::vector<D> faceIndex(lines);
-    if (!readArrayBinary<D, D>(stream, &faceIndex[0], lines))
+    if (!readArrayBinary<D, D>(stream, faceIndex.data(), lines))
     {
         std::cerr << "readIndexCompactListArrayBinary: readArrayBinary<FoamIndex> for index array failed" << std::endl;
         return false;
@@ -1372,7 +1372,7 @@ bool readIndexCompactListArrayBinary(std::istream &stream, std::vector<T> *p, co
     {
        size_t n = faceIndex[i+1] - faceIndex[i];
        p[i].resize(n);
-       if (!readArrayBinary<index_t, D>(stream, &p[i][0], n))
+       if (!readArrayBinary<index_t, D>(stream, p[i].data(), n))
        {
            std::cerr << "readIndexCompactListArrayBinary: readArrayBinary<index_t> failed to read index list " << i << std::endl;
            return false;
@@ -1568,9 +1568,9 @@ bool readParticleArrayBinary(std::istream &stream, F *x, F *y, F *z, I *cell, co
     for (size_t i=0; i<lines; ++i)
     {
         expect('(');
-        if (!readArrayChunkBinary(stream, &fbuf[0], fbuf.size()))
+        if (!readArrayChunkBinary(stream, fbuf.data(), fbuf.size()))
             return false;
-        if (!readArrayChunkBinary(stream, &ibuf[0], ibuf.size()))
+        if (!readArrayChunkBinary(stream, ibuf.data(), ibuf.size()))
             return false;
         if (x) x[i] = F(fbuf[0]);
         if (y) y[i] = F(fbuf[1]);

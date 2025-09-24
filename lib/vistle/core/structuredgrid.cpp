@@ -208,7 +208,7 @@ void StructuredGrid::createCelltree(Index dims[3]) const
     std::vector<Celltree::AABB> bounds(nelem);
 
     Vector3 gmin = vmax, gmax = vmin;
-    const Scalar *coords[3] = {&x()[0], &y()[0], &z()[0]};
+    const Scalar *coords[3] = {x().data(), y().data(), z().data()};
     for (Index el = 0; el < nelem; ++el) {
         Scalar min[3]{smax, smax, smax};
         Scalar max[3]{-smax, -smax, -smax};
@@ -270,7 +270,7 @@ void StructuredGrid::setNormals(Normals::const_ptr normals)
 //-------------------------------------------------------------------------
 std::pair<Vector3, Vector3> StructuredGrid::cellBounds(Index elem) const
 {
-    const Scalar *x[3] = {&this->x()[0], &this->y()[0], &this->z()[0]};
+    const Scalar *x[3] = {this->x().data(), this->y().data(), this->z().data()};
     auto cl = cellVertices(elem, m_numDivisions);
 
     const Scalar smax = std::numeric_limits<Scalar>::max();
@@ -320,9 +320,9 @@ bool StructuredGrid::inside(Index elem, const Vector3 &point) const
         return false;
 
     const UnstructuredGrid::Type type = UnstructuredGrid::HEXAHEDRON;
-    const Scalar *x = &this->x()[0];
-    const Scalar *y = &this->y()[0];
-    const Scalar *z = &this->z()[0];
+    const Scalar *x = this->x().data();
+    const Scalar *y = this->y().data();
+    const Scalar *z = this->z().data();
 
     auto cl = cellVertices(elem, m_numDivisions);
 
@@ -364,9 +364,9 @@ Scalar StructuredGrid::exitDistance(Index elem, const Vector3 &point, const Vect
     refresh();
     auto cl = cellVertices(elem, m_numDivisions);
 
-    const Scalar *x = &this->x()[0];
-    const Scalar *y = &this->y()[0];
-    const Scalar *z = &this->z()[0];
+    const Scalar *x = this->x().data();
+    const Scalar *y = this->y().data();
+    const Scalar *z = this->z().data();
 
     const Vector3 raydir(dir.normalized());
 
@@ -435,7 +435,7 @@ GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Ve
     auto cl = cellVertices(elem, m_numDivisions);
     Index nvert = cl.size();
 
-    const Scalar *x[3] = {&this->x()[0], &this->y()[0], &this->z()[0]};
+    const Scalar *x[3] = {this->x().data(), this->y().data(), this->z().data()};
     std::vector<Vector3> corners;
     corners.reserve(nvert);
     for (Index i = 0; i < nvert; ++i) {

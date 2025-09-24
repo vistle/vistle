@@ -176,22 +176,27 @@ void Vec<T, Dim>::updateInternals()
 template<class T, unsigned Dim>
 std::pair<typename Vec<T, Dim>::VecVector, typename Vec<T, Dim>::VecVector> Vec<T, Dim>::getMinMax() const
 {
-    VecVector min, max;
+    static constexpr T smax = std::numeric_limits<T>::max();
+    static constexpr T smin = std::numeric_limits<T>::lowest();
+
+    std::pair<VecVector, VecVector> result;
+    VecVector &min = result.first, &max = result.second;
     if (d()->boundsValid()) {
         for (unsigned c = 0; c < Dim; ++c) {
             min[c] = d()->x[c]->min();
             max[c] = d()->x[c]->max();
         }
-        return std::make_pair(min, max);
+        return result;
     }
 
-    T smax = std::numeric_limits<T>::max();
-    T smin = std::numeric_limits<T>::lowest();
-    Index sz = getSize();
+    const Index sz = getSize();
     for (unsigned c = 0; c < Dim; ++c) {
-        min[c] = smax;
-        max[c] = smin;
-        const T *d = &x(c)[0];
+        for (unsigned c = 0; c < Dim; ++c) {
+            min[c] = smax;
+            max[c] = smin;
+        }
+
+        const T *d = x(c).data();
         for (Index i = 0; i < sz; ++i) {
             if (d[i] < min[c])
                 min[c] = d[i];
@@ -199,7 +204,7 @@ std::pair<typename Vec<T, Dim>::VecVector, typename Vec<T, Dim>::VecVector> Vec<
                 max[c] = d[i];
         }
     }
-    return std::make_pair(min, max);
+    return result;
 }
 
 template<class T, unsigned Dim>

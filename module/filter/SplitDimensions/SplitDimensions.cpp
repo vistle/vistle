@@ -104,8 +104,8 @@ bool SplitDimensions::compute(const std::shared_ptr<BlockTask> &task) const
     VerticesMapping vm[4];
 
     if (ugrid) {
-        const Index *icl = &ugrid->cl()[0];
-        const Index *iel = &ugrid->el()[0];
+        const Index *icl = ugrid->cl().data();
+        const Index *iel = ugrid->el().data();
 
         Index nelem = ugrid->getNumElements();
         Index npoint = 0;
@@ -294,9 +294,9 @@ void SplitDimensions::renumberVertices(Coords::const_ptr coords, Indexed::ptr po
             }
         }
 
-        const Scalar *xcoord = &coords->x()[0];
-        const Scalar *ycoord = &coords->y()[0];
-        const Scalar *zcoord = &coords->z()[0];
+        const Scalar *xcoord = coords->x().data();
+        const Scalar *ycoord = coords->y().data();
+        const Scalar *zcoord = coords->z().data();
         auto &px = poly->x();
         auto &py = poly->y();
         auto &pz = poly->z();
@@ -334,9 +334,9 @@ void SplitDimensions::renumberVertices(Coords::const_ptr coords, Quads::ptr quad
             }
         }
 
-        const Scalar *xcoord = &coords->x()[0];
-        const Scalar *ycoord = &coords->y()[0];
-        const Scalar *zcoord = &coords->z()[0];
+        const Scalar *xcoord = coords->x().data();
+        const Scalar *ycoord = coords->y().data();
+        const Scalar *zcoord = coords->z().data();
         auto &px = quad->x();
         auto &py = quad->y();
         auto &pz = quad->z();

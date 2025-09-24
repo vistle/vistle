@@ -90,7 +90,7 @@ struct ReplicateData {
         }
         typename V::ptr out(new V(sz));
         for (int i = 0; i < Dim; ++i) {
-            auto din = &in->x(i)[0];
+            auto din = in->x(i).data();
             auto dout = out->x(i).data();
 
             if (mult) {
@@ -351,9 +351,9 @@ bool ToTriangles::compute()
                 tri->d()->x[i] = poly->d()->x[i];
 
             Index i = 0;
-            auto el = &poly->el()[0];
-            auto cl = &poly->cl()[0];
-            auto tcl = &tri->cl()[0];
+            auto el = poly->el().data();
+            auto cl = poly->cl().data();
+            auto tcl = tri->cl().data();
             for (Index e = 0; e < nelem; ++e) {
                 const Index begin = el[e], end = el[e + 1];
                 const Index N = end - begin;
@@ -378,8 +378,8 @@ bool ToTriangles::compute()
 
             const Index N = 4;
             Index i = 0;
-            auto cl = &quads->cl()[0];
-            auto tcl = &tri->cl()[0];
+            auto cl = quads->cl().data();
+            auto tcl = tri->cl().data();
             for (Index e = 0; e < nelem; ++e) {
                 const Index begin = e * N;
                 for (Index v = 0; v < N - 2; ++v) {
@@ -395,10 +395,10 @@ bool ToTriangles::compute()
             }
         } else if (points && radius && p_transformSpheres->getValue()) {
             Index n = points->getNumPoints();
-            auto x = &points->x()[0];
-            auto y = &points->y()[0];
-            auto z = &points->z()[0];
-            auto r = &radius->x()[0];
+            auto x = points->x().data();
+            auto y = points->y().data();
+            auto z = points->z().data();
+            auto r = radius->x().data();
 
             tri.reset(new Triangles(n * 3 * gen.TriPerSphere, n * gen.CoordPerSphere));
             auto tx = tri->x().data();
@@ -437,7 +437,7 @@ bool ToTriangles::compute()
             const Index *cl = nullptr;
             Index numEl = lines->getNumElements();
             Index numEmptyEl = 0, numSinglePointEl = 0;
-            auto el = &lines->el()[0];
+            auto el = lines->el().data();
             for (Index i = 0; i < numEl; ++i) {
                 const Index begin = el[i], end = el[i + 1];
                 if (end == begin) {
@@ -454,12 +454,12 @@ bool ToTriangles::compute()
             } else if (numConn == 0) {
                 numConn = numPoint;
             } else {
-                cl = &lines->cl()[0];
+                cl = lines->cl().data();
             }
-            auto x = &lines->x()[0];
-            auto y = &lines->y()[0];
-            auto z = &lines->z()[0];
-            auto r = &radius->x()[0];
+            auto x = lines->x().data();
+            auto y = lines->y().data();
+            auto z = lines->z().data();
+            auto r = radius->x().data();
             // we ignore connection style altogether and simplify start and end style
             auto startStyle = lines->startStyle();
             if (startStyle != Lines::Open) {
@@ -757,9 +757,9 @@ bool ToTriangles::compute()
             }
         } else if (auto unstr = UnstructuredGrid::as(obj)) {
             Index nelem = unstr->getNumElements();
-            auto el = &unstr->el()[0];
-            auto cl = &unstr->cl()[0];
-            auto tl = &unstr->tl()[0];
+            auto el = unstr->el().data();
+            auto cl = unstr->cl().data();
+            auto tl = unstr->tl().data();
 
             if (perElement) {
                 mult.reserve(nelem);
@@ -785,7 +785,7 @@ bool ToTriangles::compute()
                 tri->d()->x[i] = unstr->d()->x[i];
 
             Index i = 0;
-            auto tcl = &tri->cl()[0];
+            auto tcl = tri->cl().data();
             for (Index e = 0; e < nelem; ++e) {
                 const Index begin = el[e], end = el[e + 1];
                 if (tl[e] == UnstructuredGrid::TRIANGLE) {

@@ -199,8 +199,8 @@ Index UnstructuredGrid::cellNumVertices(Index elem) const
 {
     auto t = tl()[elem];
     if (t == POLYHEDRON) {
-        const Index *el = &this->el()[0];
-        const Index *cl = &this->cl()[0];
+        const Index *el = this->el().data();
+        const Index *cl = this->cl().data();
         const Index begin = el[elem], end = el[elem + 1];
         std::vector<Index> verts(&cl[begin], &cl[end]);
         std::sort(verts.begin(), verts.end());
@@ -208,7 +208,7 @@ Index UnstructuredGrid::cellNumVertices(Index elem) const
         return last - verts.begin();
     } else if (t < NUM_TYPES) {
         if (NumVertices[t] < 0) {
-            const Index *el = &this->el()[0];
+            const Index *el = this->el().data();
             const Index begin = el[elem], end = el[elem + 1];
             return end - begin;
         }
@@ -224,7 +224,7 @@ Scalar UnstructuredGrid::cellEdgeLength(Index elem) const
     for_<NumSupportedTypes>([&](auto i) {
         if (SupportedTypes[i.value] == type) {
             retval = edgeLength<SupportedTypes[i.value]>(cellNumVertices(elem), &cl()[el()[elem]],
-                                                         {&x()[0], &y()[0], &z()[0]});
+                                                         {x().data(), y().data(), z().data()});
         }
     });
     return retval;
@@ -236,8 +236,8 @@ Scalar UnstructuredGrid::cellSurface(Index elem) const
     auto type = tl()[elem];
     for_<NumSupportedTypes>([&](auto i) {
         if (SupportedTypes[i.value] == type) {
-            retval =
-                surface<SupportedTypes[i.value]>(cellNumVertices(elem), &cl()[el()[elem]], {&x()[0], &y()[0], &z()[0]});
+            retval = surface<SupportedTypes[i.value]>(cellNumVertices(elem), &cl()[el()[elem]],
+                                                      {x().data(), y().data(), z().data()});
             return;
         }
     });
@@ -250,8 +250,8 @@ Scalar UnstructuredGrid::cellVolume(Index elem) const
     auto type = tl()[elem];
     for_<NumSupportedTypes>([&](auto i) {
         if (SupportedTypes[i.value] == type) {
-            retval =
-                volume<SupportedTypes[i.value]>(cellNumVertices(elem), &cl()[el()[elem]], {&x()[0], &y()[0], &z()[0]});
+            retval = volume<SupportedTypes[i.value]>(cellNumVertices(elem), &cl()[el()[elem]],
+                                                     {x().data(), y().data(), z().data()});
             return;
         }
     });
@@ -262,7 +262,7 @@ Index UnstructuredGrid::cellNumFaces(Index elem) const
 {
     auto t = tl()[elem];
     if (t == POLYHEDRON) {
-        const Index *el = &this->el()[0];
+        const Index *el = this->el().data();
         const Index begin = el[elem], end = el[elem + 1];
         const Index *cl = &this->cl()[begin];
         const Index nverts = end - begin;
@@ -288,12 +288,12 @@ Index UnstructuredGrid::cellNumFaces(Index elem) const
 
 Scalar UnstructuredGrid::exitDistance(Index elem, const Vector3 &point, const Vector3 &dir) const
 {
-    const Index *el = &this->el()[0];
+    const Index *el = this->el().data();
     const Index begin = el[elem], end = el[elem + 1];
     const Index *cl = &this->cl()[begin];
-    const Scalar *x = &this->x()[0];
-    const Scalar *y = &this->y()[0];
-    const Scalar *z = &this->z()[0];
+    const Scalar *x = this->x().data();
+    const Scalar *y = this->y().data();
+    const Scalar *z = this->z().data();
 
     const Vector3 raydir(dir.normalized());
 
@@ -376,7 +376,7 @@ bool UnstructuredGrid::inside(Index elem, const Vector3 &point) const
     const Index end = el()[elem + 1];
     const Index *cl = &this->cl()[begin];
 
-    return insideCell(point, type, end - begin, cl, &this->x()[0], &this->y()[0], &this->z()[0]);
+    return insideCell(point, type, end - begin, cl, this->x().data(), this->y().data(), this->z().data());
 }
 
 GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const Vector3 &point, Mapping mapping,
@@ -397,10 +397,10 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
         return Interpolator(weights, indices);
     }
 
-    const auto el = &this->el()[0];
-    const auto tl = &this->tl()[0];
+    const auto el = this->el().data();
+    const auto tl = this->tl().data();
     const auto cl = &this->cl()[el[elem]];
-    const Scalar *x[3] = {&this->x()[0], &this->y()[0], &this->z()[0]};
+    const Scalar *x[3] = {this->x().data(), this->y().data(), this->z().data()};
 
     const Index nvert = el[elem + 1] - el[elem];
     std::vector<Scalar> weights((mode == Linear || mode == Mean) ? nvert : 1);
@@ -721,8 +721,8 @@ std::vector<Index> UnstructuredGrid::cellVertices(Index elem) const
     const auto t = tl()[elem];
 
     if (t == UnstructuredGrid::POLYHEDRON) {
-        const Index *el = &this->el()[0];
-        const Index *cl = &this->cl()[0];
+        const Index *el = this->el().data();
+        const Index *cl = this->cl().data();
         const Index begin = el[elem], end = el[elem + 1];
         std::vector<Index> verts(&cl[begin], &cl[end]);
         std::sort(verts.begin(), verts.end());

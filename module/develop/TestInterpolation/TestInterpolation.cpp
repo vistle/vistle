@@ -74,9 +74,9 @@ bool TestInterpolation::compute()
     std::vector<Scalar> xx, yy, zz;
     const Scalar *x = nullptr, *y = nullptr, *z = nullptr;
     if (auto v3 = Vec<Scalar, 3>::as(grid->object())) {
-        x = &v3->x()[0];
-        y = &v3->y()[0];
-        z = &v3->z()[0];
+        x = v3->x().data();
+        y = v3->y().data();
+        z = v3->z().data();
     } else if (auto uni = UniformGrid::as(grid->object())) {
         const Index nvert = uni->getNumDivisions(0) * uni->getNumDivisions(1) * uni->getNumDivisions(2);
         xx.resize(nvert);

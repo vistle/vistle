@@ -256,7 +256,7 @@ Object::ptr IsoSurface::createHeightCut(vistle::Object::const_ptr grid, vistle::
         std::string mapFile = m_heightmap->getValue();
         heightField.openImage(mapFile);
 
-        const Scalar *x = &coordsIn->x()[0], *y = &coordsIn->y()[0], *z = &coordsIn->z()[0];
+        const Scalar *x = coordsIn->x().data(), *y = coordsIn->y().data(), *z = coordsIn->z().data();
         Vec<Scalar>::ptr newData(new Vec<Scalar>(coordsIn->getNumVertices()));
         auto heightMappedData = newData->x().data();
 

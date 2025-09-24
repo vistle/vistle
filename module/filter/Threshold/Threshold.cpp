@@ -26,7 +26,7 @@ public:
     CellSelector(const coRestraint &restraint, DataBase::const_ptr &data): m_restraint(restraint), m_data(data)
     {
         if (auto idx = Vec<Index>::as(m_data)) {
-            m_marker = &idx->x()[0];
+            m_marker = idx->x().data();
         }
     }
 
@@ -51,13 +51,13 @@ public:
     , m_elif(m_grid->getInterface<ElementInterface>())
     {
         if (auto scal = Vec<Scalar>::as(m_data)) {
-            m_scalar = &scal->x()[0];
+            m_scalar = scal->x().data();
         }
         if (auto idx = Vec<Index>::as(m_data)) {
-            m_index = &idx->x()[0];
+            m_index = idx->x().data();
         }
         if (auto bt = Vec<Byte>::as(m_data)) {
-            m_byte = &bt->x()[0];
+            m_byte = bt->x().data();
         }
     }
 
@@ -267,10 +267,10 @@ bool Threshold::compute(const std::shared_ptr<BlockTask> &task) const
             outgrid = indexed->cloneType();
             outgeo = outgrid;
 
-            icl = &indexed->cl()[0];
-            iel = &indexed->el()[0];
+            icl = indexed->cl().data();
+            iel = indexed->el().data();
             if (ugrid) {
-                itl = &ugrid->tl()[0];
+                itl = ugrid->tl().data();
             }
         } else if (sgrid) {
             Index dims[]{sgrid->getNumDivisions(0), sgrid->getNumDivisions(1), sgrid->getNumDivisions(2)};
@@ -303,8 +303,8 @@ bool Threshold::compute(const std::shared_ptr<BlockTask> &task) const
         if (outgrid) {
             outgrid->el().resize(em.size() + 1);
             outgrid->cl().resize(ncorn);
-            auto *el = &outgrid->el()[0];
-            auto *cl = &outgrid->cl()[0];
+            auto *el = outgrid->el().data();
+            auto *cl = outgrid->cl().data();
             Byte *tl = nullptr;
             auto outugrid = UnstructuredGrid::as(outgrid);
             if (outugrid && !em.empty()) {
@@ -336,7 +336,7 @@ bool Threshold::compute(const std::shared_ptr<BlockTask> &task) const
 
         } else if (outquads) {
             outquads->cl().resize(em.size() * 4);
-            auto *cl = &outquads->cl()[0];
+            auto *cl = outquads->cl().data();
 
             Index cidx = 0;
             for (const auto &e: em) {
@@ -433,9 +433,9 @@ void Threshold::renumberVertices(Coords::const_ptr coords, Indexed::ptr poly, Ve
         py.resize(c);
         pz.resize(c);
 
-        const Scalar *xcoord = &coords->x()[0];
-        const Scalar *ycoord = &coords->y()[0];
-        const Scalar *zcoord = &coords->z()[0];
+        const Scalar *xcoord = coords->x().data();
+        const Scalar *ycoord = coords->y().data();
+        const Scalar *zcoord = coords->z().data();
 
         for (const auto &v: vm) {
             Index f = v.first;

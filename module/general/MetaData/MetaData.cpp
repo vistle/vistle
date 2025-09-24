@@ -133,7 +133,7 @@ bool MetaData::compute()
         species = "elem_type";
         if (unstr) {
             mapping = DataBase::Element;
-            tl = &unstr->tl()[0];
+            tl = unstr->tl().data();
         } else {
             sendError("ElementType requires UnstructuredGrid as input");
             return true;
@@ -147,7 +147,7 @@ bool MetaData::compute()
         species = "elem_num_faces";
         mapping = DataBase::Element;
         if (unstr) {
-            tl = &unstr->tl()[0];
+            tl = unstr->tl().data();
         }
         break;
     default:

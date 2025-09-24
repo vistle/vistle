@@ -182,7 +182,7 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const AABB *bounds, Celltree
     // sort cells into buckets
     const CTVector crange = (cmax - cmin);
     const CTVector crangeI = crange.cwiseInverse() * NumBuckets;
-    auto getBucket = [cmin, cmax, crangeI](Scalar center, int d) -> int {
+    auto getBucket = [cmin, crangeI](Scalar center, int d) -> int {
         return std::min(int((center - cmin[d]) * crangeI[d]), NumBuckets - 1);
     };
 

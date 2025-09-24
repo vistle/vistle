@@ -444,7 +444,7 @@ void VistleInteractor::setVectorParam(const char *name, int numElem, float *fiel
     std::vector<ParamVector::value_type> v;
     for (int i = 0; i < numElem; ++i)
         v.push_back(field[i]);
-    vparam->setValue(ParamVector(numElem, &v[0]));
+    vparam->setValue(ParamVector(numElem, v.data()));
     sendParamMessage(vparam);
 }
 
@@ -465,7 +465,7 @@ void VistleInteractor::setVectorParam(const char *name, int numElem, int *field)
     std::vector<IntParamVector::value_type> v;
     for (int i = 0; i < numElem; ++i)
         v.push_back(field[i]);
-    vparam->setValue(IntParamVector(numElem, &v[0]));
+    vparam->setValue(IntParamVector(numElem, v.data()));
     sendParamMessage(vparam);
 }
 

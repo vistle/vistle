@@ -727,7 +727,7 @@ bool COVER::addColorMap(const std::string &species, Object::const_ptr colormap)
 
         cmap.image->setPixelFormat(GL_RGBA);
         cmap.image->setImage(texture->getWidth(), 1, 1, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE,
-                             const_cast<unsigned char *>(&texture->pixels()[0]), osg::Image::NO_DELETE);
+                             const_cast<unsigned char *>(texture->pixels().data()), osg::Image::NO_DELETE);
         cmap.image->dirty();
 
         cmap.setBlendWithMaterial(texture->hasAttribute(attribute::BlendWithMaterial));

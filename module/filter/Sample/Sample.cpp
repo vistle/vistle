@@ -55,7 +55,7 @@ int Sample::SampleToGrid(const vistle::GeometryInterface *target, vistle::DataBa
         return found;
     }
 
-    const Scalar *data = &scal->x()[0];
+    const Scalar *data = scal->x().data();
 
     Index numVert = target->getNumVertices();
     Vec<Scalar>::ptr dataOut(new Vec<Scalar>(numVert));
@@ -157,7 +157,7 @@ bool Sample::reduce(int timestep)
                         std::vector<int> numHits(geo->getNumVertices(), 0);
                         for (auto elem: sampledDataList) {
                             auto locDat = Vec<Scalar, 1>::as(elem);
-                            auto locDatVec = &locDat->x()[0];
+                            auto locDatVec = locDat->x().data();
 
                             for (Index bIdx = 0; bIdx < locDat->getSize(); ++bIdx) {
                                 if (locDatVec[bIdx] != NO_VALUE) {
@@ -186,7 +186,7 @@ bool Sample::reduce(int timestep)
                     if (!sampledDataList.empty()) {
                         for (auto elem: sampledDataList) {
                             auto locDat = Vec<Scalar, 1>::as(elem);
-                            auto locDatVec = &locDat->x()[0];
+                            auto locDatVec = locDat->x().data();
 
                             for (Index bIdx = 0; bIdx < locDat->getSize(); ++bIdx) {
                                 if (locDatVec[bIdx] != NO_VALUE) {

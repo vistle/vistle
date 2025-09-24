@@ -168,10 +168,10 @@ bool Thicken::compute()
     }
     auto radius = std::make_shared<Vec<Scalar>>(numRad);
     auto r = radius->x().data();
-    auto radx = radius3 ? &radius3->x()[0] : radius1 ? &radius1->x()[0] : nullptr;
-    auto rady = radius3 ? &radius3->y()[0] : nullptr;
-    auto radz = radius3 ? &radius3->z()[0] : nullptr;
-    auto irad = iradius ? &iradius->x()[0] : nullptr;
+    auto radx = radius3 ? radius3->x().data() : radius1 ? radius1->x().data() : nullptr;
+    auto rady = radius3 ? radius3->y().data() : nullptr;
+    auto radz = radius3 ? radius3->z().data() : nullptr;
+    auto irad = iradius ? iradius->x().data() : nullptr;
     const Scalar extraScale = spheres ? m_sphereScale->getValue() : 1.;
     const Scalar scale = m_radius->getValue() * extraScale;
     const Scalar rmin = m_range->getValue()[0] * extraScale;

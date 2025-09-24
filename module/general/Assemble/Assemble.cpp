@@ -508,13 +508,13 @@ bool Assemble::assemble(const Assemble::AssembleData &d)
 
             auto nunstr = UnstructuredGrid::as(ogrid);
             if (nunstr) {
-                auto tl = &unstr->tl()[0];
+                auto tl = unstr->tl().data();
                 auto ntl = nunstr->tl().data();
                 memcpy(ntl + elOff[n], tl, unstr->getNumElements() * sizeof(*tl));
             }
 
             {
-                auto el = &idx->el()[0];
+                auto el = idx->el().data();
                 Index off = elOff[n];
                 Index coff = clOff[n];
                 Index num = idx->getNumElements();
