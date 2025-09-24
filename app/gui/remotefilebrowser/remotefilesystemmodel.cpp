@@ -1611,7 +1611,7 @@ bool RemoteFileSystemModel::indexValid(const QModelIndex &index) const
  */
 void RemoteFileSystemModelPrivate::_q_directoryChanged(const QString &directory, const QStringList &files)
 {
-    Q_Q(RemoteFileSystemModel);
+    //Q_Q(RemoteFileSystemModel);
 
     RemoteFileSystemModelPrivate::RemoteFileSystemNode *parentNode = node(directory, true);
     if (!parentNode->children.isEmpty()) {
