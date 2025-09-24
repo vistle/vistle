@@ -21,17 +21,10 @@ using DoubleVector = VistleVector<double, d>;
 template<int d>
 using FloatVector = VistleVector<float, d>;
 
-template<int d>
-struct VistleScalarVector {
-    typedef Eigen::Matrix<Scalar, d, 1> type;
-};
-
 typedef Eigen::Matrix<Scalar, 1, 1> Vector1;
 typedef Eigen::Matrix<Scalar, 2, 1> Vector2;
 typedef Eigen::Matrix<Scalar, 3, 1> Vector3;
 typedef Eigen::Matrix<Scalar, 4, 1> Vector4;
-
-//typedef Vector3 Vector; // typedef removed for avoiding confusion with Eigen::Vector
 
 typedef Eigen::Matrix<Scalar, 2, 3> Matrix2x3;
 typedef Eigen::Matrix<Scalar, 3, 2> Matrix3x2;
