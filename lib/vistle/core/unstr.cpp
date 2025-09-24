@@ -172,38 +172,8 @@ Vector2 bilinearInverse(const Vector3 &p0, const Vector3 p[4])
 
 Scalar UnstructuredGrid::cellDiameter(Index elem) const
 {
-#if 0
-    // compute distance of some vertices which are distant to each other
-    const Scalar *x = &this->x()[0];
-    const Scalar *y = &this->y()[0];
-    const Scalar *z = &this->z()[0];
-    auto verts = cellVertices(elem);
-    if (verts.empty())
-        return 0;
-    Index v0 = verts[0];
-    Vector3 p(x[v0], y[v0], z[v0]);
-    Vector3 farAway(p);
-    Scalar dist2(0);
-    for (Index v: verts) {
-        Vector3 q(x[v], y[v], z[v]);
-        Scalar d = (p-q).squaredNorm();
-        if (d > dist2) {
-			farAway = q;
-            dist2 = d;
-        }
-    }
-    for (Index v: verts) {
-        Vector3 q(x[v], y[v], z[v]);
-        Scalar d = (farAway -q).squaredNorm();
-        if (d > dist2) {
-            dist2 = d;
-        }
-    }
-    return sqrt(dist2);
-#else
     auto bounds = cellBounds(elem);
     return (bounds.second - bounds.first).norm();
-#endif
 }
 
 Vector3 UnstructuredGrid::cellCenter(Index elem) const
