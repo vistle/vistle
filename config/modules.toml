@@ -5,6 +5,7 @@ TubesOld = "Thicken"
 Spheres = "Thicken"
 SpheresOld = "Thicken"
 PrintAttributes = "PrintObjects"
+CellSelect = "SelectCells"
 
 ["replace"]
 renderer = [ "COVER", "BlenderRenderer", "ANARemote", "DisCOVERay", "OsgRenderer" ]
