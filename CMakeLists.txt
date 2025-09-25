@@ -162,6 +162,10 @@ macro(vistle_find_package package)
                 set(hbpack "libtiff")
             endif()
 
+            if(pack STREQUAL "PNG")
+                set(hbpack "libpng")
+            endif()
+
             if(pack STREQUAL "JPEGTURBO")
                 set(hbpack "jpeg-turbo")
             endif()
