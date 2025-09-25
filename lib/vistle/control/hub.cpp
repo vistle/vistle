@@ -3988,6 +3988,17 @@ bool Hub::handlePriv(const message::BarrierReached &reached)
             sendUi(r);
             sendSlaves(r);
             sendManager(r);
+        } else {
+            if (m_verbose >= Verbosity::Modules) {
+                auto running = m_stateTracker.getRunningList();
+                CERR << "waiting for:";
+                for (auto r: running) {
+                    if (m_reachedSet.find(r) == m_reachedSet.end()) {
+                        std::cerr << " " << r;
+                    }
+                }
+                std::cerr << std::endl;
+            }
         }
     } else {
         if (reached.senderId() == Id::MasterHub) {
