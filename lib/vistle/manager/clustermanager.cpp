@@ -981,6 +981,16 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn)
 
     message::SpawnPrepared prep(spawn);
 
+    auto handleFail = [&]() {
+        // synthesize ModuleExit for module that has failed to start
+        message::ModuleExit m(true);
+        m.setSenderId(newId);
+        m_stateTracker.handle(m, nullptr);
+        if (getRank() == 0)
+            return sendHub(m);
+        return true;
+    };
+
     std::string pluginpath;
     bool loadModulePlugin = spawn.asPlugin();
     if (loadModulePlugin) {
@@ -998,6 +1008,7 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn)
         auto it = avail.find(key);
         if (it == avail.end()) {
             CERR << "did not find module " << name << std::endl;
+            return handleFail();
         } else {
             auto &m = it->second;
             if (pluginpath.empty())
@@ -1052,14 +1063,7 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn)
                 if (it != m_runningMap.end()) {
                     m_runningMap.erase(it);
                 }
-
-                // synthesize ModuleExit for module that has failed to start
-                message::ModuleExit m;
-                m.setSenderId(newId);
-                m_stateTracker.handle(m, nullptr);
-                if (getRank() == 0)
-                    sendHub(m);
-                return true;
+                return handleFail();
             }
         }
     } else {
