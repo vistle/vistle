@@ -400,10 +400,10 @@ void Color::getMinMax(vistle::DataBase::const_ptr object, vistle::Scalar &min, v
         {
             Scalar tmin = std::numeric_limits<Scalar>::max();
             Scalar tmax = -std::numeric_limits<Scalar>::max();
+            const ssize_t numElements = object->getSize();
 #ifdef USE_OPENMP
 #pragma omp for
 #endif
-            const ssize_t numElements = object->getSize();
             for (ssize_t index = 0; index < numElements; index++) {
                 Scalar v = Vector3(x[index], y[index], z[index]).norm();
                 if (v < tmin)

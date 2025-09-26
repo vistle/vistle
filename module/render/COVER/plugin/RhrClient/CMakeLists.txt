@@ -5,8 +5,6 @@ set(HEADERS DecodeTask.h RhrClient.h RemoteConnection.h TileMessage.h NodeConfig
 
 set(SOURCES DecodeTask.cpp RhrClient.cpp RemoteConnection.cpp TileMessage.cpp NodeConfig.cpp)
 
-#use_openmp()
-
 if(NOT WIN32)
     set_source_files_properties(RhrClient.cpp PROPERTIES COMPILE_FLAGS "-Wno-overloaded-virtual")
 endif()

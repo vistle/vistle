@@ -3,8 +3,6 @@ vistle_find_package(GLEW)
 vistle_find_package(ZLIB)
 vistle_find_package(JPEGTURBO)
 
-#use_openmp()
-
 set(RHR_SOURCES compdecomp.cpp depthquant.cpp predict.cpp rfbext.cpp)
 
 set(RHR_HEADERS compdecomp.h depthquant.h predict.h rfbext.h ReadBackCuda.h)

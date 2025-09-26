@@ -2,7 +2,6 @@ set(renderer_SOURCES renderer.cpp renderobject.cpp)
 
 set(renderer_HEADERS export.h renderer.h renderobject.h)
 
-use_openmp()
 set(renderer_SOURCES ${renderer_SOURCES} rhrcontroller.cpp parrendmgr.cpp)
 set(renderer_HEADERS ${renderer_HEADERS} parrendmgr.h rhrcontroller.h)
 

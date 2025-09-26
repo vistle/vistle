@@ -395,10 +395,6 @@ if(NOT VISTLE_GUI_ONLY)
 
     if(VISTLE_USE_OPENMP)
         vistle_find_package(OpenMP 3.0 COMPONENTS CXX)
-
-        if(OPENMP_FOUND)
-            find_library(LIBOMP omp)
-        endif()
     endif()
 
     if(NOT OPENMP_FOUND)
@@ -877,27 +873,6 @@ endif()
 enable_testing()
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-
-macro(USE_OPENMP)
-    if(VISTLE_USE_OPENMP AND OPENMP_FOUND)
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_C_FLAGS}")
-        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${OpenMP_C_FLAGS}")
-
-        if(${CMAKE_CXX_COMPILER_ID} STREQUAL "AppleClang")
-            set(USE_LIBOMP TRUE)
-
-            if(LIBOMP)
-                set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LIBOMP}")
-                set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${LIBOMP}")
-            endif()
-        endif()
-    elseif(${CMAKE_CXX_COMPILER_ID} MATCHES "Clang" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unknown-pragmas")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas")
-    endif()
-endmacro(USE_OPENMP)
 
 macro(vistle_add_executable targetname)
     add_executable(${targetname} ${ARGN})

@@ -14,21 +14,22 @@ if(NOT VISTLE_MODULES_SHARED)
     set(module_SOURCES ${module_SOURCES} moduleregistry.cpp)
 endif()
 
-use_openmp()
-
 vistle_add_library(vistle_module EXPORT ${VISTLE_LIB_TYPE} ${module_SOURCES} ${module_HEADERS})
 if(NOT VISTLE_MODULES_SHARED)
     target_link_libraries(vistle_module PRIVATE vistle_module_descriptions)
     target_link_libraries(vistle_module PRIVATE vistle_control)
 endif()
 target_link_libraries(vistle_module PRIVATE vistle_config)
+if(VISTLE_USE_OPENMP AND TARGET OpenMP::OpenMP_CXX)
+    vistle_target_link_libraries(vistle_module PUBLIC OpenMP::OpenMP_CXX)
+endif()
 
 if(UNIX AND NOT APPLE)
     vistle_target_link_libraries(vistle_module PRIVATE -lrt)
 endif()
 
 if(OpenMP_CXX_FOUND)
-    vistle_target_link_libraries(vistle_module PRIVATE OpenMP::OpenMP_CXX)
+
 endif()
 
 vistle_target_link_libraries(

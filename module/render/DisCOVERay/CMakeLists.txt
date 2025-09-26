@@ -34,7 +34,7 @@ endif()
 
 set(USE_TBB FALSE)
 if(OPENMP_FOUND)
-    use_openmp()
+
 elseif(TBB_FOUND)
     add_definitions(-DUSE_TBB)
     set(USE_TBB TRUE)
@@ -71,7 +71,7 @@ target_link_libraries(
             ${EMBREE_LIBRARY})
 
 if(USE_LIBOMP AND LIBOMP)
-    target_link_libraries(DisCOVERay PRIVATE ${LIBOMP})
+    target_link_libraries(DisCOVERay PRIVATE OpenMP::OpenMP_CXX)
 endif()
 
 if(USE_TBB)

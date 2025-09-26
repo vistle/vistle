@@ -94,7 +94,7 @@ execute_process(
     ERROR_VARIABLE error_output)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    find_package(OpenMP)
+    vistle_find_package(OpenMP)
     if(OpenMP_CXX_FOUND)
         target_link_libraries(bwclib PRIVATE OpenMP::OpenMP_CXX)
     endif()
@@ -140,13 +140,13 @@ if(NOT VISTLE_GUI_ONLY)
         #set(Viskores_USE_DEFAULT_TYPES_FOR_ASCENT", "ascent_types"),
         set(Viskores_USE_DOUBLE_PRECISION ${VISTLE_DOUBLE_PRECISION})
 
-        set(Viskores_ENABLE_TBB ${TBB_FOUND})
+        set(Viskores_ENABLE_OPENMP ${VISTLE_USE_OPENMP})
         set(Viskores_ENABLE_CUDA ${VISTLE_CUDA_ENABLED})
         set(Viskores_ENABLE_KOKKOS ${VISTLE_USE_KOKKOS})
         if(NOT ${Viskores_ENABLE_KOKKOS}
            AND NOT ${Viskores_ENABLE_CUDA}
-           AND NOT ${Viskores_ENABLE_TBB})
-            set(Viskores_ENABLE_OPENMP ${VISTLE_USE_OPENMP})
+           AND NOT ${Viskores_ENABLE_OPENMP})
+            set(Viskores_ENABLE_TBB ${TBB_FOUND})
         endif()
 
         #set(Viskores_INSTALL_LIB_DIR "${_vtk_build_LIBRARY_DESTINATION}")
