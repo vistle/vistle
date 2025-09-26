@@ -6,11 +6,11 @@ Please follow the following guidelines.
 Compiler Compatibility
 ----------------------
 
-We use C++ 17, but we want to be able to compile Vistle with
+We use C++ 20, but we want to be able to compile Vistle with
 
 * Visual Studio 2022
-* GCC 8.5 or newer
-* Clang 14.0 and newer (Xcode 14 and newer).
+* GCC 11 or newer
+* Apple Clang 15.0 and newer (Xcode 15 and newer).
 
 
 Source Code Formatting
