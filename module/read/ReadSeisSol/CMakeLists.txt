@@ -8,7 +8,6 @@ vistle_find_package(Iconv)
 set(HEADERS ReadSeisSol.h surfacetools.h)
 set(SOURCES ReadSeisSol.cpp surfacetools.cpp)
 
-use_openmp()
 add_module(ReadSeisSol "Read SeisSol data files (XDMF/HDF5)" ${SOURCES} ${HEADERS})
 if(MSVC)
     target_link_libraries(

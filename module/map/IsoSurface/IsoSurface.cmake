@@ -1,5 +1,3 @@
-use_openmp()
-
 set(SOURCES
     ${SOURCES}
     ../IsoSurface/IsoSurface.cpp
@@ -21,6 +19,7 @@ target_compile_definitions(${NAME} PRIVATE -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_
 if(OPENMP_FOUND AND VISTLE_USE_OPENMP)
     target_compile_definitions(${NAME} PRIVATE -DCCCL_THRUST_HOST_SYSTEM=OMP)
     target_compile_definitions(${NAME} PRIVATE -DTHRUST_HOST_SYSTEM=THRUST_HOST_SYSTEM_OMP)
+    target_link_libraries(${NAME} PRIVATE OpenMP::OpenMP_CXX)
 elseif(TBB_FOUND)
     target_include_directories(${NAME} SYSTEM BEFORE PRIVATE ${TBB_INCLUDE_DIRS})
     target_compile_definitions(${NAME} PRIVATE -DCCCL_THRUST_HOST_SYSTEM=TBB)

@@ -6,5 +6,3 @@ add_module(
     Integrator.cpp
     Particle.cpp
     TracerTimes.cpp)
-
-#use_openmp()

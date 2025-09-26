@@ -22,8 +22,10 @@ target_include_directories(
 target_compile_definitions(VistleManagerPlugin PRIVATE COVER_PLUGIN)
 
 if(NOT VISTLE_MULTI_PROCESS)
+    if(VISTLE_USE_OPENMP AND TARGET OpenMP::OpenMP_CXX)
+        target_link_libraries(vistle_manager PRIVATE OpenMP::OpenMP_CXX)
+    endif()
     if(NOT VISTLE_MODULES_SHARED)
-        use_openmp()
         foreach(m ${ALL_MODULES})
             if(APPLE)
                 target_link_libraries(VistleManagerPlugin -Wl,-force_load ${m})
