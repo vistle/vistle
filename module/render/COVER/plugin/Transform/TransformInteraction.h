@@ -13,11 +13,16 @@ namespace ui {
 class Action;
 }
 
+namespace ui {
+class Slider;
+}
+
 class TransformInteraction: public ModuleInteraction {
 private:
     std::unique_ptr<coVR3DTransformInteractor> m_interactor;
     TransformPlugin *m_plugin;
     opencover::ui::Action *m_resetScaleButton;
+    opencover::ui::Slider *m_sizeSlider;
 
 public:
     TransformInteraction(const RenderObject *container, coInteractor *inter, const char *pluginName,

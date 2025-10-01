@@ -6,6 +6,7 @@
 #include <cover/RenderObject.h>
 #include <cover/ui/Action.h>
 #include <cover/ui/Button.h>
+#include <cover/ui/Slider.h>
 #include <cover/ui/Menu.h>
 #include <osg/Matrix>
 #include <osg/Vec3>
@@ -23,7 +24,6 @@ TransformInteraction::TransformInteraction(const RenderObject *container, coInte
 
     float interSize = -1.f;
     interSize = covise::coCoviseConfig::getFloat("COVER.IconSize", interSize / 2);
-
     // Use the coVRIntersectionInteractor constructor parameters
     m_interactor = std::make_unique<coVR3DTransformInteractor>(interSize, vrui::coInteraction::ButtonA, "hand",
                                                                "TransformInteractor", vrui::coInteraction::Medium);
@@ -36,6 +36,18 @@ TransformInteraction::TransformInteraction(const RenderObject *container, coInte
     m_resetScaleButton->setCallback([this]() {
         m_interactor->updateScale(osg::Vec3(1.0f, 1.0f, 1.0f));
         sendTransformToModule();
+    });
+
+    // Slider to change interactor size (uniform scale)
+    m_sizeSlider = new opencover::ui::Slider(menu_, "InteractorSize");
+    m_sizeSlider->setText("Interactor size");
+    // default based on icon size or 1.0
+    m_sizeSlider->setValue(1);
+    m_sizeSlider->setBounds(0.1, 10.0);
+    m_sizeSlider->setCallback([this](double value, bool moving) {
+        if (m_interactor) {
+            m_interactor->setInteractorSize(value * value);
+        }
     });
 
     updateInteractorTransform();
