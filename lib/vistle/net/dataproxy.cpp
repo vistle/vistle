@@ -680,14 +680,13 @@ bool DataProxy::connectRemoteData(const message::AddHub &remote)
             // timer was canceled
             return;
         }
+
         if (ec) {
             CERR << "timer failed: " << ec.message() << std::endl;
-            lock_guard lock(m_mutex);
-            connectingSockets->clear();
-            return;
+        } else {
+            CERR << "timeout for bulk data connection to " << hubId << std::endl;
         }
 
-        CERR << "timeout for bulk data connection to " << hubId << std::endl;
         lock_guard lock(m_mutex);
         for (auto &s: *connectingSockets) {
             boost::system::error_code ec;
@@ -695,6 +694,7 @@ bool DataProxy::connectRemoteData(const message::AddHub &remote)
             if (ec) {
                 CERR << "cancelling operations on socket failed: " << ec.message() << std::endl;
             } else {
+                s->shutdown(tcp_socket::shutdown_both, ec);
                 bool open = s->is_open();
                 s->close(ec);
                 if (ec) {
@@ -750,7 +750,7 @@ bool DataProxy::connectRemoteData(const message::AddHub &remote)
                 return;
             }
 
-            m_remoteDataSocket[hubId].sockets.emplace_back(sock);
+            socks.emplace_back(sock);
             lock.unlock();
             std::cerr << "." << std::flush;
             //CERR << "connected to " << addr << ":" << dataPort << ", now have " << m_remoteDataSocket[hubId].sockets.size() << " connections" << std::endl;
