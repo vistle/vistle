@@ -314,6 +314,7 @@ Hub::Hub(bool inManager)
         }
 #endif
     }
+
     make.setId(m_hubId);
     make.setRank(0);
     m_uiManager.lockUi(true);
@@ -765,6 +766,13 @@ bool Hub::init(int argc, char *argv[])
         return false;
     }
 
+    {
+        std::stringstream s;
+        s << hostname() << " " << port() << " " << dataPort();
+        std::string conn = s.str();
+        setenv("VISTLE_CONNECTION", conn.c_str(), 1);
+    }
+
     if (m_isMaster) {
         // this is the master hub
         m_hubId = Id::MasterHub;
@@ -828,10 +836,6 @@ bool Hub::init(int argc, char *argv[])
                 cmd = "opencover";
 #endif
                 setenv("VISTLE_PLUGIN", "VistleManager", 1);
-                std::stringstream s;
-                s << hostname() << " " << port << " " << dataport;
-                std::string conn = s.str();
-                setenv("VISTLE_CONNECTION", conn.c_str(), 1);
 
                 m_coverIsManager = true;
             }
