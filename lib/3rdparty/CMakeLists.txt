@@ -259,6 +259,10 @@ if(NOT VISTLE_GUI_ONLY)
     add_subdirectory(pybind11)
 endif()
 
+add_library(vistle_yas INTERFACE)
+target_include_directories(vistle_yas SYSTEM INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/yas/include>)
+vistle_export_library(vistle_yas)
+
 if(VISTLE_INSTALL_3RDPARTY)
     #yas
     install(
@@ -278,7 +282,7 @@ add_library(vistle_eigen INTERFACE)
 set(EIGEN_DEFINITIONS "-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=int" "-DEIGEN_DONT_PARALLELIZE") # also disable OpenMP for eigen
 target_compile_definitions(vistle_eigen INTERFACE ${EIGEN_DEFINITIONS})
 #set(EIGEN3_INCLUDE_PATH "${PROJECT_SOURCE_DIR}/lib/3rdparty")
-target_include_directories(vistle_eigen INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> $<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}>)
+target_include_directories(vistle_eigen SYSTEM BEFORE INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> $<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}>)
 # Export as title case Eigen
 set_target_properties(vistle_eigen PROPERTIES EXPORT_NAME VistleEigen)
 vistle_export_library(vistle_eigen)
