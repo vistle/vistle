@@ -142,7 +142,7 @@ bool Communicator::connectHub(std::string host, unsigned short port, unsigned sh
         if (ec) {
             std::cerr << std::endl;
             CERR << "could not establish connection to hub at " << host << ":" << port << std::endl;
-            ret = false;
+            ret = 0;
         } else {
             std::cerr << " ok." << std::endl;
         }
@@ -150,7 +150,7 @@ bool Communicator::connectHub(std::string host, unsigned short port, unsigned sh
 
     MPI_Bcast(&ret, 1, MPI_INT, 0, m_comm);
 
-    return ret;
+    return ret != 0;
 }
 
 mpi::communicator Communicator::comm() const
