@@ -177,6 +177,7 @@ endif()
 
 vistle_add_library(vistle_core EXPORT ${VISTLE_LIB_TYPE} ${core_SOURCES} ${core_HEADERS})
 
+target_link_libraries(vistle_core PUBLIC vistle_eigen)
 if(UNIX AND NOT APPLE)
     target_link_libraries(vistle_core PUBLIC -lrt)
 endif()
@@ -199,7 +200,6 @@ vistle_target_link_libraries(
     PUBLIC
     viskores::cont)
 target_link_libraries(vistle_core PRIVATE vistle_config)
-target_link_libraries(vistle_core PUBLIC Eigen3::Eigen)
 
 target_include_directories(vistle_core SYSTEM PRIVATE ${ZFP_INCLUDE_DIRS})
 vistle_target_link_libraries(vistle_core PRIVATE ${ZFP_LIBRARIES})
