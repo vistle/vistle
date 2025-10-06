@@ -1,11 +1,15 @@
-#include <sstream>
-#include <iomanip>
-
 #include <vistle/core/object.h>
 #include <vistle/core/points.h>
 #include <vistle/alg/objalg.h>
 
 #include "ApplyTransform.h"
+
+#ifdef APPLYTRANSFORMVTKM
+#include <viskores/cont/DataSet.h>
+#include <viskores/filter/field_transform/PointTransform.h>
+
+#include <vistle/vtkm/convert.h>
+#endif
 
 MODULE_MAIN(ApplyTransform)
 
@@ -39,10 +43,26 @@ bool ApplyTransform::compute()
         Object::ptr outGrid;
         if (auto gridEntry = m_gridCache.getOrLock(coords->getName(), outGrid)) {
             auto T = coords->getTransform();
-            auto clone = coords->clone();
-            if (!T.isIdentity()) {
+            if (T.isIdentity()) {
+                outGrid = coords->clone();
+            } else {
+#ifdef APPLYTRANSFORMVTKM
+                viskores::cont::DataSet inDs;
+                vistle::vtkmSetGrid(inDs, coords);
+
+                // Copy Vistle Matrix4 into Viskores 4x4
+                viskores::Matrix<vistle::Scalar, 4, 4> M;
+                for (int r = 0; r < 4; ++r)
+                    for (int c = 0; c < 4; ++c)
+                        M[r][c] = T(r, c);
+
+                viskores::filter::field_transform::PointTransform filter;
+                filter.SetTransform(M);
+                auto outDs = filter.Execute(inDs);
+                outGrid = vistle::vtkmGetGeometry(outDs);
+#else
+                auto clone = coords->clone();
                 clone->resetCoords();
-                clone->setTransform(vistle::Matrix4::Identity());
                 Index ncoords = coords->getSize();
                 clone->setSize(ncoords);
                 auto *x = coords->x().data(), *y = coords->y().data(), *z = coords->z().data();
@@ -53,9 +73,15 @@ bool ApplyTransform::compute()
                     ny[i] = p[1] / p[3];
                     nz[i] = p[2] / p[3];
                 }
+                outGrid = clone;
+#endif
+                if (outGrid) {
+                    outGrid->setTransform(vistle::Matrix4::Identity());
+                } else {
+                    sendError("Could not apply coordinate transformation");
+                }
             }
-            updateMeta(clone);
-            outGrid = clone;
+            updateMeta(outGrid);
             m_gridCache.storeAndUnlock(gridEntry, outGrid);
         }
         if (split.mapped) {
