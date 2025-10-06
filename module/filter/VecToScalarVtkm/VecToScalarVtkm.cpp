@@ -11,7 +11,7 @@ using namespace vistle;
 
 
 VecToScalarVtkm::VecToScalarVtkm(const std::string &name, int moduleID, mpi::communicator comm)
-: VtkmModule(name, moduleID, comm, 3)
+: VtkmModule(name, moduleID, comm, 1)
 {
     
 }
@@ -21,10 +21,7 @@ VecToScalarVtkm::~VecToScalarVtkm()
 
 std::unique_ptr<viskores::filter::Filter> VecToScalarVtkm::setUpFilter() const
 {
-#ifdef VERTTOCELL
-    auto filter = std::make_unique<viskores::filter::field_conversion::CellAverage>();
-#else
-    auto filter = std::make_unique<viskores::filter::vector_analysis::VectorMagnitude>();
-#endif
-    return filter;
+
+    return std::make_unique<viskores::filter::vector_analysis::VectorMagnitude>();
+
 }
