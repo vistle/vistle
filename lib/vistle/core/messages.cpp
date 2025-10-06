@@ -94,7 +94,7 @@ Identify::Identify(const Identify &request, Identity id, int rank)
     setReferrer(request.uuid());
     m_session_data = request.m_session_data;
 
-    assert(id == Identify::LOCALBULKDATA || id == Identify::REMOTEBULKDATA);
+    assert(id == Identify::LOCALBULKDATA || id == Identify::REMOTEBULKDATA || id == Identify::DIRECTBULKDATA);
 
     memset(m_name.data(), 0, m_name.size());
 
