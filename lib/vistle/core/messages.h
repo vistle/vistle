@@ -34,19 +34,22 @@ namespace message {
 //! indicate the kind of a communication partner
 class V_COREEXPORT Identify: public MessageBase<Identify, IDENTIFY> {
 public:
-    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Identity,
-                                        (UNKNOWN)(REQUEST) //< request receiver to send its identity
-                                        (UI) //< user interface
-                                        (MANAGER) //< cluster manager
-                                        (HUB) //< master hub
-                                        (SLAVEHUB) //< slave hub
-                                        (LOCALBULKDATA) //< bulk data transfer to local MPI ranks
-                                        (REMOTEBULKDATA) //< bulk data transfer to remote hubs
-                                        (RENDERSERVER) //< remote render server
-                                        (RENDERCLIENT) //< remote render client
-                                        (VRB) //< COVISE/OpenCOVER request broker for collaborative VR
-                                        (TUNNEL) //< initiate rendezvous tunnel connection
-                                        (SCRIPT) //< sent from a Python script
+    DEFINE_ENUM_WITH_STRING_CONVERSIONS(
+        Identity,
+        (UNKNOWN) //< unspecified
+        (REQUEST) //< request receiver to send its identity
+        (UI) //< user interface
+        (MANAGER) //< cluster manager
+        (HUB) //< master hub
+        (SLAVEHUB) //< slave hub
+        (LOCALBULKDATA) //< bulk data transfer to local MPI ranks
+        (REMOTEBULKDATA) //< bulk data transfer to remote hubs
+        (DIRECTBULKDATA) //< bulk data transfer directly between remove data manager ranks
+        (RENDERSERVER) //< remote render server
+        (RENDERCLIENT) //< remote render client
+        (VRB) //< COVISE/OpenCOVER request broker for collaborative VR
+        (TUNNEL) //< initiate rendezvous tunnel connection
+        (SCRIPT) //< sent from a Python script
     )
     DEFINE_ENUM_WITH_STRING_CONVERSIONS(TunnelRole, (Client)(Server))
 
