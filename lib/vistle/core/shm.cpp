@@ -9,8 +9,11 @@
 //#include <boost/mpl/transform.hpp>
 
 #include <climits>
-
+#ifdef _WIN32
+#define RUNNING_ON_VALGRIND 0
+#else
 #include <vistle/util/valgrind.h>
+#endif
 #include "messagequeue.h"
 //#include "scalars.h"
 #include <cassert>
