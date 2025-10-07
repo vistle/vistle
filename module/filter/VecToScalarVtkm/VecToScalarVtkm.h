@@ -10,7 +10,9 @@ public:
     ~VecToScalarVtkm();
 
 private:
-    // vistle::IntParameter *m_caseParam;
+    vistle::IntParameter *m_caseParam;
+    mutable viskores::filter::Filter *filter_ = nullptr;
+        
     ModuleStatusPtr prepareInputField(const vistle::Port *port, const vistle::Object::const_ptr &grid,
                                       const vistle::DataBase::const_ptr &field, std::string &fieldName,
                                       viskores::cont::DataSet &dataset) const override;
@@ -30,6 +32,8 @@ private:
 };
 
 #endif
+
+
 
 
 
