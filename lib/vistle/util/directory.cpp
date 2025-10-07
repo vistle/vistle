@@ -119,6 +119,7 @@ static bool addpath(const char *var, const std::string &add)
 
 bool setVistleRoot(const std::string &vistleRootDir, const std::string &buildtype)
 {
+    //std::cerr << "setting VISTLE_ROOT to " << vistleRootDir << ", VISTLE_BUILDTYPE to " << buildtype << std::endl;
     return setvar("VISTLE_ROOT", vistleRootDir) && setvar("VISTLE_BUILDTYPE", buildtype);
 }
 
@@ -150,27 +151,46 @@ bool setEnvironment(const std::string &prefix)
 
 Directory::Directory(int argc, char *argv[])
 {
-    m_buildType = directory::build_type();
-
-    auto bindir = getbindir(argc, argv);
-    while (!bindir.empty() && bindir.back() == '/')
-        bindir.pop_back();
-    if (bindir.length() < m_buildType.length()) {
-        m_buildType.clear();
-    } else if (bindir.rfind(m_buildType) != bindir.length() - m_buildType.length()) {
-        m_buildType.clear();
+    if (auto buildtype = getenv("VISTLE_BUILDTYPE")) {
+        m_buildType = buildtype;
+    } else {
+        m_buildType = directory::build_type();
     }
 
-    m_prefix = directory::prefix(bindir, m_buildType) + "/";
-    if (!m_buildType.empty())
-        m_buildTypeSuffix = m_buildType + "/";
+    if (auto prefix = getenv("VISTLE_ROOT")) {
+        m_prefix = prefix;
+    } else {
+        auto bindir = getbindir(argc, argv);
+        while (!bindir.empty() && bindir.back() == '/')
+            bindir.pop_back();
+        if (bindir.length() < m_buildType.length()) {
+            m_buildType.clear();
+        } else if (bindir.rfind(m_buildType) != bindir.length() - m_buildType.length()) {
+            m_buildType.clear();
+        }
+        m_prefix = directory::prefix(bindir, m_buildType);
+    }
+
+    canonical();
 }
 
-Directory::Directory(const std::string &prefix, const std::string &buildtype)
-: m_prefix(prefix), m_buildType(buildtype), m_buildTypeSuffix(buildtype.empty() ? "" : buildtype + "/")
+Directory::Directory(const std::string &prefix, const std::string &buildtype): m_prefix(prefix), m_buildType(buildtype)
+{
+    canonical();
+}
+
+Directory::Directory()
+: Directory(getenv("VISTLE_ROOT") ? getenv("VISTLE_ROOT") : "",
+            getenv("VISTLE_BUILDTYPE") ? getenv("VISTLE_BUILDTYPE") : "")
+{}
+
+void Directory::canonical()
 {
     if (m_prefix.empty() || m_prefix.back() != '/')
         m_prefix += "/";
+
+    if (!m_buildType.empty())
+        m_buildTypeSuffix = m_buildType + "/";
 }
 
 std::string Directory::buildType() const

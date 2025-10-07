@@ -26,6 +26,7 @@
 #include <vistle/util/threadname.h>
 #include <vistle/util/affinity.h>
 #include <vistle/util/profile.h>
+#include <vistle/util/directory.h>
 #include <vistle/config/config.h>
 #include <vistle/core/object.h>
 #include <vistle/core/empty.h>
@@ -238,6 +239,7 @@ Module::Module(const std::string &moduleName, const int moduleId, mpi::communica
     m_size = m_comm.size();
     m_rank = m_comm.rank();
     m_configAccess = std::make_unique<config::Access>(vistle::hostname(), vistle::clustername(), m_rank);
+    m_configAccess->setPrefix(Directory().prefix());
     ParameterManager::setConfig(m_configAccess.get());
     m_configFile = m_configAccess->file("module/" + name());
 

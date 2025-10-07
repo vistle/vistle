@@ -773,6 +773,8 @@ bool Hub::init(int argc, char *argv[])
         setenv("VISTLE_CONNECTION", conn.c_str(), 1);
     }
 
+    vistle::directory::setVistleRoot(m_dir->prefix(), m_dir->buildType());
+
     if (m_isMaster) {
         // this is the master hub
         m_hubId = Id::MasterHub;
