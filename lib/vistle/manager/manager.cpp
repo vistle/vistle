@@ -236,6 +236,7 @@ bool VistleManager::run(int argc, char *argv[])
 #endif
 
     m_configAccess = std::make_unique<config::Access>(vistle::hostname(), vistle::clustername(), rank);
+    m_configAccess->setPrefix(Directory().prefix());
 
 #ifdef COVER_ON_MAINTHREAD
 #if defined(HAVE_QT) && defined(MODULE_THREAD)

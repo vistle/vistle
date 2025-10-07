@@ -10,6 +10,7 @@ namespace vistle {
 
 class V_UTILEXPORT Directory {
 public:
+    Directory(); // use VISTLE_ROOT and VISTLE_BUILDTYPE
     Directory(int argc, char *argv[]);
     Directory(const std::string &prefix, const std::string &buildtype);
     std::string prefix() const;
@@ -22,6 +23,7 @@ public:
     std::string covisedir() const;
 
 private:
+    void canonical();
     std::string m_prefix;
     std::string m_buildType;
     std::string m_buildTypeSuffix;
