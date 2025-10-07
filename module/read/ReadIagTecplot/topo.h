@@ -146,7 +146,7 @@ template<typename point_container_t>
 inline void TopoSurface<3>::computeGeometry(point_container_t iPoints)
 {
     assert(mNodes[0] >= 0 && mNodes[1] >= 0 && mNodes[2] >= 0);
-    computeCenter(iPoints);
+    this->computeCenter(iPoints);
     mNormal = cross(iPoints[mNodes[1]] - iPoints[mNodes[0]], iPoints[mNodes[2]] - iPoints[mNodes[0]]);
     mSpace = 0.5 * mNormal.length();
     if (mSpace != 0)
@@ -158,7 +158,7 @@ template<typename point_container_t>
 inline void TopoSurface<4>::computeGeometry(point_container_t iPoints)
 {
     assert(mNodes[0] >= 0 && mNodes[1] >= 0 && mNodes[2] >= 0 && mNodes[3] >= 0);
-    computeCenter(iPoints);
+    this->computeCenter(iPoints);
 #if 1
     mNormal = cross(iPoints[mNodes[2]] - iPoints[mNodes[0]], iPoints[mNodes[3]] - iPoints[mNodes[1]]);
     mSpace = 0.5 * mNormal.length();
@@ -185,11 +185,11 @@ template<typename point_container_t>
 inline void TopoVolume<4>::computeGeometry(point_container_t iPoints)
 {
     assert(mNodes[0] >= 0 && mNodes[1] >= 0 && mNodes[2] >= 0 && mNodes[3] >= 0);
-    computeCenter(iPoints);
+    this->computeCenter(iPoints);
     Vector d1 = iPoints[mNodes[1]] - iPoints[mNodes[0]];
     Vector d2 = iPoints[mNodes[2]] - iPoints[mNodes[0]];
     Vector d3 = iPoints[mNodes[3]] - iPoints[mNodes[0]];
-    mSpace = 1.0 / 6 * std::abs((d3 * (d1 ^ d2)));
+    this->mSpace = 1.0 / 6 * std::abs((d3 * (d1 ^ d2)));
 }
 
 template<>
@@ -198,7 +198,7 @@ inline void TopoVolume<8>::computeGeometry(point_container_t iPoints)
 {
     assert(mNodes[0] >= 0 && mNodes[1] >= 0 && mNodes[2] >= 0 && mNodes[3] >= 0);
     assert(mNodes[4] >= 0 && mNodes[5] >= 0 && mNodes[6] >= 0 && mNodes[7] >= 0);
-    computeCenter(iPoints);
+    this->computeCenter(iPoints);
     Vector d1 = iPoints[mNodes[1]] - iPoints[mNodes[0]];
     Vector d2 = iPoints[mNodes[3]] - iPoints[mNodes[0]];
     Vector d3 = iPoints[mNodes[4]] - iPoints[mNodes[0]];
@@ -207,7 +207,7 @@ inline void TopoVolume<8>::computeGeometry(point_container_t iPoints)
     d2 = iPoints[mNodes[5]] - iPoints[mNodes[6]];
     d3 = iPoints[mNodes[7]] - iPoints[mNodes[6]];
     double spat2 = (d1 ^ d2) * (d3);
-    mSpace = 0.5 * std::abs(spat1 + spat2);
+    this->mSpace = 0.5 * std::abs(spat1 + spat2);
 }
 
 #endif
