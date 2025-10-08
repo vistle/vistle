@@ -10,28 +10,28 @@
 MODULE_MAIN(VecToScalarVtkm)
 
 using namespace vistle;
-
 namespace {
 
 // filter to extract component X, Y, z as a scalar field.
 // Uses UnknownArrayHandle::ExtractComponent<BaseT>() with BaseT = vistle::Scalar.
-class ExtractComponentFilter final : public viskores::filter::Filter {
+class ExtractComponentFilter final: public viskores::filter::Filter {
 public:
     void SetComponentIndex(int c) { comp_ = c; }
 
 private:
     int comp_ = 0;
 
-    viskores::cont::DataSet DoExecute(const viskores::cont::DataSet &in) override {
+    viskores::cont::DataSet DoExecute(const viskores::cont::DataSet &in) override
+    {
         auto inField = this->GetFieldFromDataSet(in);
-        auto assoc   = inField.GetAssociation();
-        auto name    = inField.GetName();
+        auto assoc = inField.GetAssociation();
+        auto name = inField.GetName();
 
-        using BaseT = vistle::Scalar; 
+        using BaseT = vistle::Scalar;
         auto ua = inField.GetData();
         auto compAH = ua.ExtractComponent<BaseT>(comp_);
 
-        viskores::cont::DataSet out = in;   // grid unchanged
+        viskores::cont::DataSet out = in; // grid unchanged
         out.AddField(viskores::cont::Field(name, assoc, compAH));
         return out;
     }
@@ -40,66 +40,54 @@ private:
 } // namespace
 
 
-
-
 VecToScalarVtkm::VecToScalarVtkm(const std::string &name, int moduleID, mpi::communicator comm)
-    : VtkmModule(name, moduleID, comm, 1, MappedDataHandling::Use)
+: VtkmModule(name, moduleID, comm, 1, MappedDataHandling::Use)
 {
     m_caseParam = addIntParameter("choose_scalar_value", "Choose Scalar Value", 3, Parameter::Choice);
-    setParameterChoices(m_caseParam, std::vector<std::string>{"X","Y","Z","Magnitude"});
-
+    setParameterChoices(m_caseParam, std::vector<std::string>{"X", "Y", "Z", "Magnitude"});
 }
-
 
 
 VecToScalarVtkm::~VecToScalarVtkm()
+{}
+
+
+std::unique_ptr<viskores::filter::Filter> VecToScalarVtkm::setUpFilter() const
 {
+    const int choice = m_caseParam->getValue(); // 0=X,1=Y,2=Z,3=Mag
+    if (choice == 3) {
+        auto f = std::make_unique<viskores::filter::vector_analysis::VectorMagnitude>();
+        filter_ = f.get();
+        return f;
+    } else {
+        auto f = std::make_unique<ExtractComponentFilter>();
+        f->SetComponentIndex(choice);
+        filter_ = f.get();
+        return f;
+    }
 }
-
-
-std::unique_ptr<viskores::filter::Filter> VecToScalarVtkm::setUpFilter() const {
-
-  const int choice = m_caseParam->getValue(); // 0=X,1=Y,2=Z,3=Mag
-  if (choice == 3) {
-    auto f = std::make_unique<viskores::filter::vector_analysis::VectorMagnitude>();
-    filter_ = f.get();
-    return f;
-  } else {
-    auto f = std::make_unique<ExtractComponentFilter>();
-    f->SetComponentIndex(choice);
-    filter_ = f.get();
-    return f;
-  }
-}
-
-
-
 
 
 ModuleStatusPtr VecToScalarVtkm::prepareInputField(const Port *port, const Object::const_ptr &grid,
-                                                  const DataBase::const_ptr &field, std::string &fieldName,
-                                                  viskores::cont::DataSet &dataset) const
+                                                   const DataBase::const_ptr &field, std::string &fieldName,
+                                                   viskores::cont::DataSet &dataset) const
 {
-    
-        // transform to Viskores + add to dataset
-        return VtkmModule::prepareInputField(port, grid, field, fieldName, dataset);
+    // transform to Viskores + add to dataset
+    return VtkmModule::prepareInputField(port, grid, field, fieldName, dataset);
 }
 
 
-
 Object::const_ptr VecToScalarVtkm::prepareOutputGrid(const viskores::cont::DataSet &dataset,
-                                                    const Object::const_ptr &inputGrid) const
+                                                     const Object::const_ptr &inputGrid) const
 {
     return nullptr;
 }
 
 
-
 DataBase::ptr VecToScalarVtkm::prepareOutputField(const viskores::cont::DataSet &dataset,
-                                    const Object::const_ptr &inputGrid,
-                                    const DataBase::const_ptr &inputField,
-                                    const std::string &fieldName,
-                                    const Object::const_ptr &outputGrid) const
+                                                  const Object::const_ptr &inputGrid,
+                                                  const DataBase::const_ptr &inputField, const std::string &fieldName,
+                                                  const Object::const_ptr &outputGrid) const
 {
     auto out = VtkmModule::prepareOutputField(dataset, inputGrid, inputField, fieldName, outputGrid);
     if (!out)
