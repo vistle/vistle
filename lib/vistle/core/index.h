@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <cinttypes>
 #include <limits>
+#include <type_traits>
 
 namespace vistle {
 
@@ -26,9 +27,18 @@ typedef SIndex32 SIndex;
 const Index InvalidIndex = InvalidIndex32;
 #endif
 
+#define V_INDEX_CHECK(t) \
+    static_assert(sizeof(t) == sizeof(S##t)); \
+    static_assert(std::is_signed<S##t>::value); \
+    static_assert(std::is_unsigned<t>::value); \
+    static_assert(Invalid##t > t(0)); \
+    //static_assert(static_cast<Integer>(Invalid##t) > Integer(0));
+
 #define FOR_ALL_INDEX(MACRO) \
     MACRO(Index32) \
     MACRO(Index64)
+
+FOR_ALL_INDEX(V_INDEX_CHECK)
 
 } // namespace vistle
 
