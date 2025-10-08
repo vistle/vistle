@@ -12,12 +12,11 @@ public:
 private:
     vistle::IntParameter *m_caseParam;
     mutable viskores::filter::Filter *filter_ = nullptr;
-        
+
     ModuleStatusPtr prepareInputField(const vistle::Port *port, const vistle::Object::const_ptr &grid,
                                       const vistle::DataBase::const_ptr &field, std::string &fieldName,
                                       viskores::cont::DataSet &dataset) const override;
 
-                                   
 
     std::unique_ptr<viskores::filter::Filter> setUpFilter() const override;
 
@@ -32,8 +31,3 @@ private:
 };
 
 #endif
-
-
-
-
-
