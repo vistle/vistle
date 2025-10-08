@@ -1,13 +1,10 @@
 #include "setname.h"
+#include <algorithm>
+#include <cassert>
 
-template<typename T>
-static T min(T a, T b)
-{
-    return a < b ? a : b;
-}
 #define COPY_STRING(dst, src) \
     do { \
-        const size_t size = min(src.size(), dst.size() - 1); \
+        const size_t size = std::min(src.size(), dst.size() - 1); \
         src.copy(dst.data(), size); \
         dst[size] = '\0'; \
         assert(src.size() < dst.size()); \
