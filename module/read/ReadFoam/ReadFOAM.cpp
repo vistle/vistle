@@ -404,7 +404,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
             //with either its own or the neighbouring domain's face-numbering (clockwise or ccw)
             //so that two domains have the same list for a mutual border
             //therefore m_procBoundaryVertices[0][1] point to the same vertices in the same order as
-            //m_procBoundaryVertices[1][0] (though each list may use different labels  for each vertice)
+            //m_procBoundaryVertices[1][0] (though each list may use different labels for each vertex)
             if (m_buildGhost) {
                 for (const auto &b: boundaries->procboundaries) {
                     std::vector<Index> outerVertices;
@@ -502,6 +502,33 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
             auto &connectivities = grid->cl();
             auto inserter = std::back_inserter(connectivities);
             connectivities.reserve(num_conn);
+            auto insertPoly = [&cellfacemap, &faces, &connectivities, &inserter, &owners, &neighbours, &dim](Index i) {
+                const auto &cellfaces = cellfacemap[i]; //get all faces of current cell
+                for (index_t j = 0; j < cellfaces.size(); j++) {
+                    index_t ia = cellfaces[j];
+                    const auto &a = faces[ia];
+
+                    if (!isPointingInwards(ia, i, dim.internalFaces, (*owners), neighbours)) {
+                        std::copy(a.rbegin(), a.rend(), inserter);
+                        connectivities.push_back(*a.rbegin());
+                    } else {
+                        std::copy(a.begin(), a.end(), inserter);
+                        connectivities.push_back(*a.begin());
+                    }
+                }
+            };
+#define FINDVERTEX_OR_POLY(idx) \
+    { \
+        auto v = findVertexAlongEdge(a[idx], ia, cellfaces, faces); \
+        if (v != -1) { \
+            a.push_back(v); \
+        } else { \
+            std::cerr << "ERROR: findVertexAlongEdge failed for " << a[idx] << std::endl; \
+            tl[i] = UnstructuredGrid::POLYGON; \
+            insertPoly(i); \
+            break; \
+        } \
+    }
             for (index_t i = 0; i < dim.cells; i++) {
                 //element list
                 el[i] = connectivities.size();
@@ -519,9 +546,9 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
                     }
 
                     // bottom face
-                    std::copy(a.begin(), a.end(), inserter);
+                    const auto b = a;
 #if 1
-                    for (auto v: a) {
+                    for (auto v: b) {
                         bool found = false;
                         for (int f = 1; f < 6; ++f) {
                             const auto &face = faces[cellfaces[f]];
@@ -529,12 +556,12 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
                                 if (face[i] == v) {
                                     found = true;
                                     const int next = (i + 1) % 4;
-                                    auto it = std::find(a.begin(), a.end(), face[next]);
-                                    if (it == a.end()) {
-                                        connectivities.push_back(face[next]);
+                                    auto it = std::find(b.begin(), b.end(), face[next]);
+                                    if (it == b.end()) {
+                                        a.push_back(face[next]);
                                     } else {
                                         const int prev = (i + 4 - 1) % 4;
-                                        connectivities.push_back(face[prev]);
+                                        a.push_back(face[prev]);
                                     }
                                     break;
                                 }
@@ -545,11 +572,12 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
                         assert(found);
                     }
 #else
-                    connectivities.push_back(findVertexAlongEdge(a[0], ia, cellfaces, faces));
-                    connectivities.push_back(findVertexAlongEdge(a[1], ia, cellfaces, faces));
-                    connectivities.push_back(findVertexAlongEdge(a[2], ia, cellfaces, faces));
-                    connectivities.push_back(findVertexAlongEdge(a[3], ia, cellfaces, faces));
+                    FINDVERTEX_OR_POLY(0);
+                    FINDVERTEX_OR_POLY(1);
+                    FINDVERTEX_OR_POLY(2);
+                    FINDVERTEX_OR_POLY(3);
 #endif
+                    std::copy(a.begin(), a.end(), inserter);
                 } break;
 
                 case UnstructuredGrid::PRISM: {
@@ -565,10 +593,10 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
                         std::reverse(a.begin(), a.end());
                     }
 
+                    FINDVERTEX_OR_POLY(0);
+                    FINDVERTEX_OR_POLY(1);
+                    FINDVERTEX_OR_POLY(2);
                     std::copy(a.begin(), a.end(), inserter);
-                    connectivities.push_back(findVertexAlongEdge(a[0], ia, cellfaces, faces));
-                    connectivities.push_back(findVertexAlongEdge(a[1], ia, cellfaces, faces));
-                    connectivities.push_back(findVertexAlongEdge(a[2], ia, cellfaces, faces));
                 } break;
 
                 case UnstructuredGrid::PYRAMID: {
@@ -584,8 +612,8 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
                         std::reverse(a.begin(), a.end());
                     }
 
+                    FINDVERTEX_OR_POLY(0);
                     std::copy(a.begin(), a.end(), inserter);
-                    connectivities.push_back(findVertexAlongEdge(a[0], ia, cellfaces, faces));
                 } break;
 
                 case UnstructuredGrid::TETRAHEDRON: {
@@ -596,23 +624,12 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
                         std::reverse(a.begin(), a.end());
                     }
 
+                    FINDVERTEX_OR_POLY(0);
                     std::copy(a.begin(), a.end(), inserter);
-                    connectivities.push_back(findVertexAlongEdge(a[0], ia, cellfaces, faces));
                 } break;
 
                 case UnstructuredGrid::POLYHEDRON: {
-                    for (index_t j = 0; j < cellfaces.size(); j++) {
-                        index_t ia = cellfaces[j];
-                        const auto &a = faces[ia];
-
-                        if (!isPointingInwards(ia, i, dim.internalFaces, (*owners), neighbours)) {
-                            std::copy(a.rbegin(), a.rend(), inserter);
-                            connectivities.push_back(*a.rbegin());
-                        } else {
-                            std::copy(a.begin(), a.end(), inserter);
-                            connectivities.push_back(*a.begin());
-                        }
-                    }
+                    insertPoly(i);
                 } break;
 
                 default: {
@@ -621,7 +638,6 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
                 }
                 }
             }
-            assert(num_conn == connectivities.size());
             el[dim.cells] = connectivities.size();
         }
     }
