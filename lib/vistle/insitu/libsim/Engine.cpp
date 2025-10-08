@@ -243,9 +243,9 @@ void Engine::setSlaveComandCallback(void (*sc)(void))
     slaveCommandCallback = sc;
 }
 
-int Engine::GetInputSocket()
+message::socket_handle Engine::GetInputSocket()
 {
-    return m_messageHandler ? m_messageHandler->socketDescriptor() : 0;
+    return m_messageHandler ? m_messageHandler->socketDescriptor() : message::socket_handle{0};
 }
 
 //...................................................................................................

@@ -2,7 +2,6 @@
 #include <vistle/insitu/core/slowMpi.h>
 #include <boost/asio.hpp>
 #include <boost/asio/io_context.hpp>
-#include <boost/asio/ip/tcp.hpp>
 #include <vistle/util/listenv4v6.h>
 #include <vistle/insitu/core/exception.h>
 
@@ -193,7 +192,7 @@ Message InSituTcp::tryRecv()
     return recv();
 }
 
-int InSituTcp::socketDescriptor() const
+socket_handle InSituTcp::socketDescriptor() const
 {
-    return m_socket ? m_socket->native_handle() : 0;
+    return m_socket ? m_socket->native_handle() : socket_handle{0};
 }

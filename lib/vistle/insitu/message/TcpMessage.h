@@ -18,6 +18,9 @@ namespace message {
 // When the connection is closed returns EngineMEssageType::ConnectionClosed and becomes uninitialized.
 // while uninitialized calls to send and receive are ignored.
 // Received Messages are broadcasted to all ranks so make sure they all call receive together.
+
+typedef boost::asio::basic_socket<boost::asio::ip::tcp>::native_handle_type socket_handle;
+
 class V_INSITUMESSAGEEXPORT InSituTcp: public MessageHandler {
 public:
     InSituTcp(boost::mpi::communicator comm);
@@ -29,7 +32,7 @@ public:
     void setOnConnectedCb(const std::function<void(void)> &cb);
     insitu::message::Message recv() override;
     insitu::message::Message tryRecv() override;
-    int socketDescriptor() const;
+    socket_handle socketDescriptor() const;
 
 protected:
 private:
