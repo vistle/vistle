@@ -1474,6 +1474,9 @@ index_t findVertexAlongEdge(const index_t point,
                 break;
         }
     }
+    
+    if (idx < 2)
+        return -1;
 
     //use these faces to find the vertex that is along the edge formed by these two faces
     const std::vector<index_t> &a = faces[pointfaces[0]];
