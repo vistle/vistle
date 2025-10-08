@@ -11,6 +11,35 @@ MODULE_MAIN(VecToScalarVtkm)
 
 using namespace vistle;
 
+namespace {
+
+// filter to extract component X, Y, z as a scalar field.
+// Uses UnknownArrayHandle::ExtractComponent<BaseT>() with BaseT = vistle::Scalar.
+class ExtractComponentFilter final : public viskores::filter::Filter {
+public:
+    void SetComponentIndex(int c) { comp_ = c; }
+
+private:
+    int comp_ = 0;
+
+    viskores::cont::DataSet DoExecute(const viskores::cont::DataSet &in) override {
+        auto inField = this->GetFieldFromDataSet(in);
+        auto assoc   = inField.GetAssociation();
+        auto name    = inField.GetName();
+
+        using BaseT = vistle::Scalar; 
+        auto ua = inField.GetData();
+        auto compAH = ua.ExtractComponent<BaseT>(comp_);
+
+        viskores::cont::DataSet out = in;   // grid unchanged
+        out.AddField(viskores::cont::Field(name, assoc, compAH));
+        return out;
+    }
+};
+
+} // namespace
+
+
 
 
 VecToScalarVtkm::VecToScalarVtkm(const std::string &name, int moduleID, mpi::communicator comm)
@@ -21,33 +50,15 @@ VecToScalarVtkm::VecToScalarVtkm(const std::string &name, int moduleID, mpi::com
 
 }
 
+
+
 VecToScalarVtkm::~VecToScalarVtkm()
 {
 }
 
-class ExtractComponentFilter : public viskores::filter::Filter {
-public:
-  void SetComponentIndex(int c) { comp_ = c; }
-private:
-  int comp_ = 0;
-
-  viskores::cont::DataSet DoExecute(const viskores::cont::DataSet &in) override {
-    auto inField = this->GetFieldFromDataSet(in);
-    auto assoc   = inField.GetAssociation();
-    auto name    = inField.GetName();
-
-    using BaseT = vistle::Scalar; // <- key line
-    auto ua = inField.GetData();
-    auto compAH = ua.ExtractComponent<BaseT>(comp_);  // <-- now compiles
-    viskores::cont::DataSet out = in;
-    out.AddField(viskores::cont::Field(name, assoc, compAH));
-    return out;
-  }
-};
-
-
 
 std::unique_ptr<viskores::filter::Filter> VecToScalarVtkm::setUpFilter() const {
+
   const int choice = m_caseParam->getValue(); // 0=X,1=Y,2=Z,3=Mag
   if (choice == 3) {
     auto f = std::make_unique<viskores::filter::vector_analysis::VectorMagnitude>();
@@ -60,6 +71,8 @@ std::unique_ptr<viskores::filter::Filter> VecToScalarVtkm::setUpFilter() const {
     return f;
   }
 }
+
+
 
 
 
