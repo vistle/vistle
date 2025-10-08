@@ -7,7 +7,6 @@
 #include <vistle/core/vector.h>
 #include <vistle/core/object.h>
 #include <vistle/core/normals.h>
-#include <vistle/core/texture1d.h>
 
 #include "export.h"
 

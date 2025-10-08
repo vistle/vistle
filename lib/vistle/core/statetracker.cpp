@@ -2,6 +2,7 @@
 
 #include "message.h"
 #include "messages.h"
+#include "message/colormap.h"
 #include "messagerouter.h"
 #include "parameter.h"
 #include "port.h"
@@ -430,6 +431,24 @@ void StateTracker::appendModuleParameter(VistleState &state, const Module &m) co
     }
 }
 
+void StateTracker::appendModuleColor(VistleState &state, const Module &m) const
+{
+    using namespace vistle::message;
+    for (const auto &kcm: m.colormaps) {
+        const auto &cm = kcm.second;
+        auto id = m.id;
+        const std::string &species = cm.species;
+        Colormap colormap(species, cm.sourceModule);
+        colormap.setSenderId(id);
+        colormap.setBlendWithMaterial(cm.blendWithMaterial);
+        colormap.setRange(cm.min, cm.max);
+        Colormap::Payload pl(cm.rgba);
+        auto vec = addPayload(colormap, pl);
+        auto shvec = std::make_shared<buffer>(vec);
+        appendMessage(state, colormap, shvec);
+    }
+}
+
 void StateTracker::appendModulePorts(VistleState &state, const Module &mod) const
 {
     using namespace vistle::message;
@@ -560,6 +579,7 @@ StateTracker::VistleState StateTracker::getState() const
             appendModuleState(state, m);
         }
         appendModuleParameter(state, m);
+        appendModuleColor(state, m);
         appendModulePorts(state, m);
         appendModuleInfo(state, m);
     }
@@ -912,6 +932,16 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
     }
     case CLOSECONNECTION: {
         const auto &m = msg.as<CloseConnection>();
+        handled = handlePriv(m);
+        break;
+    }
+    case COLORMAP: {
+        const auto &m = msg.as<Colormap>();
+        handled = handlePriv(m, pl);
+        break;
+    }
+    case REMOVECOLORMAP: {
+        const auto &m = msg.as<RemoveColormap>();
         handled = handlePriv(m);
         break;
     }
@@ -1636,6 +1666,54 @@ bool StateTracker::handlePriv(const message::Barrier &barrier)
 
 bool StateTracker::handlePriv(const message::BarrierReached &barrReached)
 {
+    return true;
+}
+
+bool StateTracker::handlePriv(const message::Colormap &colormap, const buffer &payload)
+{
+    auto id = colormap.senderId();
+    auto it = runningMap.find(id);
+    if (it == runningMap.end()) {
+        it = quitMap.find(id);
+        assert(it != quitMap.end());
+        return false;
+    }
+
+    auto pl = message::getPayload<message::Colormap::Payload>(payload);
+
+    auto &mod = it->second;
+    auto &cmaps = mod.colormaps;
+    ColorMapKey key{colormap.source(), colormap.species()};
+    auto &cm = cmaps[key];
+    cm.species = colormap.species();
+    cm.sourceModule = colormap.source();
+    cm.blendWithMaterial = colormap.blendWithMaterial();
+    cm.min = colormap.min();
+    cm.max = colormap.max();
+    cm.rgba = pl.rgba;
+
+    return true;
+}
+
+bool StateTracker::handlePriv(const message::RemoveColormap &rcm)
+{
+    auto id = rcm.senderId();
+    auto it = runningMap.find(id);
+    if (it == runningMap.end()) {
+        it = quitMap.find(id);
+        assert(it != quitMap.end());
+        if (it == quitMap.end())
+            return false;
+    }
+
+    auto &mod = it->second;
+    auto &cmaps = mod.colormaps;
+    ColorMapKey key;
+    key.species = rcm.species();
+    key.sourceModule = rcm.source();
+    if (auto cit = cmaps.find(key); cit != cmaps.end()) {
+        cmaps.erase(cit);
+    }
     return true;
 }
 

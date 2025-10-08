@@ -5,6 +5,7 @@
 #include <vistle/core/points.h>
 #include <vistle/core/vec.h>
 #include <vistle/core/celltypes.h>
+#include <vistle/core/texture1d.h>
 
 #include <cassert>
 
@@ -425,4 +426,5 @@ void RayColorMap::deinit()
         cmap->blendWithMaterial = 0;
         cmap->texData = nullptr;
     }
+    rgba.clear();
 }

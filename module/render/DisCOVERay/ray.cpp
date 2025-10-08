@@ -8,7 +8,6 @@
 #include <boost/mpi.hpp>
 
 #include <vistle/renderer/renderer.h>
-#include <vistle/core/texture1d.h>
 #include <vistle/core/message.h>
 #include <cassert>
 
@@ -104,8 +103,8 @@ public:
     FloatParameter *m_pointSizeParam;
 
     // colormaps
-    bool addColorMap(const std::string &species, vistle::Object::const_ptr texture) override;
-    bool removeColorMap(const std::string &species) override;
+    bool addColorMap(const vistle::message::Colormap &cm, std::vector<vistle::RGBA> &rgba) override;
+    bool removeColorMap(const std::string &species, int sourceModule) override;
 
     // object lifetime management
     std::shared_ptr<RenderObject> addObject(int sender, const std::string &senderPort,
@@ -205,25 +204,24 @@ void DisCOVERay::connectionRemoved(const Port *from, const Port *to)
     Renderer::connectionRemoved(from, to);
 }
 
-bool DisCOVERay::addColorMap(const std::string &species, Object::const_ptr cmap)
+bool DisCOVERay::addColorMap(const vistle::message::Colormap &cm, std::vector<vistle::RGBA> &rgba)
 {
-    if (auto texture = Texture1D::as(cmap)) {
-        auto &cmap = m_colormaps[species];
-        cmap.tex = texture;
-        if (!cmap.cmap)
-            cmap.cmap.reset(new ispc::ColorMapData);
-        cmap.cmap->min = texture->getMin();
-        cmap.cmap->max = texture->getMax();
-        cmap.cmap->texWidth = texture->getWidth();
-        cmap.cmap->texData = texture->pixels().data();
-        cmap.cmap->blendWithMaterial = texture->hasAttribute(attribute::BlendWithMaterial) ? 1 : 0;
-
-        m_renderManager.setModified();
-    }
+    std::string species = cm.species();
+    int modId = cm.senderId();
+    auto &cmap = m_colormaps[species];
+    cmap.rgba = rgba;
+    if (!cmap.cmap)
+        cmap.cmap.reset(new ispc::ColorMapData);
+    cmap.cmap->min = cm.min();
+    cmap.cmap->max = cm.max();
+    cmap.cmap->blendWithMaterial = cm.blendWithMaterial() ? 1 : 0;
+    cmap.cmap->texWidth = rgba.size();
+    cmap.cmap->texData = &cmap.rgba[0][0];
+    m_renderManager.setModified();
     return true;
 }
 
-bool DisCOVERay::removeColorMap(const std::string &species)
+bool DisCOVERay::removeColorMap(const std::string &species, int sourceModule)
 {
     std::cerr << "removing colormap " << species << std::endl;
     auto it = m_colormaps.find(species);

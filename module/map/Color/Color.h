@@ -6,6 +6,11 @@
 #include <vistle/core/texture1d.h>
 
 #include <deque>
+#include <cstdint>
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
 
 #ifdef COLOR_RANDOM
 #define Color ColorRandom
@@ -22,7 +27,7 @@ public:
              vistle::Scalar compress = 1.f);
     ~ColorMap();
 
-    std::vector<unsigned char> data;
+    std::vector<uint8_t> data;
     size_t width = 0;
 };
 
@@ -89,7 +94,7 @@ private:
     std::string m_species;
     bool m_colorMapSent = false;
     vistle::Port *m_dataIn = nullptr;
-    vistle::Port *m_dataOut = nullptr, *m_colorOut = nullptr;
+    vistle::Port *m_dataOut = nullptr;
     vistle::ResultCache<vistle::Object::ptr> m_cache;
 };
 

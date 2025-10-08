@@ -298,6 +298,8 @@ private:
     bool handlePriv(const message::SetName &setname);
     bool handlePriv(const message::LoadWorkflow &load);
     bool handlePriv(const message::SaveWorkflow &save);
+    bool handlePriv(const message::Colormap &cm, const buffer *payload);
+    bool handlePriv(const message::RemoveColormap &rmcm);
 
     template<typename ConnMsg>
     bool handleConnectOrDisconnect(const ConnMsg &mm);

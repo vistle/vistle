@@ -21,6 +21,7 @@
 #include <vistle/core/messagepayload.h>
 #include <vistle/core/messagequeue.h>
 #include <vistle/core/messagerouter.h>
+#include <vistle/core/message/colormap.h>
 #include <vistle/core/object.h>
 #include <vistle/core/parameter.h>
 #include <vistle/core/shm.h>
@@ -782,6 +783,18 @@ bool ClusterManager::handle(const message::Buffer &message, const MessagePayload
     case message::IDLE: {
         const message::Idle &idle = message.as<Idle>();
         result = handlePriv(idle);
+        break;
+    }
+
+    case message::COLORMAP: {
+        const message::Colormap &m = message.as<Colormap>();
+        result = handlePriv(m, payload);
+        break;
+    }
+
+    case message::REMOVECOLORMAP: {
+        const message::RemoveColormap &m = message.as<RemoveColormap>();
+        result = handlePriv(m);
         break;
     }
 
@@ -2092,6 +2105,16 @@ bool ClusterManager::handlePriv(const message::ItemInfo &info, const MessagePayl
     } else {
         sendHub(info, payload);
     }
+    return true;
+}
+
+bool ClusterManager::handlePriv(const message::Colormap &cm, const MessagePayload &payload)
+{
+    return true;
+}
+
+bool ClusterManager::handlePriv(const message::RemoveColormap &rcm)
+{
     return true;
 }
 

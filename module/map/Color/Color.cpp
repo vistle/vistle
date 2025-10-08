@@ -6,12 +6,14 @@
 #include <random>
 #include <map>
 #include <vector>
+#include <vistle/core/rgba.h>
 #include <vistle/core/scalar.h>
 #include <vistle/core/vector.h>
 #include <vistle/core/object.h>
 #include <vistle/core/vec.h>
 #include <vistle/core/texture1d.h>
 #include <vistle/core/coords.h>
+#include <vistle/core/message/colormap.h>
 #include <vistle/util/math.h>
 #include <vistle/module/resultcache.h>
 #include <vistle/alg/objalg.h>
@@ -171,7 +173,6 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm): Mod
     m_dataIn = createInputPort("data_in", "field to create colormap for");
     setPortOptional(m_dataIn, true);
     m_dataOut = createOutputPort("data_out", "field converted to colors");
-    m_colorOut = createOutputPort("color_out", "color map");
     linkPorts(m_dataIn, m_dataOut);
 
     m_speciesPara = addStringParameter("species", "species attribute of input data", "");
@@ -940,11 +941,6 @@ void Color::updateHaveData()
 
 void Color::connectionAdded(const Port *from, const Port *to)
 {
-    if (from == m_colorOut) {
-        m_colorMapSent = false;
-        sendColorMap();
-    }
-
     if (to == m_dataIn) {
         m_haveData = true;
         updateHaveData();
@@ -990,48 +986,19 @@ void Color::sendColorMap()
     } else {
         m_species = m_speciesPara->getValue();
     }
-    if (!m_species.empty())
-        setItemInfo(m_species);
 
-    if (m_colorOut->isConnected() && !m_species.empty()) {
-#ifdef COLOR_RANDOM
-        vistle::Texture1D::ptr tex(new vistle::Texture1D(m_colors->width, m_min - 0.5, m_max + 0.5));
-#else
-        vistle::Texture1D::ptr tex(new vistle::Texture1D(m_colors->width, m_min, m_max));
-#endif
-        unsigned char *pix = tex->pixels().data();
-        for (size_t index = 0; index < m_colors->width * 4; index++)
-            pix[index] = m_colors->data[index];
-        tex->addAttribute(attribute::Species, m_species);
-        if (m_blendWithMaterialPara->getValue())
-            tex->addAttribute(attribute::BlendWithMaterial, "true");
-        updateMeta(tex);
-        addObject(m_colorOut, tex);
+    setItemInfo(m_species);
 
-        std::stringstream buffer;
-        buffer << tex->getName() << '\n'
-               << m_species << '\n'
-#ifdef COLOR_RANDOM
-               << (m_reverse ? m_max : m_min) - 0.5 << '\n'
-               << (m_reverse ? m_min : m_max) + 0.5 << '\n'
-#else
-               << (m_reverse ? m_max : m_min) << '\n'
-               << (m_reverse ? m_min : m_max) << '\n'
-#endif
-               << m_colors->width << '\n'
-               << '0';
+    if (m_species.empty())
+        return;
 
-        buffer.precision(4);
-        buffer << std::fixed;
-        for (size_t index = 0; index < m_colors->width * 4; index++)
-            buffer << "\n" << int(pix[index]) / 255.f;
+    message::Colormap cm(m_species);
+    cm.setDestId(message::Id::ForBroadcast);
+    cm.setRange(m_min, m_max);
+    if (m_blendWithMaterialPara->getValue())
+        cm.setBlendWithMaterial(true);
+    message::Colormap::Payload pl(m_colors->width, m_colors->data.data());
+    sendMessageWithPayload(cm, pl);
 
-#ifdef ColorMap
-#undef ColorMap
-#endif
-        tex->addAttribute(attribute::ColorMap, buffer.str());
-        tex->addAttribute(attribute::Plugin, "ColorBars");
-
-        m_colorMapSent = true;
-    }
+    m_colorMapSent = true;
 }

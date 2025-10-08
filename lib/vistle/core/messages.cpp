@@ -22,6 +22,8 @@
 
 #include <algorithm>
 
+#include "message/colormap.h"
+
 namespace vistle {
 namespace message {
 
@@ -2223,6 +2225,17 @@ std::ostream &operator<<(std::ostream &s, const Message &m)
     case SETNAME: {
         auto &mm = static_cast<const SetName &>(m);
         s << ", module: " << mm.module() << ", name: " << mm.name();
+        break;
+    }
+    case COLORMAP: {
+        auto &mm = static_cast<const Colormap &>(m);
+        s << ", species: " << mm.species() << ", source: " << mm.source() << ", range: [" << mm.min() << "," << mm.max()
+          << "]";
+        break;
+    }
+    case REMOVECOLORMAP: {
+        auto &mm = static_cast<const RemoveColormap &>(m);
+        s << ", species: " << mm.species() << ", source: " << mm.source();
         break;
     }
     default:
