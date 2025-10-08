@@ -7,7 +7,7 @@
 #include <vistle/core/vector.h>
 #include <vistle/core/object.h>
 #include <vistle/core/normals.h>
-#include <vistle/core/texture1d.h>
+#include <vistle/core/message/colormap.h>
 
 #include <vistle/renderer/renderobject.h>
 
@@ -19,7 +19,7 @@
 struct RayColorMap {
     void deinit();
 
-    vistle::Texture1D::const_ptr tex;
+    std::vector<vistle::RGBA> rgba;
     std::shared_ptr<ispc::ColorMapData> cmap;
 };
 

@@ -29,6 +29,7 @@
 #include <vistle/util/url.h>
 #include <vistle/util/version.h>
 #include <vistle/core/message.h>
+#include <vistle/core/message/colormap.h>
 #include <vistle/core/tcpmessage.h>
 #include <vistle/core/messagerouter.h>
 #include <vistle/core/porttracker.h>
@@ -2706,6 +2707,16 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             handlePriv(cover, payload);
             break;
         }
+        case COLORMAP: {
+            auto &cmap = msg.as<Colormap>();
+            handlePriv(cmap, payload);
+            break;
+        }
+        case REMOVECOLORMAP: {
+            auto &rcm = msg.as<RemoveColormap>();
+            handlePriv(rcm);
+            break;
+        }
         default: {
             break;
         }
@@ -4348,6 +4359,16 @@ bool Hub::handlePriv(const message::Cover &cover, const buffer *payload)
         }
     }
 
+    return true;
+}
+
+bool Hub::handlePriv(const message::Colormap &cm, const buffer *payload)
+{
+    return true;
+}
+
+bool Hub::handlePriv(const message::RemoveColormap &rmcm)
+{
     return true;
 }
 

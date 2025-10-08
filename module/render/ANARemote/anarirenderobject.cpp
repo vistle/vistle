@@ -4,6 +4,7 @@
 #include <vistle/core/lines.h>
 #include <vistle/core/points.h>
 #include <vistle/core/vec.h>
+#include <vistle/core/texture1d.h>
 
 #include <cassert>
 
@@ -413,28 +414,7 @@ void AnariColorMap::create(anari::Device dev)
         anari::setParameter(device, sampler, "name", "color:" + species);
         anari::setParameter(device, sampler, "inAttribute", "attribute0");
         anari::setParameter(device, sampler, "filter", "nearest");
-        if (tex) {
-            if (auto begin =
-                    anari::mapParameterArray<anari::std_types::bvec4>(device, sampler, "image", tex->getWidth())) {
-                auto end = begin + tex->getWidth();
-                const auto *ct = tex->pixels().data();
-                for (auto it = begin; it != end; ++it) {
-                    *it = {ct[0], ct[1], ct[2], ct[3]};
-                    ct += 4;
-                }
-                anari::unmapParameterArray(device, sampler, "image");
-            }
-            auto range = tex->getMax() - tex->getMin();
-            if (range > 0.) {
-                anari::std_types::mat4 smat{{{1.f / static_cast<float>(range), 0.f, 0.f, 0.f},
-                                             {0.f, 1.f, 0.f, 0.f},
-                                             {0.f, 0.f, 1.f, 0.f},
-                                             {0.f, 0.f, 0.f, 1.f}}};
-                anari::setParameter(device, sampler, "inTransform", smat);
-                anari::setParameter(device, sampler, "inOffset",
-                                    anari::std_types::vec4{-static_cast<float>(tex->getMin() / range), 0.f, 0.f, 0.f});
-            }
-        } else {
+        if (rgba.empty()) {
             if (auto begin = anari::mapParameterArray<anari::std_types::bvec4>(device, sampler, "image", 2)) {
                 auto it = begin;
                 *it = {63, 63, 63, 255};
@@ -443,6 +423,21 @@ void AnariColorMap::create(anari::Device dev)
                 ++it;
                 assert(it == begin + 2);
                 anari::unmapParameterArray(device, sampler, "image");
+            }
+        } else {
+            if (auto begin = anari::mapParameterArray<anari::std_types::bvec4>(device, sampler, "image", rgba.size())) {
+                std::copy(rgba.begin(), rgba.end(), begin);
+                anari::unmapParameterArray(device, sampler, "image");
+            }
+            auto range = max - min;
+            if (range > 0.) {
+                anari::std_types::mat4 smat{{{1.f / static_cast<float>(range), 0.f, 0.f, 0.f},
+                                             {0.f, 1.f, 0.f, 0.f},
+                                             {0.f, 0.f, 1.f, 0.f},
+                                             {0.f, 0.f, 0.f, 1.f}}};
+                anari::setParameter(device, sampler, "inTransform", smat);
+                anari::setParameter(device, sampler, "inOffset",
+                                    anari::std_types::vec4{-static_cast<float>(min / range), 0.f, 0.f, 0.f});
             }
         }
         anari::commitParameters(device, sampler);

@@ -1,4 +1,5 @@
 #include <vistle/core/message.h>
+#include <vistle/core/message/colormap.h>
 #include <vistle/core/messagequeue.h>
 #include <vistle/core/statetracker.h>
 #include <vistle/core/object.h>
@@ -65,6 +66,8 @@ bool Renderer::needsSync(const message::Message &m) const
     case REMOVEPARAMETER:
     case REPLAYFINISHED:
     case COVER:
+    case COLORMAP:
+    case REMOVECOLORMAP:
         return true;
     default:
         return false;
@@ -108,6 +111,18 @@ bool Renderer::handleMessage(const message::Message *message, const MessagePaylo
         return handleAddObject(*add);
         break;
     }
+    case vistle::message::COLORMAP: {
+        const auto &m = static_cast<const message::Colormap *>(message);
+        auto plbuf = vistle::buffer(payload->data(), payload->data() + payload->size());
+        auto pl = message::getPayload<message::Colormap::Payload>(plbuf);
+        addColorMap(*m, pl.rgba);
+        break;
+    }
+    case vistle::message::REMOVECOLORMAP: {
+        const auto &m = static_cast<const message::RemoveColormap *>(message);
+        removeColorMap(m->species());
+        break;
+    }
     default: {
         break;
     }
@@ -116,12 +131,12 @@ bool Renderer::handleMessage(const message::Message *message, const MessagePaylo
     return Module::handleMessage(message, payload);
 }
 
-bool Renderer::addColorMap(const std::string &species, Object::const_ptr cmap)
+bool Renderer::addColorMap(const vistle::message::Colormap &cm, std::vector<vistle::RGBA> &rgba)
 {
     return true;
 }
 
-bool Renderer::removeColorMap(const std::string &species)
+bool Renderer::removeColorMap(const std::string &species, int sourceModule)
 {
     return true;
 }
@@ -343,23 +358,6 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
     }
 
     auto geo_norm_tex = splitObject(object);
-
-    if (!geo_norm_tex[0]) {
-        std::string species = object->getAttribute(attribute::Species);
-        if (auto tex = vistle::Texture1D::as(object)) {
-            auto &cmap = m_colormaps[species];
-            cmap.texture = tex;
-            cmap.sender = sender;
-            cmap.senderPort = senderPort;
-            std::cerr << "added colormap " << species << " without object, width=" << tex->getWidth()
-                      << ", range=" << tex->getMin() << " to " << tex->getMax() << std::endl;
-            return addColorMap(species, tex);
-        }
-        if (auto ph = vistle::PlaceHolder::as(object)) {
-            if (ph->texture()->originalType() == vistle::Texture1D::type())
-                return addColorMap(species, ph->texture());
-        }
-    }
 
     std::shared_ptr<RenderObject> ro =
         addObjectWrapper(sender, senderPort, object, geo_norm_tex[0], geo_norm_tex[1], geo_norm_tex[2]);

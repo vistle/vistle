@@ -2,6 +2,7 @@ vistle_find_package(LZ4)
 #vistle_find_package(ZSTD)
 
 set(core_SOURCES
+    message/colormap.cpp
     message/setname.cpp
     allobjects.cpp # just one file including all the others for faster compilation
     availablemodule.cpp
@@ -65,6 +66,7 @@ set(core_SOURCES
     vertexownerlist.cpp)
 
 set(core_HEADERS
+    message/colormap.h
     message/setname.h
     archive_loader.h
     archive_saver.h
@@ -130,6 +132,7 @@ set(core_HEADERS
     quads.h
     rectilineargrid.h
     rectilineargrid_impl.h
+    rgba.h
     scalar.h
     scalars.h
     serialize.h

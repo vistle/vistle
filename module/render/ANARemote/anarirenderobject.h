@@ -7,12 +7,17 @@
 #include <vistle/core/vector.h>
 #include <vistle/core/object.h>
 #include <vistle/core/normals.h>
-#include <vistle/core/texture1d.h>
 
 #include <vistle/renderer/renderobject.h>
 
 #include <anari/anari_cpp/ext/std.h>
 #include <anari/anari_cpp.hpp>
+namespace anari {
+namespace std_types {
+using bvec4 = std::array<unsigned char, 4>;
+} // namespace std_types
+
+} // namespace anari
 
 struct AnariColorMap {
     ~AnariColorMap();
@@ -20,7 +25,11 @@ struct AnariColorMap {
     void create(anari::Device device);
 
     std::string species;
-    vistle::Texture1D::const_ptr tex;
+    double min = 0.;
+    double max = 1.;
+    bool blendWithMaterial = false;
+    using RGBA = anari::std_types::bvec4;
+    std::vector<RGBA> rgba;
     anari::Device device = nullptr;
     anari::Sampler sampler = nullptr;
 };

@@ -60,8 +60,8 @@ public:
     bool m_linearDepth = false;
 
     // colormaps
-    bool addColorMap(const std::string &species, vistle::Object::const_ptr texture) override;
-    bool removeColorMap(const std::string &species) override;
+    bool addColorMap(const vistle::message::Colormap &cm, std::vector<vistle::RGBA> &rgba) override;
+    bool removeColorMap(const std::string &species, int sourceModule) override;
 
     // object lifetime management
     std::shared_ptr<RenderObject> addObject(int sender, const std::string &senderPort,
@@ -186,26 +186,28 @@ void Anari::connectionRemoved(const Port *from, const Port *to)
     Renderer::connectionRemoved(from, to);
 }
 
-bool Anari::addColorMap(const std::string &species, Object::const_ptr cmaptex)
+bool Anari::addColorMap(const vistle::message::Colormap &cm, std::vector<vistle::RGBA> &rgba)
 {
+    std::string species = cm.species();
     bool addedOrChanged = m_colormaps.find(species) != m_colormaps.end();
     auto &cmap = m_colormaps[species];
     cmap.species = species;
-    if (auto texture = Texture1D::as(cmaptex)) {
-        if (cmap.tex != texture) {
-            cmap.tex = texture;
-            addedOrChanged = true;
-        }
-    }
+    cmap.min = cm.min();
+    cmap.max = cm.max();
+    cmap.blendWithMaterial = cm.blendWithMaterial();
+    cmap.rgba.resize(rgba.size());
+    std::copy(rgba.begin(), rgba.end(), cmap.rgba.begin());
+    addedOrChanged = true;
     if (addedOrChanged) {
-        CERR << "add or change colormap, species=" << species << ", have tex=" << (cmaptex ? "yes" : "no") << std::endl;
+        CERR << "add or change colormap, species=" << species << ", have tex=" << (cmap.rgba.empty() ? "no" : "yes")
+             << std::endl;
         cmap.create(m_device);
         m_renderManager.setModified();
     }
     return true;
 }
 
-bool Anari::removeColorMap(const std::string &species)
+bool Anari::removeColorMap(const std::string &species, int sourceModule)
 {
     CERR << "removing colormap " << species << std::endl;
     auto it = m_colormaps.find(species);
@@ -683,7 +685,7 @@ std::shared_ptr<RenderObject> Anari::addObject(int sender, const std::string &se
     if (!species.empty()) {
         CERR << "add object: species=" << species << ", " << *container << std::endl;
         // make sure that colormap exists on current device
-        addColorMap(species, nullptr);
+        //addColorMap(species, nullptr);
         ro->colorMap = &m_colormaps[species];
     }
     ro->create(m_device);

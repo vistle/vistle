@@ -3,6 +3,7 @@
 
 #include <vistle/module/module.h>
 #include <vistle/util/enum.h>
+#include <vistle/core/message/colormap.h>
 #include "renderobject.h"
 #include "export.h"
 
@@ -40,7 +41,7 @@ public:
     struct ColorMap {
         int sender = vistle::message::Id::Invalid;
         std::string senderPort;
-        vistle::Texture1D::const_ptr texture;
+        std::vector<vistle::RGBA> rgba;
     };
 
     typedef std::map<std::string, ColorMap> ColorMapMap;
@@ -62,8 +63,8 @@ public:
 protected:
     bool handleMessage(const message::Message *message, const MessagePayload &payload) override;
 
-    virtual bool addColorMap(const std::string &species, Object::const_ptr cmap);
-    virtual bool removeColorMap(const std::string &species);
+    virtual bool addColorMap(const vistle::message::Colormap &cm, std::vector<vistle::RGBA> &rgba);
+    virtual bool removeColorMap(const std::string &species, int sourceModule = vistle::message::Id::Invalid);
 
     virtual std::shared_ptr<RenderObject> addObject(int senderId, const std::string &senderPort,
                                                     Object::const_ptr container, Object::const_ptr geom,

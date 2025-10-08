@@ -717,28 +717,23 @@ bool COVER::render()
     return didWork;
 }
 
-bool COVER::addColorMap(const std::string &species, Object::const_ptr colormap)
+bool COVER::addColorMap(const vistle::message::Colormap &cm, std::vector<vistle::RGBA> &rgba)
 {
-    if (auto texture = Texture1D::as(colormap)) {
-        VistleGeometryGenerator::lock();
-        auto &cmap = m_colormaps[species];
-        cmap.setName(species);
-        cmap.setRange(texture->getMin(), texture->getMax());
+    std::string species = cm.species();
+    VistleGeometryGenerator::lock();
+    auto &cmap = m_colormaps[species];
+    cmap.setName(species);
+    cmap.setRange(cm.min(), cm.max());
 
-        cmap.image->setPixelFormat(GL_RGBA);
-        cmap.image->setImage(texture->getWidth(), 1, 1, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE,
-                             const_cast<unsigned char *>(texture->pixels().data()), osg::Image::NO_DELETE);
-        cmap.image->dirty();
+    cmap.image->setPixelFormat(GL_RGBA);
+    unsigned char *pix = new unsigned char[rgba.size() * 4];
+    memcpy(pix, rgba.data(), rgba.size() * 4);
+    cmap.image->setImage(rgba.size(), 1, 1, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, pix, osg::Image::USE_NEW_DELETE);
+    cmap.image->dirty();
+    cmap.setBlendWithMaterial(cm.blendWithMaterial());
+    VistleGeometryGenerator::unlock();
 
-        cmap.setBlendWithMaterial(texture->hasAttribute(attribute::BlendWithMaterial));
-        VistleGeometryGenerator::unlock();
-    }
-
-    std::string plugin = colormap->getAttribute(attribute::Plugin);
-    if (!plugin.empty())
-        cover->addPlugin(plugin.c_str());
-
-    int modId = colormap->getCreator();
+    int modId = cm.senderId();
     auto it = m_interactorMap.find(modId);
     if (it == m_interactorMap.end()) {
         std::cerr << rank() << ": no module with id " << modId << " found for colormap for species " << species
@@ -759,13 +754,21 @@ bool COVER::addColorMap(const std::string &species, Object::const_ptr colormap)
         return true;
     }
 
-    auto att = colormap->getAttribute(attribute::ColorMap);
-    if (att.empty()) {
-        ro->removeAttribute("COLORMAP");
-    } else {
-        ro->addAttribute("COLORMAP", att);
-        std::cerr << rank() << ": adding COLORMAP attribute for " << species << std::endl;
+    std::stringstream attr;
+    attr << species << "_" << cm.source() << '\n'
+         << species << '\n'
+         << cm.min() << '\n'
+         << cm.max() << '\n'
+         << rgba.size() << '\n'
+         << '0';
+
+    attr.precision(4);
+    attr << std::fixed;
+    for (size_t index = 0; index < rgba.size(); index++) {
+        for (int c = 0; c < 4; ++c)
+            attr << "\n" << int(rgba[index][c]) / 255.f;
     }
+    ro->addAttribute("COLORMAP", attr.str());
 
     coVRPluginList::instance()->removeObject(inter->getObjName(), true);
     coVRPluginList::instance()->newInteractor(inter->getObject(), inter);
@@ -773,7 +776,7 @@ bool COVER::addColorMap(const std::string &species, Object::const_ptr colormap)
     return true;
 }
 
-bool COVER::removeColorMap(const std::string &species)
+bool COVER::removeColorMap(const std::string &species, int sourceModule)
 {
     auto it = m_colormaps.find(species);
     if (it == m_colormaps.end())

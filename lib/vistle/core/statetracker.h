@@ -16,12 +16,18 @@
 #include "message.h"
 #include "messages.h"
 #include "availablemodule.h"
+#include "rgba.h"
 
 namespace vistle {
 
 class Parameter;
 typedef std::set<std::shared_ptr<Parameter>> ParameterSet;
 class PortTracker;
+
+namespace message {
+class Colormap;
+class RemoveColormap;
+} // namespace message
 
 class V_COREEXPORT StateObserver {
 public:
@@ -223,6 +229,36 @@ protected:
 
     typedef std::map<std::string, std::shared_ptr<Parameter>> ParameterMap;
     typedef std::map<int, std::string> ParameterOrder;
+    struct ColorMap {
+        int sourceModule = message::Id::Invalid;
+        std::string species;
+        double min = 0.;
+        double max = 1.;
+        bool blendWithMaterial = false;
+        std::vector<RGBA> rgba;
+
+        bool operator<(const ColorMap &o) const
+        {
+            if (sourceModule != o.sourceModule)
+                return sourceModule < o.sourceModule;
+            return species < o.species;
+        }
+    };
+    struct ColorMapKey {
+        int sourceModule;
+        std::string species;
+
+        ColorMapKey(int sourceModule = message::Id::Invalid, const std::string &species = std::string())
+        : sourceModule(sourceModule), species(species)
+        {}
+
+        bool operator<(const ColorMapKey &other) const
+        {
+            if (sourceModule != other.sourceModule)
+                return sourceModule < other.sourceModule;
+            return species < other.species;
+        }
+    };
     struct Module {
         int id;
         int mirrorOfId = message::Id::Invalid;
@@ -238,6 +274,7 @@ protected:
         std::string name;
         ParameterMap parameters;
         ParameterOrder paramOrder;
+        std::map<ColorMapKey, ColorMap> colormaps;
         int height = 0; //< length of shortest path to a sink
         std::string displayName;
         std::string statusText;
@@ -292,6 +329,7 @@ protected:
 
     void appendModuleState(VistleState &state, const Module &mod) const;
     void appendModuleParameter(VistleState &state, const Module &mod) const;
+    void appendModuleColor(VistleState &state, const Module &mod) const;
     void appendModulePorts(VistleState &state, const Module &mod) const;
     void appendModuleInfo(VistleState &state, const Module &mod) const;
     void appendModuleOutputConnections(VistleState &state, const Module &mod) const;
@@ -349,6 +387,8 @@ private:
     bool handlePriv(const message::SchedulingPolicy &pol);
     bool handlePriv(const message::RequestTunnel &tunnel);
     bool handlePriv(const message::CloseConnection &close);
+    bool handlePriv(const message::Colormap &colormap, const buffer &payload);
+    bool handlePriv(const message::RemoveColormap &rmcm);
 
     HubData *getModifiableHubData(int id);
 

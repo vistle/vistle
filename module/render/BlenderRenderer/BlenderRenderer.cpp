@@ -18,6 +18,7 @@
 #include <vistle/core/triangles.h>
 #include <vistle/core/quads.h>
 #include <vistle/core/lines.h>
+#include <vistle/core/texture1d.h>
 
 namespace asio = boost::asio;
 using namespace vistle;
@@ -418,7 +419,7 @@ std::shared_ptr<vistle::RenderObject> BlenderRenderer::addObject(int senderId, c
     return ro;
 }
 
-bool BlenderRenderer::addColorMap(const std::string &species, Object::const_ptr texture)
+bool BlenderRenderer::addColorMap(const vistle::message::Colormap &cm, std::vector<vistle::RGBA> &rgba)
 {
     if (!tryConnect())
         return false;
@@ -469,7 +470,7 @@ bool BlenderRenderer::addColorMap(const std::string &species, Object::const_ptr 
     return true;
 }
 
-bool BlenderRenderer::removeColorMap(const std::string &species)
+bool BlenderRenderer::removeColorMap(const std::string &species, int sourceModule)
 {
     if (!tryConnect())
         return false;

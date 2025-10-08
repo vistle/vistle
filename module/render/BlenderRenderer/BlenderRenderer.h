@@ -21,8 +21,8 @@ public:
     BlenderRenderer(const std::string &name, int moduleId, mpi::communicator comm);
     ~BlenderRenderer() override;
 
-    bool addColorMap(const std::string &species, vistle::Object::const_ptr texture) override;
-    bool removeColorMap(const std::string &species) override;
+    bool addColorMap(const vistle::message::Colormap &cm, std::vector<vistle::RGBA> &rgba) override;
+    bool removeColorMap(const std::string &species, int sourceModule) override;
 
     std::shared_ptr<vistle::RenderObject> addObject(int senderId, const std::string &senderPort,
                                                     vistle::Object::const_ptr container,

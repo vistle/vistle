@@ -76,6 +76,9 @@ void Router::initRoutingTable()
     rt[INSITU] = Special;
     rt[SETNAME] = Track | HandleOnMaster;
 
+    rt[COLORMAP] = Track | DestMasterHub | DestManager | DestModules | OnlyRank0;
+    rt[REMOVECOLORMAP] = Track | DestMasterHub | DestManager | DestModules | OnlyRank0;
+
     for (int i = ANY + 1; i < NumMessageTypes; ++i) {
         if (rt[i] == 0) {
             std::cerr << "message routing table not initialized for " << (Type)i << std::endl;
