@@ -32,7 +32,8 @@ public:
         TagData,
     };
 
-    Communicator(int rank, const std::vector<std::string> &hosts, boost::mpi::communicator comm);
+    Communicator(int rank, const std::vector<std::string> &hosts, boost::mpi::communicator comm,
+                 unsigned short dataMgrBase);
     ~Communicator();
     static Communicator &the();
 
@@ -64,6 +65,9 @@ private:
     void unlock();
 
     boost::mpi::communicator m_comm;
+    std::vector<std::string> m_rankNames; //< host names of all ranks (only valid on rank 0)
+    std::vector<std::vector<std::string>> m_rankAddresses; //< local addresses of all ranks (only valid on rank 0)
+    std::vector<unsigned short> m_rankDataPorts; //< data ports of all ranks (only valid on rank 0)
     ClusterManager *m_clusterManager;
     DataManager *m_dataManager;
     std::atomic<bool> m_terminate = false;

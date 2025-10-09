@@ -104,6 +104,7 @@ struct V_COREEXPORT HubData {
     boost::asio::ip::address address;
     bool hasUi = false;
     bool isQuitting = false;
+    message::AddHub::Payload addHubPayload;
 };
 
 class V_COREEXPORT StateTracker {
@@ -311,7 +312,7 @@ protected:
 private:
     void updateStatus();
 
-    bool handlePriv(const message::AddHub &slave);
+    bool handlePriv(const message::AddHub &slave, const buffer &payload);
     bool handlePriv(const message::RemoveHub &slave);
     bool handlePriv(const message::Trace &trace);
     bool handlePriv(const message::Debug &debug);
