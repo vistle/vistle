@@ -57,7 +57,6 @@ Vec<Scalar>::const_ptr Points::radius() const
 
 void Points::setRadius(Vec<Scalar>::const_ptr radius)
 {
-    assert(!radius || radius->check(std::cerr));
     d()->radius = radius;
 }
 
