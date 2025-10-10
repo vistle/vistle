@@ -367,8 +367,10 @@ vistle::DataBase::ptr vtkmGetField(const viskores::cont::DataSet &vtkmDataSet, c
                                    vistle::DataBase::Mapping mapping)
 {
     vistle::DataBase::ptr result;
-    if (!vtkmDataSet.HasField(name))
+    if (!vtkmDataSet.HasField(name)) {
+        std::cerr << "vtkmGetField: Viskores field " << name << " not found" << std::endl;
         return result;
+    }
 
     viskores::cont::Field::Association assoc = viskores::cont::Field::Association::Any;
     switch (mapping) {
@@ -388,21 +390,24 @@ vistle::DataBase::ptr vtkmGetField(const viskores::cont::DataSet &vtkmDataSet, c
 
     auto field = vtkmDataSet.GetField(name, assoc);
     if (!field.IsCellField() && !field.IsPointField()) {
-        std::cerr << "Viskores field " << name << " is neither point nor cell field" << std::endl;
+        std::cerr << "vtkmGetField: Viskores field " << name << " is neither point nor cell field" << std::endl;
         return result;
     }
     auto ah = field.GetData();
     try {
         ah.CastAndCallForTypes<viskores::TypeListAll, viskores::cont::StorageListCommon>(GetArrayContents{result});
     } catch (viskores::cont::ErrorBadType &err) {
-        std::cerr << "cast error: " << err.what() << std::endl;
+        std::cerr << "vtkmGetField: cast error: " << err.what() << std::endl;
     }
-    if (result) {
-        if (field.IsCellField()) {
-            result->setMapping(vistle::DataBase::Element);
-        } else {
-            result->setMapping(vistle::DataBase::Vertex);
-        }
+    if (!result) {
+        std::cerr << "vtkmGetField: Viskores field " << name << " has unsupported type" << std::endl;
+        return result;
+    }
+
+    if (field.IsCellField()) {
+        result->setMapping(vistle::DataBase::Element);
+    } else {
+        result->setMapping(vistle::DataBase::Vertex);
     }
     return result;
 }
