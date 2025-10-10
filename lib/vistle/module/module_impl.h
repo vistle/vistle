@@ -160,6 +160,13 @@ typename Type::const_ptr Module::expect(const std::string &port)
     return expect<Type>(p);
 }
 
+template<class Payload>
+bool Module::sendMessageWithPayload(message::Message &message, Payload &payload) const
+{
+    auto pl = addPayload(message, payload);
+    return this->sendMessage(message, &pl);
+}
+
 
 } // namespace vistle
 #endif

@@ -1078,11 +1078,6 @@ private:
     int m_subType;
 };
 
-template<class Payload>
-extern V_COREEXPORT buffer addPayload(Message &message, const Payload &payload);
-template<class Payload>
-extern V_COREEXPORT Payload getPayload(const buffer &data);
-
 extern template V_COREEXPORT buffer addPayload<std::string>(Message &message, const std::string &payload);
 extern template V_COREEXPORT buffer addPayload<SendText::Payload>(Message &message, const SendText::Payload &payload);
 extern template V_COREEXPORT buffer
