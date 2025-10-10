@@ -188,31 +188,31 @@ bool ReadIagTecplot::read(Reader::Token &token, int timestep, int block)
     token.applyMeta(unstr);
     token.addObject(m_grid, unstr);
     if (p) {
-        p->addAttribute(vistle::attribute::Species, "pressure");
+        p->describe("pressure", id());
         p->setGrid(unstr);
         token.applyMeta(p);
         token.addObject(m_p, p);
     }
     if (r) {
-        r->addAttribute(vistle::attribute::Species, "rho");
+        r->describe("rho", id());
         r->setGrid(unstr);
         token.applyMeta(r);
         token.addObject(m_rho, r);
     }
     if (n) {
-        n->addAttribute(vistle::attribute::Species, "n");
+        n->describe("n", id());
         n->setGrid(unstr);
         token.applyMeta(n);
         token.addObject(m_n, n);
     }
     if (u) {
-        u->addAttribute(vistle::attribute::Species, "u");
+        u->describe("u", id());
         u->setGrid(unstr);
         token.applyMeta(u);
         token.addObject(m_u, u);
     }
     if (v) {
-        v->addAttribute(vistle::attribute::Species, "v");
+        v->describe("v", id());
         v->setGrid(unstr);
         token.applyMeta(v);
         token.addObject(m_v, v);

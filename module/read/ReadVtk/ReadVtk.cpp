@@ -575,7 +575,7 @@ bool ReadVtk::load(Token &token, const std::string &filename, const vistle::Meta
                 diagnostics.clear();
             }
             if (field) {
-                field->addAttribute(vistle::attribute::Species, name);
+                field->describe(name, id());
                 field->setMapping(vistle::DataBase::Element);
                 field->setGrid(grid);
                 if (!part.empty())
@@ -600,7 +600,7 @@ bool ReadVtk::load(Token &token, const std::string &filename, const vistle::Meta
                 }
             }
             if (field) {
-                field->addAttribute(vistle::attribute::Species, name);
+                field->describe(name, id());
                 field->setMapping(vistle::DataBase::Vertex);
                 field->setGrid(grid);
                 if (!part.empty())

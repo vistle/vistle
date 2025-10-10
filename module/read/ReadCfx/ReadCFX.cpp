@@ -1454,7 +1454,7 @@ bool ReadCFX::loadFields(UnstructuredGrid::ptr grid, int area3d, int setMetaTime
                 setMeta(obj, area3d, setMetaTimestep, timestep, numTimesteps, numSel3dArea, readTransientFile, t);
                 obj->setGrid(grid);
             }
-            obj->addAttribute(attribute::Species, field);
+            obj->describe(field, id());
             m_currentVolumedata[i] = obj;
         }
     }

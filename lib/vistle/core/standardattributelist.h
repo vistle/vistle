@@ -1,5 +1,6 @@
 A(Plugin, plugin);
 A(Species, species);
+A(DataSource, data_source);
 A(Variant, variant);
 A(ModelFile, model_file);
 A(ModelRetainSeconds, model_retain_seconds);

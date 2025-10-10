@@ -548,7 +548,7 @@ bool ReadItlrBin::read(Reader::Token &token, int timestep, int block)
         auto scal = readFieldBlock(filename.string(), block);
         if (scal) {
             scal->setGrid(m_grids[block]);
-            scal->addAttribute(attribute::Species, m_species[port]);
+            scal->describe(m_species[port], id());
             token.applyMeta(scal);
             token.addObject(m_dataOut[port], scal);
         } else {

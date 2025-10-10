@@ -44,3 +44,8 @@ void AddObjectMsq::sendObjects()
     m_cache.clear();
     m_sendMessageQueue->send(InSituMessage{InSituMessageType::PackageComplete});
 }
+
+int AddObjectMsq::moduleId() const
+{
+    return m_moduleInfo.id();
+}

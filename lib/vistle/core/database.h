@@ -38,6 +38,8 @@ public:
     virtual void setValue(Index idx, unsigned component, const double &value);
     virtual double value(Index idx, unsigned component = 0) const;
 
+    void describe(const std::string &species, int sourceId);
+
 private:
     V_DATA_BEGIN(DataBase);
     shm_obj_ref<Object> grid;

@@ -923,7 +923,7 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
                                 }
 
 
-                                field->addAttribute(vistle::attribute::Species, name);
+                                field->describe(name, id());
                                 field->setMapping(loc == 0 ? vistle::DataBase::Element : vistle::DataBase::Vertex);
                                 field->setGrid(strGrid);
                                 token.applyMeta(field);
@@ -980,7 +980,7 @@ bool ReadSubzoneTecplot::read(Reader::Token &token, int timestep, int block)
                                               << locY << "," << locZ << "), using first.\n";
                                 }
 
-                                field->addAttribute(vistle::attribute::Species, name);
+                                field->describe(name, id());
                                 field->setMapping(locX == 0 ? vistle::DataBase::Element : vistle::DataBase::Vertex);
                                 field->setGrid(strGrid);
                                 token.applyMeta(field);
