@@ -2,10 +2,13 @@
 #include "convert_topology.h"
 
 #include <viskores/cont/ArrayHandleExtractComponent.h>
+#include <viskores/cont/ArrayHandleCompositeVector.h>
+#include <viskores/cont/ArrayHandleCounting.h>
 
 #include <vistle/core/scalars.h>
 #include <vistle/core/uniformgrid.h>
 #include <vistle/core/rectilineargrid.h>
+#include <vistle/core/layergrid.h>
 #include <vistle/core/points.h>
 #include <vistle/core/lines.h>
 #include <vistle/core/triangles.h>
@@ -189,6 +192,17 @@ ModuleStatusPtr vtkmSetGrid(viskores::cont::DataSet &vtkmDataset, vistle::Object
 
         viskores::cont::ArrayHandleCartesianProduct rectilinearCoordinates(xc, yc, zc);
         auto coordinateSystem = viskores::cont::CoordinateSystem("rectilinear", rectilinearCoordinates);
+        vtkmDataset.AddCoordinateSystem(coordinateSystem);
+    } else if (auto lg = LayerGrid::as(grid)) {
+        auto nx = lg->getNumDivisions(0);
+        auto ny = lg->getNumDivisions(1);
+        const auto *min = lg->min(), *dist = lg->dist();
+        auto xc = viskores::cont::ArrayHandleCounting<vistle::Scalar>(min[0], dist[0], nx);
+        auto yc = viskores::cont::ArrayHandleCounting<vistle::Scalar>(min[1], dist[1], ny);
+        auto zc = lg->z().handle();
+
+        viskores::cont::ArrayHandleCompositeVector heightfieldLayerCoordinates(xc, yc, zc);
+        auto coordinateSystem = viskores::cont::CoordinateSystem("heightfieldlayers", heightfieldLayerCoordinates);
         vtkmDataset.AddCoordinateSystem(coordinateSystem);
     } else {
         return Error("Found unsupported grid type while attempting to convert Vistle grid to Viskores dataset.");
