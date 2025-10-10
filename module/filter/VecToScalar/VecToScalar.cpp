@@ -77,45 +77,37 @@ vistle::Vec<vistle::Scalar>::ptr VecToScalar::extract(vistle::Vec<vistle::Scalar
 
 vistle::Vec<vistle::Scalar>::ptr VecToScalar::calculateAbsolute(vistle::Vec<vistle::Scalar, 3>::const_ptr &data)
 {
-#if VISTLE_WITH_VTKM
-    try {
-        // Create a Viskores dataset to hold the input mesh and fields
-        viskores::cont::DataSet inDs;
+#ifdef VECTOSCALARVTKM
+    // Create a Viskores dataset to hold the input mesh and fields
+    viskores::cont::DataSet inDs;
 
-        // Convert/attach the Vistle grid to the Viskores dataset
-        vistle::vtkmSetGrid(inDs, data->grid());
+    // Convert/attach the Vistle grid to the Viskores dataset
+    vistle::vtkmSetGrid(inDs, data->grid());
 
-        // Name for the input vector field once attached to the Viskores dataset
-        static const std::string fld = "in";
+    // Name for the input vector field once attached to the Viskores dataset
+    static const std::string fld = "in";
 
-        // Transfer the Vistle vector field into the Viskores dataset under 'fld'
-        // (respects whether the data is per-vertex or per-cell)
-        vistle::vtkmAddField(inDs, data, fld, data->mapping());
+    // Transfer the Vistle vector field into the Viskores dataset under 'fld'
+    // (respects whether the data is per-vertex or per-cell)
+    vistle::vtkmAddField(inDs, data, fld);
 
-        // Set up the Viskores filter that computes vector magnitude
-        viskores::filter::vector_analysis::VectorMagnitude mag;
+    // Set up the Viskores filter that computes vector magnitude
+    viskores::filter::vector_analysis::VectorMagnitude mag;
 
-        // Tell the filter which field to use and its association (points vs cells)
-        mag.SetActiveField(fld, (data->mapping() == vistle::DataBase::Vertex)
-                                    ? viskores::cont::Field::Association::Points
-                                    : viskores::cont::Field::Association::Cells);
+    // Tell the filter which field to use and its association (points vs cells)
+    mag.SetActiveField(fld, (data->guessMapping() == vistle::DataBase::Vertex)
+                                ? viskores::cont::Field::Association::Points
+                                : viskores::cont::Field::Association::Cells);
 
-        // Run the filter on the dataset -> produces a new dataset with a scalar field
-        const auto outDs = mag.Execute(inDs);
+    // Run the filter on the dataset -> produces a new dataset with a scalar field
+    const auto outDs = mag.Execute(inDs);
 
-        // Bring the produced scalar field back into Vistle form
-        auto outField = vistle::vtkmGetField(outDs, fld, data->mapping());
+    // Bring the produced scalar field back into Vistle form
+    auto outField = vistle::vtkmGetField(outDs, fld, data->mapping());
 
-        // If the returned field is a Vistle scalar Vec, use it as the result
-        if (auto vec = std::dynamic_pointer_cast<vistle::Vec<vistle::Scalar>>(outField))
-            return vec;
-    } catch (...) {
-        // Any failure in the GPU/Viskores path -> fall back to CPU below
-    }
-#endif
-
-    // (CPU fallback follows…)
-
+    // If the returned field is a Vistle scalar Vec, use it as the result
+    return std::dynamic_pointer_cast<vistle::Vec<vistle::Scalar>>(outField);
+#else
     const auto n = data->getSize();
     const auto *x = data->x().data();
     const auto *y = data->y().data();
@@ -125,4 +117,5 @@ vistle::Vec<vistle::Scalar>::ptr VecToScalar::calculateAbsolute(vistle::Vec<vist
     for (vistle::Index i = 0; i < n; ++i)
         o[i] = std::sqrt(x[i] * x[i] + y[i] * y[i] + z[i] * z[i]);
     return out;
+#endif
 }
