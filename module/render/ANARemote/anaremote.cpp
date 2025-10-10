@@ -1,6 +1,5 @@
 
 #include <vistle/renderer/renderer.h>
-#include <vistle/core/texture1d.h>
 #include <vistle/core/message.h>
 #include <cassert>
 

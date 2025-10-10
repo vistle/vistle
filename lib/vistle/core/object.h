@@ -92,7 +92,7 @@ public:
         EMPTY = 1,
         PLACEHOLDER = 11,
 
-        TEXTURE1D = 16,
+        //TEXTURE1D = 16,
 
         POINTS = 18,
         LINES = 20,

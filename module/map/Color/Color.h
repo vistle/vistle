@@ -3,7 +3,6 @@
 
 #include <vistle/module/module.h>
 #include <vistle/core/vector.h>
-#include <vistle/core/texture1d.h>
 
 #include <deque>
 #include <cstdint>
@@ -37,9 +36,6 @@ public:
     ~Color();
 
 private:
-    vistle::Texture1D::ptr addTexture(vistle::DataBase::const_ptr object, const vistle::Scalar min,
-                                      const vistle::Scalar max, const ColorMap &cmap);
-
     void getMinMax(vistle::DataBase::const_ptr object, vistle::Scalar &min, vistle::Scalar &max);
     void binData(vistle::DataBase::const_ptr object, std::vector<unsigned long> &binsVec);
     void computeMap();
@@ -95,8 +91,6 @@ private:
     int m_sourceId = vistle::message::Id::Invalid;
     bool m_colorMapSent = false;
     vistle::Port *m_dataIn = nullptr;
-    vistle::Port *m_dataOut = nullptr;
-    vistle::ResultCache<vistle::Object::ptr> m_cache;
 };
 
 #endif

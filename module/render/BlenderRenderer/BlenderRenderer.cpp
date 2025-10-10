@@ -18,7 +18,6 @@
 #include <vistle/core/triangles.h>
 #include <vistle/core/quads.h>
 #include <vistle/core/lines.h>
-#include <vistle/core/texture1d.h>
 
 namespace asio = boost::asio;
 using namespace vistle;
@@ -264,6 +263,7 @@ std::shared_ptr<vistle::RenderObject> BlenderRenderer::addObject(int senderId, c
         float *values_array = nullptr;
         bool is_valid_tex = false;
         if (texture) {
+#if 0
             auto tex1D = vistle::Texture1D::as(texture);
             auto x_tex1d = tex1D->x();
             if (!std::isinf(x_tex1d[0])) {
@@ -274,6 +274,7 @@ std::shared_ptr<vistle::RenderObject> BlenderRenderer::addObject(int senderId, c
                 }
                 is_valid_tex = true;
             }
+#endif
         }
 
         // send data

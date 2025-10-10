@@ -58,7 +58,6 @@ set(core_SOURCES
     scalars.cpp
     structuredgrid.cpp
     structuredgridbase.cpp
-    texture1d.cpp
     uniformgrid.cpp
     unstr.cpp
     uuid.cpp
@@ -154,8 +153,6 @@ set(core_HEADERS
     structuredgridbase.h
     structuredgridbase_impl.h
     tcpmessage.h
-    texture1d.h
-    texture1d_impl.h
     triangles.h
     uniformgrid.h
     uniformgrid_impl.h
