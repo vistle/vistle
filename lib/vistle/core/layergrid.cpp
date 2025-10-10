@@ -534,6 +534,10 @@ GridInterface::Interpolator LayerGrid::getInterpolator(Index elem, const Vector3
 
 void LayerGrid::Data::initData()
 {
+    for (int i = 0; i < 2; ++i) {
+        min[i] = 0.;
+        max[i] = 0.;
+    }
     for (int i = 0; i < 3; ++i) {
         indexOffset[i] = 0;
         numDivisions[i] = 0;
@@ -568,6 +572,10 @@ LayerGrid::Data::Data(const LayerGrid::Data &o, const std::string &n): LayerGrid
     initData();
 
     normals = o.normals;
+    for (int c = 0; c < 2; ++c) {
+        min[c] = o.min[c];
+        max[c] = o.max[c];
+    }
     for (int c = 0; c < 3; ++c) {
         indexOffset[c] = o.indexOffset[c];
         numDivisions[c] = o.numDivisions[c];
