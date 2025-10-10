@@ -4,7 +4,6 @@
 #include <boost/mpl/for_each.hpp>
 
 #include <vistle/core/object.h>
-#include <vistle/core/texture1d.h>
 #include <vistle/core/coords.h>
 #include <vistle/core/points.h>
 #include <vistle/core/lines.h>
