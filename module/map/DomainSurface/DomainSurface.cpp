@@ -98,7 +98,7 @@ bool DomainSurface::compute(const std::shared_ptr<BlockTask> &task) const
     StructuredGridBase::const_ptr sgrid = StructuredGridBase::as(split.geometry);
     UnstructuredGrid::const_ptr ugrid = UnstructuredGrid::as(split.geometry);
     if (!ugrid && !sgrid) {
-        sendError("no grid and no data received");
+        sendError("only structured or unstructured grids supported");
         return true;
     }
     Object::const_ptr grid_in =
