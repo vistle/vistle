@@ -89,7 +89,7 @@ bool ScalarToVec::compute()
     }
     out->setGrid(data_in[found]->grid());
     updateMeta(out);
-    out->addAttribute(attribute::Species, spec);
+    out->describe(spec, id());
     addObject(m_vecOut, out);
 
     return true;

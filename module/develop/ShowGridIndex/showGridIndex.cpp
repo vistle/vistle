@@ -34,7 +34,7 @@ bool ShowGridIndex::compute()
             indices->x().data()[i] = i;
         }
         indices->setGrid(input);
-        indices->addAttribute(attribute::Species, "Indices");
+        indices->describe("Indices", id());
         updateMeta(indices);
         m_cache.storeAndUnlock(entry, indices);
     }

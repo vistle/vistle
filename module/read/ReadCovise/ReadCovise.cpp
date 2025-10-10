@@ -1193,8 +1193,11 @@ bool ReadCovise::readRecursive(Token &token, int fd[], Element *elem[], int time
         token.wait();
         for (unsigned port = 0; port < NumPorts; ++port) {
             if (m_out[port] && obj[port]) {
-                if (port > 1 || !gridOnPort0)
-                    obj[port]->addAttribute(attribute::Species, m_species[port]);
+                if (port > 1 || !gridOnPort0) {
+                    if (auto d = DataBase::as(obj[port])) {
+                        d->describe(m_species[port], id());
+                    }
+                }
                 updateMeta(obj[port]);
                 addObject(m_out[port], obj[port]);
             }

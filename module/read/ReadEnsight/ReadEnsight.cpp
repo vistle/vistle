@@ -409,8 +409,8 @@ bool ReadEnsight::read(Reader::Token &token, int timestep, int block)
         if (data) {
             data->addAttribute(attribute::Part, curPart.comment());
             token.applyMeta(data);
-            data->addAttribute(attribute::Species, field);
             if (auto db = DataBase::as(data)) {
+                db->describe(field, id());
                 db->setGrid(grid);
                 token.addObject(port, db);
                 std::cerr << "read data: " << *db << std::endl;

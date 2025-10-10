@@ -1067,7 +1067,7 @@ bool Tracer::reduce(int timestep)
                         field->setGrid(geo);
                         field->setMeta(meta);
                         auto kind = m_addField[i]->getValue();
-                        field->addAttribute(attribute::Species, getFieldName(kind));
+                        field->describe(getFieldName(kind), this->id());
                         updateMeta(field);
                     }
                     addObject(m_addPort[p], field);

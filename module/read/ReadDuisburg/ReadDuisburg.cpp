@@ -192,7 +192,7 @@ bool ReadDuisburg::read(Reader::Token &token, int timestep, int block)
             continue;
         auto data = std::make_shared<Vec<Scalar>>(size);
         getVariable(*m_ncFile, field.name, data->x().data(), {(Index)timestep, 0, 0}, {1, m_dim[1], m_dim[0]});
-        data->addAttribute(attribute::Species, field.species);
+        data->describe(field.species, id());
         data->setGrid(m_grid);
         token.applyMeta(data);
         token.addObject(field.name, data);

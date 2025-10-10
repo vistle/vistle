@@ -251,7 +251,7 @@ VariableInfo DataTransmitter::collectVariableInfo(size_t nthVariable)
     return varInfo;
 }
 
-vistle::Object::ptr DataTransmitter::makeCombinedVariable(const VariableInfo &varInfo)
+vistle::DataBase::ptr DataTransmitter::makeCombinedVariable(const VariableInfo &varInfo)
 {
     if (m_rules.vtkFormat) {
         std::cerr << "combined grids in vtk format are not supported! Adding field data may fail." << std::endl;
@@ -271,7 +271,7 @@ vistle::Object::ptr DataTransmitter::makeCombinedVariable(const VariableInfo &va
     return variable;
 }
 
-vistle::Object::ptr DataTransmitter::makeVariable(const VariableInfo &varInfo, int iteration, bool vtkFormat)
+vistle::DataBase::ptr DataTransmitter::makeVariable(const VariableInfo &varInfo, int iteration, bool vtkFormat)
 {
     int currDomain = varInfo.meshInfo.domains.as<int>()[iteration];
     visit_smart_handle<HandleType::VariableData> varHandle =
@@ -290,10 +290,10 @@ vistle::Object::ptr DataTransmitter::makeVariable(const VariableInfo &varInfo, i
     }
 }
 
-void DataTransmitter::sendVarableToModule(vistle::Object::ptr variable, int block, const char *name)
+void DataTransmitter::sendVarableToModule(vistle::DataBase::ptr variable, int block, const char *name)
 {
     variable->setBlock(block);
-    variable->addAttribute(attribute::Species, name);
+    variable->describe(name, m_sender.moduleId());
     m_sender.addObject(name, variable);
 }
 

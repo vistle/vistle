@@ -1512,7 +1512,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             dataObj->setMapping(DataBase::Vertex);
         dataObj->setGrid(gridList[block]);
         dataObj->setBlock(block);
-        dataObj->addAttribute(attribute::Species, pVar);
+        dataObj->describe(pVar, id());
         dataObj->setTimestep(timestep);
         token.applyMeta(dataObj);
         token.addObject(m_dataOut[dataIdx], dataObj);
@@ -1574,7 +1574,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
         dataObj->setMapping(DataBase::Vertex);
     dataObj->setGrid(gridList[block]);
     dataObj->setBlock(block);
-    dataObj->addAttribute(attribute::Species, "cartesian_velocity");
+    dataObj->describe("cartesian_velocity", id());
     dataObj->setTimestep(timestep);
     token.applyMeta(dataObj);
     token.addObject(m_velocityOut, dataObj);

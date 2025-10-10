@@ -483,7 +483,7 @@ bool Calc::compute(const std::shared_ptr<BlockTask> &task) const
     if (dout) {
         dout->setGrid(gridOut);
         dout->copyAttributes(din[0]);
-        dout->addAttribute(attribute::Species, m_species->getValue());
+        dout->describe(m_species->getValue(), id());
 
         updateMeta(dout);
         task->addObject("data_out", dout);
