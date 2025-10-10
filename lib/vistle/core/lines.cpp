@@ -48,7 +48,6 @@ Vec<Scalar>::const_ptr Lines::radius() const
 
 void Lines::setRadius(Vec<Scalar>::const_ptr radius)
 {
-    assert(!radius || radius->check(std::cerr));
     d()->radius = radius;
 }
 

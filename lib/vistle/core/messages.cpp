@@ -7,6 +7,7 @@
 #include "port.h"
 #include "shm.h"
 #include <cassert>
+#include <algorithm>
 
 #include <boost/uuid/random_generator.hpp>
 #include <boost/uuid/nil_generator.hpp>
@@ -24,15 +25,9 @@
 namespace vistle {
 namespace message {
 
-template<typename T>
-static T min(T a, T b)
-{
-    return a < b ? a : b;
-}
-
 #define COPY_STRING(dst, src) \
     do { \
-        const size_t size = min(src.size(), dst.size() - 1); \
+        const size_t size = std::min(src.size(), dst.size() - 1); \
         src.copy(dst.data(), size); \
         dst[size] = '\0'; \
         assert(src.size() < dst.size()); \
