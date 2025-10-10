@@ -5,10 +5,12 @@
 #include <vistle/core/vec.h>
 #include <cmath>
 
+#ifdef VECTOSCALARVTKM
 #include <viskores/cont/DataSet.h>
 #include <viskores/cont/Field.h>
 #include <viskores/filter/vector_analysis/VectorMagnitude.h>
 #include <vistle/vtkm/convert.h>
+#endif
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(Choices, (X)(Y)(Z)(AbsoluteValue))
 
