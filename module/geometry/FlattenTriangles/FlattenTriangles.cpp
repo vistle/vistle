@@ -8,7 +8,6 @@
 #include <vistle/core/quads.h>
 #include <vistle/core/normals.h>
 #include <vistle/core/polygons.h>
-#include <vistle/core/texture1d.h>
 
 #include "FlattenTriangles.h"
 
