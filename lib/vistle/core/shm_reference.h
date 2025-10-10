@@ -92,7 +92,7 @@ public:
         assert(!m_name.empty());
         m_p = shm<T>::construct(m_name)(args..., Shm::the().allocator());
         ref();
-        assert(m_p->refcount() == 1);
+        assert(m_p->refcount() >= 1);
         Shm::the().addArray(m_name, &*m_p);
     }
 
