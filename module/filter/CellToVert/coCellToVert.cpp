@@ -10,7 +10,6 @@
 
 #include "coCellToVert.h"
 #include <vistle/core/vec.h>
-#include <vistle/core/texture1d.h>
 #include <vistle/core/polygons.h>
 #include <vistle/core/lines.h>
 #include <vistle/core/unstr.h>
@@ -309,16 +308,7 @@ DataBase::ptr coCellToVert::interpolate(Object::const_ptr geo_in, DataBase::cons
     const Byte *in_data_b[3] = {nullptr, nullptr, nullptr};
     Byte *out_data_b[3] = {nullptr, nullptr, nullptr};
 
-    if (auto tex_in = Texture1D::as(data_in)) {
-        numComp = 1;
-        in_data[0] = tex_in->x().data();
-
-        Texture1D::ptr tex(new Texture1D(0, 0., 1.));
-        tex->d()->pixels = tex_in->d()->pixels;
-        tex->setSize(num_point);
-        out_data[0] = tex->x().data();
-        data_return = tex;
-    } else if (auto s_data_in = Vec<Scalar>::as(data_in)) {
+    if (auto s_data_in = Vec<Scalar>::as(data_in)) {
         numComp = 1;
         in_data[0] = s_data_in->x().data();
 

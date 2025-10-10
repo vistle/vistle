@@ -4,7 +4,6 @@
 #include <vistle/core/lines.h>
 #include <vistle/core/points.h>
 #include <vistle/core/vec.h>
-#include <vistle/core/texture1d.h>
 
 #include <cassert>
 
@@ -326,21 +325,7 @@ void AnariRenderObject::create(anari::Device device)
         if (this->mapdata->guessMapping(geometry) == DataBase::Element)
             attr = "primitive";
     }
-    if (auto t = Texture1D::as(this->mapdata)) {
-        haveColor = true;
-        attr += ".color";
-        if (auto begin = anari::mapParameterArray<anari::std_types::bvec4>(device, geom, attr.c_str(), t->getSize())) {
-            auto end = begin + t->getSize();
-            const auto *ct = t->pixels().data();
-            auto w = t->getWidth();
-            const auto *tc = t->coords().data();
-            for (auto it = begin; it != end; ++it) {
-                Index idx = std::min(Index(*tc++ * w), w - 1);
-                *it = {ct[idx * 4], ct[idx * 4 + 1], ct[idx * 4 + 2], ct[idx * 4 + 3]};
-            }
-            anari::unmapParameterArray(device, geom, attr.c_str());
-        }
-    } else if (auto s = Vec<Scalar, 1>::as(this->mapdata)) {
+    if (auto s = Vec<Scalar, 1>::as(this->mapdata)) {
         useSampler = true;
         attr += ".attribute0";
         if (cl) {

@@ -7,7 +7,6 @@
 
 #include <osg/Group>
 #include <osg/Sequence>
-#include <osg/Texture1D>
 
 #include <vistle/renderer/renderobject.h>
 #include <vistle/renderer/renderer.h>
