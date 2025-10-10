@@ -27,8 +27,7 @@ VecToScalar::VecToScalar(const std::string &name, int moduleID, mpi::communicato
     V_ENUM_SET_CHOICES(m_caseParam, Choices);
 }
 
-VecToScalar::~VecToScalar()
-{}
+VecToScalar::~VecToScalar() {}
 
 bool VecToScalar::compute()
 {
@@ -38,8 +37,7 @@ bool VecToScalar::compute()
         return true;
     }
     std::string spec = data_in->getAttribute(attribute::Species);
-    if (!spec.empty())
-        spec += "_";
+    if (!spec.empty()) spec += "_";
 
     Vec<Scalar>::ptr out;
     switch (m_caseParam->getValue()) {
