@@ -155,7 +155,6 @@ Normals::const_ptr UniformGrid::normals() const
 
 void UniformGrid::setNormals(Normals::const_ptr normals)
 {
-    assert(!normals || normals->check(std::cerr));
     d()->normals = normals;
 }
 
