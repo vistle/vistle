@@ -3015,13 +3015,6 @@ bool BlockTask::waitDependencies()
     return true;
 }
 
-template<class Payload>
-bool Module::sendMessageWithPayload(message::Message &message, Payload &payload) const
-{
-    auto pl = addPayload(message, payload);
-    return this->sendMessage(message, &pl);
-}
-
 int Module::shmLeader(int rank) const
 {
     if (rank == -1)
