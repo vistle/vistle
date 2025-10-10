@@ -59,11 +59,14 @@ bool VecToScalar::compute()
         break;
     }
 
-    out->copyAttributes(data_in);
-    out->describe(spec, id());
-    out->setGrid(data_in->grid());
-    updateMeta(out);
-    addObject("data_out", out);
+    if (out) {
+        out->copyAttributes(data_in);
+        out->describe(spec, id());
+        out->setGrid(data_in->grid());
+        updateMeta(out);
+        addObject("data_out", out);
+    }
+
     return true;
 }
 
@@ -85,25 +88,31 @@ vistle::Vec<vistle::Scalar>::ptr VecToScalar::calculateAbsolute(vistle::Vec<vist
     vistle::vtkmSetGrid(inDs, data->grid());
 
     // Name for the input vector field once attached to the Viskores dataset
-    static const std::string fld = "in";
+    static const std::string fld_in = "in";
+    static const std::string fld_out = "out";
 
     // Transfer the Vistle vector field into the Viskores dataset under 'fld'
     // (respects whether the data is per-vertex or per-cell)
-    vistle::vtkmAddField(inDs, data, fld);
+    vistle::vtkmAddField(inDs, data, fld_in);
 
     // Set up the Viskores filter that computes vector magnitude
     viskores::filter::vector_analysis::VectorMagnitude mag;
 
     // Tell the filter which field to use and its association (points vs cells)
-    mag.SetActiveField(fld, (data->guessMapping() == vistle::DataBase::Vertex)
-                                ? viskores::cont::Field::Association::Points
-                                : viskores::cont::Field::Association::Cells);
+    mag.SetActiveField(fld_in, (data->guessMapping() == vistle::DataBase::Vertex)
+                                   ? viskores::cont::Field::Association::Points
+                                   : viskores::cont::Field::Association::Cells);
+    mag.SetOutputFieldName(fld_out);
 
     // Run the filter on the dataset -> produces a new dataset with a scalar field
     const auto outDs = mag.Execute(inDs);
 
     // Bring the produced scalar field back into Vistle form
-    auto outField = vistle::vtkmGetField(outDs, fld, data->mapping());
+    auto outField = vistle::vtkmGetField(outDs, fld_out, data->mapping());
+    if (!outField) {
+        std::cerr << "VecToScalar: ERROR: Could not retrieve output field from Viskores filter" << std::endl;
+        return nullptr;
+    }
 
     // If the returned field is a Vistle scalar Vec, use it as the result
     return std::dynamic_pointer_cast<vistle::Vec<vistle::Scalar>>(outField);
