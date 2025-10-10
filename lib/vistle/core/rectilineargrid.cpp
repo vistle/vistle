@@ -173,7 +173,6 @@ Normals::const_ptr RectilinearGrid::normals() const
 
 void RectilinearGrid::setNormals(Normals::const_ptr normals)
 {
-    assert(!normals || normals->check(std::cerr));
     d()->normals = normals;
 }
 

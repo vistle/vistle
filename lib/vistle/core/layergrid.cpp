@@ -301,7 +301,6 @@ Normals::const_ptr LayerGrid::normals() const
 
 void LayerGrid::setNormals(Normals::const_ptr normals)
 {
-    assert(!normals || normals->check(std::cerr));
     d()->normals = normals;
 }
 

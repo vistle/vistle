@@ -133,7 +133,6 @@ Normals::const_ptr Coords::normals() const
 
 void Coords::setNormals(Normals::const_ptr normals)
 {
-    assert(!normals || normals->check(std::cerr));
     d()->normals = normals;
 }
 
