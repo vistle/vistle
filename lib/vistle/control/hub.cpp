@@ -2333,6 +2333,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             auto &add = static_cast<const AddHub &>(msg);
             if (m_isMaster && add.hasUserInterface()) {
                 std::map<int, std::string> toMirror;
+                std::map<int, int> blueprintIds;
                 for (const auto &it: m_stateTracker.runningMap) {
                     const auto &m = it.second;
                     if (m.mirrorOfId == m.id) {
@@ -2341,7 +2342,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                 }
 
                 for (auto &m: toMirror) {
-                    spawnMirror(add.id(), m.second, m.first);
+                    spawnMirror(add.id(), m.second, m.first, blueprintIds[m.first]);
                 }
             }
             break;
@@ -2725,7 +2726,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
     return true;
 }
 
-bool Hub::spawnMirror(int hubId, const std::string &name, int mirroredId)
+bool Hub::spawnMirror(int hubId, const std::string &name, int mirroredId, int blueprintId)
 {
     assert(m_isMaster);
 
@@ -2743,11 +2744,11 @@ bool Hub::spawnMirror(int hubId, const std::string &name, int mirroredId)
     CERR << "doSpawn: sendManager mirror: " << mirror << std::endl;
     sendManager(mirror, hubId);
 
-    cacheModuleValues(mirroredId, mirror.spawnId());
+    cacheModuleValues(blueprintId, mirror.spawnId());
 
-    auto paramNames = m_stateTracker.getParameters(mirroredId);
+    auto paramNames = m_stateTracker.getParameters(blueprintId);
     for (const auto &pn: paramNames) {
-        auto con = message::Connect(mirroredId, pn, mirror.spawnId(), pn);
+        auto con = message::Connect(blueprintId, pn, mirror.spawnId(), pn);
         m_sendAfterSpawn[mirror.spawnId()].emplace_back(con);
     }
 
@@ -2875,7 +2876,8 @@ bool Hub::handlePriv(const message::Spawn &spawn)
         newId = Id::ModuleBase + m_moduleCount;
         ++m_moduleCount;
         notify.setSpawnId(newId);
-        notify.setMirroringId(newId);
+        if (shouldMirror)
+            notify.setMirroringId(newId);
         std::string suffix = "[" + std::to_string(newId) + "]";
 
         session.setCurrentParameterGroup("Workflow", false);
@@ -2947,7 +2949,7 @@ bool Hub::handlePriv(const message::Spawn &spawn)
             if (!hub.hasUi)
                 continue;
 
-            spawnMirror(hubid, spawn.getName(), newId);
+            spawnMirror(hubid, spawn.getName(), newId, newId);
         }
     }
     return true;
