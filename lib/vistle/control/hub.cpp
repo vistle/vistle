@@ -1345,11 +1345,11 @@ bool Hub::removeSocket(Hub::socket_ptr sock, bool close)
         }
     }
 
+    std::unique_lock<std::mutex> lock(m_socketMutex);
     if (removeClient(sock)) {
         //CERR << "removed client" << std::endl;
     }
 
-    std::unique_lock<std::mutex> lock(m_socketMutex);
     bool ret = m_sockets.erase(sock) > 0;
     sock.reset();
     return ret;
@@ -1367,7 +1367,6 @@ void Hub::addClient(Hub::socket_ptr sock)
 
 bool Hub::removeClient(Hub::socket_ptr sock)
 {
-    std::unique_lock<std::mutex> lock(m_socketMutex);
     return m_clients.erase(sock) > 0;
 }
 
