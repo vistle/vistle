@@ -419,13 +419,19 @@ void Module::doLayout()
     QString id = " " + QString::number(m_id);
     QRect idRect = fm.boundingRect(id);
 
-    QRect infoRect;
+    QRect infoRectTop, infoRectBottom;
     if (m_inPorts.isEmpty()) {
         QString t = m_info;
         if (t.length() > 21) {
             t = t.left(20) + "…";
         }
-        infoRect = fm.boundingRect(t);
+        infoRectTop = fm.boundingRect(t);
+    } else if (m_outPorts.size() <= 1) {
+        QString t = m_info;
+        if (t.length() > 21) {
+            t = t.left(20) + "…";
+        }
+        infoRectBottom = fm.boundingRect(t);
     }
 
     {
@@ -434,7 +440,7 @@ void Module::doLayout()
             in->setPos(portDistance + idx * (portDistance + Port::portSize), 0.);
             ++idx;
         }
-        w = qMax(w, 2 * portDistance + idx * (portDistance + Port::portSize) + infoRect.width() + idRect.width());
+        w = qMax(w, 2 * portDistance + idx * (portDistance + Port::portSize) + infoRectTop.width() + idRect.width());
     }
 
     {
@@ -443,7 +449,7 @@ void Module::doLayout()
             out->setPos(portDistance + idx * (portDistance + Port::portSize), h);
             ++idx;
         }
-        w = qMax(w, 2 * portDistance + idx * (portDistance + Port::portSize));
+        w = qMax(w, 2 * portDistance + idx * (portDistance + Port::portSize) + infoRectBottom.width());
     }
 
     {
@@ -520,11 +526,26 @@ void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
             t = t.left(20) + "…";
         }
         painter->drawText(QPointF(portDistance, m_fontHeight / 2.), t);
+    } else if (m_outPorts.size() <= 1) {
+        QString t = m_info;
+        if (t.length() > 21) {
+            t = t.left(20) + "…";
+        }
+        painter->drawText(QPointF(portDistance + (m_outPorts.size()) * (portDistance + Port::portSize),
+                                  2 * Port::portSize + m_fontHeight / 2.),
+                          t);
     }
 
     QString id = QString::number(m_id);
     QRect idRect = fm.boundingRect(id);
     painter->drawText(rect().x() + rect().width() - idRect.width() - portDistance, m_fontHeight / 2., id);
+
+    if (m_errorState) {
+        QString excl = "!!!!!!";
+        QRect exclRect = fm.boundingRect(excl);
+        painter->drawText(rect().x() + rect().width() - exclRect.width() - portDistance,
+                          2 * Port::portSize + m_fontHeight / 2., excl);
+    }
 }
 
 /*!
@@ -854,6 +875,7 @@ void Module::updateText()
     if (!m_displayName.isEmpty()) {
         m_visibleName = m_displayName;
     } else if (m_inPorts.isEmpty()) {
+    } else if (m_outPorts.size() <= 1) {
     } else {
         if (!m_info.isEmpty()) {
             m_visibleName = m_name;
