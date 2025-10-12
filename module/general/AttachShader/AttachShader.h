@@ -6,10 +6,10 @@
 class AttachShader: public vistle::Module {
 public:
     AttachShader(const std::string &name, int moduleID, mpi::communicator comm);
-    ~AttachShader();
 
 private:
-    virtual bool compute();
+    bool compute() override;
+    bool changeParameter(const vistle::Parameter *param) override;
 
     vistle::StringParameter *m_shader, *m_shaderParams;
 

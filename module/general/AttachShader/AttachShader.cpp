@@ -20,8 +20,13 @@ AttachShader::AttachShader(const std::string &name, int moduleID, mpi::communica
     addResultCache(m_cache);
 }
 
-AttachShader::~AttachShader()
-{}
+bool AttachShader::changeParameter(const vistle::Parameter *param)
+{
+    if (param == m_shader) {
+        setItemInfo(m_shader->getValue());
+    }
+    return Module::changeParameter(param);
+}
 
 bool AttachShader::compute()
 {
