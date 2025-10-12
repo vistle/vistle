@@ -7,10 +7,10 @@ using namespace vistle;
 class ColorAttribute: public vistle::Module {
 public:
     ColorAttribute(const std::string &name, int moduleID, mpi::communicator comm);
-    ~ColorAttribute();
 
 private:
-    virtual bool compute();
+    bool compute() override;
+    bool changeParameter(const vistle::Parameter *param) override;
 
     StringParameter *p_color;
     ResultCache<Object::ptr> m_cache;
@@ -30,8 +30,13 @@ ColorAttribute::ColorAttribute(const std::string &name, int moduleID, mpi::commu
     addResultCache(m_cache);
 }
 
-ColorAttribute::~ColorAttribute()
-{}
+bool ColorAttribute::changeParameter(const vistle::Parameter *param)
+{
+    if (param == p_color) {
+        setItemInfo(p_color->getValue());
+    }
+    return Module::changeParameter(param);
+}
 
 bool ColorAttribute::compute()
 {
