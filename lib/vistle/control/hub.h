@@ -318,6 +318,7 @@ private:
     bool handleQueue();
     bool updateQueue(int oldId, int newId);
     bool cleanQueue(int exitedId);
+    bool checkLastModuleQuit();
 
     void setLoadedFile(const std::string &file);
     void setSessionUrl(const std::string &url);
