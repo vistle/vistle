@@ -20,6 +20,7 @@ class Port: public QObject, public QGraphicsRectItem {
 
 public:
     static double portSize;
+    static QColor outColor;
     static void configure();
 
     enum Type {
