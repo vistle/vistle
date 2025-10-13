@@ -22,6 +22,7 @@
 
 #include "module.h"
 #include "connection.h"
+#include "errorindicator.h"
 #include "dataflownetwork.h"
 #include "mainwindow.h"
 #include "uicontroller.h"
@@ -61,9 +62,12 @@ Module::Module(QGraphicsItem *parent, QString name)
 , m_spawnUuid(nil_uuid())
 , m_Status(SPAWNING)
 , m_validPosition(false)
+, m_errorIndicator(new ErrorIndicator(this))
 , m_fontHeight(0.)
 {
     setName(name);
+
+    m_errorIndicator->setVisible(false);
 
     setFlag(QGraphicsItem::ItemIsMovable);
     setFlag(QGraphicsItem::ItemIsSelectable);
@@ -80,6 +84,7 @@ Module::Module(QGraphicsItem *parent, QString name)
     setLayer(m_layer);
 
     connect(this, &Module::callshowErrorInMainThread, this, &Module::showError);
+    connect(m_errorIndicator, &ErrorIndicator::clicked, this, &Module::showError);
 }
 
 Module::~Module()
@@ -413,7 +418,16 @@ void Module::doLayout()
     QRect nameRect = fm.boundingRect(m_visibleName);
     m_fontHeight = nameRect.height() + 4 * portDistance;
 
-    double w = nameRect.width() + 2 * portDistance;
+    QRect errorRect;
+    if (m_errorIndicator->isVisible()) {
+        errorRect.setWidth(m_errorIndicator->size() + portDistance);
+        errorRect.setHeight(Port::portSize);
+    } else {
+        errorRect.setWidth(0);
+        errorRect.setHeight(0);
+    }
+
+    double w = nameRect.width() + 2 * portDistance + errorRect.width();
     double h = m_fontHeight + 2 * portDistance;
 
     QString id = " " + QString::number(m_id);
@@ -440,7 +454,8 @@ void Module::doLayout()
             in->setPos(portDistance + idx * (portDistance + Port::portSize), 0.);
             ++idx;
         }
-        w = qMax(w, 2 * portDistance + idx * (portDistance + Port::portSize) + infoRectTop.width() + idRect.width());
+        w = qMax(w, 2 * portDistance + idx * (portDistance + Port::portSize) + infoRectTop.width() + idRect.width() +
+                        portDistance);
     }
 
     {
@@ -465,6 +480,7 @@ void Module::doLayout()
     h += Port::portSize;
 
     setRect(0., 0., w, h);
+    m_errorIndicator->setPos(errorPos());
 }
 
 /*!
@@ -538,14 +554,7 @@ void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
 
     QString id = QString::number(m_id);
     QRect idRect = fm.boundingRect(id);
-    painter->drawText(rect().x() + rect().width() - idRect.width() - portDistance, m_fontHeight / 2., id);
-
-    if (m_errorState) {
-        QString excl = "!!!!!!";
-        QRect exclRect = fm.boundingRect(excl);
-        painter->drawText(rect().x() + rect().width() - exclRect.width() - portDistance,
-                          2 * Port::portSize + m_fontHeight / 2., excl);
-    }
+    painter->drawText(rect().x() + rect().width() - idRect.width() - 2. * portDistance, m_fontHeight / 2., id);
 }
 
 /*!
@@ -1107,6 +1116,14 @@ QPointF Module::portPos(const Port *port) const
     return QPointF();
 }
 
+QPointF Module::errorPos() const
+{
+    if (!m_errorIndicator->isVisible())
+        return QPointF();
+    return QPointF(rect().right() - m_errorIndicator->size() - 0.5 * portDistance,
+                   portDistance + 1.5 * Port::portSize - 0.5 * m_errorIndicator->size());
+}
+
 void Module::setStatus(Module::Status status)
 {
     m_Status = status;
@@ -1165,6 +1182,7 @@ void Module::setStatus(Module::Status status)
     if (m_errorState && m_Status != CRASHED) {
         m_borderColor = Qt::red;
     }
+    m_errorIndicator->setVisible(m_errorState);
 
     if (!m_info.isEmpty()) {
         toolTip += " - " + m_info;
@@ -1181,6 +1199,7 @@ void Module::setStatus(Module::Status status)
         m_tooltip = toolTip;
     }
 
+    doLayout();
     update();
 }
 
@@ -1220,10 +1239,13 @@ void Module::clearMessages()
 
 void Module::moduleMessage(int type, QString message)
 {
+    m_errorIndicator->addMessage(message, type);
     m_messages.push_back({type, message});
     if (type == vistle::message::SendText::Error) {
         if (!m_errorState) {
             m_errorState = true;
+            setStatus(m_Status);
+            doLayout();
             emit callshowErrorInMainThread();
         }
     }

@@ -22,6 +22,7 @@ namespace gui {
 class Connection;
 class DataFlowNetwork;
 class ParameterPopup;
+class ErrorIndicator;
 
 const bool LayersAsOpacity = true;
 
@@ -63,6 +64,7 @@ public:
                QWidget *widget) override; // re-implemented
     ///\todo this functionality is unnecessary, push functionality to port
     QPointF portPos(const Port *port) const;
+    QPointF errorPos() const;
     void setStatus(Module::Status status);
     void setStatusText(QString text, int prio);
     void setInfo(QString text, int type);
@@ -197,6 +199,7 @@ private:
     int m_layer = 0;
 
     QList<Port *> m_inPorts, m_outPorts, m_paramPorts;
+    ErrorIndicator *m_errorIndicator = nullptr;
     QColor m_color;
     qreal m_fontHeight;
     std::map<vistle::Port, Port *> m_vistleToGui;

@@ -24,14 +24,15 @@
 
 namespace gui {
 
-double Port::portSize = 14.;
-
 static QColor InColor(200, 30, 30);
 static QColor ParamColor(30, 30, 200);
 static QColor DisabledColor(150, 150, 150);
 static QColor OptionalColor(200, 200, 30);
 //static QColor OutColor = OptionalColor;
 static QColor OutColor = InColor;
+
+double Port::portSize = 14.;
+QColor Port::outColor = OutColor;
 
 void Port::configure()
 {

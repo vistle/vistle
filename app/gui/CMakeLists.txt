@@ -15,6 +15,7 @@ set(gui_SOURCES
     connection.cpp
     module.cpp
     dataflownetwork.cpp
+    errorindicator.cpp
     port.cpp
     vistleobserver.cpp
     parameters.cpp
@@ -39,6 +40,7 @@ set(gui_HEADERS
     moduleview.h
     parameters.h
     parameterconnectionwidgets.h
+    errorindicator.h
     port.h
     uicontroller.h
     vistleconsole.h
