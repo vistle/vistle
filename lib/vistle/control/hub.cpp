@@ -1951,20 +1951,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
 {
     using namespace vistle::message;
 
-    if (m_numRunningModules > 0 && m_stateTracker.getNumRunning() == 0) {
-        m_numRunningModules = 0;
-        if (m_lastModuleQuitAction) {
-            CERR << "executing lastModuleQuitAction... " << std::flush;
-            if (m_lastModuleQuitAction()) {
-                std::cerr << "ok";
-            } else {
-                std::cerr << "ERROR";
-            }
-            std::cerr << std::endl;
-            m_lastModuleQuitAction = nullptr;
-        }
-    }
-    m_numRunningModules = m_stateTracker.getNumRunning();
+    checkLastModuleQuit();
 
     message::Buffer buf(recv);
     Message &msg = buf;
@@ -2288,6 +2275,8 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             std::cerr << " " << msg << std::endl;
         }
     }
+
+    checkLastModuleQuit();
 
     if (Router::the().toHandler(msg, senderType)) {
         switch (msg.type()) {
@@ -4215,6 +4204,30 @@ bool Hub::handlePriv(const message::ModuleExit &exit)
 
     cleanQueue(id);
 
+    checkLastModuleQuit();
+
+    return true;
+}
+
+bool Hub::checkLastModuleQuit()
+{
+    if (m_stateTracker.getNumRunning() > 0 || m_numRunningModules == 0) {
+        m_numRunningModules = m_stateTracker.getNumRunning();
+        return false;
+    }
+
+    m_numRunningModules = 0;
+    if (m_lastModuleQuitAction) {
+        CERR << "executing lastModuleQuitAction... " << std::flush;
+        if (m_lastModuleQuitAction()) {
+            std::cerr << "ok";
+        } else {
+            std::cerr << "ERROR";
+        }
+        std::cerr << std::endl;
+        m_lastModuleQuitAction = nullptr;
+    }
+    m_numRunningModules = m_stateTracker.getNumRunning();
     return true;
 }
 
