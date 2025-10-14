@@ -65,6 +65,16 @@ const vistle::message::SendText::TextType InfoStatus::messageType() const
 }
 
 
+UnsupportedCellTypeErrorStatus::UnsupportedCellTypeErrorStatus(bool isPolyhedral)
+: ErrorStatus("Grid contains unsupported cell type.")
+{
+    if (isPolyhedral) {
+        msg = "Grid contains polyhedral cells, which are not supported by Viskores. "
+              "Please use the version of the module without the Vtkm suffix or "
+              "apply the SplitPolyhedra module to the input before passing it to this module.";
+    }
+}
+
 ModuleStatusPtr Success()
 {
     return std::make_unique<SuccessStatus>();
@@ -83,4 +93,9 @@ ModuleStatusPtr Warning(const std::string &message)
 ModuleStatusPtr Info(const std::string &message)
 {
     return std::make_unique<InfoStatus>(message);
+}
+
+ModuleStatusPtr UnsupportedCellTypeError(bool isPolyhedral)
+{
+    return std::make_unique<UnsupportedCellTypeErrorStatus>(isPolyhedral);
 }

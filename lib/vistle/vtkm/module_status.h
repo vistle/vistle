@@ -72,6 +72,11 @@ public:
     const vistle::message::SendText::TextType messageType() const override;
 };
 
+class V_VTKM_EXPORT UnsupportedCellTypeErrorStatus: public ErrorStatus {
+public:
+    UnsupportedCellTypeErrorStatus(bool isPolyhedral = false);
+};
+
 /*
     @return A unique pointer to a ModuleStatus object representing a successful execution.
 */
@@ -97,5 +102,13 @@ ModuleStatusPtr V_VTKM_EXPORT Warning(const std::string &message);
     informational message.
 */
 ModuleStatusPtr V_VTKM_EXPORT Info(const std::string &message);
+
+/*
+    @param isPolyhedral If true, the error message will mention alternative ways to
+    work with polyhedral cells in Vistle.
+    @return A unique pointer to a ModuleStatus object representing a failed execution which prints a 
+    standard error message for encountering unsupported cells.
+*/
+ModuleStatusPtr V_VTKM_EXPORT UnsupportedCellTypeError(bool isPolyhedral = false);
 
 #endif
