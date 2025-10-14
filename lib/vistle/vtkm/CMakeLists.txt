@@ -7,7 +7,8 @@ set(HEADERS
     convert_worklets.h
     module_status.h
     implicit_function_controller.h
-    vtkm_module.h)
+    vtkm_module.h
+    ArrayHandleCountingModulus.h)
 
 vistle_add_library(vistle_viskores EXPORT ${SOURCES} ${HEADERS})
 target_include_directories(vistle_viskores SYSTEM PUBLIC ${VISKORES_INCLUDE_DIRS})
