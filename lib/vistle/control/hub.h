@@ -311,13 +311,14 @@ private:
     void emergencyQuit();
     const AvailableModule *findModule(const AvailableModule::Key &key);
     void spawnModule(const std::string &path, const std::string &name, int spawnId);
-    bool spawnMirror(int hubId, const std::string &name, int mirroredId);
+    bool spawnMirror(int hubId, const std::string &name, int mirroredId, int blueprintId);
     std::mutex m_queueMutex; // protect access to m_queue
     std::vector<message::Buffer> m_queue;
     void queueMessage(const message::Buffer &msg);
     bool handleQueue();
     bool updateQueue(int oldId, int newId);
     bool cleanQueue(int exitedId);
+    bool checkLastModuleQuit();
 
     void setLoadedFile(const std::string &file);
     void setSessionUrl(const std::string &url);

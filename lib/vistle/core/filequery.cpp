@@ -9,7 +9,7 @@ buffer createPayload(const std::vector<FileInfo> &info)
 {
     vecostreambuf<buffer> buf;
     oarchive ar(buf);
-    ar &Index(info.size());
+    ar &Index64(info.size());
     for (auto &i: info)
         ar &i;
     return buf.get_vector();
@@ -21,7 +21,7 @@ std::vector<FileInfo> unpackFileInfos(const buffer &payload)
     try {
         vecistreambuf<buffer> buf(payload);
         iarchive ar(buf);
-        Index size = 0;
+        Index64 size = 0;
         ar &size;
         info.resize(size);
         for (auto &i: info)
@@ -57,7 +57,7 @@ buffer packFileList(const std::vector<std::string> &files)
 {
     vecostreambuf<buffer> buf;
     oarchive ar(buf);
-    ar &Index(files.size());
+    ar &Index64(files.size());
     for (auto &f: files)
         ar &f;
     return buf.get_vector();
@@ -69,7 +69,7 @@ std::vector<std::string> unpackFileList(const buffer &payload)
     try {
         vecistreambuf<buffer> buf(payload);
         iarchive ar(buf);
-        Index size = 0;
+        Index64 size = 0;
         ar &size;
         files.resize(size);
         for (auto &f: files)

@@ -575,14 +575,14 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
         if (scalar) {
             scalar->setMapping(elementData ? DataBase::Element : DataBase::Vertex);
             scalar->setGrid(geoOut);
-            scalar->addAttribute(attribute::Species, "scalar");
+            scalar->describe("scalar", id());
             token.applyMeta(scalar);
             token.addObject("data_out0", scalar);
         }
         if (vector) {
             vector->setMapping(elementData ? DataBase::Element : DataBase::Vertex);
             vector->setGrid(geoOut);
-            vector->addAttribute(attribute::Species, "vector");
+            vector->describe("vector", id());
             token.applyMeta(vector);
             token.addObject("data_out1", vector);
         }

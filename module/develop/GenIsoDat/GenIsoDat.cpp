@@ -429,14 +429,14 @@ bool GenIsoDat::prepare()
 
     //std::cerr << "pre-add data refcount: " << data->refcount() << std::endl;
     data->setGrid(grid);
-    data->addAttribute(attribute::Species, "iso");
+    data->describe("iso", id());
     updateMeta(data);
     addObject("data_out", data);
     //std::cerr << "post-add data refcount: " << data->refcount() << std::endl;
 
     mapdata->setGrid(grid);
     updateMeta(mapdata);
-    mapdata->addAttribute(attribute::Species, "mapped");
+    mapdata->describe("mapped", id());
     addObject("mapdata_out", mapdata);
 
     return true;

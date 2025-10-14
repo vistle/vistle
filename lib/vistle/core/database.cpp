@@ -7,6 +7,7 @@
 #include "archives.h"
 #include "validate.h"
 #include "shm_obj_ref_impl.h"
+#include "standardattributes.h"
 
 #include <boost/mpl/vector.hpp>
 #include <boost/mpl/vector_c.hpp>
@@ -122,7 +123,6 @@ Object::const_ptr DataBase::grid() const
 
 void DataBase::setGrid(Object::const_ptr grid)
 {
-    assert(!grid || grid->check(std::cerr));
     d()->grid = grid;
     applyDimensionHint(grid);
 }
@@ -192,6 +192,12 @@ void DataBase::print(std::ostream &os, bool verbose) const
         }
         os << ")";
     }
+}
+
+void DataBase::describe(const std::string &species, int sourceId)
+{
+    addAttribute(attribute::Species, species);
+    addAttribute(attribute::DataSource, std::to_string(sourceId));
 }
 
 V_OBJECT_TYPE(DataBase, Object::DATABASE)

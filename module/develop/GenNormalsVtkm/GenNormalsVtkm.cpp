@@ -63,7 +63,7 @@ DataBase::ptr GenNormalsVtkm::prepareOutputField(const viskores::cont::DataSet &
         updateMeta(mapped);
         if (outputGrid)
             mapped->setGrid(outputGrid);
-        mapped->addAttribute(attribute::Species, "normals");
+        mapped->describe("normals", id());
         return mapped;
     } else {
         sendError("Could not generate normals");

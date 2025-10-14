@@ -60,7 +60,7 @@ bool VecToScalar::compute()
     }
 
     out->copyAttributes(data_in);
-    out->addAttribute(attribute::Species, spec);
+    out->describe(spec, id());
     out->setGrid(data_in->grid());
     updateMeta(out);
     addObject("data_out", out);

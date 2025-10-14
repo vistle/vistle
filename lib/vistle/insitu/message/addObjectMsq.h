@@ -22,6 +22,7 @@ public:
 
     void addObject(const std::string &port, vistle::Object::const_ptr obj);
     void sendObjects();
+    int moduleId() const;
 
 private:
     std::unique_ptr<vistle::message::MessageQueue> m_sendMessageQueue;

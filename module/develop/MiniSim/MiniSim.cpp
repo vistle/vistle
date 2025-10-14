@@ -94,7 +94,7 @@ insitu::ObjectRetriever::PortAssignedObjectList MiniSimModule::getData(const ins
                 oscillation->setMapping(DataBase::Mapping::Element);
                 oscillation->setGrid(m_grids[block.first]);
                 oscillation->setBlock(block.first);
-                oscillation->addAttribute(attribute::Species, "oscillation");
+                oscillation->describe("oscillation", id());
                 m_adapter->updateMeta(oscillation);
                 outputData.push_back(insitu::ObjectRetriever::PortAssignedObject{meshName, varName, oscillation});
             }

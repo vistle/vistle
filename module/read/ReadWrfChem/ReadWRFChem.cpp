@@ -544,7 +544,7 @@ bool ReadWRFChem::addDataToPort(Token &token, NcFile *ncDataFile, int vi, Object
     obj->setGrid(outGrid);
     setMeta(obj, block, numBlocks, t);
     std::string pVar = m_variables[vi]->getValue();
-    obj->addAttribute(attribute::Species, pVar);
+    obj->describe(pVar, id());
     token.applyMeta(obj);
     token.addObject(m_dataOut[vi], obj);
 

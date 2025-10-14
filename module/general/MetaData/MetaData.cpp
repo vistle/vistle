@@ -222,7 +222,7 @@ bool MetaData::compute()
     }
 
 
-    out->addAttribute(attribute::Species, species);
+    out->describe(species, id());
     if (data)
         out->setMeta(data->meta());
     out->setMapping(mapping);

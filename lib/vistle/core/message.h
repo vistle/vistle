@@ -352,6 +352,11 @@ protected:
     }
 };
 
+template<class Payload>
+extern V_COREEXPORT buffer addPayload(Message &message, const Payload &payload);
+template<class Payload>
+extern V_COREEXPORT Payload getPayload(const buffer &data);
+
 V_COREEXPORT buffer compressPayload(vistle::message::CompressionMode &mode, const char *raw, size_t size,
                                     int speed = -1 /* algorithm default */);
 V_COREEXPORT buffer compressPayload(vistle::message::CompressionMode &mode, const buffer &raw,

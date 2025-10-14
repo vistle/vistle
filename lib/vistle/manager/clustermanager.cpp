@@ -2279,21 +2279,27 @@ bool ClusterManager::scanModules(const std::string &prefix, const std::string &b
 #endif
 #endif
 
-    // module aliases
-    config::File modules("modules");
-    for (auto &alias: modules.entries("alias")) {
-        auto e = modules.value<std::string>("alias", alias)->value();
-        AvailableModule::Key key(hubId(), e);
-        auto it = m_localModules.find(key);
-        if (it == m_localModules.end()) {
-            CERR << "alias " << alias << " -> " << e << " not found" << std::endl;
-            continue;
-        }
+#if !defined(MODULE_THREAD)
+    if (getRank() == 0) {
+#endif
+        // module aliases
+        config::File modules("modules");
+        for (auto &alias: modules.entries("alias")) {
+            auto e = modules.value<std::string>("alias", alias)->value();
+            AvailableModule::Key key(hubId(), e);
+            auto it = m_localModules.find(key);
+            if (it == m_localModules.end()) {
+                CERR << "alias " << alias << " -> " << e << " not found" << std::endl;
+                continue;
+            }
 
-        AvailableModule::Key keya(hubId(), alias);
-        m_localModules[keya] =
-            AvailableModule{hubId(), alias, it->second.path(), it->second.category(), it->second.description()};
+            AvailableModule::Key keya(hubId(), alias);
+            m_localModules[keya] =
+                AvailableModule{hubId(), alias, it->second.path(), it->second.category(), it->second.description()};
+        }
+#if !defined(MODULE_THREAD)
     }
+#endif
 
     if (getRank() == 0) {
         for (auto &p: m_localModules) {
