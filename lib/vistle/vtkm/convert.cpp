@@ -7,11 +7,13 @@
 #include <viskores/cont/ArrayHandleExtractComponent.h>
 #include <viskores/cont/ArrayHandleSOA.h>
 #include <viskores/cont/ArrayHandleUniformPointCoordinates.h>
+#include "ArrayHandleCountingModulus.h"
 
 #include <vistle/core/celltypes.h>
 #include <vistle/core/scalars.h>
 #include <vistle/core/uniformgrid.h>
 #include <vistle/core/rectilineargrid.h>
+#include <vistle/core/layergrid.h>
 #include <vistle/core/points.h>
 #include <vistle/core/lines.h>
 #include <vistle/core/triangles.h>
@@ -28,6 +30,11 @@ using DoubleArray = viskores::cont::ArrayHandle<double>;
 
 using CartesianProductFloat = viskores::cont::ArrayHandleCartesianProduct<FloatArray, FloatArray, FloatArray>;
 using CartesianProductDouble = viskores::cont::ArrayHandleCartesianProduct<DoubleArray, DoubleArray, DoubleArray>;
+
+using CompositeVec3fWithCountingModulusTag = viskores::cont::ArrayHandle<
+    viskores::Vec<float, 3>,
+    viskores::cont::StorageTagCompositeVec<viskores::cont::StorageTagCountingModulus,
+                                           viskores::cont::StorageTagCountingModulus, viskores::cont::StorageTagBasic>>;
 
 
 namespace vistle {
@@ -202,6 +209,19 @@ ModuleStatusPtr vtkmSetGrid(viskores::cont::DataSet &vtkmDataset, vistle::Object
         viskores::cont::ArrayHandleCartesianProduct rectilinearCoordinates(xc, yc, zc);
         auto coordinateSystem = viskores::cont::CoordinateSystem("rectilinear", rectilinearCoordinates);
         vtkmDataset.AddCoordinateSystem(coordinateSystem);
+    } else if (auto lg = LayerGrid::as(grid)) {
+        auto nx = lg->getNumDivisions(0);
+        auto ny = lg->getNumDivisions(1);
+        auto nz = lg->getNumDivisions(2);
+        auto sz = nx * ny * nz;
+        const auto *min = lg->min(), *dist = lg->dist();
+        auto xc = viskores::cont::ArrayHandleCountingModulus<vistle::Scalar>(min[0], dist[0], sz, nx);
+        auto yc = viskores::cont::ArrayHandleCountingModulus<vistle::Scalar>(min[1], dist[1], sz, ny, nx);
+        auto zc = lg->z().handle();
+
+        viskores::cont::ArrayHandleCompositeVector heightfieldLayerCoordinates(xc, yc, zc);
+        auto coordinateSystem = viskores::cont::CoordinateSystem("heightfieldlayers", heightfieldLayerCoordinates);
+        vtkmDataset.AddCoordinateSystem(coordinateSystem);
     } else {
         return Error("Found unsupported grid type while attempting to convert Vistle grid to Viskores dataset.");
     }
@@ -307,6 +327,8 @@ Object::ptr vtkmGetGeometry(const viskores::cont::DataSet &dataset)
             vtkmGetCoords<CartesianProductFloat>(unknown, coords);
         } else if (unknown.CanConvert<CartesianProductDouble>()) {
             vtkmGetCoords<CartesianProductDouble>(unknown, coords);
+        } else if (unknown.CanConvert<CompositeVec3fWithCountingModulusTag>()) {
+            vtkmGetCoords<CompositeVec3fWithCountingModulusTag>(unknown, coords);
         } else if (unknown.CanConvert<viskores::cont::ArrayHandleSOA<viskores::Vec3f>>()) {
             vtkmGetCoords<viskores::cont::ArrayHandleSOA<viskores::Vec3f>>(unknown, coords);
         } else {
