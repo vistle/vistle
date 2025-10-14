@@ -171,6 +171,7 @@ bool ReadCovise::examine(const Parameter *param)
 bool ReadCovise::prepareRead()
 {
     m_transposed.clear();
+    bool anythingOpen = false;
 #ifdef READ_DIRECTORY
     auto dir = filesystem::path(m_directory->getValue());
 #endif
@@ -208,11 +209,17 @@ bool ReadCovise::prepareRead()
             continue;
 
         m_fd[port] = covOpenInFile(name.c_str());
-        if (!m_fd[port]) {
+        if (m_fd[port]) {
+            anythingOpen = true;
+        } else {
             if (!name.empty())
                 sendError("failed to open %s or not a COVISE file", name.c_str());
             m_filename[port].clear();
         }
+    }
+
+    if (!anythingOpen) {
+        return false;
     }
 
     for (unsigned port = 0; port < NumPorts; ++port) {
@@ -256,18 +263,23 @@ bool ReadCovise::read(Reader::Token &token, int timestep, int block)
     std::cerr << "reading t=" << timestep << ", block=" << block << std::endl;
     Element *elem[NumPorts];
     int fd[NumPorts];
+    bool anythingOpen = false;
     for (unsigned port = 0; port < NumPorts; ++port) {
         elem[port] = &m_rootElement[port];
         if (m_filename->empty()) {
             fd[port] = 0;
         } else {
             fd[port] = covOpenInFile(m_filename[port].c_str());
+            if (fd[port])
+                anythingOpen = true;
 #if 0
-            if (fd[port] == 0)
+            else
                 return false;
 #endif
         }
     }
+    if (!anythingOpen)
+        return false;
     bool ret = readRecursive(token, fd, elem, -1, timestep);
     for (unsigned port = 0; port < NumPorts; ++port) {
         if (fd[port])
