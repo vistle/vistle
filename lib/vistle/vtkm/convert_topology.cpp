@@ -2,6 +2,7 @@
 #include "convert_worklets.h"
 #include "convert.h"
 
+#include <vistle/core/celltypes.h>
 #include <vistle/core/points.h>
 #include <vistle/core/lines.h>
 #include <vistle/core/triangles.h>
@@ -16,6 +17,22 @@
 
 
 namespace vistle {
+
+template<typename StorageType>
+bool containsPolyhedralCells(const viskores::cont::CellSetSingleType<StorageType> &cellset)
+{
+    return cellset.GetNumberOfCells() > 0 && cellset.GetCellShape(0) == vistle::cell::CellType::POLYHEDRON;
+}
+
+template<typename StorageType>
+bool containsPolyhedralCells(const viskores::cont::CellSetExplicit<StorageType> &cellset)
+{
+    auto shapes = cellset.GetShapesArray(viskores::TopologyElementTagCell(), viskores::TopologyElementTagPoint());
+    const auto [mindim, maxdim] = getMinMaxDims(shapes);
+
+    return mindim == -2;
+}
+
 
 namespace {
 
@@ -83,6 +100,10 @@ Object::ptr vtkmGetTopology(const viskores::cont::DataSet &dataset)
             return toNgons<Quads>(scellset);
         } else if (cellset.GetCellShape(0) == viskores::CELL_SHAPE_POLYGON) {
             return toIndexed<Polygons>(scellset);
+        } else {
+            std::cerr << "ERROR vtkmGetTopology: encountered unsupported cell type (" << cellset.GetCellShape(0) << ")"
+                      << std::endl;
+            return nullptr;
         }
     }
 
@@ -97,10 +118,12 @@ Object::ptr vtkmGetTopology(const viskores::cont::DataSet &dataset)
         const auto [mindim, maxdim] = getMinMaxDims(eshapes);
 
         if (mindim > maxdim) {
-            // empty
-        } else if (mindim == -1) {
-            // unhanded cell type
-        } else if (mindim != maxdim || maxdim == 3) {
+            std::cerr << "ERROR vtkmGetTopology: empty cell set!" << std::endl;
+        } else if (mindim == -2) {
+            std::cerr << "ERROR vtkmGetTopology: polyhedral cells are not supported!" << std::endl;
+        } else if (mindim == -3) {
+            std::cerr << "ERROR vtkmGetTopology: encountered unsupported cell type!" << std::endl;
+        } else if (mindim != maxdim || maxdim == 3 || mindim == -1) {
             // require UnstructuredGrid for mixed cells
             UnstructuredGrid::ptr unstr(new UnstructuredGrid(0, 0, 0));
             unstr->d()->cl->setHandle(econn);
@@ -156,12 +179,20 @@ ModuleStatusPtr fromNgons(viskores::cont::DataSet &vtkmDataset, typename Ngons::
         viskores::cont::CellSetSingleType<> cellSet;
         auto conn = ngon->cl().handle();
         cellSet.Fill(numPoints, shape, N, conn);
+
+        if (containsPolyhedralCells(cellSet))
+            return UnsupportedCellTypeError(true);
+
         vtkmDataset.SetCellSet(cellSet);
     } else {
         viskores::cont::CellSetSingleType<viskores::cont::StorageTagCounting> cellSet;
         auto conn = viskores::cont::make_ArrayHandleCounting(static_cast<viskores::Id>(0), static_cast<viskores::Id>(1),
                                                              numPoints);
         cellSet.Fill(numPoints, shape, N, conn);
+
+        if (containsPolyhedralCells(cellSet))
+            return UnsupportedCellTypeError(true);
+
         vtkmDataset.SetCellSet(cellSet);
     }
 
@@ -191,6 +222,10 @@ ModuleStatusPtr fromIndexed(viskores::cont::DataSet &vtkmDataset, typename Idx::
     viskores::cont::CellSetExplicit<> cellSet;
 #endif
     cellSet.Fill(numPoints, shapes, conn, offs);
+
+    if (containsPolyhedralCells(cellSet))
+        return UnsupportedCellTypeError(true);
+
     vtkmDataset.SetCellSet(cellSet);
 
     return Success();
@@ -227,6 +262,9 @@ ModuleStatusPtr vtkmSetTopology(viskores::cont::DataSet &vtkmDataset, vistle::Ob
         viskores::cont::CellSetExplicit<> cellSetExplicit;
         cellSetExplicit.Fill(numPoints, shapes, conn, offs);
 
+        if (containsPolyhedralCells(cellSetExplicit))
+            return UnsupportedCellTypeError(true);
+
         // create vtkm dataset
         vtkmDataset.SetCellSet(cellSetExplicit);
     } else if (auto tri = Triangles::as(grid)) {
@@ -242,6 +280,10 @@ ModuleStatusPtr vtkmSetTopology(viskores::cont::DataSet &vtkmDataset, vistle::Ob
         viskores::cont::CellSetSingleType<viskores::cont::StorageTagIndex> cellSet;
         auto conn = viskores::cont::make_ArrayHandleIndex(numPoints);
         cellSet.Fill(numPoints, viskores::CELL_SHAPE_VERTEX, 1, conn);
+
+        if (containsPolyhedralCells(cellSet))
+            return UnsupportedCellTypeError(true);
+
         vtkmDataset.SetCellSet(cellSet);
     } else {
         return Error("Encountered unsupported grid type while attempting to convert Vistle grid to Viskores dataset.");

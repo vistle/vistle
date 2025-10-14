@@ -1,4 +1,4 @@
-set(SOURCES convert.cpp convert_topology.cpp convert_worklets.cpp module_status.cpp implicit_function_controller.cpp vtkm_module.cpp)
+set(SOURCES convert.cpp convert_topology.cpp module_status.cpp implicit_function_controller.cpp vtkm_module.cpp)
 
 set(HEADERS
     export.h
