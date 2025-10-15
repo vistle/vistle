@@ -12,7 +12,7 @@ set(HEADERS
 
 vistle_add_library(vistle_viskores EXPORT ${SOURCES} ${HEADERS})
 target_include_directories(vistle_viskores SYSTEM PUBLIC ${VISKORES_INCLUDE_DIRS})
-viskores_add_target_information(vistle_viskores MODIFY_CUDA_FLAGS DEVICE_SOURCES convert_worklets.cpp)
+viskores_add_target_information(vistle_viskores MODIFY_CUDA_FLAGS DEVICE_SOURCES convert_topology.cpp convert_worklets.h)
 
 vistle_target_link_libraries(
     vistle_viskores
