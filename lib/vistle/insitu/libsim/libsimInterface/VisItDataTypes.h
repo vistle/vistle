@@ -8,11 +8,7 @@
 class visit_handle {
 public:
     visit_handle() = default;
-    constexpr visit_handle(int val): i(val) {}
-
-    constexpr std::strong_ordering operator<=>(const visit_handle other) const noexcept { return i <=> other.i; }
-    constexpr std::strong_ordering operator<=>(int i) const noexcept { return this->i <=> i; }
-
+    constexpr visit_handle(int val) noexcept: i(val) {}
     constexpr operator int() const noexcept { return i; }
 
 private:
