@@ -50,9 +50,11 @@ public:
     /// @param start The starting value in the first value of the array.
     /// @param step The increment between sequential values in the array.
     /// @param numValues The size of the array.
+    /// @param modulus After how many repetition cycles the counting value wraps around.
+    /// @param repetition How often a value is repeated before incrementing.
     VISKORES_EXEC_CONT
     ArrayPortalCountingModulus(ValueType start, ValueType step, viskores::Id numValues, viskores::Id modulus,
-                               viskores::Id repetition = 1)
+                               viskores::Id repetition)
     : Start(start), Step(step), NumberOfValues(numValues), Modulus(modulus), Repetition(repetition)
     {}
 
@@ -68,10 +70,11 @@ public:
     VISKORES_EXEC_CONT
     viskores::Id GetNumberOfValues() const { return this->NumberOfValues; }
 
-    /// Returns the number of values in the array.
+    /// Returns after how many repetition cycles the counting value wraps around.
     VISKORES_EXEC_CONT
     viskores::Id GetModulus() const { return this->Modulus; }
 
+    /// Returns how often a value is repeated before incrementing.
     VISKORES_EXEC_CONT
     viskores::Id GetRepetition() const { return this->Repetition; }
 
@@ -79,10 +82,10 @@ public:
     VISKORES_EXEC_CONT
     ValueType Get(viskores::Id index) const
     {
+        viskores::Id i = this->Repetition > 1 ? index / this->Repetition : index;
         if (this->Modulus == 0)
-            return ValueType(this->Start + this->Step * ValueType(static_cast<ComponentType>(index)));
-        return ValueType(this->Start + this->Step * ValueType(static_cast<ComponentType>((index / this->Repetition) %
-                                                                                         this->Modulus)));
+            return ValueType(this->Start + this->Step * ValueType(static_cast<ComponentType>(i)));
+        return ValueType(this->Start + this->Step * ValueType(static_cast<ComponentType>(i % this->Modulus)));
     }
 
 private:
@@ -125,8 +128,8 @@ struct Storage<T, typename std::enable_if<CanCountMod<T>::value, viskores::cont:
 } // namespace internal
 
 /// ArrayHandleCountingModulus is a specialization of ArrayHandle. By default it
-/// contains a increment value, that is increment for each step between zero
-/// and the passed in length
+/// contains an increment value, that is incremented after repetition steps between zero
+/// and the passed in length. The increment wraps around when it reaches modulus.
 template<typename CountingValueType>
 class ArrayHandleCountingModulus
 : public viskores::cont::ArrayHandle<CountingValueType, viskores::cont::StorageTagCountingModulus> {
@@ -146,6 +149,8 @@ public:
     VISKORES_CONT CountingValueType GetStep() const { return this->ReadPortal().GetStep(); }
 
     VISKORES_CONT viskores::Id GetModulus() const { return this->ReadPortal().GetModulus(); }
+
+    VISKORES_CONT viskores::Id GetRepetition() const { return this->ReadPortal().GetRepetition(); }
 };
 
 /// A convenience function for creating an ArrayHandleCountingModulus. It takes the
@@ -248,19 +253,21 @@ public:
         viskoresdiy::save(bb, portal.GetStep());
         viskoresdiy::save(bb, portal.GetNumberOfValues());
         viskoresdiy::save(bb, portal.GetModulus());
+        viskoresdiy::save(bb, portal.GetRepetition());
     }
 
     static VISKORES_CONT void load(BinaryBuffer &bb, BaseType &obj)
     {
         T start{}, step{};
-        viskores::Id count = 0, modulus = 0;
+        viskores::Id count = 0, modulus = 1, repetition = 0;
 
         viskoresdiy::load(bb, start);
         viskoresdiy::load(bb, step);
         viskoresdiy::load(bb, count);
         viskoresdiy::load(bb, modulus);
+        viskoresdiy::load(bb, repetition);
 
-        obj = viskores::cont::make_ArrayHandleCountingModulus(start, step, count, modulus);
+        obj = viskores::cont::make_ArrayHandleCountingModulus(start, step, count, modulus, repetition);
     }
 };
 
