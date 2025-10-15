@@ -373,6 +373,8 @@ bool UiController::checkModified(const QString &reason)
 {
     if (m_observer.modificationCount() == 0 && !m_modified)
         return true;
+    if (getenv("COVER_TERMINATE_SESSION"))
+        return true;
 
     std::cerr << "modified: " << m_modified << ", modification count: " << m_observer.modificationCount() << std::endl;
 
