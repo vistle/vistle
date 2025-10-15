@@ -204,50 +204,53 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
         m_mappedDataHandling != MappedDataHandling::Discard && m_mappedDataHandling != MappedDataHandling::Generate;
     auto activeField = useInputData ? fieldNames[0] : "";
     if (m_mappedDataHandling != MappedDataHandling::Require || inputDataset.HasField(activeField)) {
-        auto filter = setUpFilter();
-        if (inputDataset.HasField(activeField)) {
-            filter->SetActiveField(activeField);
-            /*
+        if (auto filter = setUpFilter()) {
+            if (inputDataset.HasField(activeField)) {
+                filter->SetActiveField(activeField);
+                /*
                 By default, Viskores names output fields the same as input fields which causes problems
                 if the input mapping is different from the output mapping, i.e., when converting 
                 a point field to a cell field or vice versa. To avoid having a point and a 
                 cell field of the same name in the resulting dataset, which leads to conflicts, e.g., 
                 when calling Viskores's GetField() method, we rename the output field here.
             */
-        }
-        filter->SetOutputFieldName(getFieldName(0, true));
-        filter->SetFieldsToPass("", viskores::cont::Field::Association::Any,
-                                viskores::filter::FieldSelection::Mode::All);
-        outputDataset = filter->Execute(inputDataset);
-        if (printInfo) {
-            {
-                std::stringstream str;
-                str << "<pre>Input ";
-                inputDataset.PrintSummary(str);
-                inputDataset.PrintSummary(std::cout);
-                str << "</pre>" << std::endl;
-                auto msg = str.str();
-                std::cout << msg << std::endl;
-                //sendInfo("%s", msg.c_str());
             }
+            filter->SetOutputFieldName(getFieldName(0, true));
+            filter->SetFieldsToPass("", viskores::cont::Field::Association::Any,
+                                    viskores::filter::FieldSelection::Mode::All);
+            outputDataset = filter->Execute(inputDataset);
+            if (printInfo) {
+                {
+                    std::stringstream str;
+                    str << "<pre>Input ";
+                    inputDataset.PrintSummary(str);
+                    inputDataset.PrintSummary(std::cout);
+                    str << "</pre>" << std::endl;
+                    auto msg = str.str();
+                    std::cout << msg << std::endl;
+                    //sendInfo("%s", msg.c_str());
+                }
 
-            {
-                std::stringstream str;
-                str << "Filter: " << typeid(decltype(*filter)).name() << std::endl;
-                auto msg = str.str();
-                std::cout << msg << std::endl;
-                //sendInfo("%s", msg.c_str());
-            }
+                {
+                    std::stringstream str;
+                    str << "Filter: " << typeid(decltype(*filter)).name() << std::endl;
+                    auto msg = str.str();
+                    std::cout << msg << std::endl;
+                    //sendInfo("%s", msg.c_str());
+                }
 
-            {
-                std::stringstream str;
-                str << "<pre>Output ";
-                outputDataset.PrintSummary(str);
-                str << "</pre>" << std::endl;
-                auto msg = str.str();
-                std::cout << msg << std::endl;
-                //sendInfo("%s", msg.c_str());
+                {
+                    std::stringstream str;
+                    str << "<pre>Output ";
+                    outputDataset.PrintSummary(str);
+                    str << "</pre>" << std::endl;
+                    auto msg = str.str();
+                    std::cout << msg << std::endl;
+                    //sendInfo("%s", msg.c_str());
+                }
             }
+        } else {
+            outputDataset = inputDataset;
         }
     }
 
