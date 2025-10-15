@@ -21,6 +21,8 @@ if(DIY_INCLUDE_DIR)
     if(WIN32)
         # On Windows, we need to set the character set to UTF-8
         target_compile_options(MiniSim PRIVATE /utf-8)
+        # Relax conformance mode to allow older template syntax in diy
+        target_compile_options(MiniSim PRIVATE /permissive)
     else()
         target_compile_options(MiniSim PRIVATE -Wno-sign-compare)
     endif()
