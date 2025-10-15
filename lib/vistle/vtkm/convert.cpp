@@ -92,7 +92,7 @@ ModuleStatusPtr vtkmApplyRadius(viskores::cont::DataSet &vtkmDataset, Object::co
 
 ModuleStatusPtr vtkmGetRadius(const viskores::cont::DataSet &dataset, Object::ptr &result)
 {
-    auto radius = vtkmGetField(dataset, "_radius");
+    auto radius = vtkmGetField(dataset, "_radius", DataBase::Unspecified, false);
     if (!radius) {
         return Success();
     }
@@ -133,9 +133,9 @@ ModuleStatusPtr vtkmApplyNormals(viskores::cont::DataSet &vtkmDataset, Object::c
 
 ModuleStatusPtr vtkmGetNormals(const viskores::cont::DataSet &dataset, Object::ptr &result)
 {
-    auto normals = vtkmGetField(dataset, "normals");
+    auto normals = vtkmGetField(dataset, "normals", DataBase::Unspecified, false);
     if (!normals) {
-        normals = vtkmGetField(dataset, "Normals");
+        normals = vtkmGetField(dataset, "Normals", DataBase::Unspecified, false);
     }
     if (!normals) {
         return Success();
@@ -364,11 +364,12 @@ struct GetArrayContents {
 } // namespace
 
 vistle::DataBase::ptr vtkmGetField(const viskores::cont::DataSet &vtkmDataSet, const std::string &name,
-                                   vistle::DataBase::Mapping mapping)
+                                   vistle::DataBase::Mapping mapping, bool warnIfNotFound)
 {
     vistle::DataBase::ptr result;
     if (!vtkmDataSet.HasField(name)) {
-        std::cerr << "vtkmGetField: Viskores field " << name << " not found" << std::endl;
+        if (warnIfNotFound)
+            std::cerr << "vtkmGetField: Viskores field " << name << " not found" << std::endl;
         return result;
     }
 
