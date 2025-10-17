@@ -819,16 +819,7 @@ static void compute(int id = message::Id::Broadcast)
     std::cerr << "Python: compute " << id << std::endl;
 #endif
     message::Execute m(message::Execute::ComputeExecute, id);
-    if (id == message::Id::Broadcast)
-        m.setDestId(message::Id::MasterHub);
-    else {
-        // send to the hub that owns that module so the hub forwards only once
-        int hub = state().getHub(id);
-        if (hub != message::Id::Invalid)
-            m.setDestId(hub);
-        else
-            m.setDestId(id); // seems to cause duplicate call of module
-    }
+    m.setDestId(message::Id::MasterHub);
     sendMessage(m);
 }
 
