@@ -160,7 +160,6 @@ setVectorParam(VistleSession, f'position[{mCutGeometry19}]', -461.3090458667184,
 setVectorParam(mCutGeometry19, 'point', 0.3510650396347046, 0.018609093502163887, 0.07155431807041168, True)
 setVectorParam(mCutGeometry19, 'vertex', 1.0, 6.123234262925839e-17, 0.0, True)
 setFloatParam(mCutGeometry19, 'scalar', 0.3510650396347046, True)
-setIntParam(mCutGeometry19, 'flip', 1, True)
 applyParameters(mCutGeometry19)
 
 mToTriangles20 = waitForSpawn(umToTriangles20)
