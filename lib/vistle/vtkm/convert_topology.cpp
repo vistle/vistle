@@ -118,7 +118,7 @@ Object::ptr vtkmGetTopology(const viskores::cont::DataSet &dataset)
         const auto [mindim, maxdim] = getMinMaxDims(eshapes);
 
         if (mindim > maxdim) {
-            std::cerr << "ERROR vtkmGetTopology: empty cell set!" << std::endl;
+            std::cerr << "vtkmGetTopology: empty cell set" << std::endl;
         } else if (mindim == -2) {
             std::cerr << "ERROR vtkmGetTopology: polyhedral cells are not supported!" << std::endl;
         } else if (mindim == -3) {
