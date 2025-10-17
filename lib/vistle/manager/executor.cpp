@@ -41,7 +41,7 @@ Executor::Executor(int argc, char *argv[], boost::mpi::communicator comm)
     m_rank = comm.rank();
 
     if (argc < 4) {
-        std::cerr << "usage: " << argv[0] << " [hostname] [port] [dataPort]" << std::endl;
+        std::cerr << "usage: " << argv[0] << " [hostname] [port] [dataPort] [dataMgrBase]" << std::endl;
         std::cerr << "  hostname and port where Vistle hub can be reached have to be specified" << std::endl;
         exit(1);
     }
@@ -49,6 +49,10 @@ Executor::Executor(int argc, char *argv[], boost::mpi::communicator comm)
     unsigned short port = boost::lexical_cast<unsigned short>(argv[2]);
     m_name = Shm::instanceName(argv[1], port);
     unsigned short dataPort = boost::lexical_cast<unsigned short>(argv[3]);
+    unsigned short dataMgrBase = 0;
+    if (argc > 4) {
+        dataMgrBase = boost::lexical_cast<unsigned short>(argv[4]);
+    }
 
     // broadcast name of vistle session
     mpi::broadcast(comm, m_name, 0);
@@ -91,7 +95,7 @@ Executor::Executor(int argc, char *argv[], boost::mpi::communicator comm)
 
     vistle::apply_affinity_from_environment(nodeRank[m_rank], ranksPerNode[hostname]);
 
-    m_comm = new vistle::Communicator(m_rank, hostnames, comm);
+    m_comm = new vistle::Communicator(m_rank, hostnames, comm, dataMgrBase);
     if (!m_comm->connectHub(argv[1], port, dataPort)) {
         std::stringstream err;
         err << "failed to connect to Vistle hub on " << argv[1] << ":" << port;

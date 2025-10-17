@@ -645,7 +645,7 @@ void DataProxy::printConnections() const
     }
 }
 
-bool DataProxy::connectRemoteData(const message::AddHub &remote)
+bool DataProxy::connectRemoteData(const message::AddHub &remote, const message::AddHub::Payload &payload)
 {
     CERR << "connectRemoteData: " << remote << std::endl;
 
