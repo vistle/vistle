@@ -33,7 +33,7 @@ setVectorParam(VistleSession, f'position[{mDomainSurface4}]', -51.0, 102.0)
 mCutGeometry6 = waitForSpawn(umCutGeometry6)
 setVectorParam(VistleSession, f'position[{mCutGeometry6}]', -51.0, 187.0)
 setVectorParam(mCutGeometry6, 'point', 0.009750273078680038, -0.00717993313446641, 0.02191287651658058, True)
-setVectorParam(mCutGeometry6, 'vertex', 0.0, 6.123234262925839e-17, 1.0, True)
+setVectorParam(mCutGeometry6, 'vertex', 0.0, 6.123234262925839e-17, -1.0, True)
 setFloatParam(mCutGeometry6, 'scalar', 0.02191287651658058, True)
 applyParameters(mCutGeometry6)
 
