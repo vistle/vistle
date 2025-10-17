@@ -821,8 +821,14 @@ static void compute(int id = message::Id::Broadcast)
     message::Execute m(message::Execute::ComputeExecute, id);
     if (id == message::Id::Broadcast)
         m.setDestId(message::Id::MasterHub);
-    else
-        m.setDestId(id);
+    else {
+        // send to the hub that owns that module so the hub forwards only once
+        int hub = state().getHub(id);
+        if (hub != message::Id::Invalid)
+            m.setDestId(hub);
+        else
+            m.setDestId(id); // seems to cause duplicate call of module
+    }
     sendMessage(m);
 }
 
