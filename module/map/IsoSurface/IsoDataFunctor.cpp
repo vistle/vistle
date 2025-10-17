@@ -34,6 +34,7 @@ bool IsoController::changeParameter(const vistle::Parameter *param)
 #ifdef CUTTINGSURFACE
     switch (m_option->getValue()) {
     case Plane: {
+        m_module->setParameterReadOnly("direction", true);
         if (param->getName() == "point") {
             Vector3 vertex = m_module->getVectorParameter("vertex");
             Vector3 point = m_module->getVectorParameter("point");
@@ -42,6 +43,7 @@ bool IsoController::changeParameter(const vistle::Parameter *param)
         return true;
     }
     case Sphere: {
+        m_module->setParameterReadOnly("direction", true);
         if (param->getName() == "point") {
             Vector3 vertex = m_module->getVectorParameter("vertex");
             Vector3 point = m_module->getVectorParameter("point");
@@ -51,6 +53,7 @@ bool IsoController::changeParameter(const vistle::Parameter *param)
         return true;
     }
     default: /*cylinders*/ {
+        m_module->setParameterReadOnly("direction", false);
         if (param->getName() == "option") {
             switch (m_option->getValue()) {
             case CylinderX:
