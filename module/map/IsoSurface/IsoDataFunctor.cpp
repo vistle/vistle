@@ -17,7 +17,7 @@ void IsoController::init()
 {
 #ifdef CUTTINGSURFACE
     m_module->addVectorParameter("point", "point on plane", ParamVector(0.0, 0.0, 0.0));
-    m_module->addVectorParameter("vertex", "normal on plane", ParamVector(1.0, 0.0, 0.0));
+    m_module->addVectorParameter("vertex", "normal on plane", ParamVector(0.0, 1.0, 0.0));
     m_module->addFloatParameter("scalar", "distance to origin of ordinates", 0.0);
     m_option = m_module->addIntParameter("option", "option", Plane, Parameter::Choice);
     m_module->setParameterChoices(m_option, valueList((SurfaceOption)0));
