@@ -4549,6 +4549,10 @@ void Hub::spawnModule(const std::string &path, const std::string &name, int spaw
 
 void Hub::updateLinkedParameters(const message::SetParameter &setParam)
 {
+    // only master hub should deal with parameter connections
+    if (!m_isMaster)
+        return;
+
     // the msg should have a referrer if it is in reaction to a connected parameter change
     if (setParam.referrer()
             .is_nil()) { //prevents msgs running in circles if e.g.: parameter bounds prevent them from being equal
@@ -4556,8 +4560,9 @@ void Hub::updateLinkedParameters(const message::SetParameter &setParam)
         //depends on whether the ui or the module request the parameter change
         //auto moduleID = message::Id::isModule(setParam.destId()) ? setParam.destId() : setParam.senderId();
         auto moduleID = setParam.getModule();
-        const auto port = m_stateTracker.portTracker()->findPort(moduleID, setParam.getName());
-        const auto param = m_stateTracker.getParameter(moduleID, setParam.getName());
+        std::string name = setParam.getName();
+        const auto port = m_stateTracker.portTracker()->findPort(moduleID, name);
+        const auto param = m_stateTracker.getParameter(moduleID, name);
         std::shared_ptr<Parameter> appliedParam;
         if (param) {
             appliedParam.reset(param->clone());
@@ -4569,7 +4574,7 @@ void Hub::updateLinkedParameters(const message::SetParameter &setParam)
 
             for (ParameterSet::iterator it = conn.begin(); it != conn.end(); ++it) {
                 const auto p = *it;
-                if (p->module() == moduleID && p->getName() == setParam.getName()) {
+                if (p->module() == moduleID && p->getName() == name) {
                     // don't update parameter which was set originally again
                     continue;
                 }
