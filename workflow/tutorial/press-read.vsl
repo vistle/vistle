@@ -37,6 +37,6 @@ setFloatParam(mCutGeometry6, 'scalar', 0.02191287651658058, True)
 applyParameters(mCutGeometry6)
 
 connect(mReadCoviseDirectory1,'grid_out', mDomainSurface4,'data_in')
-connect(mDomainSurface4,'data_out', mCutGeometry6,'grid_in')
+connect(mDomainSurface4,'data_out', mCutGeometry6,'data_in')
 connect(mDomainSurface4,'lines_out', mCOVER2,'data_in')
-connect(mCutGeometry6,'grid_out', mCOVER2,'data_in')
+connect(mCutGeometry6,'data_out', mCOVER2,'data_in')

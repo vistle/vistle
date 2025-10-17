@@ -20,8 +20,8 @@ CutGeometry::CutGeometry(const std::string &name, int moduleID, mpi::communicato
 {
     isocontrol.init();
 
-    auto pin = createInputPort("grid_in", "bare input grid without mapped data");
-    auto pout = createOutputPort("grid_out", "clipped grid");
+    auto pin = createInputPort("data_in", "bare input grid without mapped data");
+    auto pout = createOutputPort("data_out", "clipped grid");
     linkPorts(pin, pout);
 }
 
@@ -64,7 +64,7 @@ bool CutGeometry::changeParameter(const Parameter *param)
 
 bool CutGeometry::compute(const std::shared_ptr<BlockTask> &task) const
 {
-    Object::const_ptr oin = task->expect<Object>("grid_in");
+    Object::const_ptr oin = task->expect<Object>("data_in");
     if (!oin)
         return true;
 
@@ -78,7 +78,7 @@ bool CutGeometry::compute(const std::shared_ptr<BlockTask> &task) const
     if (object) {
         object->copyAttributes(split.geometry);
         updateMeta(object);
-        task->addObject("grid_out", object);
+        task->addObject("data_out", object);
     }
 
     return true;
