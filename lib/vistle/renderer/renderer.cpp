@@ -426,7 +426,7 @@ void Renderer::connectionRemoved(const Port *from, const Port *to)
     while (it != m_colormaps.end()) {
         auto &cmap = it->second;
         if (cmap.sender == from->getModuleID() && cmap.senderPort == from->getName()) {
-            removeColorMap(it->first);
+            removeColorMap(it->first.species, it->first.sourceModule);
             it = m_colormaps.erase(it);
         } else {
             ++it;
@@ -478,7 +478,7 @@ void Renderer::removeAllObjects()
     m_objectList.clear();
 
     for (auto &cmap: m_colormaps) {
-        removeColorMap(cmap.first);
+        removeColorMap(cmap.first.species, cmap.first.sourceModule);
     }
     m_colormaps.clear();
 }

@@ -73,7 +73,7 @@ public:
 
     std::vector<std::shared_ptr<AnariRenderObject>> static_geometry;
     std::vector<std::vector<std::shared_ptr<AnariRenderObject>>> anim_geometry;
-    std::map<std::string, AnariColorMap> m_colormaps;
+    std::map<vistle::ColorMapKey, AnariColorMap> m_colormaps;
 
     int m_timestep = -1;
     bool m_modified = false;
@@ -189,8 +189,9 @@ void Anari::connectionRemoved(const Port *from, const Port *to)
 bool Anari::addColorMap(const vistle::message::Colormap &cm, std::vector<vistle::RGBA> &rgba)
 {
     std::string species = cm.species();
-    bool addedOrChanged = m_colormaps.find(species) != m_colormaps.end();
-    auto &cmap = m_colormaps[species];
+    ColorMapKey key(species, cm.source());
+    bool addedOrChanged = m_colormaps.find(key) != m_colormaps.end();
+    auto &cmap = m_colormaps[key];
     cmap.species = species;
     cmap.min = cm.min();
     cmap.max = cm.max();
@@ -209,8 +210,9 @@ bool Anari::addColorMap(const vistle::message::Colormap &cm, std::vector<vistle:
 
 bool Anari::removeColorMap(const std::string &species, int sourceModule)
 {
-    CERR << "removing colormap " << species << std::endl;
-    auto it = m_colormaps.find(species);
+    CERR << "removing colormap " << sourceModule << ":" << species << std::endl;
+    ColorMapKey key(species, sourceModule);
+    auto it = m_colormaps.find(key);
     if (it == m_colormaps.end())
         return false;
 

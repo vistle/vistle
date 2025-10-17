@@ -2,6 +2,7 @@
 #define VISTLE_COVER_VISTLEGEOMETRYGENERATOR_H
 
 #include <vistle/core/object.h>
+#include <vistle/core/message.h>
 #include <vistle/renderer/renderobject.h>
 #include <vistle/module/resultcache.h>
 #include <mutex>
@@ -41,7 +42,7 @@ struct OsgColorMap {
     osg::ref_ptr<osg::Image> image;
 };
 
-typedef std::map<std::string, OsgColorMap> OsgColorMapMap;
+typedef std::map<vistle::ColorMapKey, OsgColorMap> OsgColorMapMap;
 
 struct GeometryCache {
     GeometryCache(): mutex(std::make_shared<std::mutex>()) {}
@@ -67,7 +68,7 @@ public:
     VistleGeometryGenerator(std::shared_ptr<vistle::RenderObject> ro, vistle::Object::const_ptr geo,
                             vistle::Object::const_ptr normal, vistle::Object::const_ptr mapped);
 
-    const std::string &species() const;
+    const vistle::ColorMapKey &colorMapKey() const;
     void setColorMaps(const OsgColorMapMap *colormaps);
     void setGeometryCache(vistle::ResultCache<GeometryCache> &cache);
     struct Options {
@@ -86,13 +87,13 @@ public:
     static void unlock();
 
 private:
-    const OsgColorMap *getColorMap(const std::string &species) const;
+    const OsgColorMap *getColorMap(const vistle::ColorMapKey &key) const;
     std::shared_ptr<vistle::RenderObject> m_ro;
     vistle::Object::const_ptr m_geo;
     vistle::Object::const_ptr m_normal;
     vistle::Object::const_ptr m_mapped;
 
-    std::string m_species;
+    vistle::ColorMapKey m_colorMapKey;
 
     const OsgColorMapMap *m_colormaps = nullptr;
     vistle::ResultCache<GeometryCache> *m_cache = nullptr;

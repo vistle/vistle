@@ -764,6 +764,7 @@ bool Color::prepare()
     m_colorMapSent = false;
     if (m_haveData) {
         m_species.clear();
+        m_sourceId = message::Id::Invalid;
 
         m_dataMin = std::numeric_limits<Scalar>::max();
         m_dataMax = -std::numeric_limits<Scalar>::max();
@@ -958,6 +959,15 @@ void Color::connectionRemoved(const Port *from, const Port *to)
 void Color::process(const DataBase::const_ptr data)
 {
     m_species = data->getAttribute(attribute::Species);
+    auto source = data->getAttribute(attribute::DataSource);
+    if (source.empty()) {
+        m_sourceId = message::Id::Invalid;
+    } else {
+        m_sourceId = std::stoi(source);
+        if (!message::Id::isModule(m_sourceId)) {
+            m_sourceId = message::Id::Invalid;
+        }
+    }
     sendColorMap();
 
     if (m_dataOut->isConnected()) {
@@ -987,12 +997,17 @@ void Color::sendColorMap()
         m_species = m_speciesPara->getValue();
     }
 
-    setItemInfo(m_species);
+    std::string info;
+    if (message::Id::isModule(m_sourceId)) {
+        info = std::to_string(m_sourceId) + ":";
+    }
+    info += m_species;
+    setItemInfo(info);
 
-    if (m_species.empty())
+    if (m_species.empty() && m_sourceId == message::Id::Invalid)
         return;
 
-    message::Colormap cm(m_species);
+    message::Colormap cm(m_species, m_sourceId);
     cm.setDestId(message::Id::ForBroadcast);
     cm.setRange(m_min, m_max);
     if (m_blendWithMaterialPara->getValue())

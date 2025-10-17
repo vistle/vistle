@@ -236,7 +236,10 @@ VistleGeometryGenerator::VistleGeometryGenerator(std::shared_ptr<vistle::RenderO
 : m_ro(ro), m_geo(geo), m_normal(normal), m_mapped(mapped)
 {
     if (m_mapped) {
-        m_species = m_mapped->getAttribute(attribute::Species);
+        auto species = m_mapped->getAttribute(attribute::Species);
+        auto source = m_mapped->getAttribute(attribute::DataSource);
+        int sourceModule = source.empty() ? vistle::message::Id::Invalid : std::stoi(source);
+        m_colorMapKey = vistle::ColorMapKey(species, sourceModule);
     }
 }
 
@@ -245,9 +248,9 @@ void VistleGeometryGenerator::setOptions(const Options &options)
     m_options = options;
 }
 
-const std::string &VistleGeometryGenerator::species() const
+const vistle::ColorMapKey &VistleGeometryGenerator::colorMapKey() const
 {
-    return m_species;
+    return m_colorMapKey;
 }
 
 void VistleGeometryGenerator::setColorMaps(const OsgColorMapMap *colormaps)
@@ -826,12 +829,12 @@ bool fillTexture(std::stringstream &debug, S *tex, Index sx, Index sy, typename 
     return false;
 }
 
-const OsgColorMap *VistleGeometryGenerator::getColorMap(const std::string &species) const
+const OsgColorMap *VistleGeometryGenerator::getColorMap(const vistle::ColorMapKey &key) const
 {
 #ifdef COVER_PLUGIN
     std::lock_guard<std::mutex> lock(s_coverMutex);
     if (m_colormaps) {
-        auto it = m_colormaps->find(species);
+        auto it = m_colormaps->find(key);
         if (it != m_colormaps->end()) {
             return &it->second;
         }
@@ -968,7 +971,7 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
         sdata.reset();
     } else if (sdata || vdata || idata || bdata) {
 #ifdef COVER_PLUGIN
-        colormap = getColorMap(m_species);
+        colormap = getColorMap(m_colorMapKey);
 #endif
     } else if (database) {
         debug << "Unsupported mapped data: type=" << Object::toString(database->getType()) << " ("
@@ -1053,7 +1056,7 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
 
                 if (!colormap) {
                     // required for applying shader
-                    colormap = getColorMap("");
+                    colormap = getColorMap(ColorMapKey());
                 }
             } else
 #endif
@@ -1086,7 +1089,7 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
             dmode = HeightMap::CellData;
 
         if (dmode == HeightMap::NoData) {
-            colormap = getColorMap("");
+            colormap = getColorMap(ColorMapKey());
         } else {
             dataValid = true;
         }
