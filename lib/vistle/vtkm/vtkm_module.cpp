@@ -126,13 +126,11 @@ Object::const_ptr VtkmModule::prepareOutputGrid(const viskores::cont::DataSet &d
                                                 const Object::const_ptr &inputGrid) const
 {
     auto outputGrid = vtkmGetGeometry(dataset);
-    if (!outputGrid) {
-        sendError("An error occurred while transforming the filter output grid to a Vistle object.");
-        return nullptr;
+    if (outputGrid) {
+        updateMeta(outputGrid);
+        outputGrid->copyAttributes(inputGrid);
     }
 
-    updateMeta(outputGrid);
-    outputGrid->copyAttributes(inputGrid);
     return outputGrid;
 }
 
