@@ -333,7 +333,6 @@ bool ToTriangles::compute()
                 updateMeta(nobj);
                 result = nobj;
             }
-            return true;
         }
 
         if (auto poly = Polygons::as(obj)) {
