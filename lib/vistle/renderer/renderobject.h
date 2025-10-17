@@ -7,10 +7,27 @@
 #include <vistle/core/vector.h>
 #include <vistle/core/object.h>
 #include <vistle/core/normals.h>
+#include <vistle/core/message.h>
 
 #include "export.h"
 
 namespace vistle {
+
+struct V_RENDEREREXPORT ColorMapKey {
+    ColorMapKey(const std::string &species = std::string(), int sourceModule = vistle::message::Id::Invalid)
+    : species(species), sourceModule(sourceModule)
+    {}
+    std::string species;
+    int sourceModule = vistle::message::Id::Invalid;
+
+    bool operator<(const ColorMapKey &o) const
+    {
+        if (sourceModule == o.sourceModule) {
+            return species < o.species;
+        }
+        return sourceModule < o.sourceModule;
+    }
+};
 
 class V_RENDEREREXPORT RenderObject {
 public:

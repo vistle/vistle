@@ -44,7 +44,7 @@ public:
         std::vector<vistle::RGBA> rgba;
     };
 
-    typedef std::map<std::string, ColorMap> ColorMapMap;
+    typedef std::map<ColorMapKey, ColorMap> ColorMapMap;
 
     //! let module clear cache at appropriate times and manage its deletion
     template<class CacheData>

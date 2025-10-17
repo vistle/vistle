@@ -149,7 +149,7 @@ protected:
     int runMain(int argc, char *argv[]);
     bool m_requireUpdate = true;
 
-    typedef std::map<std::string, OsgColorMap> ColorMapMap;
+    typedef std::map<vistle::ColorMapKey, OsgColorMap> ColorMapMap;
     ColorMapMap m_colormaps;
 
     std::set<int> m_dataTypeWarnings; // set of unsupported data types for which a warning has already been printed

@@ -92,6 +92,7 @@ private:
     bool m_reverse = false;
 
     std::string m_species;
+    int m_sourceId = vistle::message::Id::Invalid;
     bool m_colorMapSent = false;
     vistle::Port *m_dataIn = nullptr;
     vistle::Port *m_dataOut = nullptr;
