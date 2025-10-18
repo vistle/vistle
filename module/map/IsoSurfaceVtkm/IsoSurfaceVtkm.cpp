@@ -54,7 +54,7 @@ IsoSurfaceVtkm::IsoSurfaceVtkm(const std::string &name, int moduleID, mpi::commu
     setReducePolicy(message::ReducePolicy::OverAll);
 
     m_computeNormals =
-        addIntParameter("compute_normals", "compute normals (structured grids only)", false, Parameter::Boolean);
+        addIntParameter("compute_normals", "compute per-vertex surface normals", false, Parameter::Boolean);
 }
 
 IsoSurfaceVtkm::~IsoSurfaceVtkm()
