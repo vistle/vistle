@@ -3942,22 +3942,40 @@ bool Hub::handlePriv(const message::CancelExecute &cancel)
     return true;
 }
 
+namespace {
+bool sendBarrierReached(Hub &hub, const message::uuid_t &barrierUuid)
+{
+    auto r = hub.make.message<message::BarrierReached>(barrierUuid);
+    r.setDestId(Id::NextHop);
+    hub.stateTracker().handle(r, nullptr);
+    hub.sendUi(r);
+    hub.sendSlaves(r);
+    hub.sendManager(r);
+    return true;
+}
+} // namespace
+
 bool Hub::handlePriv(const message::Barrier &barrier)
 {
     if (m_verbose >= Verbosity::Manager) {
         CERR << "Barrier request: " << barrier.uuid() << " by " << barrier.senderId() << ": " << barrier.info()
              << std::endl;
     }
+    if (!m_isMaster) {
+        return true;
+    }
+
     assert(!m_barrierActive);
     assert(m_reachedSet.empty());
     m_numBarrierParticipants = m_stateTracker.getNumRunning();
-    if (m_stateTracker.getNumRunning() > 0) {
+    if (m_numBarrierParticipants == 0) {
+        sendBarrierReached(*this, barrier.uuid());
+    } else {
         m_barrierActive = true;
         m_barrierUuid = barrier.uuid();
         message::Buffer buf(barrier);
         buf.setDestId(Id::NextHop);
-        if (m_isMaster)
-            sendSlaves(buf, true);
+        sendSlaves(buf, true);
         sendManager(buf);
     }
     return true;
@@ -3978,12 +3996,7 @@ bool Hub::handlePriv(const message::BarrierReached &reached)
         if (m_reachedSet.size() == m_numBarrierParticipants) {
             m_barrierActive = false;
             m_reachedSet.clear();
-            auto r = make.message<message::BarrierReached>(reached.uuid());
-            r.setDestId(Id::NextHop);
-            m_stateTracker.handle(r, nullptr);
-            sendUi(r);
-            sendSlaves(r);
-            sendManager(r);
+            sendBarrierReached(*this, reached.uuid());
         } else {
             if (m_verbose >= Verbosity::Modules) {
                 auto running = m_stateTracker.getRunningList();
