@@ -111,13 +111,13 @@ public:
     };
     Verbosity verbosity() const;
 
+    message::MessageFactory make;
+
 private:
     struct Slave;
 
     StateTracker m_stateTracker;
     std::unique_ptr<config::Access> m_config;
-
-    message::MessageFactory make;
 
     bool hubReady();
     bool connectToMaster(const std::string &host, unsigned short port);
