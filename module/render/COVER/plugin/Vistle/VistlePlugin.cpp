@@ -90,33 +90,38 @@ bool VistlePlugin::init()
     VistleInfo::setModule(m_module);
     m_observer = std::make_unique<CoverVistleObserver>(this);
 
-    if (m_module) {
-        m_module->state().registerObserver(m_observer.get());
-        updateSessionUrl(m_module->state().sessionUrl());
-
-        if (!cover->visMenu) {
-            cover->visMenu = new ui::Menu("Vistle", this);
-
-            auto executeButton = new ui::Action("Execute", cover->visMenu);
-            cover->visMenu->add(executeButton, ui::Container::KeepFirst);
-            executeButton->setShortcut("e");
-            executeButton->setCallback([this]() {
-                if (m_module) {
-                    m_module->executeAll();
-                }
-            });
-            executeButton->setIcon("view-refresh");
-            executeButton->setPriority(ui::Element::Toolbar);
-        }
-
-        do {
-            update();
-        } while (m_module->mirrorId() == message::Id::Invalid);
-
-        return true;
+    if (!m_module) {
+        std::cerr << "COVER module not found, aborting Vistle plugin initialization" << std::endl;
+        return false;
     }
 
-    return false;
+    m_module->state().registerObserver(m_observer.get());
+    updateSessionUrl(m_module->state().sessionUrl());
+
+    if (!cover->visMenu) {
+        cover->visMenu = new ui::Menu("Vistle", this);
+
+        auto executeButton = new ui::Action("Execute", cover->visMenu);
+        cover->visMenu->add(executeButton, ui::Container::KeepFirst);
+        executeButton->setShortcut("e");
+        executeButton->setCallback([this]() {
+            if (m_module) {
+                m_module->executeAll();
+            }
+        });
+        executeButton->setIcon("view-refresh");
+        executeButton->setPriority(ui::Element::Toolbar);
+    }
+
+    do {
+        update();
+        if (OpenCOVER::instance()->getExitFlag()) {
+            std::cerr << "COVER is exiting, aborting Vistle plugin initialization" << std::endl;
+            return false;
+        }
+    } while (m_module->state().getModuleState(m_module->id()) == vistle::StateObserver::Unknown);
+
+    return true;
 }
 
 bool VistlePlugin::init2()
