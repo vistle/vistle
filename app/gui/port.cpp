@@ -11,12 +11,13 @@
 #include <vistle/core/port.h>
 #include <cassert>
 
-#include <QCursor>
 #include <QAction>
-#include <QMenu>
-#include <QRadialGradient>
-#include <QPainter>
+#include <QCoreApplication>
+#include <QCursor>
 #include <QGraphicsSceneMouseEvent>
+#include <QMenu>
+#include <QPainter>
+#include <QRadialGradient>
 #include <QStatusTipEvent>
 #include <QCoreApplication>
 
