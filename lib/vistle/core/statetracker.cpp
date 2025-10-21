@@ -1692,6 +1692,10 @@ bool StateTracker::handlePriv(const message::Colormap &colormap, const buffer &p
     cm.max = colormap.max();
     cm.rgba = pl.rgba;
 
+    for (StateObserver *o: m_observers) {
+        o->colormap(id, cm.sourceModule, cm.species, std::array<vistle::Float, 2>{cm.min, cm.max}, &cm.rgba);
+    }
+
     return true;
 }
 
@@ -1711,9 +1715,15 @@ bool StateTracker::handlePriv(const message::RemoveColormap &rcm)
     ColorMapKey key;
     key.species = rcm.species();
     key.sourceModule = rcm.source();
+
+    for (StateObserver *o: m_observers) {
+        o->colormap(id, key.sourceModule, key.species, std::array<vistle::Float, 2>{0, 0}, nullptr);
+    }
+
     if (auto cit = cmaps.find(key); cit != cmaps.end()) {
         cmaps.erase(cit);
     }
+
     return true;
 }
 
@@ -2459,6 +2469,9 @@ void StateObserver::info(const std::string &text, message::SendText::TextType te
 {}
 void StateObserver::itemInfo(const std::string &text, message::ItemInfo::InfoType type, int senderId,
                              const std::string &port)
+{}
+void StateObserver::colormap(int moduleId, int source, const std::string &species,
+                             const std::array<vistle::Float, 2> &range, const std::vector<vistle::RGBA> *rgba)
 {}
 void StateObserver::portState(vistle::message::ItemInfo::PortState state, int senderId, const std::string &port)
 {}

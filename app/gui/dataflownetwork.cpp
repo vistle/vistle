@@ -370,6 +370,14 @@ void DataFlowNetwork::itemInfoChanged(QString text, int type, int id, QString po
     }
 }
 
+void DataFlowNetwork::colormapChanged(int id, int source, QString species, Range range,
+                                      const std::vector<vistle::RGBA> *rgba)
+{
+    if (Module *m = findModule(id)) {
+        m->setColormap(source, species, range, rgba);
+    }
+}
+
 void DataFlowNetwork::portStateChanged(int state, int id, QString port)
 {
     if (Module *m = findModule(id)) {

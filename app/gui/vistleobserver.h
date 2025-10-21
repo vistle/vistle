@@ -34,6 +34,8 @@ signals:
     void info_s(QString msg, int type);
     void message_s(int senderId, int type, QString msg);
     void itemInfo_s(QString info, int type, int senderId, QString portName);
+    void colormap_s(int moduleId, int source, QString species, const Range &range,
+                    const std::vector<vistle::RGBA> *rgba);
     void portState_s(int state, int senderId, QString portName);
     void status_s(int id, QString msg, int prio);
     void moduleStatus_s(int id, QString msg, int prio);
@@ -67,6 +69,8 @@ public:
               vistle::message::Type refType, const vistle::message::uuid_t &refUuid) override;
     void itemInfo(const std::string &text, vistle::message::ItemInfo::InfoType type, int senderId,
                   const std::string &port) override;
+    void colormap(int moduleId, int source, const std::string &species, const Range &range,
+                  const std::vector<vistle::RGBA> *rgba) override;
     void portState(vistle::message::ItemInfo::PortState state, int senderId, const std::string &port) override;
     void status(int id, const std::string &text, vistle::message::UpdateStatus::Importance priority) override;
     void updateStatus(int id, const std::string &text, vistle::message::UpdateStatus::Importance priority) override;

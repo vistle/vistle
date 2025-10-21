@@ -23,6 +23,7 @@ class Connection;
 class DataFlowNetwork;
 class ParameterPopup;
 class ErrorIndicator;
+class Colormap;
 
 const bool LayersAsOpacity = true;
 
@@ -68,6 +69,7 @@ public:
     void setStatus(Module::Status status);
     void setStatusText(QString text, int prio);
     void setInfo(QString text, int type);
+    void setColormap(int source, QString species, const Range &range, const std::vector<vistle::RGBA> *rgba);
     void clearMessages();
     void moduleMessage(int type, QString message);
     QList<Message> &messages();
@@ -200,6 +202,7 @@ private:
 
     QList<Port *> m_inPorts, m_outPorts, m_paramPorts;
     ErrorIndicator *m_errorIndicator = nullptr;
+    Colormap *m_colormap = nullptr;
     QColor m_color;
     qreal m_fontHeight;
     std::map<vistle::Port, Port *> m_vistleToGui;
