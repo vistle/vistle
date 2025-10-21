@@ -23,6 +23,7 @@
 #include "module.h"
 #include "connection.h"
 #include "errorindicator.h"
+#include "colormap.h"
 #include "dataflownetwork.h"
 #include "mainwindow.h"
 #include "uicontroller.h"
@@ -428,6 +429,10 @@ void Module::doLayout()
     }
 
     double w = nameRect.width() + 2 * portDistance + errorRect.width();
+    if (m_colormap) {
+        w = m_colormap->rect().width() + 2 * portDistance + errorRect.width();
+    }
+
     double h = m_fontHeight + 2 * portDistance;
 
     QString id = " " + QString::number(m_id);
@@ -478,6 +483,9 @@ void Module::doLayout()
     }
 
     h += Port::portSize;
+
+    if (m_colormap)
+        m_colormap->setRect(0, 0, w - 2 * portDistance - errorRect.width(), m_colormap->height());
 
     setRect(0., 0., w, h);
     m_errorIndicator->setPos(errorPos());
@@ -1226,6 +1234,22 @@ void Module::setStatusText(QString text, int prio)
 void Module::setInfo(QString text, int type)
 {
     m_info = text;
+    updateText();
+}
+
+void Module::setColormap(int source, QString species, const Range &range, const std::vector<vistle::RGBA> *rgba)
+{
+    if (species.isEmpty() || !rgba) {
+        delete m_colormap;
+        m_colormap = nullptr;
+        return;
+    }
+
+    if (!m_colormap)
+        m_colormap = new Colormap(this);
+    m_colormap->setData(source, species, range, rgba);
+    m_colormap->setPos(portDistance, rect().top() + Port::portSize + portDistance);
+
     updateText();
 }
 

@@ -198,6 +198,8 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
             SLOT(setOutputStreaming(int, bool)));
     connect(&m_observer, SIGNAL(itemInfo_s(QString, int, int, QString)), m_scene,
             SLOT(itemInfoChanged(QString, int, int, QString)));
+    connect(&m_observer, SIGNAL(colormap_s(int, int, QString, Range, const std::vector<vistle::RGBA> *)), m_scene,
+            SLOT(colormapChanged(int, int, QString, Range, const std::vector<vistle::RGBA> *)), Qt::QueuedConnection);
     connect(&m_observer, SIGNAL(portState_s(int, int, QString)), m_scene, SLOT(portStateChanged(int, int, QString)));
     connect(&m_observer, SIGNAL(newPort_s(int, QString)), m_scene, SLOT(newPort(int, QString)));
     connect(&m_observer, SIGNAL(deletePort_s(int, QString)), m_scene, SLOT(deletePort(int, QString)));

@@ -70,6 +70,8 @@ public:
                       message::Type refType, const message::uuid_t &refUuid);
     virtual void itemInfo(const std::string &text, message::ItemInfo::InfoType type, int senderId,
                           const std::string &port);
+    virtual void colormap(int moduleId, int source, const std::string &species,
+                          const std::array<vistle::Float, 2> &range, const std::vector<vistle::RGBA> *rgba);
     virtual void portState(vistle::message::ItemInfo::PortState state, int senderId, const std::string &port);
     //! a module sends a status update
     virtual void status(int id, const std::string &text, message::UpdateStatus::Importance importance);
