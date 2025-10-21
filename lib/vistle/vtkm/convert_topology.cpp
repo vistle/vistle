@@ -239,18 +239,12 @@ ModuleStatusPtr fromNgons(viskores::cont::DataSet &vtkmDataset, typename Ngons::
         auto conn = ngon->cl().handle();
         cellSet.Fill(numPoints, shape, N, conn);
 
-        if (containsPolyhedralCells(cellSet))
-            return UnsupportedCellTypeError(true);
-
         vtkmDataset.SetCellSet(cellSet);
     } else {
         viskores::cont::CellSetSingleType<viskores::cont::StorageTagCounting> cellSet;
         auto conn = viskores::cont::make_ArrayHandleCounting(static_cast<viskores::Id>(0), static_cast<viskores::Id>(1),
                                                              numPoints);
         cellSet.Fill(numPoints, shape, N, conn);
-
-        if (containsPolyhedralCells(cellSet))
-            return UnsupportedCellTypeError(true);
 
         vtkmDataset.SetCellSet(cellSet);
     }
@@ -281,9 +275,6 @@ ModuleStatusPtr fromIndexed(viskores::cont::DataSet &vtkmDataset, typename Idx::
     viskores::cont::CellSetExplicit<> cellSet;
 #endif
     cellSet.Fill(numPoints, shapes, conn, offs);
-
-    if (containsPolyhedralCells(cellSet))
-        return UnsupportedCellTypeError(true);
 
     vtkmDataset.SetCellSet(cellSet);
 
@@ -339,10 +330,6 @@ ModuleStatusPtr vtkmSetTopology(viskores::cont::DataSet &vtkmDataset, vistle::Ob
         viskores::cont::CellSetSingleType<viskores::cont::StorageTagIndex> cellSet;
         auto conn = viskores::cont::make_ArrayHandleIndex(numPoints);
         cellSet.Fill(numPoints, viskores::CELL_SHAPE_VERTEX, 1, conn);
-
-        if (containsPolyhedralCells(cellSet))
-            return UnsupportedCellTypeError(true);
-
         vtkmDataset.SetCellSet(cellSet);
     } else {
         return Error("Encountered unsupported grid type while attempting to convert Vistle grid to Viskores dataset.");
