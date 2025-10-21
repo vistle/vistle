@@ -318,7 +318,7 @@ Object::ptr vtkmGetGeometry(const viskores::cont::DataSet &dataset)
                 rg->d()->coords[i]->setHandle(x);
             }
         } else {
-            std::cerr << "Error while converting Viskores layered grid to Vistle: Unsupported point coordinate "
+            std::cerr << "Error while converting Viskores rectilinear grid to Vistle: Unsupported point coordinate "
                          "array type:\n"
                       << "--> Array type name: " << unknown.GetArrayTypeName()
                       << "\n--> Value type name: " << unknown.GetValueTypeName()
