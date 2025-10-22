@@ -18,6 +18,7 @@
 #include <QPainter>
 #include <QGraphicsSceneMouseEvent>
 #include <QStatusTipEvent>
+#include <QCoreApplication>
 
 #include <vistle/config/file.h>
 #include <vistle/config/value.h>
