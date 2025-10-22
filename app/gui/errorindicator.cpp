@@ -67,6 +67,7 @@ void ErrorIndicator::paint(QPainter *painter, const QStyleOptionGraphicsItem *op
     font.setBold(true);
     //font.setPointSize(font.pointSize() - 2);
     QFontMetrics fm(font);
+    painter->setFont(font);
     QRect textR = fm.boundingRect(text);
     float left = (size() - textR.width() * 2.) / 2.;
     painter->drawText(QPointF(left, (size() / 2. + textR.height()) / 2.), text);
