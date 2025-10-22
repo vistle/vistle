@@ -20,13 +20,7 @@ struct V_RENDEREREXPORT ColorMapKey {
     std::string species;
     int sourceModule = vistle::message::Id::Invalid;
 
-    bool operator<(const ColorMapKey &o) const
-    {
-        if (sourceModule == o.sourceModule) {
-            return species < o.species;
-        }
-        return sourceModule < o.sourceModule;
-    }
+    bool operator<(const ColorMapKey &o) const;
 };
 
 class V_RENDEREREXPORT RenderObject {
