@@ -238,13 +238,6 @@ protected:
         double max = 1.;
         bool blendWithMaterial = false;
         std::vector<RGBA> rgba;
-
-        bool operator<(const ColorMap &o) const
-        {
-            if (sourceModule != o.sourceModule)
-                return sourceModule < o.sourceModule;
-            return species < o.species;
-        }
     };
     struct ColorMapKey {
         int sourceModule;
@@ -254,12 +247,7 @@ protected:
         : sourceModule(sourceModule), species(species)
         {}
 
-        bool operator<(const ColorMapKey &other) const
-        {
-            if (sourceModule != other.sourceModule)
-                return sourceModule < other.sourceModule;
-            return species < other.species;
-        }
+        bool operator<(const ColorMapKey &other) const;
     };
     struct Module {
         int id;

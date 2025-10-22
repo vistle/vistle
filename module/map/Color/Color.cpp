@@ -960,14 +960,15 @@ void Color::process(const DataBase::const_ptr data)
 {
     m_species = data->getAttribute(attribute::Species);
     auto source = data->getAttribute(attribute::DataSource);
-    if (source.empty()) {
-        m_sourceId = message::Id::Invalid;
-    } else {
+    m_sourceId = message::Id::Invalid;
+#ifdef COLORS_BY_SOURCE
+    if (!source.empty()) {
         m_sourceId = std::stoi(source);
         if (!message::Id::isModule(m_sourceId)) {
             m_sourceId = message::Id::Invalid;
         }
     }
+#endif
     sendColorMap();
 
     if (m_dataOut->isConnected()) {

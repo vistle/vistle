@@ -83,6 +83,16 @@ bool rgb_color(const std::string color, Vector4 &rgb)
 
 } // namespace
 
+bool ColorMapKey::operator<(const ColorMapKey &o) const
+{
+#ifdef COLORS_BY_SOURCE
+    if (sourceModule != o.sourceModule) {
+        return sourceModule < o.sourceModule;
+    }
+#endif
+    return species < o.species;
+}
+
 RenderObject::RenderObject(int senderId, const std::string &senderPort, Object::const_ptr container,
                            Object::const_ptr geometry, Object::const_ptr normals, Object::const_ptr mapdata)
 : senderId(senderId)

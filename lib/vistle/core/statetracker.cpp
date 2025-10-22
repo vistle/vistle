@@ -28,6 +28,15 @@ const std::string unknown("(unknown)");
 
 using message::Id;
 
+bool StateTracker::ColorMapKey::operator<(const ColorMapKey &other) const
+{
+#ifdef COLORS_BY_SOURCE
+    if (sourceModule != other.sourceModule)
+        return sourceModule < other.sourceModule;
+#endif
+    return species < other.species;
+}
+
 int StateTracker::Module::state() const
 {
     int s = StateObserver::Known;
