@@ -166,6 +166,12 @@ void VistleObserver::itemInfo(const std::string &text, vistle::message::ItemInfo
     emit itemInfo_s(QString::fromStdString(text), type, senderId, QString::fromStdString(port));
 }
 
+void VistleObserver::colormap(int moduleId, int source, const std::string &species, const Range &range,
+                              const std::vector<vistle::RGBA> *rgba)
+{
+    emit colormap_s(moduleId, source, QString::fromStdString(species), range, rgba);
+}
+
 void VistleObserver::portState(vistle::message::ItemInfo::PortState state, int senderId, const std::string &port)
 {
     emit portState_s(state, senderId, QString::fromStdString(port));

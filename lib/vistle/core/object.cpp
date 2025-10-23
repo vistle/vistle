@@ -90,8 +90,6 @@ const char *Object::toString(Type v)
         V_OBJECT_CASE(EMPTY, Empty)
         V_OBJECT_CASE(PLACEHOLDER, Placeholder)
 
-        V_OBJECT_CASE(TEXTURE1D, Texture1D)
-
         V_OBJECT_CASE(POINTS, Points)
         V_OBJECT_CASE(LINES, Lines)
         V_OBJECT_CASE(TRIANGLES, Triangles)

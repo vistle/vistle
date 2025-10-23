@@ -21,6 +21,7 @@
 #include <vistle/core/messagepayload.h>
 #include <vistle/core/messagequeue.h>
 #include <vistle/core/messagerouter.h>
+#include <vistle/core/message/colormap.h>
 #include <vistle/core/object.h>
 #include <vistle/core/parameter.h>
 #include <vistle/core/shm.h>
@@ -689,16 +690,28 @@ bool ClusterManager::handle(const message::Buffer &message, const MessagePayload
             ident.setNumRanks(m_size);
             ident.setPid(getpid());
             ident.computeMac();
-            sendHub(ident);
+
+            AddHub::Payload payload;
+            payload.rankNames = Communicator::the().m_rankNames;
+            payload.rankAddresses = Communicator::the().m_rankAddresses;
+            payload.rankDataPorts = Communicator::the().m_rankDataPorts;
+            MessagePayload pl(message::addPayload(ident, payload));
+            sendHub(ident, pl);
         }
         break;
     }
 
     case message::ADDHUB: {
         const auto &addhub = message.as<message::AddHub>();
+        buffer data(payload->begin(), payload->end());
+        auto apl = getPayload<AddHub::Payload>(data);
         if (addhub.id() == hubId()) {
             scanModules(Communicator::the().m_vistleRoot, Communicator::the().m_buildType);
+        } else {
+            // establish direct connection between data managers
+            Communicator::the().dataManager().addHub(addhub, apl);
         }
+        Communicator::the().dataManager().addHub(addhub, apl);
         break;
     }
 
@@ -782,6 +795,18 @@ bool ClusterManager::handle(const message::Buffer &message, const MessagePayload
     case message::IDLE: {
         const message::Idle &idle = message.as<Idle>();
         result = handlePriv(idle);
+        break;
+    }
+
+    case message::COLORMAP: {
+        const message::Colormap &m = message.as<Colormap>();
+        result = handlePriv(m, payload);
+        break;
+    }
+
+    case message::REMOVECOLORMAP: {
+        const message::RemoveColormap &m = message.as<RemoveColormap>();
+        result = handlePriv(m);
         break;
     }
 
@@ -2044,7 +2069,7 @@ bool ClusterManager::handlePriv(const message::BarrierReached &barrReached)
     CERR << "BarrierReached [barrier " << barrReached.uuid() << ", module " << barrReached.senderId() << ":, " << info
          << "]" << std::endl;
 #endif
-    assert(m_barrierActive);
+    assert(m_barrierActive || m_stateTracker.getNumRunning() == 0);
     if (barrReached.uuid() != m_barrierUuid) {
         CERR << "BARRIER: BarrierReached message " << barrReached << " ("
              << m_stateTracker.barrierInfo(barrReached.uuid()) << ") with wrong uuid, expected " << m_barrierUuid
@@ -2092,6 +2117,16 @@ bool ClusterManager::handlePriv(const message::ItemInfo &info, const MessagePayl
     } else {
         sendHub(info, payload);
     }
+    return true;
+}
+
+bool ClusterManager::handlePriv(const message::Colormap &cm, const MessagePayload &payload)
+{
+    return true;
+}
+
+bool ClusterManager::handlePriv(const message::RemoveColormap &rcm)
+{
     return true;
 }
 

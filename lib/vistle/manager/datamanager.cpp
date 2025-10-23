@@ -1,5 +1,3 @@
-#include <boost/mpl/for_each.hpp>
-#include <boost/asio/connect.hpp>
 #include <boost/mpi/communicator.hpp>
 
 #include "datamanager.h"
@@ -8,6 +6,7 @@
 #include <vistle/util/vecstreambuf.h>
 #include <vistle/util/sleep.h>
 #include <vistle/util/threadname.h>
+#include <vistle/util/listenv4v6.h>
 #include <vistle/core/archives.h>
 #include <vistle/core/archive_loader.h>
 #include <vistle/core/archive_saver.h>
@@ -18,15 +17,14 @@
 #include <vistle/core/tcpmessage.h>
 #include <vistle/core/messages.h>
 #include <vistle/core/shmvector.h>
+#include <vistle/config/value.h>
+#include <vistle/config/access.h>
 #include <iostream>
 #include <functional>
 
 #define CERR std::cerr << "data [" << m_rank << "/" << m_size << "] "
 
 //#define DEBUG
-
-// don't wait for message sends to complete
-#define ASYNC_SEND
 
 namespace asio = boost::asio;
 namespace mpi = boost::mpi;
@@ -44,16 +42,15 @@ bool isLocal(int id)
 
 } // namespace
 
-DataManager::DataManager(mpi::communicator &comm)
+DataManager::DataManager(mpi::communicator &comm, unsigned short baseport)
 : m_comm(comm, mpi::comm_duplicate)
 , m_rank(m_comm.rank())
 , m_size(m_comm.size())
-, m_dataSocket(m_ioContext)
+, m_port(baseport)
+, m_acceptorv4(m_ioContext)
+, m_acceptorv6(m_ioContext)
+, m_dataSocket(std::make_shared<asio::ip::tcp::socket>(m_ioContext))
 , m_workGuard(asio::make_work_guard(m_ioContext))
-, m_ioThread([this]() {
-    setThreadName("vistle:dmgr_send");
-    sendLoop();
-})
 , m_recvThread([this]() {
     setThreadName("vistle:dmgr_recv");
     recvLoop();
@@ -63,6 +60,37 @@ DataManager::DataManager(mpi::communicator &comm)
     cleanLoop();
 })
 {
+    vistle::config::Access config;
+    m_connectionTimeout = *config.value<double>("system", "net", "connection_timeout", m_connectionTimeout);
+    m_numConnections = *config.value<int64_t>("system", "net", "num_direct_connections", m_numConnections);
+    m_useDirectComm = m_numConnections > 0;
+    m_asyncSend = *config.value<bool>("system", "net", "async_send", m_asyncSend);
+
+    m_ioThreads.emplace_back([this]() {
+        setThreadName("vistle:dmgr_send");
+        sendLoop();
+    });
+
+    boost::system::error_code ec;
+    while (!start_listen(m_port, m_acceptorv4, m_acceptorv6, ec)) {
+        if (ec != boost::asio::error::address_in_use) {
+            m_port = 0;
+            break;
+        }
+        ++m_port;
+    }
+    if (m_port != 0) {
+        CERR << "data manager on rank " << m_rank << " listening on port " << m_port << std::endl;
+        for (auto *a: {&m_acceptorv4, &m_acceptorv6}) {
+            startAccept(*a);
+            startThread();
+        }
+        m_listenThread = std::thread([this]() {
+            setThreadName("vistle:dmgr_listen");
+            listenLoop();
+        });
+    }
+
     if (m_size > 1)
         m_req = m_comm.irecv(boost::mpi::any_source, Communicator::TagData, &m_msgSize, 1);
 }
@@ -78,38 +106,387 @@ DataManager::~DataManager()
         m_req.cancel();
     m_req.wait();
 
-    m_recvThread.join();
+    for (auto &a: {&m_acceptorv4, &m_acceptorv6}) {
+        boost::system::error_code ec;
+        a->close(ec);
+        if (ec) {
+            CERR << "error closing acceptor: " << ec.message() << std::endl;
+        }
+    }
 
+    closeAllDirect();
+    m_dataSocket->shutdown(boost::asio::ip::tcp::socket::shutdown_both);
+    m_dataSocket->close();
+    m_dataSocket.reset();
+
+    m_recvThread.join();
+    if (m_listenThread.joinable())
+        m_listenThread.join();
     m_cleanThread.join();
 
     m_workGuard.reset();
     m_ioContext.stop();
-    m_ioThread.join();
+
+    std::lock_guard guard(m_threadsMutex);
+    for (auto &t: m_ioThreads) {
+        if (t.joinable())
+            t.join();
+    }
+}
+
+unsigned short DataManager::port() const
+{
+    return m_port;
+}
+
+DataManager::io_context &DataManager::io()
+{
+    return m_ioContext;
+}
+
+void DataManager::startThread()
+{
+    std::lock_guard guard(m_threadsMutex);
+    if (true || m_ioThreads.size() < std::thread::hardware_concurrency()) {
+        auto &io = m_ioContext;
+        auto num = m_ioThreads.size();
+        m_ioThreads.emplace_back([&io, num]() {
+            setThreadName("vistle:dmgr_io:" + std::to_string(num));
+            io.run();
+        });
+        //CERR << "now " << m_ioThreads.size() << " threads in pool" << std::endl;
+    } else {
+#ifdef DEBUG
+        CERR << "not starting a new thread, already have " << m_ioThreads.size() << " threads" << std::endl;
+#endif
+    }
+}
+
+void DataManager::startAccept(acceptor &a)
+{
+    //CERR << "(re-)starting accept" << std::endl;
+    std::shared_ptr<tcp_socket> sock(new tcp_socket(io()));
+    a.async_accept(*sock, [this, &a, sock](boost::system::error_code ec) { handleAccept(a, ec, sock); });
+}
+
+void DataManager::handleAccept(acceptor &a, const boost::system::error_code &error, std::shared_ptr<tcp_socket> sock)
+{
+    if (error) {
+        CERR << "error in accept: " << error.message() << std::endl;
+        return;
+    }
+
+    startAccept(a);
+    startThread();
+
+    std::string name("dmgr:");
+    name += std::to_string(Communicator::the().hubId());
+    name += ":" + std::to_string(m_rank);
+    message::Identify ident(name);
+    if (message::send(*sock, ident)) {
+#ifdef DEBUG
+        CERR << "sent ident msg to remote, sock.use_count()=" << sock.use_count() << std::endl;
+#endif
+    }
+
+    std::shared_ptr<message::Buffer> buf(new message::Buffer);
+    message::async_recv(
+        *sock, *buf, [this, sock, buf](const boost::system::error_code ec, std::shared_ptr<buffer> payload) {
+            if (ec) {
+                CERR << "recv error after accept: " << ec.message() << ", sock.use_count()=" << sock.use_count()
+                     << std::endl;
+                return;
+            }
+
+#ifdef DEBUG
+            CERR << "received initial message on incoming connection: type=" << buf->type() << std::endl;
+#endif
+            switch (buf->type()) {
+            case message::IDENTIFY: {
+                auto &id = buf->as<message::Identify>();
+                switch (id.identity()) {
+                case message::Identify::DIRECTBULKDATA: {
+                    if (!id.verifyMac()) {
+                        shutdownSocket(sock, "MAC verification failed");
+                        return;
+                    }
+                    serveDirectSocket(sock);
+                    break;
+                }
+                default: {
+                    std::stringstream str;
+                    str << "unexpected identity " << id.identity();
+                    shutdownSocket(sock, str.str());
+                    return;
+                }
+                }
+                break;
+            }
+            default: {
+                std::stringstream str;
+                str << "expected Identify message, got " << buf->type() << std::endl;
+                str << "got: " << *buf;
+                shutdownSocket(sock, str.str());
+                return;
+            }
+            }
+        });
+}
+
+void DataManager::shutdownSocket(std::shared_ptr<DataManager::tcp_socket> sock, const std::string &reason)
+{
+#ifdef DEBUG
+    CERR << "closing socket: " << reason << std::endl;
+#endif
+    auto close = message::CloseConnection(reason);
+    message::send(*sock, close);
+}
+
+bool DataManager::serveDirectSocket(std::shared_ptr<tcp_socket> sock)
+{
+    for (;;) {
+        if (!sock->is_open()) {
+            return false;
+        }
+
+        bool gotMsg = false;
+        message::Buffer buf;
+        buffer payload;
+        message::error_code ec;
+        if (message::recv(*sock, buf, ec, false, &payload)) {
+            {
+                std::lock_guard<std::mutex> guard(m_recvMutex);
+                if (m_quit)
+                    break;
+            }
+            gotMsg = true;
+            handle(sock, buf, &payload);
+        } else if (ec) {
+            CERR << "Data communication error: " << ec.message() << std::endl;
+        }
+
+        {
+            std::lock_guard<std::mutex> guard(m_recvMutex);
+            if (m_quit)
+                break;
+        }
+
+        vistle::adaptive_wait(gotMsg, sock.get());
+
+        std::lock_guard<std::mutex> guard(m_recvMutex);
+        if (m_quit)
+            break;
+    }
+
+    return true;
 }
 
 bool DataManager::connect(boost::asio::ip::basic_resolver_results<boost::asio::ip::tcp> &hub)
 {
-    bool ret = true;
-    boost::system::error_code ec;
-
+#ifdef DEBUG
     CERR << "connecting to local hub..." << std::endl;
+#endif
 
-    asio::connect(m_dataSocket, hub, ec);
+    boost::system::error_code ec;
+    asio::connect(*m_dataSocket, hub, ec);
     if (ec) {
-        std::cerr << std::endl;
-        CERR << "could not establish bulk data connection on rank " << m_rank << std::endl;
-        ret = false;
-    } else {
-        CERR << "connected to local hub" << std::endl;
+        CERR << "could not establish bulk data connection to local hub on rank " << m_rank << std::endl;
+        return false;
     }
+#ifdef DEBUG
+    CERR << "connected to local hub" << std::endl;
+#endif
 
-    return ret;
+    return true;
+}
+
+bool DataManager::addHub(const message::AddHub &hub, const message::AddHub::Payload &payload)
+{
+    std::unique_lock<std::mutex> lock(m_directSocketsMutex);
+    auto numRanks = payload.rankAddresses.size();
+    if (m_directSockets.find(hub.id()) != m_directSockets.end()) {
+        CERR << "already have direct connection to hub " << hub.id() << std::endl;
+        return true;
+    }
+#ifdef DEBUG
+    CERR << "connecting to hub " << hub << std::endl;
+#endif
+    auto &socketLists = m_directSockets[hub.id()];
+    auto &rankSockets = socketLists;
+
+    for (size_t i = 0; i < numRanks; ++i) {
+        auto port = payload.rankDataPorts[i];
+        if (port == 0) {
+            CERR << "WARNING: hub " << hub.id() << " has no data manager port for rank " << i << std::endl;
+            continue;
+        }
+        std::vector<boost::asio::ip::tcp::endpoint> endpoints;
+        for (auto it = payload.rankAddresses[i].begin(); it != payload.rankAddresses[i].end(); ++it) {
+            auto addr = boost::asio::ip::make_address(*it);
+            endpoints.push_back(boost::asio::ip::tcp::endpoint(addr, port));
+        }
+        rankSockets.emplace_back(io());
+
+#ifdef DEBUG
+        CERR << "connecting to hub " << hub.id() << " at port " << port << " for rank " << i << std::endl;
+#endif
+        auto &socketList = rankSockets[i];
+        auto &timer = socketList.connectionTimer;
+        timer.expires_from_now(boost::posix_time::seconds(static_cast<int>(std::ceil(m_connectionTimeout))));
+        auto sock = std::make_shared<boost::asio::ip::tcp::socket>(io());
+        socketList.connecting.insert(sock);
+        timer.async_wait([this, hub, &socketList](const boost::system::error_code &ec) {
+            if (ec == asio::error::operation_aborted) {
+                // timer was canceled
+                return;
+            }
+
+            if (ec) {
+                CERR << "timer failed: " << ec.message() << std::endl;
+            } else {
+                CERR << "timeout for bulk data connection to " << hub.id() << std::endl;
+            }
+
+            std::lock_guard lock(socketList.mutex);
+            for (auto &s: socketList.connecting) {
+                boost::system::error_code ec;
+                s->cancel(ec);
+                if (ec) {
+                    CERR << "cancelling operations on socket failed: " << ec.message() << std::endl;
+                } else {
+                    s->shutdown(tcp_socket::shutdown_both, ec);
+                    bool open = s->is_open();
+                    s->close(ec);
+                    if (ec) {
+                        if (open) {
+                            CERR << "closing socket failed: " << ec.message() << std::endl;
+                        }
+                    }
+                }
+            }
+            socketList.connecting.clear();
+        });
+
+        std::unique_lock lock(socketList.mutex);
+        size_t count = 0;
+        size_t numtries = m_numConnections - socketList.sockets.size();
+        while (socketList.sockets.size() < m_numConnections && count < numtries) {
+            ++count;
+            auto sock = std::make_shared<asio::ip::tcp::socket>(io());
+            socketList.connecting.insert(sock);
+            lock.unlock();
+
+            async_connect(*sock, endpoints,
+                          [this, sock, hub, port, &socketList](const boost::system::error_code &ec,
+                                                               const asio::ip::tcp::endpoint &endpoint) {
+                              std::unique_lock lock(socketList.mutex);
+                              socketList.connecting.erase(sock);
+
+                              if (ec == asio::error::operation_aborted) {
+                                  return;
+                              }
+                              if (ec == asio::error::timed_out) {
+                                  CERR << "connecting to " << hub << "/"
+                                       << " :" << port << " timed out" << std::endl;
+                                  return;
+                              }
+                              if (ec) {
+                                  CERR << "could not establish bulk data connection to " << hub << " :" << port << ": "
+                                       << ec.message() << std::endl;
+                                  return;
+                              }
+
+                              auto &socks = socketList.sockets;
+                              if (std::find(socks.begin(), socks.end(), sock) != socks.end()) {
+                                  return;
+                              }
+
+                              socks.emplace_back(sock);
+                              lock.unlock();
+                              std::cerr << "." << std::flush;
+                              //CERR << "connected to " << addr << ":" << dataPort << ", now have " << m_remoteDataSocket[hubId].sockets.size() << " connections" << std::endl;
+
+                              startThread();
+                              serveDirectSocket(sock);
+                          });
+
+            lock.lock();
+        }
+
+        while (!socketList.connecting.empty() && socketList.sockets.size() < m_numConnections) {
+            lock.unlock();
+            usleep(10000);
+            lock.lock();
+        }
+
+        timer.cancel();
+        socketList.connecting.clear();
+
+        std::cerr << std::endl;
+        if (socketList.sockets.empty()) {
+            CERR << "WARNING: could not establish direct data connection to rank " << i << " for hub " << hub << " :"
+                 << port << std::endl;
+        }
+    }
+    return true;
+}
+
+void DataManager::removeHub(const message::RemoveHub &hub)
+{
+    closeDirect(hub.id());
+}
+
+void DataManager::closeDirect(int hub)
+{
+    std::unique_lock<std::mutex> lock(m_directSocketsMutex);
+    auto it = m_directSockets.find(hub);
+    if (it == m_directSockets.end()) {
+        return;
+    }
+    for (auto &socketLists: it->second) {
+        for (auto &s: socketLists.connecting) {
+            if (s && s->is_open()) {
+                boost::system::error_code ec;
+                s->shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+                s->close(ec);
+            }
+        }
+        socketLists.connecting.clear();
+        for (auto &s: socketLists.sockets) {
+            if (s && s->is_open()) {
+                boost::system::error_code ec;
+                s->shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+                s->close(ec);
+            }
+        }
+        socketLists.sockets.clear();
+    }
+    m_directSockets.erase(it);
+}
+
+void DataManager::closeAllDirect()
+{
+    std::unique_lock<std::mutex> guard(m_directSocketsMutex);
+    while (!m_directSockets.empty()) {
+        guard.unlock();
+        std::set<int> hubs;
+        {
+            guard.lock();
+            for (auto &socks: m_directSockets) {
+                hubs.insert(socks.first);
+            }
+            guard.unlock();
+        }
+        for (auto hub: hubs)
+            closeDirect(hub);
+        guard.lock();
+    }
 }
 
 bool DataManager::dispatch()
 {
     bool work = false;
-    for (bool gotMsg = true; m_dataSocket.is_open() && gotMsg;) {
+    for (bool gotMsg = true; m_dataSocket->is_open() && gotMsg;) {
         gotMsg = false;
         message::Buffer buf;
         buffer payload;
@@ -124,7 +501,7 @@ bool DataManager::dispatch()
             }
         }
         if (gotMsg) {
-            handle(buf, &payload);
+            handle(m_dataSocket, buf, &payload);
             work = true;
             continue;
         }
@@ -142,7 +519,7 @@ bool DataManager::dispatch()
             }
             work = true;
             gotMsg = true;
-            handle(buf, &payload);
+            handle(m_dataSocket, buf, &payload);
             m_req = m_comm.irecv(mpi::any_source, Communicator::TagData, &m_msgSize, 1);
         }
     }
@@ -155,30 +532,59 @@ void DataManager::trace(message::Type type)
     m_traceMessages = type;
 }
 
-bool DataManager::send(const message::Message &message, std::shared_ptr<buffer> payload)
+bool DataManager::send(std::shared_ptr<asio::ip::tcp::socket> &sock, const message::Message &message,
+                       std::shared_ptr<buffer> payload)
 {
-    if (isLocal(message.destId())) {
-        const int sz = message.size();
-        m_comm.send(message.destRank(), Communicator::TagData, sz);
-        m_comm.send(message.destRank(), Communicator::TagData, (const char *)&message, sz);
-        if (payload && payload->size() > 0) {
-            m_comm.send(message.destRank(), Communicator::TagData, payload->data(), payload->size());
-        }
-        return true;
-    } else {
-#ifdef ASYNC_SEND
+    if (!sock || !sock->is_open()) {
+        CERR << "ERROR: no connection to hub for sending " << message << std::endl;
+        return false;
+    }
+
+    if (m_asyncSend) {
         //CERR << "async send: " << message << std::endl;
-        message::async_send(m_dataSocket, message, payload, [this](boost::system::error_code ec) {
+        message::async_send(*sock, message, payload, [this, sock](boost::system::error_code ec) {
             if (ec) {
-                CERR << "ERROR: async send to " << m_dataSocket.remote_endpoint() << " failed: " << ec.message()
-                     << std::endl;
+                CERR << "ERROR: async send to " << sock->remote_endpoint() << " failed: " << ec.message() << std::endl;
             }
         });
         return true;
-#else
-        return message::send(m_dataSocket, message, payload.get());
-#endif
     }
+
+    return message::send(*sock, message, payload.get());
+}
+
+bool DataManager::send(const message::Message &message, std::shared_ptr<buffer> payload)
+{
+    auto destId = message.destId();
+    auto rank = message.destRank();
+    if (isLocal(destId)) {
+        const int sz = message.size();
+        m_comm.send(rank, Communicator::TagData, sz);
+        m_comm.send(rank, Communicator::TagData, (const char *)&message, sz);
+        if (payload && payload->size() > 0) {
+            m_comm.send(rank, Communicator::TagData, payload->data(), payload->size());
+        }
+        return true;
+    }
+
+    std::shared_ptr<boost::asio::ip::tcp::socket> socket = nullptr;
+    if (m_useDirectComm) {
+        std::unique_lock<std::mutex> lock(m_directSocketsMutex);
+        auto it = m_directSockets.find(destId);
+        if (it != m_directSockets.end() && it->second.size() > rank) {
+#ifdef DEBUG
+            CERR << "using direct connection to rank " << rank << " for sending to " << destId << std::endl;
+#endif
+            socket = it->second[rank].get();
+        }
+    }
+    if (!socket) {
+#ifdef DEBUG
+        CERR << "falling back to hub relay for sending to " << rank << " of " << destId << std::endl;
+#endif
+        socket = m_dataSocket;
+    }
+    return send(socket, message, payload);
 }
 
 bool DataManager::requestArray(const std::string &referrer, const std::string &arrayId, int localType, int remoteType,
@@ -356,7 +762,7 @@ bool DataManager::notifyTransferComplete(const message::AddObject &addObj)
     //return send(complete);
 }
 
-bool DataManager::handle(const message::Message &msg, buffer *payload)
+bool DataManager::handle(std::shared_ptr<asio::ip::tcp::socket> &sock, const message::Message &msg, buffer *payload)
 {
     //CERR << "handle: " << msg << std::endl;
     using namespace message;
@@ -369,7 +775,10 @@ bool DataManager::handle(const message::Message &msg, buffer *payload)
     case message::IDENTIFY: {
         auto &mm = static_cast<const Identify &>(msg);
         if (mm.identity() == Identify::REQUEST) {
-            return send(Identify(mm, Identify::LOCALBULKDATA, m_rank));
+            if (sock == m_dataSocket) {
+                return send(sock, Identify(mm, Identify::LOCALBULKDATA, m_rank));
+            }
+            return send(sock, Identify(mm, Identify::DIRECTBULKDATA, m_rank));
         }
         return true;
     }
@@ -611,15 +1020,25 @@ bool DataManager::handlePriv(const message::AddObjectCompleted &complete)
     return completeTransfer(complete);
 }
 
+void DataManager::listenLoop()
+{
+    for (;;) {
+        vistle::adaptive_wait(false, this + 1);
+        std::lock_guard<std::mutex> guard(m_recvMutex);
+        if (m_quit)
+            break;
+    }
+}
+
 void DataManager::recvLoop()
 {
     for (;;) {
         bool gotMsg = false;
-        if (m_dataSocket.is_open()) {
+        if (m_dataSocket->is_open()) {
             message::Buffer buf;
             buffer payload;
             message::error_code ec;
-            if (message::recv(m_dataSocket, buf, ec, false, &payload)) {
+            if (message::recv(*m_dataSocket, buf, ec, false, &payload)) {
                 gotMsg = true;
                 std::lock_guard<std::mutex> guard(m_recvMutex);
                 m_recvQueue.emplace_back(std::move(buf), std::move(payload));
@@ -633,7 +1052,7 @@ void DataManager::recvLoop()
                 break;
         }
 
-        vistle::adaptive_wait(gotMsg, this);
+        vistle::adaptive_wait(gotMsg, this + 2);
 
         std::lock_guard<std::mutex> guard(m_recvMutex);
         if (m_quit)
@@ -681,7 +1100,7 @@ void DataManager::cleanLoop()
                 break;
         }
 
-        vistle::adaptive_wait(work, this);
+        vistle::adaptive_wait(work, this + 3);
         std::lock_guard<std::mutex> guard(m_recvMutex);
         if (m_quit)
             break;

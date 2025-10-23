@@ -62,7 +62,6 @@ ReadFOAM::ReadFOAM(const std::string &name, int moduleId, mpi::communicator comm
     m_stoptime = addFloatParameter("stoptime", "stop reading at the last step before this time",
                                    std::numeric_limits<double>::max());
     setParameterMinimum<Float>(m_stoptime, 0.);
-    m_readGrid = addIntParameter("read_grid", "load the grid?", 1, Parameter::Boolean);
 
     //Mesh ports
     m_boundOut = createOutputPort("grid_out1", "boundary geometry");
@@ -85,7 +84,6 @@ ReadFOAM::ReadFOAM(const std::string &name, int moduleId, mpi::communicator comm
 
         linkPortAndParameter(m_volumeDataOut[i], m_fieldOut[i]);
     }
-    m_readBoundary = addIntParameter("read_boundary", "load the boundary?", 1, Parameter::Boolean);
     m_boundaryPatchesAsVariants = addIntParameter(
         "patches_as_variants", "create sub-objects with variant attribute for boundary patches", 1, Parameter::Boolean);
     m_patchSelection = addStringParameter("patches", "select patches", "all", Parameter::Restraint);
@@ -225,12 +223,28 @@ bool ReadFOAM::prepareRead()
 
     m_buildGhost = m_buildGhostcellsParam->getValue() && m_case.numblocks > 0;
     m_onlyPolyhedra = m_onlyPolyhedraParam->getValue();
+    m_readGrid = false;
+    for (auto p: m_volumeDataOut) {
+        if (isConnected(*p)) {
+            m_readGrid = true;
+            break;
+        }
+    }
+    m_readBoundary = isConnected(*m_boundOut);
+    for (auto p: m_boundaryDataOut) {
+        if (isConnected(*p)) {
+            m_readBoundary = true;
+            break;
+        }
+    }
 
     if (rank() == 0) {
         std::cerr << "# processors: " << m_case.numblocks << std::endl;
         std::cerr << "# time steps: " << m_case.timedirs.size() << std::endl;
         std::cerr << "grid topology: " << (m_case.varyingGrid ? "varying" : "constant") << std::endl;
         std::cerr << "grid coordinates: " << (m_case.varyingCoords ? "varying" : "constant") << std::endl;
+        std::cerr << "read grid: " << (m_readGrid ? "yes" : "no") << std::endl;
+        std::cerr << "read boundary: " << (m_readBoundary ? "yes" : "no") << std::endl;
     }
 
     return true;
@@ -277,8 +291,6 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
     std::cerr << "loadGrid('" << meshdir << "', '" << topologyDir << "')" << std::endl;
     if (topologyDir.empty())
         topologyDir = meshdir;
-    bool readGrid = m_readGrid->getValue();
-    bool readBoundary = m_readBoundary->getValue();
     bool patchesAsVariants = m_boundaryPatchesAsVariants->getValue();
 
     std::shared_ptr<Boundaries> boundaries(new Boundaries());
@@ -297,7 +309,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
     }
     std::shared_ptr<std::vector<Index>> owners(new std::vector<Index>());
     GridDataContainer result(grid, polyList, owners, boundaries);
-    if (!readGrid && !readBoundary) {
+    if (!m_readGrid && !m_readBoundary) {
         return result;
     }
 
@@ -338,7 +350,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
             return result;
 
         //Boundary Polygon
-        if (readBoundary) {
+        if (m_readBoundary) {
             if (patchesAsVariants) {
                 size_t boundIdx = 0;
                 for (const auto &b: boundaries->boundaries) {
@@ -387,7 +399,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
         }
 
         //Grid
-        if (readGrid) {
+        if (m_readGrid) {
             grid->el().resize(dim.cells + 1);
             grid->tl().resize(dim.cells);
             //Create CellFaceMap
@@ -642,27 +654,29 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
         }
     }
 
-    if (readGrid) {
+    if (m_readGrid) {
         loadCoords(meshdir, grid);
+    }
 
-        if (readBoundary) {
-            //if grid has been read already and boundary polygons are read also -> re-use coordinate lists for the boundary-plygon
+    if (m_readBoundary) {
+        if (m_readGrid) {
+            //if grid has been read already and boundary polygons are read also -> re-use coordinate lists for the boundary-polygon
             for (auto &poly: polyList) {
                 poly->d()->x[0] = grid->d()->x[0];
                 poly->d()->x[1] = grid->d()->x[1];
                 poly->d()->x[2] = grid->d()->x[2];
             }
-        }
-    } else {
-        //else read coordinate lists just for boundary polygons
-        bool first = true;
-        for (auto &poly: polyList) {
-            if (first) {
-                loadCoords(meshdir, poly);
-            } else {
-                poly->d()->x[0] = polyList[0]->d()->x[0];
-                poly->d()->x[1] = polyList[0]->d()->x[1];
-                poly->d()->x[2] = polyList[0]->d()->x[2];
+        } else {
+            //else read coordinate lists just for boundary polygons
+            bool first = true;
+            for (auto &poly: polyList) {
+                if (first) {
+                    loadCoords(meshdir, poly);
+                } else {
+                    poly->d()->x[0] = polyList[0]->d()->x[0];
+                    poly->d()->x[1] = polyList[0]->d()->x[1];
+                    poly->d()->x[2] = polyList[0]->d()->x[2];
+                }
             }
         }
     }
@@ -1335,7 +1349,7 @@ void ReadFOAM::applyGhostCellsData(int processor)
     m_GhostDataIn[processor].clear();
 }
 
-bool ReadFOAM::addGridToPorts(int processor)
+bool ReadFOAM::addBoundaryToPort(int processor)
 {
     for (auto &poly: m_currentbound[processor])
         if (poly) {
@@ -1395,8 +1409,15 @@ bool ReadFOAM::readConstant(const std::string &casedir)
     if (m_case.varyingCoords && m_case.varyingGrid)
         return true;
 
-    bool readGrid = m_readGrid->getValue();
-    if (!readGrid)
+    if (m_readBoundary && !m_case.varyingCoords) {
+        for (int i = -1; i < m_case.numblocks; ++i) {
+            if (rankForBlock(i) == rank()) {
+                addBoundaryToPort(i);
+            }
+        }
+    }
+
+    if (!m_readGrid)
         return true;
 
     GhostMode buildGhostMode = m_case.varyingCoords ? BASE : ALL;
@@ -1417,8 +1438,6 @@ bool ReadFOAM::readConstant(const std::string &casedir)
             if (m_buildGhost) {
                 applyGhostCells(i, buildGhostMode);
             }
-            if (!m_case.varyingCoords)
-                addGridToPorts(i);
         }
     }
 
@@ -1436,8 +1455,7 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep)
         }
     }
 
-    bool readGrid = m_readGrid->getValue();
-    if (!readGrid)
+    if (!m_readGrid)
         return true;
 
     if (m_case.varyingCoords || m_case.varyingGrid) {
@@ -1458,7 +1476,7 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep)
                 if (m_buildGhost) {
                     applyGhostCells(i, ghostMode);
                 }
-                addGridToPorts(i);
+                addBoundaryToPort(i);
             }
         }
         m_GhostCellsIn.clear();

@@ -6,6 +6,7 @@
 #include <QGraphicsScene>
 
 #include "port.h"
+#include "colormap.h"
 #include <vistle/core/uuid.h>
 #include <vistle/userinterface/vistleconnection.h>
 
@@ -90,6 +91,7 @@ public slots:
     void deleteConnection(int fromId, QString fromName, int toId, QString toName);
     void moduleStatus(int id, QString status, int prio);
     void itemInfoChanged(QString text, int type, int id, QString port);
+    void colormapChanged(int id, int source, QString species, Range range, const std::vector<vistle::RGBA> *rgba);
     void portStateChanged(int state, int id, QString port);
     void setDisplayName(int id, QString name);
     void moduleMessage(int senderId, int type, QString message);

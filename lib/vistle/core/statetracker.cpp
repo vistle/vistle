@@ -2,6 +2,7 @@
 
 #include "message.h"
 #include "messages.h"
+#include "message/colormap.h"
 #include "messagerouter.h"
 #include "parameter.h"
 #include "port.h"
@@ -26,6 +27,15 @@ const std::string unknown("(unknown)");
 }
 
 using message::Id;
+
+bool StateTracker::ColorMapKey::operator<(const ColorMapKey &other) const
+{
+#ifdef COLORS_BY_SOURCE
+    if (sourceModule != other.sourceModule)
+        return sourceModule < other.sourceModule;
+#endif
+    return species < other.species;
+}
 
 int StateTracker::Module::state() const
 {
@@ -430,6 +440,24 @@ void StateTracker::appendModuleParameter(VistleState &state, const Module &m) co
     }
 }
 
+void StateTracker::appendModuleColor(VistleState &state, const Module &m) const
+{
+    using namespace vistle::message;
+    for (const auto &kcm: m.colormaps) {
+        const auto &cm = kcm.second;
+        auto id = m.id;
+        const std::string &species = cm.species;
+        Colormap colormap(species, cm.sourceModule);
+        colormap.setSenderId(id);
+        colormap.setBlendWithMaterial(cm.blendWithMaterial);
+        colormap.setRange(cm.min, cm.max);
+        Colormap::Payload pl(cm.rgba);
+        auto vec = addPayload(colormap, pl);
+        auto shvec = std::make_shared<buffer>(vec);
+        appendMessage(state, colormap, shvec);
+    }
+}
+
 void StateTracker::appendModulePorts(VistleState &state, const Module &mod) const
 {
     using namespace vistle::message;
@@ -532,7 +560,9 @@ StateTracker::VistleState StateTracker::getState() const
         msg.setArch(hub.arch);
         msg.setInfo(hub.info);
         msg.setVersion(hub.version);
-        appendMessage(state, msg);
+        auto pl = message::addPayload(msg, hub.addHubPayload);
+        auto shpl = std::make_shared<buffer>(pl);
+        appendMessage(state, msg, shpl);
     }
 
     // available modules
@@ -560,6 +590,7 @@ StateTracker::VistleState StateTracker::getState() const
             appendModuleState(state, m);
         }
         appendModuleParameter(state, m);
+        appendModuleColor(state, m);
         appendModulePorts(state, m);
         appendModuleInfo(state, m);
     }
@@ -710,7 +741,7 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
     }
     case ADDHUB: {
         const auto &hub = msg.as<AddHub>();
-        handled = handlePriv(hub);
+        handled = handlePriv(hub, pl);
         break;
     }
     case REMOVEHUB: {
@@ -915,6 +946,16 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
         handled = handlePriv(m);
         break;
     }
+    case COLORMAP: {
+        const auto &m = msg.as<Colormap>();
+        handled = handlePriv(m, pl);
+        break;
+    }
+    case REMOVECOLORMAP: {
+        const auto &m = msg.as<RemoveColormap>();
+        handled = handlePriv(m);
+        break;
+    }
 
     case COVER:
     case CREATEMODULECOMPOUND:
@@ -1022,7 +1063,7 @@ bool StateTracker::handlePriv(const message::RemoveHub &rm)
     return true;
 }
 
-bool StateTracker::handlePriv(const message::AddHub &hub)
+bool StateTracker::handlePriv(const message::AddHub &hub, const buffer &payload)
 {
     std::lock_guard<mutex> locker(m_slaveMutex);
     for (auto &h: m_hubs) {
@@ -1032,18 +1073,20 @@ bool StateTracker::handlePriv(const message::AddHub &hub)
         }
     }
     m_hubs.emplace_back(hub.id(), hub.name());
-    m_hubs.back().numRanks = hub.numRanks();
-    m_hubs.back().port = hub.port();
-    m_hubs.back().dataPort = hub.dataPort();
+    auto &h = m_hubs.back();
+    h.numRanks = hub.numRanks();
+    h.port = hub.port();
+    h.dataPort = hub.dataPort();
     if (hub.hasAddress())
-        m_hubs.back().address = hub.address();
-    m_hubs.back().logName = hub.loginName();
-    m_hubs.back().realName = hub.realName();
-    m_hubs.back().hasUi = hub.hasUserInterface();
-    m_hubs.back().systemType = hub.systemType();
-    m_hubs.back().arch = hub.arch();
-    m_hubs.back().info = hub.info();
-    m_hubs.back().version = hub.version();
+        h.address = hub.address();
+    h.logName = hub.loginName();
+    h.realName = hub.realName();
+    h.hasUi = hub.hasUserInterface();
+    h.systemType = hub.systemType();
+    h.arch = hub.arch();
+    h.info = hub.info();
+    h.version = hub.version();
+    h.addHubPayload = message::getPayload<message::AddHub::Payload>(payload);
 
     // for per-hub parameters
     Module hubMod(hub.id(), hub.id());
@@ -1636,6 +1679,64 @@ bool StateTracker::handlePriv(const message::Barrier &barrier)
 
 bool StateTracker::handlePriv(const message::BarrierReached &barrReached)
 {
+    return true;
+}
+
+bool StateTracker::handlePriv(const message::Colormap &colormap, const buffer &payload)
+{
+    auto id = colormap.senderId();
+    auto it = runningMap.find(id);
+    if (it == runningMap.end()) {
+        it = quitMap.find(id);
+        assert(it != quitMap.end());
+        return false;
+    }
+
+    auto pl = message::getPayload<message::Colormap::Payload>(payload);
+
+    auto &mod = it->second;
+    auto &cmaps = mod.colormaps;
+    ColorMapKey key{colormap.source(), colormap.species()};
+    auto &cm = cmaps[key];
+    cm.species = colormap.species();
+    cm.sourceModule = colormap.source();
+    cm.blendWithMaterial = colormap.blendWithMaterial();
+    cm.min = colormap.min();
+    cm.max = colormap.max();
+    cm.rgba = pl.rgba;
+
+    for (StateObserver *o: m_observers) {
+        o->colormap(id, cm.sourceModule, cm.species, std::array<vistle::Float, 2>{cm.min, cm.max}, &cm.rgba);
+    }
+
+    return true;
+}
+
+bool StateTracker::handlePriv(const message::RemoveColormap &rcm)
+{
+    auto id = rcm.senderId();
+    auto it = runningMap.find(id);
+    if (it == runningMap.end()) {
+        it = quitMap.find(id);
+        assert(it != quitMap.end());
+        if (it == quitMap.end())
+            return false;
+    }
+
+    auto &mod = it->second;
+    auto &cmaps = mod.colormaps;
+    ColorMapKey key;
+    key.species = rcm.species();
+    key.sourceModule = rcm.source();
+
+    for (StateObserver *o: m_observers) {
+        o->colormap(id, key.sourceModule, key.species, std::array<vistle::Float, 2>{0, 0}, nullptr);
+    }
+
+    if (auto cit = cmaps.find(key); cit != cmaps.end()) {
+        cmaps.erase(cit);
+    }
+
     return true;
 }
 
@@ -2381,6 +2482,9 @@ void StateObserver::info(const std::string &text, message::SendText::TextType te
 {}
 void StateObserver::itemInfo(const std::string &text, message::ItemInfo::InfoType type, int senderId,
                              const std::string &port)
+{}
+void StateObserver::colormap(int moduleId, int source, const std::string &species,
+                             const std::array<vistle::Float, 2> &range, const std::vector<vistle::RGBA> *rgba)
 {}
 void StateObserver::portState(vistle::message::ItemInfo::PortState state, int senderId, const std::string &port)
 {}

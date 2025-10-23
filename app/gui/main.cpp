@@ -12,8 +12,10 @@
 #include <QIcon>
 
 #include <iostream>
+#include <array>
 
 #include "macosutils.h"
+#include "colormap.h"
 
 Q_DECLARE_METATYPE(boost::uuids::uuid)
 
@@ -32,6 +34,7 @@ int main(int argc, char *argv[])
 
     qRegisterMetaType<Module::Status>("Module::Status");
     qRegisterMetaType<Port::Type>("Port::Type");
+    qRegisterMetaType<gui::Range>("Range");
     qRegisterMetaType<boost::uuids::uuid>();
 
     try {

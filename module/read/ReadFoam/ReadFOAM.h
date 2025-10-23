@@ -102,9 +102,10 @@ private:
     //Parameter
     vistle::StringParameter *m_casedir, *m_patchSelection;
     vistle::FloatParameter *m_starttime, *m_stoptime;
-    vistle::IntParameter *m_readGrid, *m_readBoundary, *m_boundaryPatchesAsVariants;
+    vistle::IntParameter *m_boundaryPatchesAsVariants;
     vistle::IntParameter *m_buildGhostcellsParam;
     bool m_buildGhost;
+    bool m_readGrid = false, m_readBoundary = false;
     vistle::IntParameter *m_onlyPolyhedraParam = nullptr;
     bool m_onlyPolyhedra = false;
     std::vector<vistle::StringParameter *> m_fieldOut, m_boundaryOut;
@@ -131,7 +132,7 @@ private:
     void processAllRequests();
     void applyGhostCells(int processor, GhostMode mode);
     void applyGhostCellsData(int processor);
-    bool addGridToPorts(int processor);
+    bool addBoundaryToPort(int processor);
     bool addVolumeDataToPorts(int processor);
     bool readConstant(const std::string &dir);
     bool readTime(const std::string &dir, int timestep);

@@ -6,14 +6,14 @@
 #include <random>
 #include <map>
 #include <vector>
+#include <vistle/core/rgba.h>
 #include <vistle/core/scalar.h>
 #include <vistle/core/vector.h>
 #include <vistle/core/object.h>
 #include <vistle/core/vec.h>
-#include <vistle/core/texture1d.h>
 #include <vistle/core/coords.h>
+#include <vistle/core/message/colormap.h>
 #include <vistle/util/math.h>
-#include <vistle/module/resultcache.h>
 #include <vistle/alg/objalg.h>
 
 #include "Color.h"
@@ -170,9 +170,6 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm): Mod
 
     m_dataIn = createInputPort("data_in", "field to create colormap for");
     setPortOptional(m_dataIn, true);
-    m_dataOut = createOutputPort("data_out", "field converted to colors");
-    m_colorOut = createOutputPort("color_out", "color map");
-    linkPorts(m_dataIn, m_dataOut);
 
     m_speciesPara = addStringParameter("species", "species attribute of input data", "");
 
@@ -223,8 +220,6 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm): Mod
     m_insetOpacity = addFloatParameter("inset_opacity_factor", "multiplier for opacity of inset color", 1.0);
     setParameterRange(m_insetOpacity, 0., 1.);
 #endif
-
-    addResultCache(m_cache);
 
 #ifndef COLOR_RANDOM
     ColorMap::TF pins;
@@ -605,70 +600,6 @@ bool Color::changeParameter(const Parameter *p)
     return Module::changeParameter(p);
 }
 
-vistle::Texture1D::ptr Color::addTexture(vistle::DataBase::const_ptr object, const vistle::Scalar min,
-                                         const vistle::Scalar max, const ColorMap &cmap)
-{
-    const Scalar invRange = 1.f / (max - min);
-
-    vistle::Texture1D::ptr tex(new vistle::Texture1D(cmap.width, min, max));
-    unsigned char *pix = tex->pixels().data();
-    for (size_t index = 0; index < cmap.width * 4; index++)
-        pix[index] = cmap.data[index];
-
-    const ssize_t numElem = object->getSize();
-    tex->coords().resize(numElem);
-    auto tc = tex->coords().data();
-
-    if (Vec<Scalar>::const_ptr f = Vec<Scalar>::as(object)) {
-        const vistle::Scalar *x = f->x().data();
-
-#ifdef USE_OPENMP
-#pragma omp parallel for
-#endif
-        for (ssize_t index = 0; index < numElem; index++)
-            tc[index] = (x[index] - min) * invRange;
-    } else if (Vec<Index>::const_ptr f = Vec<Index>::as(object)) {
-        const vistle::Index *x = f->x().data();
-
-#ifdef USE_OPENMP
-#pragma omp parallel for
-#endif
-        for (ssize_t index = 0; index < numElem; index++)
-            tc[index] = (x[index] - min) * invRange;
-    } else if (Vec<Byte>::const_ptr f = Vec<Byte>::as(object)) {
-        const vistle::Byte *x = f->x().data();
-
-#ifdef USE_OPENMP
-#pragma omp parallel for
-#endif
-        for (ssize_t index = 0; index < numElem; index++)
-            tc[index] = (x[index] - min) * invRange;
-    } else if (Vec<Scalar, 3>::const_ptr f = Vec<Scalar, 3>::as(object)) {
-        const vistle::Scalar *x = f->x().data();
-        const vistle::Scalar *y = f->y().data();
-        const vistle::Scalar *z = f->z().data();
-
-#ifdef USE_OPENMP
-#pragma omp parallel for
-#endif
-        for (ssize_t index = 0; index < numElem; index++) {
-            const Scalar v = Vector3(x[index], y[index], z[index]).norm();
-            tc[index] = (v - min) * invRange;
-        }
-    } else {
-        std::cerr << "Color: cannot handle input of type " << object->getType() << std::endl;
-
-#ifdef USE_OPENMP
-#pragma omp parallel for
-#endif
-        for (ssize_t index = 0; index < numElem; index++) {
-            tc[index] = (index % 2) ? 0. : 1.;
-        }
-    }
-
-    return tex;
-}
-
 void Color::computeMap()
 {
     Scalar op = m_opacity->getValue();
@@ -763,6 +694,7 @@ bool Color::prepare()
     m_colorMapSent = false;
     if (m_haveData) {
         m_species.clear();
+        m_sourceId = message::Id::Invalid;
 
         m_dataMin = std::numeric_limits<Scalar>::max();
         m_dataMax = -std::numeric_limits<Scalar>::max();
@@ -806,15 +738,6 @@ bool Color::compute()
 
     if (obj && !data) {
         // only grid, no mapped data
-        if (m_dataOut->isConnected()) {
-            Object::ptr nobj;
-            if (auto entry = m_cache.getOrLock(obj->getName(), nobj)) {
-                nobj = obj->clone();
-                updateMeta(nobj);
-                m_cache.storeAndUnlock(entry, nobj);
-            }
-            addObject(m_dataOut, nobj);
-        }
         return true;
     }
 
@@ -940,11 +863,6 @@ void Color::updateHaveData()
 
 void Color::connectionAdded(const Port *from, const Port *to)
 {
-    if (from == m_colorOut) {
-        m_colorMapSent = false;
-        sendColorMap();
-    }
-
     if (to == m_dataIn) {
         m_haveData = true;
         updateHaveData();
@@ -962,22 +880,17 @@ void Color::connectionRemoved(const Port *from, const Port *to)
 void Color::process(const DataBase::const_ptr data)
 {
     m_species = data->getAttribute(attribute::Species);
-    sendColorMap();
-
-    if (m_dataOut->isConnected()) {
-        Object::ptr nobj;
-        if (auto entry = m_cache.getOrLock(data->getName(), nobj)) {
-            auto out(addTexture(data, m_min, m_max, *m_colors));
-            out->setGrid(data->grid());
-            out->setMeta(data->meta());
-            out->copyAttributes(data);
-            nobj = out;
-            updateMeta(out);
-            m_cache.storeAndUnlock(entry, nobj);
+    auto source = data->getAttribute(attribute::DataSource);
+    m_sourceId = message::Id::Invalid;
+#ifdef COLORS_BY_SOURCE
+    if (!source.empty()) {
+        m_sourceId = std::stoi(source);
+        if (!message::Id::isModule(m_sourceId)) {
+            m_sourceId = message::Id::Invalid;
         }
-
-        addObject(m_dataOut, nobj);
     }
+#endif
+    sendColorMap();
 }
 
 void Color::sendColorMap()
@@ -990,48 +903,24 @@ void Color::sendColorMap()
     } else {
         m_species = m_speciesPara->getValue();
     }
-    if (!m_species.empty())
-        setItemInfo(m_species);
 
-    if (m_colorOut->isConnected() && !m_species.empty()) {
-#ifdef COLOR_RANDOM
-        vistle::Texture1D::ptr tex(new vistle::Texture1D(m_colors->width, m_min - 0.5, m_max + 0.5));
-#else
-        vistle::Texture1D::ptr tex(new vistle::Texture1D(m_colors->width, m_min, m_max));
-#endif
-        unsigned char *pix = tex->pixels().data();
-        for (size_t index = 0; index < m_colors->width * 4; index++)
-            pix[index] = m_colors->data[index];
-        tex->addAttribute(attribute::Species, m_species);
-        if (m_blendWithMaterialPara->getValue())
-            tex->addAttribute(attribute::BlendWithMaterial, "true");
-        updateMeta(tex);
-        addObject(m_colorOut, tex);
-
-        std::stringstream buffer;
-        buffer << tex->getName() << '\n'
-               << m_species << '\n'
-#ifdef COLOR_RANDOM
-               << (m_reverse ? m_max : m_min) - 0.5 << '\n'
-               << (m_reverse ? m_min : m_max) + 0.5 << '\n'
-#else
-               << (m_reverse ? m_max : m_min) << '\n'
-               << (m_reverse ? m_min : m_max) << '\n'
-#endif
-               << m_colors->width << '\n'
-               << '0';
-
-        buffer.precision(4);
-        buffer << std::fixed;
-        for (size_t index = 0; index < m_colors->width * 4; index++)
-            buffer << "\n" << int(pix[index]) / 255.f;
-
-#ifdef ColorMap
-#undef ColorMap
-#endif
-        tex->addAttribute(attribute::ColorMap, buffer.str());
-        tex->addAttribute(attribute::Plugin, "ColorBars");
-
-        m_colorMapSent = true;
+    std::string info;
+    if (message::Id::isModule(m_sourceId)) {
+        info = std::to_string(m_sourceId) + ":";
     }
+    info += m_species;
+    setItemInfo(info);
+
+    if (m_species.empty() && m_sourceId == message::Id::Invalid)
+        return;
+
+    message::Colormap cm(m_species, m_sourceId);
+    cm.setDestId(message::Id::ForBroadcast);
+    cm.setRange(m_min, m_max);
+    if (m_blendWithMaterialPara->getValue())
+        cm.setBlendWithMaterial(true);
+    message::Colormap::Payload pl(m_colors->width, m_colors->data.data());
+    sendMessageWithPayload(cm, pl);
+
+    m_colorMapSent = true;
 }

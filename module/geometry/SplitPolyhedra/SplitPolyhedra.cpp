@@ -199,6 +199,12 @@ bool SplitPolyhedra::compute()
                         }
                     }
                 }
+                if (first != InvalidIndex) {
+                    // unterminated face
+                    ++nBadSplit;
+                    std::cerr << "unterminated face in element " << elem << ", skipping" << std::endl;
+                    continue;
+                }
                 assert(first == InvalidIndex);
                 assert(facebegin == InvalidIndex);
                 std::sort(verts.begin(), verts.end());

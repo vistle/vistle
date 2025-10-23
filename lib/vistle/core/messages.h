@@ -34,19 +34,22 @@ namespace message {
 //! indicate the kind of a communication partner
 class V_COREEXPORT Identify: public MessageBase<Identify, IDENTIFY> {
 public:
-    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Identity,
-                                        (UNKNOWN)(REQUEST) //< request receiver to send its identity
-                                        (UI) //< user interface
-                                        (MANAGER) //< cluster manager
-                                        (HUB) //< master hub
-                                        (SLAVEHUB) //< slave hub
-                                        (LOCALBULKDATA) //< bulk data transfer to local MPI ranks
-                                        (REMOTEBULKDATA) //< bulk data transfer to remote hubs
-                                        (RENDERSERVER) //< remote render server
-                                        (RENDERCLIENT) //< remote render client
-                                        (VRB) //< COVISE/OpenCOVER request broker for collaborative VR
-                                        (TUNNEL) //< initiate rendezvous tunnel connection
-                                        (SCRIPT) //< sent from a Python script
+    DEFINE_ENUM_WITH_STRING_CONVERSIONS(
+        Identity,
+        (UNKNOWN) //< unspecified
+        (REQUEST) //< request receiver to send its identity
+        (UI) //< user interface
+        (MANAGER) //< cluster manager
+        (HUB) //< master hub
+        (SLAVEHUB) //< slave hub
+        (LOCALBULKDATA) //< bulk data transfer to local MPI ranks
+        (REMOTEBULKDATA) //< bulk data transfer to remote hubs
+        (DIRECTBULKDATA) //< bulk data transfer directly between remove data manager ranks
+        (RENDERSERVER) //< remote render server
+        (RENDERCLIENT) //< remote render client
+        (VRB) //< COVISE/OpenCOVER request broker for collaborative VR
+        (TUNNEL) //< initiate rendezvous tunnel connection
+        (SCRIPT) //< sent from a Python script
     )
     DEFINE_ENUM_WITH_STRING_CONVERSIONS(TunnelRole, (Client)(Server))
 
@@ -95,6 +98,29 @@ class V_COREEXPORT AddHub: public MessageBase<AddHub, ADDHUB> {
     DEFINE_ENUM_WITH_STRING_CONVERSIONS(AddressType, (Hostname)(IPv4)(IPv6)(Unspecified))
 
 public:
+    struct Payload {
+        Payload();
+        Payload(const std::vector<std::string> &hubAddresses,
+                const std::vector<std::vector<std::string>> &rankAddresses);
+        Payload(const std::vector<std::vector<std::string>> &rankAddresses);
+        Payload(const std::map<int, std::vector<boost::asio::ip::address>> &rankAddresses);
+
+        std::vector<std::string> hubAddresses;
+        std::vector<std::string> rankNames;
+        std::vector<std::vector<std::string>> rankAddresses;
+        std::vector<uint16_t> rankDataPorts;
+
+        ARCHIVE_ACCESS
+        template<class Archive>
+        void serialize(Archive &ar)
+        {
+            ar &hubAddresses;
+            ar &rankNames;
+            ar &rankAddresses;
+            ar &rankDataPorts;
+        }
+    };
+
     AddHub(int id, const std::string &name);
     int id() const;
     const char *name() const;
@@ -103,6 +129,7 @@ public:
     int numRanks() const;
     unsigned short port() const;
     unsigned short dataPort() const;
+    unsigned short dataManagerPort() const;
     AddressType addressType() const;
     bool hasAddress() const;
     std::string host() const;
@@ -113,6 +140,7 @@ public:
     void setNumRanks(int size);
     void setPort(unsigned short port);
     void setDataPort(unsigned short port);
+    void setDataManagerPort(unsigned short port);
     void setAddress(boost::asio::ip::address addr);
     void setAddress(boost::asio::ip::address_v6 addr);
     void setAddress(boost::asio::ip::address_v4 addr);
@@ -144,6 +172,7 @@ private:
     int m_numRanks;
     unsigned short m_port;
     unsigned short m_dataPort;
+    unsigned short m_dataManagerPort;
     AddressType m_addrType;
     address_t m_address;
     bool m_hasUserInterface;
@@ -1082,10 +1111,12 @@ extern template V_COREEXPORT buffer addPayload<std::string>(Message &message, co
 extern template V_COREEXPORT buffer addPayload<SendText::Payload>(Message &message, const SendText::Payload &payload);
 extern template V_COREEXPORT buffer
 addPayload<SetParameterChoices::Payload>(Message &message, const SetParameterChoices::Payload &payload);
+extern template V_COREEXPORT buffer addPayload<AddHub::Payload>(Message &message, const AddHub::Payload &payload);
 
 extern template V_COREEXPORT std::string getPayload(const buffer &data);
 extern template V_COREEXPORT SendText::Payload getPayload(const buffer &data);
 extern template V_COREEXPORT SetParameterChoices::Payload getPayload(const buffer &data);
+extern template V_COREEXPORT AddHub::Payload getPayload(const buffer &data);
 
 V_COREEXPORT std::ostream &operator<<(std::ostream &s, const Message &msg);
 

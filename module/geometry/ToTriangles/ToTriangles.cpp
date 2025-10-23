@@ -10,7 +10,6 @@
 #include <vistle/core/normals.h>
 #include <vistle/core/polygons.h>
 #include <vistle/core/quads.h>
-#include <vistle/core/texture1d.h>
 #include <vistle/core/unstr.h>
 #include <vistle/core/points.h>
 #include <vistle/core/lines.h>
@@ -158,13 +157,6 @@ DataBase::ptr replicateData(DataBase::const_ptr src, Index mult, Index nConn = 0
     DataBase::ptr result;
     boost::mpl::for_each<Scalars>(ReplicateData<1>(src, result, mult, nConn, cl, nElem, el, nStart, nEnd));
     boost::mpl::for_each<Scalars>(ReplicateData<3>(src, result, mult, nConn, cl, nElem, el, nStart, nEnd));
-    if (auto tex = Texture1D::as(src)) {
-        auto vec1 = Vec<Scalar, 1>::as(Object::ptr(result));
-        assert(vec1);
-        auto result2 = tex->clone();
-        result2->d()->x[0] = vec1->d()->x[0];
-        result = result2;
-    }
     return result;
 }
 
@@ -173,13 +165,6 @@ DataBase::ptr replicateData(DataBase::const_ptr src, Index nnelem, const Index *
     DataBase::ptr result;
     boost::mpl::for_each<Scalars>(ReplicateData<1>(src, result, nnelem, mult, numTri, numVert));
     boost::mpl::for_each<Scalars>(ReplicateData<3>(src, result, nnelem, mult, numTri, numVert));
-    if (auto tex = Texture1D::as(src)) {
-        auto vec1 = Vec<Scalar, 1>::as(Object::ptr(result));
-        assert(vec1);
-        auto result2 = tex->clone();
-        result2->d()->x[0] = vec1->d()->x[0];
-        result = result2;
-    }
     return result;
 }
 
@@ -333,7 +318,6 @@ bool ToTriangles::compute()
                 updateMeta(nobj);
                 result = nobj;
             }
-            return true;
         }
 
         if (auto poly = Polygons::as(obj)) {

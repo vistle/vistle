@@ -147,6 +147,8 @@ private:
     bool handlePriv(const message::ItemInfo &info, const MessagePayload &payload);
     bool handlePriv(const message::RequestTunnel &tunnel);
     bool handlePriv(const message::DataTransferState &state);
+    bool handlePriv(const message::Colormap &cm, const MessagePayload &payload);
+    bool handlePriv(const message::RemoveColormap &rcm);
 
     bool scanModules(const std::string &prefix, const std::string &buildtype);
 

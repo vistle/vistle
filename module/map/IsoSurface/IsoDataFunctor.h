@@ -69,7 +69,7 @@ struct IsoDataFunctor {
             vistle::Vector3 coordinates(m_x[i], m_y[i], m_z[i]);
             switch (m_option) {
             case Plane: {
-                return m_sign * (m_distance - m_vertex.dot(coordinates));
+                return m_sign * (m_vertex.dot(coordinates) - m_distance);
             }
             case Sphere: {
                 return m_sign * ((coordinates - m_vertex).squaredNorm() - m_radius2);
@@ -84,7 +84,7 @@ struct IsoDataFunctor {
             vistle::Vector3 coordinates(m_x[idx[0]], m_y[idx[1]], m_z[idx[2]]);
             switch (m_option) {
             case Plane: {
-                return m_sign * (m_distance - m_vertex.dot(coordinates));
+                return m_sign * (m_vertex.dot(coordinates) - m_distance);
             }
             case Sphere: {
                 return m_sign * ((coordinates - m_vertex).squaredNorm() - m_radius2);

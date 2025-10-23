@@ -1,6 +1,8 @@
+# /usr/bin/env vistle
+# this is a Python workflow from Vistle 2025.1-623b59699
+
 import os
 covisedir = os.getenv("COVISEDIR")
-
 
 MasterHub=getMasterHub()
 VistleSession=getVistleSession()
@@ -9,12 +11,13 @@ uuids = {}
 
 
 
+# spawn all local modules
 umReadCoviseDirectory1 = spawnAsync(MasterHub, 'ReadCoviseDirectory')
 umCOVER2 = spawnAsync(MasterHub, 'COVER')
 umDomainSurface3 = spawnAsync(MasterHub, 'DomainSurface')
 umCutGeometry4 = spawnAsync(MasterHub, 'CutGeometry')
-umColor6 = spawnAsync(MasterHub, 'Color')
-umIsoSurface7 = spawnAsync(MasterHub, 'IsoSurface')
+umColor5 = spawnAsync(MasterHub, 'Color')
+umIsoSurface6 = spawnAsync(MasterHub, 'IsoSurface')
 
 mReadCoviseDirectory1 = waitForSpawn(umReadCoviseDirectory1)
 setVectorParam(VistleSession, f'position[{mReadCoviseDirectory1}]', -0.0, 17.0)
@@ -34,31 +37,34 @@ setVectorParam(VistleSession, f'position[{mDomainSurface3}]', -51.0, 102.0)
 mCutGeometry4 = waitForSpawn(umCutGeometry4)
 setVectorParam(VistleSession, f'position[{mCutGeometry4}]', -51.0, 187.0)
 setVectorParam(mCutGeometry4, 'point', 0.009750273078680038, -0.00717993313446641, 0.02191287651658058, True)
-setVectorParam(mCutGeometry4, 'vertex', 0.0, 6.123234262925839e-17, 1.0, True)
+setVectorParam(mCutGeometry4, 'vertex', 0.0, 6.123234262925839e-17, -1.0, True)
 setFloatParam(mCutGeometry4, 'scalar', 0.02191287651658058, True)
 applyParameters(mCutGeometry4)
 
-mColor6 = waitForSpawn(umColor6)
-setVectorParam(VistleSession, f'position[{mColor6}]', 153.0, 102.0)
-setStringParam(mColor6, 'species', 'tiny_p', True)
-setFloatParam(mColor6, 'min', -0.4708384871482849, True)
-setFloatParam(mColor6, 'max', 3.7333059310913086, True)
-setIntParam(mColor6, 'map', 1, True)
-applyParameters(mColor6)
+mColor5 = waitForSpawn(umColor5)
+setVectorParam(VistleSession, f'position[{mColor5}]', 153.0, 102.0)
+setStringParam(mColor5, 'species', 'tiny_p', True)
+setFloatParam(mColor5, 'min', -0.4708384871482849, True)
+setFloatParam(mColor5, 'max', 3.7333059310913086, True)
+setIntParam(mColor5, 'map', 1, True)
+applyParameters(mColor5)
 
-mIsoSurface7 = waitForSpawn(umIsoSurface7)
-setVectorParam(VistleSession, f'position[{mIsoSurface7}]', 68.0, 102.0)
-setFloatParam(mIsoSurface7, 'isovalue', 0.05828211456537247, True)
-setVectorParam(mIsoSurface7, 'isopoint', 0.25865375995635986, -0.13177241384983063, 0.04442386329174042, True)
-setIntParam(mIsoSurface7, 'point_or_value', 0, True)
-applyParameters(mIsoSurface7)
+mIsoSurface6 = waitForSpawn(umIsoSurface6)
+setVectorParam(VistleSession, f'position[{mIsoSurface6}]', 68.0, 102.0)
+setFloatParam(mIsoSurface6, 'isovalue', 0.05828211456537247, True)
+setVectorParam(mIsoSurface6, 'isopoint', 0.25865375995635986, -0.13177241384983063, 0.04442386329174042, True)
+setIntParam(mIsoSurface6, 'point_or_value', 0, True)
+applyParameters(mIsoSurface6)
 
+# all local connections
 connect(mReadCoviseDirectory1,'grid_out', mDomainSurface3,'data_in')
-connect(mReadCoviseDirectory1,'field0_out', mColor6,'data_in')
-connect(mReadCoviseDirectory1,'field0_out', mIsoSurface7,'data_in')
-connect(mReadCoviseDirectory1,'field0_out', mIsoSurface7,'mapdata_in')
-connect(mDomainSurface3,'data_out', mCutGeometry4,'grid_in')
+connect(mReadCoviseDirectory1,'field0_out', mColor5,'data_in')
+connect(mReadCoviseDirectory1,'field0_out', mIsoSurface6,'data_in')
+connect(mDomainSurface3,'data_out', mCutGeometry4,'data_in')
 connect(mDomainSurface3,'lines_out', mCOVER2,'data_in')
-connect(mCutGeometry4,'grid_out', mCOVER2,'data_in')
-connect(mColor6,'color_out', mCOVER2,'data_in')
-connect(mIsoSurface7,'data_out', mCOVER2,'data_in')
+connect(mCutGeometry4,'data_out', mCOVER2,'data_in')
+connect(mIsoSurface6,'data_out0', mCOVER2,'data_in')
+
+# spawn all remote modules
+
+# connections between local and remote

@@ -21,7 +21,6 @@
 #include <vistle/core/lines.h>
 #include <vistle/core/triangles.h>
 #include <vistle/core/quads.h>
-#include <vistle/core/texture1d.h>
 #include <vistle/core/placeholder.h>
 #include <vistle/core/normals.h>
 #include <vistle/core/layergrid.h>
@@ -236,7 +235,10 @@ VistleGeometryGenerator::VistleGeometryGenerator(std::shared_ptr<vistle::RenderO
 : m_ro(ro), m_geo(geo), m_normal(normal), m_mapped(mapped)
 {
     if (m_mapped) {
-        m_species = m_mapped->getAttribute(attribute::Species);
+        auto species = m_mapped->getAttribute(attribute::Species);
+        auto source = m_mapped->getAttribute(attribute::DataSource);
+        int sourceModule = source.empty() ? vistle::message::Id::Invalid : std::stoi(source);
+        m_colorMapKey = vistle::ColorMapKey(species, sourceModule);
     }
 }
 
@@ -245,9 +247,9 @@ void VistleGeometryGenerator::setOptions(const Options &options)
     m_options = options;
 }
 
-const std::string &VistleGeometryGenerator::species() const
+const vistle::ColorMapKey &VistleGeometryGenerator::colorMapKey() const
 {
-    return m_species;
+    return m_colorMapKey;
 }
 
 void VistleGeometryGenerator::setColorMaps(const OsgColorMapMap *colormaps)
@@ -678,12 +680,6 @@ float getValue(typename MappedObject::const_ptr data, Index idx)
 }
 
 template<>
-float getValue<vistle::Texture1D>(typename vistle::Texture1D::const_ptr data, Index idx)
-{
-    return data->coords()[idx];
-}
-
-template<>
 float getValue<vistle::Vec<Scalar, 3>>(typename vistle::Vec<Scalar, 3>::const_ptr data, Index idx)
 {
     auto x = data->x()[idx];
@@ -826,12 +822,12 @@ bool fillTexture(std::stringstream &debug, S *tex, Index sx, Index sy, typename 
     return false;
 }
 
-const OsgColorMap *VistleGeometryGenerator::getColorMap(const std::string &species) const
+const OsgColorMap *VistleGeometryGenerator::getColorMap(const vistle::ColorMapKey &key) const
 {
 #ifdef COVER_PLUGIN
     std::lock_guard<std::mutex> lock(s_coverMutex);
     if (m_colormaps) {
-        auto it = m_colormaps->find(species);
+        auto it = m_colormaps->find(key);
         if (it != m_colormaps->end()) {
             return &it->second;
         }
@@ -940,7 +936,6 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
     }
 
     bool dataValid = false;
-    bool textureValid = false;
 #ifdef COVER_PLUGIN
     const OsgColorMap *colormap = nullptr;
     bool haveSpheres = false;
@@ -959,16 +954,13 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
         }
     }
 
-    vistle::Texture1D::const_ptr tex = vistle::Texture1D::as(m_mapped);
     vistle::Vec<Scalar>::const_ptr sdata = vistle::Vec<Scalar>::as(m_mapped);
     vistle::Vec<Scalar, 3>::const_ptr vdata = vistle::Vec<Scalar, 3>::as(m_mapped);
     vistle::Vec<Index>::const_ptr idata = vistle::Vec<Index>::as(m_mapped);
     vistle::Vec<Byte>::const_ptr bdata = vistle::Vec<Byte>::as(m_mapped);
-    if (tex) {
-        sdata.reset();
-    } else if (sdata || vdata || idata || bdata) {
+    if (sdata || vdata || idata || bdata) {
 #ifdef COVER_PLUGIN
-        colormap = getColorMap(m_species);
+        colormap = getColorMap(m_colorMapKey);
 #endif
     } else if (database) {
         debug << "Unsupported mapped data: type=" << Object::toString(database->getType()) << " ("
@@ -1053,7 +1045,7 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
 
                 if (!colormap) {
                     // required for applying shader
-                    colormap = getColorMap("");
+                    colormap = getColorMap(ColorMapKey());
                 }
             } else
 #endif
@@ -1086,7 +1078,7 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
             dmode = HeightMap::CellData;
 
         if (dmode == HeightMap::NoData) {
-            colormap = getColorMap("");
+            colormap = getColorMap(ColorMapKey());
         } else {
             dataValid = true;
         }
@@ -1127,8 +1119,6 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
                         fillTexture<Vec<Index>>(debug, data, sx, sy, idata, dims, x, y, l);
                     } else if (bdata) {
                         fillTexture<Vec<Byte>>(debug, data, sx, sy, bdata, dims, x, y, l);
-                    } else if (tex) {
-                        fillTexture<Texture1D>(debug, data, sx, sy, tex, dims, x, y, l);
                     }
 
                     hf->dirty();
@@ -1197,12 +1187,7 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
                 cache.normals.push_back(norm);
             }
             osg::ref_ptr<osg::FloatArray> fl;
-            auto tc = applyTriangle<Triangles, vistle::Texture1D::const_ptr, osg::FloatArray, false>(triangles, tex,
-                                                                                                     m_options, bin);
-            if (tc) {
-                geom->setTexCoordArray(TfTexUnit, tc);
-                textureValid = true;
-            } else if (sdata) {
+            if (sdata) {
                 fl = applyTriangle<Triangles, vistle::Vec<Scalar>::const_ptr, osg::FloatArray, false>(triangles, sdata,
                                                                                                       m_options, bin);
             } else if (vdata) {
@@ -1278,12 +1263,7 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
             }
 
             osg::ref_ptr<osg::FloatArray> fl;
-            auto tc =
-                applyTriangle<Quads, vistle::Texture1D::const_ptr, osg::FloatArray, false>(quads, tex, m_options, bin);
-            if (tc) {
-                geom->setTexCoordArray(TfTexUnit, tc);
-                textureValid = true;
-            } else if (sdata) {
+            if (sdata) {
                 fl = applyTriangle<Quads, vistle::Vec<Scalar>::const_ptr, osg::FloatArray, false>(quads, sdata,
                                                                                                   m_options, bin);
             } else if (vdata) {
@@ -1360,12 +1340,7 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
             }
 
             osg::ref_ptr<osg::FloatArray> fl;
-            auto tc = applyTriangle<Indexed, vistle::Texture1D::const_ptr, osg::FloatArray, false>(polygons, tex,
-                                                                                                   m_options, bin);
-            if (tc) {
-                geom->setTexCoordArray(TfTexUnit, tc);
-                textureValid = true;
-            } else if (sdata) {
+            if (sdata) {
                 fl = applyTriangle<Indexed, vistle::Vec<Scalar>::const_ptr, osg::FloatArray, false>(polygons, sdata,
                                                                                                     m_options, bin);
             } else if (vdata) {
@@ -1510,37 +1485,7 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
         osg::Geometry *geom = nullptr;
         if (!draw.empty())
             geom = draw[0]->asGeometry();
-        if (tex) {
-            osg::ref_ptr<osg::FloatArray> tc;
-            if (!triangles && !polygons && !quads) {
-                tc = buildArray<vistle::Texture1D>(tex, coords, debug, m_options);
-                if (tc && !tc->empty() && geom) {
-                    geom->setTexCoordArray(TfTexUnit, tc);
-                    textureValid = true;
-                }
-            }
-            if (tc || (tex && triangles) || (tex && polygons) || (tex && quads)) {
-                osg::ref_ptr<osg::Texture1D> osgTex = new osg::Texture1D;
-                osgTex->setName(nodename + ".tex");
-                osgTex->setDataVariance(osg::Object::DYNAMIC);
-                osgTex->setResizeNonPowerOfTwoHint(false);
-
-                osg::ref_ptr<osg::Image> image = new osg::Image();
-                image->setName(nodename + ".img");
-                image->setImage(tex->getWidth(), 1, 1, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE,
-                                const_cast<unsigned char *>(tex->pixels().data()), osg::Image::NO_DELETE);
-                osgTex->setImage(image);
-
-                state->setTextureAttributeAndModes(TfTexUnit, osgTex, osg::StateAttribute::ON);
-                osgTex->setFilter(osg::Texture1D::MIN_FILTER, osg::Texture1D::NEAREST);
-                osgTex->setFilter(osg::Texture1D::MAG_FILTER, osg::Texture1D::NEAREST);
-#if 0
-               osg::TexEnv * texEnv = new osg::TexEnv();
-               texEnv->setMode(osg::TexEnv::MODULATE);
-               state->setTextureAttributeAndModes(TfTexUnit, texEnv);
-#endif
-            }
-        } else if (triangles || polygons || quads) {
+        if (triangles || polygons || quads) {
             // objects split and mapped data already applied accordingly
         } else if (vistle::Vec<Scalar>::const_ptr data = vistle::Vec<Scalar>::as(m_mapped)) {
             osg::ref_ptr<osg::FloatArray> fl = buildArray<vistle::Vec<Scalar>>(data, coords, debug, m_options);
@@ -1575,7 +1520,7 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
 
 #ifdef COVER_PLUGIN
     if (colormap) {
-        if (!textureValid && dataValid) {
+        if (dataValid) {
             state->setTextureAttributeAndModes(TfTexUnit, colormap->texture, osg::StateAttribute::ON);
         }
         s_coverMutex.lock();
@@ -1604,10 +1549,8 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
     }
 
     state->addUniform(new osg::Uniform("dataValid", dataValid));
-    state->addUniform(new osg::Uniform("textureValid", textureValid));
 #else
     (void)dataValid;
-    (void)textureValid;
 #endif
 
     int count = 0;

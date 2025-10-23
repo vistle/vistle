@@ -19,6 +19,7 @@ bool ImplicitFunctionController::changeParameter(const vistle::Parameter *param)
 {
     switch (m_option->getValue()) {
     case Plane: {
+        m_module->setParameterReadOnly("direction", true);
         if (param->getName() == "option" || param->getName() == "point") {
             Vector3 vertex = m_module->getVectorParameter("vertex");
             Vector3 point = m_module->getVectorParameter("point");
@@ -27,6 +28,7 @@ bool ImplicitFunctionController::changeParameter(const vistle::Parameter *param)
         return true;
     }
     case Sphere: {
+        m_module->setParameterReadOnly("direction", true);
         if (param->getName() == "option" || param->getName() == "point") {
             Vector3 vertex = m_module->getVectorParameter("vertex");
             Vector3 point = m_module->getVectorParameter("point");
@@ -36,6 +38,7 @@ bool ImplicitFunctionController::changeParameter(const vistle::Parameter *param)
         return true;
     }
     case Box: {
+        m_module->setParameterReadOnly("direction", true);
         if (param->getName() == "option" || param->getName() == "point") {
             Vector3 vertex = m_module->getVectorParameter("vertex");
             Vector3 point = m_module->getVectorParameter("point");
@@ -45,6 +48,7 @@ bool ImplicitFunctionController::changeParameter(const vistle::Parameter *param)
         return true;
     }
     default: /*cylinders*/ {
+        m_module->setParameterReadOnly("direction", false);
         switch (m_option->getValue()) {
         case CylinderX:
             m_module->setVectorParameter("direction", ParamVector(1, 0, 0));

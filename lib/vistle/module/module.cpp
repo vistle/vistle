@@ -1771,6 +1771,8 @@ bool Module::handleMessage(const vistle::message::Message *message, const Messag
     case message::BUSY:
     case message::REMOTERENDERING:
     case message::ITEMINFO:
+    case message::COLORMAP:
+    case message::REMOVECOLORMAP:
         break;
 
     default:

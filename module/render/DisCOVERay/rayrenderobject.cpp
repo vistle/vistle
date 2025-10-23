@@ -79,24 +79,8 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
         if (this->mapdata->guessMapping(geometry) == DataBase::Element)
             data->perPrimitiveMapping = 1;
     }
-    if (auto t = Texture1D::as(this->mapdata)) {
-        data->texCoords = t->coords().data();
-
-        cmap.reset(new ispc::ColorMapData);
-        data->cmap = cmap.get();
-        data->cmap->texData = t->pixels().data();
-        data->cmap->texWidth = t->getWidth();
-        // texcoords as computed by Color module are between 0 and 1
-        data->cmap->min = 0.;
-        data->cmap->max = 1.;
-        data->cmap->blendWithMaterial = 0;
-
-        std::cerr << "texcoords from texture" << std::endl;
-    } else if (auto s = Vec<Scalar, 1>::as(this->mapdata)) {
+    if (auto s = Vec<Scalar, 1>::as(this->mapdata)) {
         data->texCoords = s->x().data();
-
-        std::cerr << "texcoords from scalar field" << std::endl;
-
     } else if (auto vec = Vec<Scalar, 3>::as(this->mapdata)) {
         tcoord.resize(vec->getSize());
         data->texCoords = tcoord.data();
@@ -425,4 +409,5 @@ void RayColorMap::deinit()
         cmap->blendWithMaterial = 0;
         cmap->texData = nullptr;
     }
+    rgba.clear();
 }

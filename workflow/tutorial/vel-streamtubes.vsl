@@ -1,6 +1,8 @@
+# /usr/bin/env vistle
+# this is a Python workflow from Vistle 2025.1-78329b635
+
 import os
 covisedir = os.getenv("COVISEDIR")
-
 
 MasterHub=getMasterHub()
 VistleSession=getVistleSession()
@@ -9,6 +11,7 @@ uuids = {}
 
 
 
+# spawn all local modules
 umReadCoviseDirectory1 = spawnAsync(MasterHub, 'ReadCoviseDirectory')
 umCOVER2 = spawnAsync(MasterHub, 'COVER')
 umDomainSurface3 = spawnAsync(MasterHub, 'DomainSurface')
@@ -45,7 +48,7 @@ setVectorParam(VistleSession, f'position[{mDomainSurface3}]', -51.0, 102.0)
 mCutGeometry4 = waitForSpawn(umCutGeometry4)
 setVectorParam(VistleSession, f'position[{mCutGeometry4}]', -51.0, 187.0)
 setVectorParam(mCutGeometry4, 'point', -0.03286576271057129, -0.39269739389419556, 0.03993908688426018, True)
-setVectorParam(mCutGeometry4, 'vertex', 0.0, 6.123234262925839e-17, 1.0, True)
+setVectorParam(mCutGeometry4, 'vertex', 0.0, 6.123234262925839e-17, -1.0, True)
 setFloatParam(mCutGeometry4, 'scalar', 0.03993908688426018, True)
 applyParameters(mCutGeometry4)
 
@@ -106,11 +109,11 @@ applyParameters(mVertexClusteringVtkm13)
 
 mTracer14 = waitForSpawn(umTracer14)
 setVectorParam(VistleSession, f'position[{mTracer14}]', 510.0, 102.0)
+setIntParam(mTracer14, 'no_startp', 40, True)
+setIntParam(mTracer14, 'startStyle', 1, True)
 setVectorParam(mTracer14, 'startpoint1', 0.12815707921981812, -0.002592991106212139, -0.06876763701438904, True)
 setVectorParam(mTracer14, 'startpoint2', 0.5841309428215027, -0.00259311031550169, 0.15645679831504822, True)
-setIntParam(mTracer14, 'no_startp', 40, True)
 setFloatParam(mTracer14, 'trace_len', 5.0, True)
-setIntParam(mTracer14, 'startStyle', 1, True)
 applyParameters(mTracer14)
 
 mThicken15 = waitForSpawn(umThicken15)
@@ -121,6 +124,7 @@ applyParameters(mThicken15)
 mToTriangles16 = waitForSpawn(umToTriangles16)
 setVectorParam(VistleSession, f'position[{mToTriangles16}]', 510.0, 272.0)
 
+# all local connections
 connect(mReadCoviseDirectory1,'grid_out', mDomainSurface3,'data_in')
 connect(mReadCoviseDirectory1,'field0_out', mColor5,'data_in')
 connect(mReadCoviseDirectory1,'field0_out', mIsoSurface6,'data_in')
@@ -129,12 +133,10 @@ connect(mReadCoviseDirectory1,'field0_out', mCuttingSurface7,'data_in')
 connect(mReadCoviseDirectory1,'field1_out', mCuttingSurface8,'data_in')
 connect(mReadCoviseDirectory1,'field1_out', mColor9,'data_in')
 connect(mReadCoviseDirectory1,'field1_out', mTracer14,'data_in0')
-connect(mDomainSurface3,'data_out', mCutGeometry4,'grid_in')
+connect(mDomainSurface3,'data_out', mCutGeometry4,'data_in')
 connect(mDomainSurface3,'lines_out', mCOVER2,'data_in')
-connect(mCutGeometry4,'grid_out', mCOVER2,'data_in')
-connect(mColor5,'color_out', mCOVER2,'data_in')
+connect(mCutGeometry4,'data_out', mCOVER2,'data_in')
 connect(mCuttingSurface8,'data_out', mVertexClusteringVtkm13,'data_in')
-connect(mColor9,'color_out', mCOVER2,'data_in')
 connect(mVectorField10,'grid_out', mThicken11,'grid_in')
 connect(mThicken11,'grid_out', mToTriangles12,'grid_in')
 connect(mVertexClusteringVtkm13,'data_out', mVectorField10,'data_in')
@@ -142,3 +144,7 @@ connect(mVertexClusteringVtkm13,'data_out', mVectorField10,'grid_in')
 connect(mTracer14,'data_out0', mThicken15,'grid_in')
 connect(mThicken15,'grid_out', mToTriangles16,'grid_in')
 connect(mToTriangles16,'grid_out', mCOVER2,'data_in')
+
+# spawn all remote modules
+
+# connections between local and remote

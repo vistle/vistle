@@ -22,6 +22,8 @@
 
 #include "module.h"
 #include "connection.h"
+#include "errorindicator.h"
+#include "colormap.h"
 #include "dataflownetwork.h"
 #include "mainwindow.h"
 #include "uicontroller.h"
@@ -61,9 +63,12 @@ Module::Module(QGraphicsItem *parent, QString name)
 , m_spawnUuid(nil_uuid())
 , m_Status(SPAWNING)
 , m_validPosition(false)
+, m_errorIndicator(new ErrorIndicator(this))
 , m_fontHeight(0.)
 {
     setName(name);
+
+    m_errorIndicator->setVisible(false);
 
     setFlag(QGraphicsItem::ItemIsMovable);
     setFlag(QGraphicsItem::ItemIsSelectable);
@@ -80,6 +85,7 @@ Module::Module(QGraphicsItem *parent, QString name)
     setLayer(m_layer);
 
     connect(this, &Module::callshowErrorInMainThread, this, &Module::showError);
+    connect(m_errorIndicator, &ErrorIndicator::clicked, this, &Module::showError);
 }
 
 Module::~Module()
@@ -413,19 +419,38 @@ void Module::doLayout()
     QRect nameRect = fm.boundingRect(m_visibleName);
     m_fontHeight = nameRect.height() + 4 * portDistance;
 
-    double w = nameRect.width() + 2 * portDistance;
+    QRect errorRect;
+    if (m_errorIndicator->isVisible()) {
+        errorRect.setWidth(m_errorIndicator->size() + portDistance);
+        errorRect.setHeight(Port::portSize);
+    } else {
+        errorRect.setWidth(0);
+        errorRect.setHeight(0);
+    }
+
+    double w = nameRect.width() + 2 * portDistance + errorRect.width();
+    if (m_colormap) {
+        w = m_colormap->rect().width() + 2 * portDistance + errorRect.width();
+    }
+
     double h = m_fontHeight + 2 * portDistance;
 
     QString id = " " + QString::number(m_id);
     QRect idRect = fm.boundingRect(id);
 
-    QRect infoRect;
+    QRect infoRectTop, infoRectBottom;
     if (m_inPorts.isEmpty()) {
         QString t = m_info;
         if (t.length() > 21) {
             t = t.left(20) + "…";
         }
-        infoRect = fm.boundingRect(t);
+        infoRectTop = fm.boundingRect(t);
+    } else if (m_outPorts.size() <= 1) {
+        QString t = m_info;
+        if (t.length() > 21) {
+            t = t.left(20) + "…";
+        }
+        infoRectBottom = fm.boundingRect(t);
     }
 
     {
@@ -434,7 +459,8 @@ void Module::doLayout()
             in->setPos(portDistance + idx * (portDistance + Port::portSize), 0.);
             ++idx;
         }
-        w = qMax(w, 2 * portDistance + idx * (portDistance + Port::portSize) + infoRect.width() + idRect.width());
+        w = qMax(w, 2 * portDistance + idx * (portDistance + Port::portSize) + infoRectTop.width() + idRect.width() +
+                        portDistance);
     }
 
     {
@@ -443,7 +469,7 @@ void Module::doLayout()
             out->setPos(portDistance + idx * (portDistance + Port::portSize), h);
             ++idx;
         }
-        w = qMax(w, 2 * portDistance + idx * (portDistance + Port::portSize));
+        w = qMax(w, 2 * portDistance + idx * (portDistance + Port::portSize) + infoRectBottom.width());
     }
 
     {
@@ -458,7 +484,11 @@ void Module::doLayout()
 
     h += Port::portSize;
 
+    if (m_colormap)
+        m_colormap->setRect(0, 0, w - 2 * portDistance - errorRect.width(), m_colormap->height());
+
     setRect(0., 0., w, h);
+    m_errorIndicator->setPos(errorPos());
 }
 
 /*!
@@ -520,11 +550,19 @@ void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
             t = t.left(20) + "…";
         }
         painter->drawText(QPointF(portDistance, m_fontHeight / 2.), t);
+    } else if (m_outPorts.size() <= 1) {
+        QString t = m_info;
+        if (t.length() > 21) {
+            t = t.left(20) + "…";
+        }
+        painter->drawText(QPointF(portDistance + (m_outPorts.size()) * (portDistance + Port::portSize),
+                                  2 * Port::portSize + m_fontHeight / 2.),
+                          t);
     }
 
     QString id = QString::number(m_id);
     QRect idRect = fm.boundingRect(id);
-    painter->drawText(rect().x() + rect().width() - idRect.width() - portDistance, m_fontHeight / 2., id);
+    painter->drawText(rect().x() + rect().width() - idRect.width() - 2. * portDistance, m_fontHeight / 2., id);
 }
 
 /*!
@@ -854,6 +892,7 @@ void Module::updateText()
     if (!m_displayName.isEmpty()) {
         m_visibleName = m_displayName;
     } else if (m_inPorts.isEmpty()) {
+    } else if (m_outPorts.size() <= 1) {
     } else {
         if (!m_info.isEmpty()) {
             m_visibleName = m_name;
@@ -1085,6 +1124,14 @@ QPointF Module::portPos(const Port *port) const
     return QPointF();
 }
 
+QPointF Module::errorPos() const
+{
+    if (!m_errorIndicator->isVisible())
+        return QPointF();
+    return QPointF(rect().right() - m_errorIndicator->size() - 0.5 * portDistance,
+                   portDistance + 1.5 * Port::portSize - 0.5 * m_errorIndicator->size());
+}
+
 void Module::setStatus(Module::Status status)
 {
     m_Status = status;
@@ -1143,6 +1190,7 @@ void Module::setStatus(Module::Status status)
     if (m_errorState && m_Status != CRASHED) {
         m_borderColor = Qt::red;
     }
+    m_errorIndicator->setVisible(m_errorState);
 
     if (!m_info.isEmpty()) {
         toolTip += " - " + m_info;
@@ -1159,6 +1207,7 @@ void Module::setStatus(Module::Status status)
         m_tooltip = toolTip;
     }
 
+    doLayout();
     update();
 }
 
@@ -1188,6 +1237,22 @@ void Module::setInfo(QString text, int type)
     updateText();
 }
 
+void Module::setColormap(int source, QString species, const Range &range, const std::vector<vistle::RGBA> *rgba)
+{
+    if (species.isEmpty() || !rgba) {
+        delete m_colormap;
+        m_colormap = nullptr;
+        return;
+    }
+
+    if (!m_colormap)
+        m_colormap = new Colormap(this);
+    m_colormap->setData(source, species, range, rgba);
+    m_colormap->setPos(portDistance, rect().top() + Port::portSize + portDistance);
+
+    updateText();
+}
+
 void Module::clearMessages()
 {
     m_messages.clear();
@@ -1198,10 +1263,13 @@ void Module::clearMessages()
 
 void Module::moduleMessage(int type, QString message)
 {
+    m_errorIndicator->addMessage(message, type);
     m_messages.push_back({type, message});
     if (type == vistle::message::SendText::Error) {
         if (!m_errorState) {
             m_errorState = true;
+            setStatus(m_Status);
+            doLayout();
             emit callshowErrorInMainThread();
         }
     }

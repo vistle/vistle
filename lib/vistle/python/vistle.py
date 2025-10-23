@@ -1,5 +1,6 @@
 import _vistle
 import re
+import os
 
 coGRMsgLoaded = False
 
@@ -309,7 +310,7 @@ def save(filename = None):
 
    _vistle.setLoadedFile(filename)
 
-   f = open(filename, 'w')
+   f = open(filename+".new", 'w')
    mods = _vistle.getRunning()
 
    save2(f, mods)
@@ -317,6 +318,7 @@ def save(filename = None):
    #f.write("checkMessageQueue()\n")
 
    f.close()
+   os.replace(filename+".new", filename)
    print("Workflow saved to "+filename)
 
 def reset():

@@ -7,7 +7,6 @@
 
 #include <osg/Group>
 #include <osg/Sequence>
-#include <osg/Texture1D>
 
 #include <vistle/renderer/renderobject.h>
 #include <vistle/renderer/renderer.h>
@@ -60,8 +59,8 @@ public:
 
     bool render() override;
 
-    bool addColorMap(const std::string &species, vistle::Object::const_ptr cmap) override;
-    bool removeColorMap(const std::string &species) override;
+    bool addColorMap(const vistle::message::Colormap &cm, std::vector<vistle::RGBA> &rgba) override;
+    bool removeColorMap(const std::string &species, int sourceModule) override;
 
     std::shared_ptr<vistle::RenderObject> addObject(int senderId, const std::string &senderPort,
                                                     vistle::Object::const_ptr container,
@@ -149,7 +148,7 @@ protected:
     int runMain(int argc, char *argv[]);
     bool m_requireUpdate = true;
 
-    typedef std::map<std::string, OsgColorMap> ColorMapMap;
+    typedef std::map<vistle::ColorMapKey, OsgColorMap> ColorMapMap;
     ColorMapMap m_colormaps;
 
     std::set<int> m_dataTypeWarnings; // set of unsupported data types for which a warning has already been printed

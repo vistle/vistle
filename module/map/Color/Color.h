@@ -3,9 +3,13 @@
 
 #include <vistle/module/module.h>
 #include <vistle/core/vector.h>
-#include <vistle/core/texture1d.h>
 
 #include <deque>
+#include <cstdint>
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
 
 #ifdef COLOR_RANDOM
 #define Color ColorRandom
@@ -22,7 +26,7 @@ public:
              vistle::Scalar compress = 1.f);
     ~ColorMap();
 
-    std::vector<unsigned char> data;
+    std::vector<uint8_t> data;
     size_t width = 0;
 };
 
@@ -32,9 +36,6 @@ public:
     ~Color();
 
 private:
-    vistle::Texture1D::ptr addTexture(vistle::DataBase::const_ptr object, const vistle::Scalar min,
-                                      const vistle::Scalar max, const ColorMap &cmap);
-
     void getMinMax(vistle::DataBase::const_ptr object, vistle::Scalar &min, vistle::Scalar &max);
     void binData(vistle::DataBase::const_ptr object, std::vector<unsigned long> &binsVec);
     void computeMap();
@@ -87,10 +88,9 @@ private:
     bool m_reverse = false;
 
     std::string m_species;
+    int m_sourceId = vistle::message::Id::Invalid;
     bool m_colorMapSent = false;
     vistle::Port *m_dataIn = nullptr;
-    vistle::Port *m_dataOut = nullptr, *m_colorOut = nullptr;
-    vistle::ResultCache<vistle::Object::ptr> m_cache;
 };
 
 #endif

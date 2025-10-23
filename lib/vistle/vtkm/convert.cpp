@@ -25,18 +25,6 @@
 
 #include <boost/mpl/for_each.hpp>
 
-using FloatArray = viskores::cont::ArrayHandle<float>;
-using DoubleArray = viskores::cont::ArrayHandle<double>;
-
-using CartesianProductFloat = viskores::cont::ArrayHandleCartesianProduct<FloatArray, FloatArray, FloatArray>;
-using CartesianProductDouble = viskores::cont::ArrayHandleCartesianProduct<DoubleArray, DoubleArray, DoubleArray>;
-
-using CompositeVec3fWithCountingModulusTag = viskores::cont::ArrayHandle<
-    viskores::Vec<float, 3>,
-    viskores::cont::StorageTagCompositeVec<viskores::cont::StorageTagCountingModulus,
-                                           viskores::cont::StorageTagCountingModulus, viskores::cont::StorageTagBasic>>;
-
-
 namespace vistle {
 
 namespace {
@@ -316,6 +304,29 @@ Object::ptr vtkmGetGeometry(const viskores::cont::DataSet &dataset)
 {
     Object::ptr result = vtkmGetTopology(dataset);
 
+    if (auto rg = RectilinearGrid::as(result)) {
+        auto uPointCoordinates = dataset.GetCoordinateSystem().GetData();
+        viskores::cont::UnknownArrayHandle unknown(uPointCoordinates);
+        if (unknown.CanConvert<AHCP<vistle::Scalar>>()) {
+            auto vtkmCoord = unknown.AsArrayHandle<AHCP<vistle::Scalar>>();
+            AH<vistle::Scalar> ah[3] = {vtkmCoord.GetFirstArray(), vtkmCoord.GetSecondArray(),
+                                        vtkmCoord.GetThirdArray()};
+            for (int i = 0; i < 3; ++i) {
+                auto xc = ah[i];
+                viskores::cont::UnknownArrayHandle xu(xc);
+                auto x = xu.AsArrayHandle<AH<vistle::Scalar>>();
+                rg->d()->coords[i]->setHandle(x);
+            }
+        } else {
+            std::cerr << "Error while converting Viskores rectilinear grid to Vistle: Unsupported point coordinate "
+                         "array type:\n"
+                      << "--> Array type name: " << unknown.GetArrayTypeName()
+                      << "\n--> Value type name: " << unknown.GetValueTypeName()
+                      << "\n--> Storage type name: " << unknown.GetStorageTypeName() << std::endl;
+        }
+        return result;
+    }
+
     if (auto coords = Coords::as(result)) {
         auto uPointCoordinates = dataset.GetCoordinateSystem().GetData();
         viskores::cont::UnknownArrayHandle unknown(uPointCoordinates);
@@ -323,12 +334,14 @@ Object::ptr vtkmGetGeometry(const viskores::cont::DataSet &dataset)
             vtkmGetCoords<viskores::cont::ArrayHandle<viskores::Vec<Scalar, 3>>>(unknown, coords);
         } else if (unknown.CanConvert<viskores::cont::ArrayHandleUniformPointCoordinates>()) {
             vtkmGetCoords<viskores::cont::ArrayHandleUniformPointCoordinates>(unknown, coords);
-        } else if (unknown.CanConvert<CartesianProductFloat>()) {
-            vtkmGetCoords<CartesianProductFloat>(unknown, coords);
-        } else if (unknown.CanConvert<CartesianProductDouble>()) {
-            vtkmGetCoords<CartesianProductDouble>(unknown, coords);
-        } else if (unknown.CanConvert<CompositeVec3fWithCountingModulusTag>()) {
-            vtkmGetCoords<CompositeVec3fWithCountingModulusTag>(unknown, coords);
+        } else if (unknown.CanConvert<AHCP<float>>()) {
+            vtkmGetCoords<AHCP<float>>(unknown, coords);
+        } else if (unknown.CanConvert<AHCP<double>>()) {
+            vtkmGetCoords<AHCP<double>>(unknown, coords);
+        } else if (unknown.CanConvert<AHLG<float>>()) {
+            vtkmGetCoords<AHLG<float>>(unknown, coords);
+        } else if (unknown.CanConvert<AHLG<double>>()) {
+            vtkmGetCoords<AHLG<double>>(unknown, coords);
         } else if (unknown.CanConvert<viskores::cont::ArrayHandleSOA<viskores::Vec3f>>()) {
             vtkmGetCoords<viskores::cont::ArrayHandleSOA<viskores::Vec3f>>(unknown, coords);
         } else {

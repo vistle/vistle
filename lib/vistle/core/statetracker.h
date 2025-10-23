@@ -16,12 +16,18 @@
 #include "message.h"
 #include "messages.h"
 #include "availablemodule.h"
+#include "rgba.h"
 
 namespace vistle {
 
 class Parameter;
 typedef std::set<std::shared_ptr<Parameter>> ParameterSet;
 class PortTracker;
+
+namespace message {
+class Colormap;
+class RemoveColormap;
+} // namespace message
 
 class V_COREEXPORT StateObserver {
 public:
@@ -64,6 +70,8 @@ public:
                       message::Type refType, const message::uuid_t &refUuid);
     virtual void itemInfo(const std::string &text, message::ItemInfo::InfoType type, int senderId,
                           const std::string &port);
+    virtual void colormap(int moduleId, int source, const std::string &species,
+                          const std::array<vistle::Float, 2> &range, const std::vector<vistle::RGBA> *rgba);
     virtual void portState(vistle::message::ItemInfo::PortState state, int senderId, const std::string &port);
     //! a module sends a status update
     virtual void status(int id, const std::string &text, message::UpdateStatus::Importance importance);
@@ -104,6 +112,7 @@ struct V_COREEXPORT HubData {
     boost::asio::ip::address address;
     bool hasUi = false;
     bool isQuitting = false;
+    message::AddHub::Payload addHubPayload;
 };
 
 class V_COREEXPORT StateTracker {
@@ -223,6 +232,24 @@ protected:
 
     typedef std::map<std::string, std::shared_ptr<Parameter>> ParameterMap;
     typedef std::map<int, std::string> ParameterOrder;
+    struct ColorMap {
+        int sourceModule = message::Id::Invalid;
+        std::string species;
+        double min = 0.;
+        double max = 1.;
+        bool blendWithMaterial = false;
+        std::vector<RGBA> rgba;
+    };
+    struct ColorMapKey {
+        int sourceModule;
+        std::string species;
+
+        ColorMapKey(int sourceModule = message::Id::Invalid, const std::string &species = std::string())
+        : sourceModule(sourceModule), species(species)
+        {}
+
+        bool operator<(const ColorMapKey &other) const;
+    };
     struct Module {
         int id;
         int mirrorOfId = message::Id::Invalid;
@@ -238,6 +265,7 @@ protected:
         std::string name;
         ParameterMap parameters;
         ParameterOrder paramOrder;
+        std::map<ColorMapKey, ColorMap> colormaps;
         int height = 0; //< length of shortest path to a sink
         std::string displayName;
         std::string statusText;
@@ -292,6 +320,7 @@ protected:
 
     void appendModuleState(VistleState &state, const Module &mod) const;
     void appendModuleParameter(VistleState &state, const Module &mod) const;
+    void appendModuleColor(VistleState &state, const Module &mod) const;
     void appendModulePorts(VistleState &state, const Module &mod) const;
     void appendModuleInfo(VistleState &state, const Module &mod) const;
     void appendModuleOutputConnections(VistleState &state, const Module &mod) const;
@@ -311,7 +340,7 @@ protected:
 private:
     void updateStatus();
 
-    bool handlePriv(const message::AddHub &slave);
+    bool handlePriv(const message::AddHub &slave, const buffer &payload);
     bool handlePriv(const message::RemoveHub &slave);
     bool handlePriv(const message::Trace &trace);
     bool handlePriv(const message::Debug &debug);
@@ -349,6 +378,8 @@ private:
     bool handlePriv(const message::SchedulingPolicy &pol);
     bool handlePriv(const message::RequestTunnel &tunnel);
     bool handlePriv(const message::CloseConnection &close);
+    bool handlePriv(const message::Colormap &colormap, const buffer &payload);
+    bool handlePriv(const message::RemoveColormap &rmcm);
 
     HubData *getModifiableHubData(int id);
 

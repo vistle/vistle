@@ -83,6 +83,8 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(
     (COVER)
     (INSITU)
     (SETNAME)
+    (COLORMAP)
+    (REMOVECOLORMAP)
     (NumMessageTypes) // keep last
 )
 V_ENUM_OUTPUT_OP(Type, ::vistle::message)

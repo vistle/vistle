@@ -263,6 +263,7 @@ std::shared_ptr<vistle::RenderObject> BlenderRenderer::addObject(int senderId, c
         float *values_array = nullptr;
         bool is_valid_tex = false;
         if (texture) {
+#if 0
             auto tex1D = vistle::Texture1D::as(texture);
             auto x_tex1d = tex1D->x();
             if (!std::isinf(x_tex1d[0])) {
@@ -273,6 +274,7 @@ std::shared_ptr<vistle::RenderObject> BlenderRenderer::addObject(int senderId, c
                 }
                 is_valid_tex = true;
             }
+#endif
         }
 
         // send data
@@ -418,7 +420,7 @@ std::shared_ptr<vistle::RenderObject> BlenderRenderer::addObject(int senderId, c
     return ro;
 }
 
-bool BlenderRenderer::addColorMap(const std::string &species, Object::const_ptr texture)
+bool BlenderRenderer::addColorMap(const vistle::message::Colormap &cm, std::vector<vistle::RGBA> &rgba)
 {
     if (!tryConnect())
         return false;
@@ -469,7 +471,7 @@ bool BlenderRenderer::addColorMap(const std::string &species, Object::const_ptr 
     return true;
 }
 
-bool BlenderRenderer::removeColorMap(const std::string &species)
+bool BlenderRenderer::removeColorMap(const std::string &species, int sourceModule)
 {
     if (!tryConnect())
         return false;

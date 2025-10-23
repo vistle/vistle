@@ -1,5 +1,9 @@
 [net]
 controlport = 31093
+num_direct_connections = 0
+connection_timeout = 10.0
+async_send = true
+
 
 [logfile]
 #unix = "/var/tmp/{user}/vistle/{host}_{port}_{id}_{name}.txt"

@@ -10,10 +10,17 @@
 #include <vistle/core/polygons.h>
 #include <vistle/core/unstr.h>
 #include <vistle/core/structuredgridbase.h>
+#include <vistle/core/structuredgrid.h>
+#include <vistle/core/rectilineargrid.h>
+#include <vistle/core/uniformgrid.h>
+#include <vistle/core/layergrid.h>
 
 #include <vistle/core/shm_array_impl.h>
 
 #include <viskores/cont/CellSetExplicit.h>
+#include <viskores/cont/ArrayHandleCartesianProduct.h>
+#include <viskores/cont/ArrayHandleCompositeVector.h>
+#include "ArrayHandleCountingModulus.h"
 
 
 namespace vistle {
@@ -70,6 +77,57 @@ Object::ptr vtkmGetTopology(const viskores::cont::DataSet &dataset)
 {
     // get vertices that make up the dataset grid
     auto cellset = dataset.GetCellSet();
+    auto uPointCoordinates = dataset.GetCoordinateSystem().GetData();
+    viskores::cont::UnknownArrayHandle unknown(uPointCoordinates);
+
+    // first try structured grids
+    bool isUniform = unknown.CanConvert<viskores::cont::ArrayHandleUniformPointCoordinates>();
+    bool isLayered = unknown.CanConvert<AHLG<vistle::Scalar>>();
+    bool isCartesian = false;
+    bool isStructured = false;
+    vistle::Index ncells[3] = {0, 0, 0};
+
+    if (cellset.CanConvert<viskores::cont::CellSetStructured<1>>()) {
+        isStructured = true;
+        auto scellset = cellset.AsCellSet<viskores::cont::CellSetStructured<1>>();
+        auto d = scellset.GetCellDimensions();
+        ncells[0] = d;
+    } else if (cellset.CanConvert<viskores::cont::CellSetStructured<2>>()) {
+        isStructured = true;
+        auto scellset = cellset.AsCellSet<viskores::cont::CellSetStructured<2>>();
+        auto d = scellset.GetCellDimensions();
+        for (int i = 0; i < 2; ++i)
+            ncells[i] = d[i];
+        isCartesian = unknown.CanConvert<AHCP<vistle::Scalar>>();
+    } else if (cellset.CanConvert<viskores::cont::CellSetStructured<3>>()) {
+        isStructured = true;
+        auto scellset = cellset.AsCellSet<viskores::cont::CellSetStructured<3>>();
+        auto d = scellset.GetCellDimensions();
+        for (int i = 0; i < 3; ++i)
+            ncells[i] = d[i];
+        isCartesian = unknown.CanConvert<AHCP<vistle::Scalar>>();
+    }
+
+    if (isStructured && isUniform) {
+        return std::make_shared<vistle::UniformGrid>(ncells[0] + 1, ncells[1] + 1, ncells[2] + 1);
+    } else if (isStructured && isCartesian) {
+        return std::make_shared<vistle::RectilinearGrid>(ncells[0] + 1, ncells[1] + 1, ncells[2] + 1);
+    } else if (isStructured && isLayered) {
+        // FIXME: still need to find a way to get at the individual components of an ArrayHandleExtractComponent
+        //return std::make_shared<vistle::LayerGrid>(ncells[0] + 1, ncells[1] + 1, ncells[2] + 1);
+        return std::make_shared<vistle::StructuredGrid>(ncells[0] + 1, ncells[1] + 1, ncells[2] + 1);
+    } else if (isStructured) {
+        return std::make_shared<vistle::StructuredGrid>(ncells[0] + 1, ncells[1] + 1, ncells[2] + 1);
+    }
+
+    // try conversion for uniform cell types first
+    if (cellset.CanConvert<viskores::cont::CellSetSingleType<viskores::cont::StorageTagIndex>>()) {
+        auto scellset = cellset.AsCellSet<viskores::cont::CellSetSingleType<viskores::cont::StorageTagIndex>>();
+        if (cellset.GetCellShape(0) == viskores::CELL_SHAPE_VERTEX) {
+            Points::ptr points(new Points(Object::Initialized));
+            return points;
+        }
+    }
 
     // try conversion for uniform cell types first
     if (cellset.CanConvert<viskores::cont::CellSetSingleType<>>()) {
@@ -107,6 +165,7 @@ Object::ptr vtkmGetTopology(const viskores::cont::DataSet &dataset)
         }
     }
 
+    //arbitrary unstructured grids with mixed cell types
     if (cellset.CanConvert<viskores::cont::CellSetExplicit<>>()) {
         auto ecellset = cellset.AsCellSet<viskores::cont::CellSetExplicit<>>();
         auto elements =
@@ -118,7 +177,7 @@ Object::ptr vtkmGetTopology(const viskores::cont::DataSet &dataset)
         const auto [mindim, maxdim] = getMinMaxDims(eshapes);
 
         if (mindim > maxdim) {
-            std::cerr << "ERROR vtkmGetTopology: empty cell set!" << std::endl;
+            std::cerr << "vtkmGetTopology: empty cell set" << std::endl;
         } else if (mindim == -2) {
             std::cerr << "ERROR vtkmGetTopology: polyhedral cells are not supported!" << std::endl;
         } else if (mindim == -3) {
@@ -180,18 +239,12 @@ ModuleStatusPtr fromNgons(viskores::cont::DataSet &vtkmDataset, typename Ngons::
         auto conn = ngon->cl().handle();
         cellSet.Fill(numPoints, shape, N, conn);
 
-        if (containsPolyhedralCells(cellSet))
-            return UnsupportedCellTypeError(true);
-
         vtkmDataset.SetCellSet(cellSet);
     } else {
         viskores::cont::CellSetSingleType<viskores::cont::StorageTagCounting> cellSet;
         auto conn = viskores::cont::make_ArrayHandleCounting(static_cast<viskores::Id>(0), static_cast<viskores::Id>(1),
                                                              numPoints);
         cellSet.Fill(numPoints, shape, N, conn);
-
-        if (containsPolyhedralCells(cellSet))
-            return UnsupportedCellTypeError(true);
 
         vtkmDataset.SetCellSet(cellSet);
     }
@@ -222,9 +275,6 @@ ModuleStatusPtr fromIndexed(viskores::cont::DataSet &vtkmDataset, typename Idx::
     viskores::cont::CellSetExplicit<> cellSet;
 #endif
     cellSet.Fill(numPoints, shapes, conn, offs);
-
-    if (containsPolyhedralCells(cellSet))
-        return UnsupportedCellTypeError(true);
 
     vtkmDataset.SetCellSet(cellSet);
 
@@ -280,10 +330,6 @@ ModuleStatusPtr vtkmSetTopology(viskores::cont::DataSet &vtkmDataset, vistle::Ob
         viskores::cont::CellSetSingleType<viskores::cont::StorageTagIndex> cellSet;
         auto conn = viskores::cont::make_ArrayHandleIndex(numPoints);
         cellSet.Fill(numPoints, viskores::CELL_SHAPE_VERTEX, 1, conn);
-
-        if (containsPolyhedralCells(cellSet))
-            return UnsupportedCellTypeError(true);
-
         vtkmDataset.SetCellSet(cellSet);
     } else {
         return Error("Encountered unsupported grid type while attempting to convert Vistle grid to Viskores dataset.");

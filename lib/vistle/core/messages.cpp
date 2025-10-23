@@ -22,6 +22,8 @@
 
 #include <algorithm>
 
+#include "message/colormap.h"
+
 namespace vistle {
 namespace message {
 
@@ -38,12 +40,13 @@ template V_COREEXPORT buffer addPayload<SendText::Payload>(Message &message, con
 template V_COREEXPORT buffer addPayload<ItemInfo::Payload>(Message &message, const ItemInfo::Payload &payload);
 template V_COREEXPORT buffer addPayload<SetParameterChoices::Payload>(Message &message,
                                                                       const SetParameterChoices::Payload &payload);
-
+template V_COREEXPORT buffer addPayload<AddHub::Payload>(Message &message, const AddHub::Payload &payload);
 
 template V_COREEXPORT std::string getPayload(const buffer &data);
 template V_COREEXPORT SendText::Payload getPayload(const buffer &data);
 template V_COREEXPORT ItemInfo::Payload getPayload(const buffer &data);
 template V_COREEXPORT SetParameterChoices::Payload getPayload(const buffer &data);
+template V_COREEXPORT AddHub::Payload getPayload(const buffer &data);
 
 Identify::Identify(const std::string &name)
 : m_identity(Identity::REQUEST)
@@ -91,7 +94,7 @@ Identify::Identify(const Identify &request, Identity id, int rank)
     setReferrer(request.uuid());
     m_session_data = request.m_session_data;
 
-    assert(id == Identify::LOCALBULKDATA || id == Identify::REMOTEBULKDATA);
+    assert(id == Identify::LOCALBULKDATA || id == Identify::REMOTEBULKDATA || id == Identify::DIRECTBULKDATA);
 
     memset(m_name.data(), 0, m_name.size());
 
@@ -225,7 +228,13 @@ int Identify::tunnelStreamNumber() const
 }
 
 AddHub::AddHub(int id, const std::string &name)
-: m_id(id), m_port(0), m_dataPort(0), m_addrType(AddHub::Unspecified), m_hasUserInterface(false), m_hasVrb(false)
+: m_id(id)
+, m_port(0)
+, m_dataPort(0)
+, m_dataManagerPort(0)
+, m_addrType(AddHub::Unspecified)
+, m_hasUserInterface(false)
+, m_hasVrb(false)
 {
     COPY_STRING(m_name, name);
     memset(m_loginName.data(), 0, m_loginName.size());
@@ -233,6 +242,29 @@ AddHub::AddHub(int id, const std::string &name)
     memset(m_address.data(), 0, m_address.size());
     memset(m_info.data(), 0, m_info.size());
     memset(m_version.data(), 0, m_version.size());
+}
+
+AddHub::Payload::Payload()
+{}
+
+AddHub::Payload::Payload(const std::vector<std::string> &hubAddresses,
+                         const std::vector<std::vector<std::string>> &rankAddresses)
+: hubAddresses(hubAddresses), rankAddresses(rankAddresses)
+{}
+
+AddHub::Payload::Payload(const std::vector<std::vector<std::string>> &rankAddresses): rankAddresses(rankAddresses)
+{}
+
+AddHub::Payload::Payload(const std::map<int, std::vector<boost::asio::ip::address>> &rankAddresses)
+{
+    for (const auto &[rank, addresses]: rankAddresses) {
+        if (this->rankAddresses.size() <= rank) {
+            this->rankAddresses.resize(rank + 1);
+        }
+        for (const auto &address: addresses) {
+            this->rankAddresses[rank].push_back(address.to_string());
+        }
+    }
 }
 
 int AddHub::id() const
@@ -278,6 +310,11 @@ unsigned short AddHub::port() const
 unsigned short AddHub::dataPort() const
 {
     return m_dataPort;
+}
+
+unsigned short AddHub::dataManagerPort() const
+{
+    return m_dataManagerPort;
 }
 
 AddHub::AddressType AddHub::addressType() const
@@ -329,6 +366,11 @@ void AddHub::setPort(unsigned short port)
 void AddHub::setDataPort(unsigned short port)
 {
     m_dataPort = port;
+}
+
+void AddHub::setDataManagerPort(unsigned short port)
+{
+    m_dataManagerPort = port;
 }
 
 void AddHub::setAddress(boost::asio::ip::address addr)
@@ -2223,6 +2265,17 @@ std::ostream &operator<<(std::ostream &s, const Message &m)
     case SETNAME: {
         auto &mm = static_cast<const SetName &>(m);
         s << ", module: " << mm.module() << ", name: " << mm.name();
+        break;
+    }
+    case COLORMAP: {
+        auto &mm = static_cast<const Colormap &>(m);
+        s << ", species: " << mm.species() << ", source: " << mm.source() << ", range: [" << mm.min() << "," << mm.max()
+          << "]";
+        break;
+    }
+    case REMOVECOLORMAP: {
+        auto &mm = static_cast<const RemoveColormap &>(m);
+        s << ", species: " << mm.species() << ", source: " << mm.source();
         break;
     }
     default:

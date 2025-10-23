@@ -7,6 +7,7 @@
 #include "port.h"
 #include "module.h"
 #include "dataflownetwork.h"
+#include "dataflowview.h"
 #include <vistle/core/port.h>
 #include <cassert>
 
@@ -16,13 +17,13 @@
 #include <QRadialGradient>
 #include <QPainter>
 #include <QGraphicsSceneMouseEvent>
+#include <QStatusTipEvent>
+#include <QCoreApplication>
 
 #include <vistle/config/file.h>
 #include <vistle/config/value.h>
 
 namespace gui {
-
-double Port::portSize = 14.;
 
 static QColor InColor(200, 30, 30);
 static QColor ParamColor(30, 30, 200);
@@ -30,6 +31,9 @@ static QColor DisabledColor(150, 150, 150);
 static QColor OptionalColor(200, 200, 30);
 //static QColor OutColor = OptionalColor;
 static QColor OutColor = InColor;
+
+double Port::portSize = 14.;
+QColor Port::outColor = OutColor;
 
 void Port::configure()
 {
@@ -291,6 +295,9 @@ void Port::hoverEnterEvent(QGraphicsSceneHoverEvent *event)
     auto *sc = dynamic_cast<DataFlowNetwork *>(scene());
     assert(sc);
     sc->setConnectionHighlights(this, true);
+
+    QStatusTipEvent statusTipEvent(m_statustip);
+    QCoreApplication::sendEvent(DataFlowView::the(), &statusTipEvent);
 }
 
 void Port::hoverLeaveEvent(QGraphicsSceneHoverEvent *event)
@@ -298,6 +305,9 @@ void Port::hoverLeaveEvent(QGraphicsSceneHoverEvent *event)
     auto *sc = dynamic_cast<DataFlowNetwork *>(scene());
     assert(sc);
     sc->setConnectionHighlights(this, false);
+
+    QStatusTipEvent statusTipEvent("");
+    QCoreApplication::sendEvent(DataFlowView::the(), &statusTipEvent);
 }
 
 void Port::mousePressEvent(QGraphicsSceneMouseEvent *event)
@@ -384,26 +394,26 @@ void Port::setInfo(QString text, int type)
 
 void Port::createTooltip()
 {
-    QString toolTip = "Invalid!";
-
+    m_tooltip.clear();
     if (m_port) {
         QString desc = QString::fromStdString(m_port->getDescription());
         QString name = QString::fromStdString(m_port->getName());
-        toolTip = desc;
-        if (!toolTip.isEmpty()) {
-            toolTip += " ";
+        m_tooltip = desc;
+        if (!m_tooltip.isEmpty()) {
+            m_tooltip += " ";
         }
-        toolTip += "(" + name + ")";
+        m_tooltip += "(" + name + ")";
     }
+    m_statustip = m_tooltip;
 
     if (!m_info.isEmpty()) {
-        toolTip += "\n";
-        toolTip += m_info;
+        m_tooltip += "\n";
+        m_tooltip += m_info;
+        m_statustip += " - " + m_info;
     }
 
     if (isEnabled())
-        setToolTip(toolTip);
-    m_tooltip = toolTip;
+        setToolTip(m_tooltip);
 }
 
 void Port::createGeometry()

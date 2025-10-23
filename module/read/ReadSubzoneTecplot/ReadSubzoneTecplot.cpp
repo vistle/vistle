@@ -81,6 +81,7 @@ ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mp
             "", Parameter::Choice);
 
         m_fieldsOut[i] = createOutputPort("field_out_" + std::to_string(i), "data field");
+        linkPortAndParameter(m_fieldsOut[i], m_fieldChoice[i]);
     }
 
 
