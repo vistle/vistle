@@ -63,9 +63,6 @@ ReadFOAM::ReadFOAM(const std::string &name, int moduleId, mpi::communicator comm
                                    std::numeric_limits<double>::max());
     setParameterMinimum<Float>(m_stoptime, 0.);
 
-    //Mesh ports
-    m_boundOut = createOutputPort("grid_out1", "boundary geometry");
-
     for (int i = 0; i < NumPorts; ++i) {
         { // Data Ports
             std::stringstream s;
@@ -87,6 +84,10 @@ ReadFOAM::ReadFOAM(const std::string &name, int moduleId, mpi::communicator comm
     m_boundaryPatchesAsVariants = addIntParameter(
         "patches_as_variants", "create sub-objects with variant attribute for boundary patches", 1, Parameter::Boolean);
     m_patchSelection = addStringParameter("patches", "select patches", "all", Parameter::Restraint);
+
+    //Mesh ports
+    m_boundOut = createOutputPort("grid_out1", "boundary geometry");
+
     for (int i = 0; i < NumBoundaryPorts; ++i) {
         { // 2d Data Ports
             std::stringstream s;
