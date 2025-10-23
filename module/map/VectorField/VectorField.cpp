@@ -20,9 +20,14 @@ using namespace vistle;
 
 VectorField::VectorField(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
-    createInputPort("grid_in", "vector data mapped to grid or geometry");
-    createInputPort("data_in", "mapped data field");
-    createOutputPort("grid_out", "line strokes with mapped data");
+    m_gridIn = createInputPort("grid_in", "vector data mapped to grid or geometry");
+    m_dataIn = createInputPort("data_in", "mapped data field");
+    m_gridOut = createOutputPort("grid_out", "line strokes");
+    m_dataOut = createOutputPort("data_out", "line strokes with mapped data");
+    linkPorts(m_gridIn, m_gridOut);
+    linkPorts(m_gridIn, m_dataOut);
+    linkPorts(m_dataIn, m_dataOut);
+    setPortOptional(m_dataIn, true);
 
     auto MaxLength = std::numeric_limits<Scalar>::max();
 
@@ -41,7 +46,7 @@ VectorField::~VectorField() = default;
 
 bool VectorField::compute()
 {
-    auto vecs = expect<Vec<Scalar, 3>>("grid_in");
+    auto vecs = expect<Vec<Scalar, 3>>(m_gridIn);
     if (!vecs) {
         sendError("no vector input");
         return true;
@@ -81,8 +86,8 @@ bool VectorField::compute()
 
     DataBase::ptr mapped;
     DataBase::const_ptr data;
-    if (isConnected("data_in")) {
-        data = expect<DataBase>("data_in");
+    if (isConnected(*m_dataIn) && isConnected(*m_dataOut)) {
+        data = expect<DataBase>(m_dataIn);
         if (data) {
             if (data->guessMapping() == DataBase::Element) {
                 if (!perElement) {
@@ -204,7 +209,10 @@ bool VectorField::compute()
     lines->setTransform(coords->getTransform());
     updateMeta(lines);
 
-    if (mapped) {
+    if (isConnected(*m_gridOut)) {
+        addObject(m_gridOut, lines);
+    }
+    if (isConnected(*m_dataOut) && mapped) {
         mapped->setSize(numPoints * 2);
         for (Index i = 0; i < numPoints; ++i) {
             Index ii = indexed ? verts[i] : i;
@@ -216,9 +224,7 @@ bool VectorField::compute()
 
         mapped->setGrid(lines);
         updateMeta(mapped);
-        addObject("grid_out", mapped);
-    } else {
-        addObject("grid_out", lines);
+        addObject(m_dataOut, mapped);
     }
 
     return true;

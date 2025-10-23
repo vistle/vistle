@@ -11,9 +11,12 @@ public:
 private:
     virtual bool compute();
 
-    vistle::FloatParameter *m_scale;
-    vistle::VectorParameter *m_range;
-    vistle::IntParameter *m_attachmentPoint;
+    vistle::Port *m_gridIn = nullptr, *m_dataIn = nullptr;
+    vistle::Port *m_gridOut = nullptr, *m_dataOut = nullptr;
+
+    vistle::FloatParameter *m_scale = nullptr;
+    vistle::VectorParameter *m_range = nullptr;
+    vistle::IntParameter *m_attachmentPoint = nullptr;
     vistle::IntParameter *m_allCoordinates = nullptr;
 };
 
