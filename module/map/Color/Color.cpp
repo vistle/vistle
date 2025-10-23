@@ -175,8 +175,17 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm): Mod
 
     m_minPara = addFloatParameter("min", "minimum value of range to map", 0.0);
     m_maxPara = addFloatParameter("max", "maximum value of range to map", 0.0);
+    m_autoRangePara = addIntParameter("auto_range", "compute range automatically", m_autoRange, Parameter::Boolean);
     m_constrain = addIntParameter("constrain_range", "constrain range for min/max to data", true, Parameter::Boolean);
+
 #ifndef COLOR_RANDOM
+    m_stepsPara = addIntParameter("steps", "number of color map steps", 32);
+    m_mapPara = addIntParameter("map", "transfer function name", CoolWarmBrewer, Parameter::Choice);
+    V_ENUM_SET_CHOICES(m_mapPara, TransferFunction);
+    setParameterRange(m_stepsPara, (Integer)1, MaxSteps);
+    m_rgbFile = addStringParameter("rgb_file", " file containing pin rgb values", "", Parameter::ExistingFilename);
+    setParameterReadOnly(m_rgbFile, true);
+
     m_center = addFloatParameter("center", "center of colormap range", 0.5);
     setParameterRange(m_center, 0., 1.);
     m_centerAbsolute = addIntParameter("center_absolute", "absolute value for center", false, Parameter::Boolean);
@@ -185,17 +194,9 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm): Mod
 #endif
     m_opacity = addFloatParameter("opacity_factor", "multiplier for opacity", 1.0);
     setParameterRange(m_opacity, 0., 1.);
-#ifndef COLOR_RANDOM
-    m_mapPara = addIntParameter("map", "transfer function name", CoolWarmBrewer, Parameter::Choice);
-    m_rgbFile = addStringParameter("rgb_file", " file containing pin rgb values", "", Parameter::ExistingFilename);
-    V_ENUM_SET_CHOICES(m_mapPara, TransferFunction);
-    m_stepsPara = addIntParameter("steps", "number of color map steps", 32);
-    setParameterRange(m_stepsPara, (Integer)1, MaxSteps);
-#endif
     m_blendWithMaterialPara = addIntParameter("blend_with_material", "use alpha for blending with diffuse material",
                                               false, Parameter::Boolean);
 
-    m_autoRangePara = addIntParameter("auto_range", "compute range automatically", m_autoRange, Parameter::Boolean);
     m_preview = addIntParameter("preview", "use preliminary colormap for showing preview when determining bounds", true,
                                 Parameter::Boolean);
 
@@ -490,6 +491,8 @@ bool Color::changeParameter(const Parameter *p)
             }
             changeParameters(params);
         }
+        setParameterReadOnly(m_rgbFile, m_mapPara->getValue() != FromFile);
+        newMap = true;
     } else if (p == m_rgbFile && !m_rgbFile->getValue().empty()) {
         auto filename = m_rgbFile->getValue();
         std::fstream file(m_rgbFile->getValue());
@@ -567,9 +570,11 @@ bool Color::changeParameter(const Parameter *p)
         newMap = true;
     } else if (p == m_minPara) {
         m_min = m_minPara->getValue();
+        //setParameter<Integer>(m_autoRangePara, false);
         newMap = true;
     } else if (p == m_maxPara) {
         m_max = m_maxPara->getValue();
+        //setParameter<Integer>(m_autoRangePara, false);
         newMap = true;
     } else if (p == m_insetRelPara) {
         if (m_insetRelPara->getValue()) {
