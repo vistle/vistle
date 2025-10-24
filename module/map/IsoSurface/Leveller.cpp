@@ -33,8 +33,6 @@
 
 using namespace vistle;
 
-
-const int MaxNumData = 6;
 const Scalar EPSILON(1e-10);
 
 namespace {
@@ -371,17 +369,12 @@ struct ComputeOutput {
 
                 const Index numVert = m_data.m_numVertices[ValidCellIndex];
                 Index numAvg = 0;
-                Scalar middleData[MaxNumData];
-                Index middleDataI[MaxNumData];
-                Byte middleDataB[MaxNumData];
-                for (int i = 0; i < MaxNumData; i++) {
-                    middleData[i] = 0;
-                    middleDataI[i] = 0;
-                    middleDataB[i] = 0;
-                };
-                Scalar cd1[MaxNumData], cd2[MaxNumData];
-                Index cd1I[MaxNumData], cd2I[MaxNumData];
-                Byte cd1B[MaxNumData], cd2B[MaxNumData];
+                std::vector<Scalar> middleData(m_data.m_numInVertData);
+                std::vector<Index> middleDataI(m_data.m_numInVertDataI);
+                std::vector<Byte> middleDataB(m_data.m_numInVertDataB);
+                std::vector<Scalar> cd1(m_data.m_numInVertData), cd2(m_data.m_numInVertData);
+                std::vector<Index> cd1I(m_data.m_numInVertDataI), cd2I(m_data.m_numInVertDataI);
+                std::vector<Byte> cd1B(m_data.m_numInVertDataB), cd2B(m_data.m_numInVertDataB);
 
                 Index outIdx = m_data.m_LocationList[ValidCellIndex];
                 Index facestart = InvalidIndex;
