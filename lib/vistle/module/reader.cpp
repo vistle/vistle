@@ -712,8 +712,13 @@ void Reader::Token::applyMeta(Object::ptr obj) const
 
     reader()->updateMeta(obj);
 
-    obj->setTimestep(m_meta.timeStep());
-    obj->setNumTimesteps(m_meta.timeStep() < 0 ? -1 : m_meta.numTimesteps());
+    if (m_meta.numTimesteps() == -1 || m_meta.numTimesteps() > 1) {
+        obj->setTimestep(m_meta.timeStep());
+        obj->setNumTimesteps(m_meta.timeStep() < 0 ? -1 : m_meta.numTimesteps());
+    } else {
+        obj->setTimestep(-1);
+        obj->setNumTimesteps(-1);
+    }
     obj->setBlock(m_meta.block());
     obj->setNumBlocks(m_meta.numBlocks());
 }
