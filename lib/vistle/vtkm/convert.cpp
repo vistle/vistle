@@ -327,6 +327,20 @@ Object::ptr vtkmGetGeometry(const viskores::cont::DataSet &dataset)
         return result;
     }
 
+    {
+        // check for empty triangle/quad topology and convert to empty grid
+        auto tri = Triangles::as(result);
+        auto quad = Quads::as(result);
+        if (tri && tri->getNumCorners() == 0) {
+            tri.reset();
+            return result;
+        }
+        if (quad && quad->getNumCorners() == 0) {
+            quad.reset();
+            return result;
+        }
+    }
+
     if (auto coords = Coords::as(result)) {
         auto uPointCoordinates = dataset.GetCoordinateSystem().GetData();
         viskores::cont::UnknownArrayHandle unknown(uPointCoordinates);
