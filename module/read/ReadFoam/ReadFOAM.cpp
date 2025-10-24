@@ -205,10 +205,10 @@ bool ReadFOAM::read(Reader::Token &token, int time, int part)
     (void)part;
 
     if (time == -1) {
-        return readConstant(casedir);
+        return readConstant(token, casedir);
     }
 
-    return readTime(casedir, token.meta().timeStep());
+    return readTime(token, casedir, token.meta().timeStep());
 }
 
 bool ReadFOAM::prepareRead()
@@ -802,12 +802,13 @@ std::vector<DataBase::ptr> ReadFOAM::loadBoundaryField(const std::string &meshdi
     return result;
 }
 
-void ReadFOAM::setMeta(Object::ptr obj, int processor, int timestep) const
+void ReadFOAM::setMeta(Reader::Token &token, Object::ptr obj, int processor, int timestep) const
 {
     if (obj) {
         Index skipfactor = timeIncrement();
         obj->setTimestep(timestep);
         obj->setNumTimesteps((m_case.timedirs.size() + skipfactor - 1) / skipfactor);
+        token.applyMeta(obj);
         obj->setBlock(processor == -1 ? 0 : processor);
         obj->setNumBlocks(m_case.numblocks == 0 ? 1 : m_case.numblocks);
 
@@ -822,11 +823,10 @@ void ReadFOAM::setMeta(Object::ptr obj, int processor, int timestep) const
             }
         }
     }
-    updateMeta(obj);
 }
 
-bool ReadFOAM::loadFields(const std::string &meshdir, const std::map<std::string, int> &fields, int processor,
-                          int timestep)
+bool ReadFOAM::loadFields(Reader::Token &token, const std::string &meshdir, const std::map<std::string, int> &fields,
+                          int processor, int timestep)
 {
     for (int i = 0; i < NumPorts; ++i) {
         if (!m_volumeDataOut[i]->isConnected())
@@ -837,7 +837,7 @@ bool ReadFOAM::loadFields(const std::string &meshdir, const std::map<std::string
             continue;
         DataBase::ptr obj = loadField(meshdir, field);
         if (obj) {
-            setMeta(obj, processor, timestep);
+            setMeta(token, obj, processor, timestep);
             obj->describe(field, id());
         }
         m_currentvolumedata[processor][i] = obj;
@@ -885,7 +885,7 @@ bool ReadFOAM::loadFields(const std::string &meshdir, const std::map<std::string
             auto &obj = fields[j];
             assert(obj);
             if (obj) {
-                setMeta(obj, processor, timestep);
+                setMeta(token, obj, processor, timestep);
                 obj->describe(field, id());
                 obj->setMapping(DataBase::Element);
                 obj->setGrid(m_currentbound[processor][j]);
@@ -897,7 +897,7 @@ bool ReadFOAM::loadFields(const std::string &meshdir, const std::map<std::string
 }
 
 
-bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int timestep)
+bool ReadFOAM::readDirectory(Reader::Token &token, const std::string &casedir, int processor, int timestep)
 {
     std::string dir;
 
@@ -912,9 +912,9 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
         if (!m_case.varyingGrid) {
             auto ret = loadGrid(dir + "polyMesh");
             UnstructuredGrid::ptr grid = ret.grid;
-            setMeta(grid, processor, timestep);
+            setMeta(token, grid, processor, timestep);
             for (auto &poly: ret.polygon)
-                setMeta(poly, processor, timestep);
+                setMeta(token, poly, processor, timestep);
             m_owners[processor] = ret.owners;
             m_boundaries[processor] = ret.boundaries;
 
@@ -922,7 +922,7 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
             m_currentbound[processor] = ret.polygon;
             m_basedir[processor] = dir;
         }
-        loadFields(dir, m_case.constantFields, processor, timestep);
+        loadFields(token, dir, m_case.constantFields, processor, timestep);
         return true;
     }
 
@@ -978,13 +978,13 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
             m_boundaries[processor] = ret.boundaries;
             m_basedir[processor] = completeMeshDir;
         }
-        setMeta(grid, processor, timestep);
+        setMeta(token, grid, processor, timestep);
         for (auto &poly: polygons)
-            setMeta(poly, processor, timestep);
+            setMeta(token, poly, processor, timestep);
         m_currentgrid[processor] = grid;
         m_currentbound[processor] = polygons;
     }
-    loadFields(dir, m_case.varyingFields, processor, timestep);
+    loadFields(token, dir, m_case.varyingFields, processor, timestep);
 
     return true;
 }
@@ -1350,7 +1350,7 @@ void ReadFOAM::applyGhostCellsData(int processor)
     m_GhostDataIn[processor].clear();
 }
 
-bool ReadFOAM::addBoundaryToPort(int processor)
+bool ReadFOAM::addBoundaryToPort(Reader::Token &token, int processor)
 {
     for (auto &poly: m_currentbound[processor])
         if (poly) {
@@ -1359,7 +1359,7 @@ bool ReadFOAM::addBoundaryToPort(int processor)
     return true;
 }
 
-bool ReadFOAM::addVolumeDataToPorts(int processor)
+bool ReadFOAM::addVolumeDataToPorts(Reader::Token &token, int processor)
 {
     std::vector<DataBase::ptr> portData(NumPorts);
     bool canAdd = true;
@@ -1398,11 +1398,11 @@ bool ReadFOAM::addVolumeDataToPorts(int processor)
     return true;
 }
 
-bool ReadFOAM::readConstant(const std::string &casedir)
+bool ReadFOAM::readConstant(Reader::Token &token, const std::string &casedir)
 {
     for (int i = -1; i < m_case.numblocks; ++i) {
         if (rankForBlock(i) == rank()) {
-            if (!readDirectory(casedir, i, -1))
+            if (!readDirectory(token, casedir, i, -1))
                 return false;
         }
     }
@@ -1413,7 +1413,7 @@ bool ReadFOAM::readConstant(const std::string &casedir)
     if (m_readBoundary && !m_case.varyingCoords) {
         for (int i = -1; i < m_case.numblocks; ++i) {
             if (rankForBlock(i) == rank()) {
-                addBoundaryToPort(i);
+                addBoundaryToPort(token, i);
             }
         }
     }
@@ -1447,11 +1447,11 @@ bool ReadFOAM::readConstant(const std::string &casedir)
     return true;
 }
 
-bool ReadFOAM::readTime(const std::string &casedir, int timestep)
+bool ReadFOAM::readTime(Reader::Token &token, const std::string &casedir, int timestep)
 {
     for (int i = -1; i < m_case.numblocks; ++i) {
         if (rankForBlock(i) == rank()) {
-            if (!readDirectory(casedir, i, timestep))
+            if (!readDirectory(token, casedir, i, timestep))
                 return false;
         }
     }
@@ -1477,7 +1477,7 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep)
                 if (m_buildGhost) {
                     applyGhostCells(i, ghostMode);
                 }
-                addBoundaryToPort(i);
+                addBoundaryToPort(token, i);
             }
         }
         m_GhostCellsIn.clear();
@@ -1498,7 +1498,7 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep)
             if (m_buildGhost) {
                 applyGhostCellsData(i);
             }
-            addVolumeDataToPorts(i);
+            addVolumeDataToPorts(token, i);
         }
     }
 
