@@ -751,16 +751,16 @@ bool ToTriangles::compute()
             }
             Index ntri = 0;
             for (Index e = 0; e < nelem; ++e) {
-                if (tl[e] == UnstructuredGrid::TRIANGLE) {
-                    ++ntri;
+                const Index begin = el[e], end = el[e + 1];
+                const Index N = end - begin;
+                if (tl[e] != UnstructuredGrid::TRIANGLE && tl[e] != UnstructuredGrid::QUAD &&
+                    tl[e] != UnstructuredGrid::POLYGON) {
                     if (perElement)
-                        mult.push_back(1);
-                } else if (tl[e] == UnstructuredGrid::QUAD) {
-                    ntri += 2;
-                    if (perElement)
-                        mult.push_back(2);
+                        mult.push_back(0);
                 } else {
-                    mult.push_back(0);
+                    ntri += N - 2;
+                    if (perElement)
+                        mult.push_back(N - 2);
                 }
             }
 
@@ -772,19 +772,19 @@ bool ToTriangles::compute()
             auto tcl = tri->cl().data();
             for (Index e = 0; e < nelem; ++e) {
                 const Index begin = el[e], end = el[e + 1];
+                const Index N = end - begin;
                 if (tl[e] == UnstructuredGrid::TRIANGLE) {
                     assert(end - begin == 3);
-                    for (Index v = begin; v < end; ++v) {
-                        tcl[i++] = cl[v];
-                    }
                 } else if (tl[e] == UnstructuredGrid::QUAD) {
                     assert(end - begin == 4);
-                    for (Index v = begin; v < begin + 3; ++v) {
-                        tcl[i++] = cl[v];
-                    }
+                } else if (tl[e] == UnstructuredGrid::POLYGON) {
+                } else {
+                    continue;
+                }
+                for (Index v = 0; v < N - 2; ++v) {
                     tcl[i++] = cl[begin];
-                    tcl[i++] = cl[begin + 2];
-                    tcl[i++] = cl[begin + 3];
+                    tcl[i++] = cl[begin + v + 1];
+                    tcl[i++] = cl[begin + v + 2];
                 }
             }
             assert(i == 3 * ntri);
