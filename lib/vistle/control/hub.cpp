@@ -1277,16 +1277,15 @@ bool Hub::removeSocket(Hub::socket_ptr sock, bool close)
 
     if (close) {
         bool open = sock->is_open();
-        try {
-            sock->shutdown(asio::ip::tcp::socket::shutdown_both);
-        } catch (std::exception &ex) {
+        boost::system::error_code ec;
+        sock->shutdown(asio::ip::tcp::socket::shutdown_both, ec);
+        if (ec && ec != boost::system::errc::not_connected && open) {
+            CERR << "socket shutdown failed: " << ec.message() << std::endl;
         }
-        try {
-            sock->close();
-        } catch (std::exception &ex) {
-            if (open) {
-                CERR << "closing socket failed: " << ex.what() << std::endl;
-            }
+        ec.clear();
+        sock->close(ec);
+        if (ec && open) {
+            CERR << "closing socket failed: " << ec.message() << std::endl;
         }
     }
 
