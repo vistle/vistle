@@ -1,47 +1,52 @@
+# /usr/bin/env vistle
+# this is a Python workflow from Vistle 2025.1-a39770426+
+
 MasterHub=getMasterHub()
 VistleSession=getVistleSession()
+WorkflowConfig=getWorkflowConfig()
 uuids = {}
+
 
 
 # spawn all local modules
 umGendat1 = spawnAsync(MasterHub, 'Gendat')
-umTubes2 = spawnAsync(MasterHub, 'Thicken')
+umThicken2 = spawnAsync(MasterHub, 'Thicken')
 umToTriangles3 = spawnAsync(MasterHub, 'ToTriangles')
 umCOVER4 = spawnAsync(MasterHub, 'COVER')
 umColor5 = spawnAsync(MasterHub, 'Color')
 umVectorField6 = spawnAsync(MasterHub, 'VectorField')
 
 mGendat1 = waitForSpawn(umGendat1)
-setVectorParam(mGendat1, '_position', -141.0, -666.0, True)
+setVectorParam(VistleSession, f'position[{mGendat1}]', -141.0, -666.0)
 setIntParam(mGendat1, 'size_x', 3, True)
 setIntParam(mGendat1, 'size_y', 3, True)
 setIntParam(mGendat1, 'size_z', 3, True)
 applyParameters(mGendat1)
 
-mTubes2 = waitForSpawn(umTubes2)
-setVectorParam(mTubes2, '_position', -123.0, -335.0, True)
-setFloatParam(mTubes2, 'radius', 0.01, True)
-setIntParam(mTubes2, 'start_style', 1, True)
-setIntParam(mTubes2, 'end_style', 3, True)
-applyParameters(mTubes2)
+mThicken2 = waitForSpawn(umThicken2)
+setVectorParam(VistleSession, f'position[{mThicken2}]', -123.0, -335.0)
+setFloatParam(mThicken2, 'radius', 0.01, True)
+setIntParam(mThicken2, 'start_style', 1, True)
+setIntParam(mThicken2, 'end_style', 3, True)
+applyParameters(mThicken2)
 
 mToTriangles3 = waitForSpawn(umToTriangles3)
-setVectorParam(mToTriangles3, '_position', -127.0, -200.0, True)
-applyParameters(mToTriangles3)
+setVectorParam(VistleSession, f'position[{mToTriangles3}]', -127.0, -200.0)
 
 mCOVER4 = waitForSpawn(umCOVER4)
-setVectorParam(mCOVER4, '_position', -120.0, -52.0, True)
+setVectorParam(VistleSession, f'position[{mCOVER4}]', -120.0, -52.0)
 setIntParam(mCOVER4, 'render_mode', 4, True)
 applyParameters(mCOVER4)
 
 mColor5 = waitForSpawn(umColor5)
-setVectorParam(mColor5, '_position', 11.0, -523.0, True)
+setVectorParam(VistleSession, f'position[{mColor5}]', -272.0, -561.0)
+setStringParam(mColor5, 'species', 'scalar', True)
 setFloatParam(mColor5, 'min', 0.19245004653930664, True)
 setFloatParam(mColor5, 'max', 1.7320507764816284, True)
 applyParameters(mColor5)
 
 mVectorField6 = waitForSpawn(umVectorField6)
-setVectorParam(mVectorField6, '_position', -123.0, -494.0, True)
+setVectorParam(VistleSession, f'position[{mVectorField6}]', -136.0, -493.0)
 setFloatParam(mVectorField6, 'scale', 0.2, True)
 applyParameters(mVectorField6)
 
@@ -49,10 +54,9 @@ applyParameters(mVectorField6)
 connect(mGendat1,'data_out0', mColor5,'data_in')
 connect(mGendat1,'data_out0', mVectorField6,'data_in')
 connect(mGendat1,'data_out1', mVectorField6,'grid_in')
-connect(mTubes2,'grid_out', mToTriangles3,'grid_in')
+connect(mThicken2,'grid_out', mToTriangles3,'grid_in')
 connect(mToTriangles3,'grid_out', mCOVER4,'data_in')
-connect(mColor5,'color_out', mCOVER4,'data_in')
-connect(mVectorField6,'grid_out', mTubes2,'grid_in')
+connect(mVectorField6,'data_out', mThicken2,'grid_in')
 
 # spawn all remote modules
 

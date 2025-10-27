@@ -282,7 +282,7 @@ bool Reader::prepare()
     auto last = m_last->getValue();
     if (last < 0)
         last = m_numTimesteps - 1;
-    auto inc = m_increment->getValue();
+    auto inc = timeIncrement();
     auto rTime = ReaderTime(first, last, inc);
 
     int numpart = m_numPartitions;
@@ -376,7 +376,10 @@ bool Reader::finishRead()
 
 int Reader::timeIncrement() const
 {
-    return m_increment->getValue();
+    auto inc = m_increment->getValue();
+    if (inc == 0)
+        inc = 1;
+    return inc;
 }
 
 /**
@@ -712,8 +715,13 @@ void Reader::Token::applyMeta(Object::ptr obj) const
 
     reader()->updateMeta(obj);
 
-    obj->setTimestep(m_meta.timeStep());
-    obj->setNumTimesteps(m_meta.timeStep() < 0 ? -1 : m_meta.numTimesteps());
+    if (m_meta.numTimesteps() == -1 || m_meta.numTimesteps() > 1) {
+        obj->setTimestep(m_meta.timeStep());
+        obj->setNumTimesteps(m_meta.timeStep() < 0 ? -1 : m_meta.numTimesteps());
+    } else {
+        obj->setTimestep(-1);
+        obj->setNumTimesteps(-1);
+    }
     obj->setBlock(m_meta.block());
     obj->setNumBlocks(m_meta.numBlocks());
 }

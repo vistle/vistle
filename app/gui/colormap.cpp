@@ -94,8 +94,7 @@ void Colormap::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
 #endif
     QFontMetrics fm(font);
     painter->setFont(font);
-    float top = (height() + fm.height()) / 2.;
-    top = height() - fm.descent();
+    float top = height() - fm.descent() + 1;
     float border = 2.;
 
     QString tmin, tmax;

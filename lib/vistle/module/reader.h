@@ -176,11 +176,12 @@ protected:
 
     IntParameter *m_first = nullptr;
     IntParameter *m_last = nullptr;
-    IntParameter *m_increment = nullptr;
-    IntParameter *m_distributeTime = nullptr;
-    IntParameter *m_firstRank = nullptr;
 
 private:
+    IntParameter *m_distributeTime = nullptr;
+    IntParameter *m_firstRank = nullptr;
+    IntParameter *m_increment = nullptr;
+
     struct ReaderProperties {
         ReaderProperties(const Meta *m, ReaderTime rtime, int nPart, int conc)
         : meta(m), time(rtime), numpart(nPart), concurrency(conc)
