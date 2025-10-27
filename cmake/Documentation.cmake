@@ -195,7 +195,7 @@ function(configure_documentation)
     add_dependencies(vistle_doc configure_module_documentation_files)
 endfunction()
 
-set(RUN_VISTLE vistle -q --vrb=no)
+set(RUN_VISTLE COVER_TERMINATE_SESSION=1 vistle -q --vrb=no)
 macro(add_module_doc_target modulename CATEGORY)
     string(TOLOWER ${CATEGORY} category)
     set(MODULE ${modulename})
@@ -218,7 +218,9 @@ macro(add_module_doc_target modulename CATEGORY)
     set(DOC_COMMAND
         ${CMAKE_COMMAND} -E env VISTLE_DOCUMENTATION_TARGET=${modulename} VISTLE_BINARY_DIR=${CMAKE_BINARY_DIR}
         VISTLE_MODULE_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR} VISTLE_DOCUMENTATION_CATEGORY=${category}
-        VISTLE_DOCUMENTATION_SOURCE_DIR=${VISTLE_DOCUMENTATION_SOURCE_DIR} ${RUN_VISTLE} --batch ${VISTLE_DOCUMENTATION_WORKFLOW})
+        VISTLE_DOCUMENTATION_SOURCE_DIR=${VISTLE_DOCUMENTATION_SOURCE_DIR}
+        VISTLE_LOGFILE=${PROJECT_BINARY_DIR}/logs/vistle_doc/geninfo-${modulename}_{port}_{id}_{name}.log
+        ${RUN_VISTLE} --batch ${VISTLE_DOCUMENTATION_WORKFLOW})
 
     add_custom_command(
         OUTPUT ${OUTPUT_FILE}
@@ -283,15 +285,17 @@ macro(generate_snapshot_base modulename network_file output_dir workflow result)
         add_custom_command(
             OUTPUT ${output_files}
             COMMAND ${CMAKE_COMMAND} -E env VISTLE_DOC_IMAGE_NAME=${network_file} VISTLE_DOC_SOURCE_DIR=${CMAKE_CURRENT_LIST_DIR}
-                    VISTLE_DOC_TARGET_DIR=${output_dir} VISTLE_DOC_ARGS=${VISTLE_DOC_ARGS} COCONFIG=${coconfig} ${RUN_VISTLE} ${batch} ${script}
+            VISTLE_DOC_TARGET_DIR=${output_dir} VISTLE_DOC_ARGS=${VISTLE_DOC_ARGS} COCONFIG=${coconfig}
+            VISTLE_LOGFILE=${PROJECT_BINARY_DIR}/logs/vistle_doc/snapshot-${network_file}_{port}_{id}_{name}.log
+            ${RUN_VISTLE} ${batch} ${script}
             DEPENDS ${modulename}
-                    ${CMAKE_CURRENT_LIST_DIR}/${network_file}.vsl
-                    ${viewpoint}
-                    ${script}
-                    ${coconfig}
-                    ${ALL_MODULES}
-                    vistle_manager
-                    vistle_gui
+            ${CMAKE_CURRENT_LIST_DIR}/${network_file}.vsl
+            ${viewpoint}
+            ${script}
+            ${coconfig}
+            ${ALL_MODULES}
+            vistle_manager
+            vistle_gui
             COMMENT "Generating network and result snapshot for ${network_file}.vsl")
         add_custom_target(${custom_target} DEPENDS ${output_files})
         add_dependencies(${modulename}_module_doc ${custom_target})
