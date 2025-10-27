@@ -173,7 +173,7 @@ Threshold::Threshold(const std::string &name, int moduleID, mpi::communicator co
 #ifdef CELLSELECT
     p_restraint = addStringParameter("selection", "values to select", "", Parameter::Restraint);
 #else
-    p_operation = addIntParameter("operation", "selection operation", AnyLess, Parameter::Choice);
+    p_operation = addIntParameter("operation", "selection operation", AllLess, Parameter::Choice);
     V_ENUM_SET_CHOICES(p_operation, Operation);
     p_threshold = addFloatParameter("threshold", "selection threshold", 0);
 #endif

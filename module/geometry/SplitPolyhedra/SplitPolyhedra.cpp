@@ -145,6 +145,8 @@ bool SplitPolyhedra::compute()
         };
 
         auto addTetrasForFaceAndVertex = [&nSimpleCreated, &addElem, &ocl](const auto &face, Index V, Index elem) {
+            if (face.size() < 3)
+                return;
             auto minit = std::min_element(face.begin(), face.end());
             auto next = minit + 1 == face.end() ? face.begin() : minit + 1;
             auto prev = minit == face.begin() ? face.end() - 1 : minit - 1;

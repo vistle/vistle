@@ -429,9 +429,6 @@ void Module::doLayout()
     }
 
     double w = nameRect.width() + 2 * portDistance + errorRect.width();
-    if (m_colormap) {
-        w = m_colormap->rect().width() + 2 * portDistance + errorRect.width();
-    }
 
     double h = m_fontHeight + 2 * portDistance;
 
@@ -445,12 +442,15 @@ void Module::doLayout()
             t = t.left(20) + "…";
         }
         infoRectTop = fm.boundingRect(t);
-    } else if (m_outPorts.size() <= 1) {
+    } else if (m_outPorts.size() <= 1 && !m_colormap) {
         QString t = m_info;
         if (t.length() > 21) {
             t = t.left(20) + "…";
         }
         infoRectBottom = fm.boundingRect(t);
+    } else if (m_colormap) {
+        //infoRectBottom = m_colormap->rect().width() + 2 * portDistance + errorRect.width();
+        infoRectBottom = QRect(0, 0, m_colormap->minWidth(), m_colormap->rect().height());
     }
 
     {
@@ -485,7 +485,7 @@ void Module::doLayout()
     h += Port::portSize;
 
     if (m_colormap)
-        m_colormap->setRect(0, 0, w - 2 * portDistance - errorRect.width(), m_colormap->height());
+        m_colormap->setRect(0, 0, w - 2 * portDistance, m_colormap->height());
 
     setRect(0., 0., w, h);
     m_errorIndicator->setPos(errorPos());
@@ -550,7 +550,7 @@ void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
             t = t.left(20) + "…";
         }
         painter->drawText(QPointF(portDistance, m_fontHeight / 2.), t);
-    } else if (m_outPorts.size() <= 1) {
+    } else if (m_outPorts.size() <= 1 && !m_colormap) {
         QString t = m_info;
         if (t.length() > 21) {
             t = t.left(20) + "…";
@@ -892,10 +892,13 @@ void Module::updateText()
     if (!m_displayName.isEmpty()) {
         m_visibleName = m_displayName;
     } else if (m_inPorts.isEmpty()) {
-    } else if (m_outPorts.size() <= 1) {
+    } else if (m_outPorts.size() <= 1 && !m_colormap) {
     } else {
         if (!m_info.isEmpty()) {
             m_visibleName = m_name;
+            if (m_colormap) {
+                m_visibleName.clear();
+            }
             if (m_name == "IndexManifolds")
                 m_visibleName = "Index";
             if (m_name.startsWith("IsoSurface"))
@@ -912,7 +915,9 @@ void Module::updateText()
                 m_visibleName = "Th";
             if (m_name.startsWith("VortexCriteria"))
                 m_visibleName = "Vortex";
-            m_visibleName += ":" + m_info;
+            if (!m_visibleName.isEmpty())
+                m_visibleName += ":";
+            m_visibleName += m_info;
             if (m_visibleName.length() > 21) {
                 m_visibleName = m_visibleName.left(20) + "…";
             }
@@ -1248,7 +1253,8 @@ void Module::setColormap(int source, QString species, const Range &range, const 
     if (!m_colormap)
         m_colormap = new Colormap(this);
     m_colormap->setData(source, species, range, rgba);
-    m_colormap->setPos(portDistance, rect().top() + Port::portSize + portDistance);
+    //m_colormap->setPos(portDistance, rect().top() + Port::portSize + portDistance);
+    m_colormap->setPos(portDistance, rect().top() + 2 * Port::portSize + portDistance);
 
     updateText();
 }
