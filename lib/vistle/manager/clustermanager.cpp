@@ -482,13 +482,8 @@ bool ClusterManager::dispatch(bool &received)
             mod.second.update();
     }
 
-    if (m_quitFlag) {
-        if (numRunning() == 0)
-            return false;
-
-#if 0
-      CERR << numRunning() << " modules still running..." << std::endl;
-#endif
+    if (quitOk()) {
+        return false;
     }
 
     return !done;
@@ -2210,7 +2205,7 @@ bool ClusterManager::quit()
 
     m_quitFlag = true;
 
-    return numRunning() == 0;
+    return quitOk();
 }
 
 bool ClusterManager::quitOk() const
