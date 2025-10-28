@@ -13,6 +13,7 @@
 #include <osg/TexEnv>
 #include <osg/Point>
 #include <osg/LineWidth>
+#include <osg/Version>
 #include "HeightMap.h"
 
 #include <vistle/util/math.h>
@@ -32,8 +33,6 @@
 #include <cover/coVRShader.h>
 #include <cover/coVRPluginSupport.h>
 #include <PluginUtil/Tipsify.h>
-
-//#define BUILD_KDTREES // for faster osg intersection tests
 #endif
 
 using namespace vistle;
@@ -51,11 +50,6 @@ const int DataAttrib = 10; // nvidia: gl_MultiTexCoord2
 std::mutex VistleGeometryGenerator::s_coverMutex;
 
 namespace {
-#ifdef BUILD_KDTREES
-std::mutex kdTreeMutex;
-std::vector<osg::ref_ptr<osg::KdTreeBuilder>> kdTreeBuilders;
-#endif
-
 #ifdef COVER_PLUGIN
 std::map<std::string, std::string> get_shader_parameters()
 {
@@ -1564,26 +1558,14 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
 #ifdef COVER_PLUGIN
         opencover::cover->setRenderStrategy(d.get());
 
-#ifdef BUILD_KDTREES
 #if (OSG_VERSION_GREATER_OR_EQUAL(3, 4, 0))
-        if (auto geom = d->asGeometry()) {
-            osg::ref_ptr<osg::KdTreeBuilder> builder;
-            std::unique_lock<std::mutex> guard(kdTreeMutex);
-            if (kdTreeBuilders.empty()) {
-                guard.unlock();
-                builder = new osg::KdTreeBuilder;
-            } else {
-                builder = kdTreeBuilders.back();
-                kdTreeBuilders.pop_back();
-                guard.unlock();
+        if (m_options.buildKdTree) {
+            if (auto geom = d->asGeometry()) {
+                auto builder = new osg::KdTreeBuilder;
+                builder->apply(*geom);
             }
-            builder->apply(*geom);
-            guard.lock();
-            kdTreeBuilders.push_back(builder);
         }
 #endif
-#endif
-
 #endif
 
         geode->setStateSet(state.get());
