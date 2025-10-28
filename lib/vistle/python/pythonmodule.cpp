@@ -1297,6 +1297,15 @@ public:
 #endif
     }
 
+    void itemInfo(const std::string &text, message::ItemInfo::InfoType type, int senderId,
+                  const std::string &port) override
+    {
+#ifdef OBSERVER_DEBUG
+        std::cerr << "Item info: " << senderId << ": " << text << ", type=" << type << ", port=" << port
+                  << ", sender=" << senderId << std::endl;
+#endif
+    }
+
 #ifdef OBSERVER_DEBUG
 private:
     std::ostream &m_out;
@@ -1389,6 +1398,12 @@ public:
     void updateStatus(int id, const std::string &text, message::UpdateStatus::Importance prio) override
     {
         PYBIND11_OVERRIDE(void, Base, updateStatus, id, text, prio);
+    }
+
+    void itemInfo(const std::string &text, message::ItemInfo::InfoType type, int senderId,
+                  const std::string &port) override
+    {
+        PYBIND11_OVERRIDE(void, Base, itemInfo, text, type, senderId, port);
     }
 };
 
@@ -1505,6 +1520,10 @@ PY_MODULE(_vistle, m)
     py::class_<message::SendText> st(m, "Text");
     vistle::message::SendText::enumForPython_TextType(st, "Type");
 
+    // make values of vistle::message::ItemInfo::InfoType enum known to Python as Item.xxx
+    py::class_<message::ItemInfo> ii(m, "Item");
+    vistle::message::ItemInfo::enumForPython_InfoType(ii, "Type");
+
     py::class_<message::Id> id(m, "Id");
     py::enum_<message::Id::Reserved>(id, "Id")
         .value("Invalid", message::Id::Invalid)
@@ -1533,6 +1552,7 @@ PY_MODULE(_vistle, m)
         .def("deleteConnection", &SO::deleteConnection)
         .def("info", &SO::info)
         .def("status", &SO::status)
+        .def("itemInfo", &SO::itemInfo)
         .def("updateStatus", &SO::updateStatus);
 
     typedef vistle::TrivialStateObserver TSO;
@@ -1554,6 +1574,7 @@ PY_MODULE(_vistle, m)
         .def("deleteConnection", &TSO::deleteConnection)
         .def("info", &TSO::info)
         .def("status", &TSO::status)
+        .def("itemInfo", &TSO::itemInfo)
         .def("updateStatus", &TSO::updateStatus);
 
     m.def("version", &vistle_version, "version of Vistle");
