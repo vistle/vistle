@@ -364,8 +364,14 @@ Hub::~Hub()
         sendMaster(message::CloseConnection("terminating"));
     }
 
-    while (!m_sockets.empty()) {
-        removeSocket(m_sockets.begin()->first);
+    {
+        std::unique_lock<std::mutex> lock(m_socketMutex);
+        while (!m_sockets.empty()) {
+            auto sock = m_sockets.begin()->first;
+            lock.unlock();
+            removeSocket(sock);
+            lock.lock();
+        }
     }
 
     m_tunnelManager.cleanUp();
