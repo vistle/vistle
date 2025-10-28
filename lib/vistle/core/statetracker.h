@@ -388,11 +388,9 @@ private:
 
     std::set<message::uuid_t> m_alreadySeen;
 
-    mutex m_replyMutex;
     std::condition_variable_any m_replyCondition;
     std::map<message::uuid_t, std::shared_ptr<message::Buffer>> m_outstandingReplies;
 
-    mutex m_slaveMutex;
     std::condition_variable_any m_slaveCondition;
 
     message::Type m_traceType;

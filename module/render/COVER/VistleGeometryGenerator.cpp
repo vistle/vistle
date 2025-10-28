@@ -500,8 +500,7 @@ osg::Vec3Array *computeNormals(typename Geometry::const_ptr geometry, const Opti
                 }
             } else {
                 for (Index c = begin; c < end; ++c) {
-                    const Index v = cl[c];
-                    (*normals)[v] = normal;
+                    (*normals)[c] = normal;
                 }
             }
         }

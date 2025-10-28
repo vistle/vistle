@@ -115,8 +115,17 @@ DataManager::~DataManager()
     }
 
     closeAllDirect();
-    m_dataSocket->shutdown(boost::asio::ip::tcp::socket::shutdown_both);
-    m_dataSocket->close();
+    if (m_dataSocket && m_dataSocket->is_open()) {
+        boost::system::error_code ec;
+        m_dataSocket->shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+        if (ec) {
+            CERR << "error during data socket shutdown: " << ec.message() << std::endl;
+        }
+        m_dataSocket->close(ec);
+        if (ec) {
+            CERR << "error during data socket shutdown: " << ec.message() << std::endl;
+        }
+    }
     m_dataSocket.reset();
 
     m_recvThread.join();
