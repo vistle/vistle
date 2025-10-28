@@ -178,20 +178,73 @@ def getInputPortsStringDescription(mod):
 def getOutputPortsDescription(mod):
     return getPortDescriptionString(mod, vistle.getOutputPorts(mod), "Output ports")
 
+def collapsibleParameterGroups():
+    return ["Reader", "Renderer", "System"]
+
+def isCollapsibleParameterGroup(mod, group):
+    if collapsibleParameterGroups().__contains__(group):
+        return True
+    return False
+
+
+def getParameterGroupTable(mod, group, params):
+    if group not in params:
+        return ""
+    table = "\n"
+    collapsible = isCollapsibleParameterGroup(mod, group)
+
+    description = ""
+    if collapsible: 
+        table += ":::{admonition} Supported " + group + " Parameters\n"
+        table += "    :class: dropdown\n\n"
+        description = f"../../{group.lower()}-parameters.md"
+    elif group != "":
+        table += getHeadline(f"{group} Parameters", "###") + "\n"
+    table += getTableLine(["name", "description", "type"])
+    table += getTableLine(["-", "-", "-"])
+    for param in params[group]:
+        if param.startswith("_config:"):
+            continue
+        paramtext = param
+        if collapsible:
+            target = f"{param.replace('_','-')}"
+            if target.startswith("-"):
+                target = target[1:] 
+            target = f"{param}"
+            paramtext = f"[{param}]({description}#{target})"
+        table += getTableLine([paramtext, vistle.getParameterTooltip( mod, param), vistle.getParameterType(mod, param)])
+    if collapsible: 
+        table += "\n"
+        table += f"The meaning of these parameters is described in more detail in the [{group} Parameters]({description}) documentation.\n"
+        table += ":::\n"
+    table += "\n"
+
+    return table
 
 def getParametersString(mod):
     allParams = vistle.getParameters(mod)
-    params = []
+    if len(allParams) == 0:
+        return ""
+
+    # group parameters by their group
+    params = {}
     for param in allParams:
-        if param[0] != '_':
-            params.append(param)
+        group = vistle.getParameterGroup(mod, param)
+        if group not in params:
+            params[group] = []
+        params[group].append(param)
+
     paramString = "\n"
-    if len(params) > 0:
-        paramString += getHeadline("Parameters", "##") + getTableLine(
-            ["name", "description", "type"]) + getTableLine(["-", "-", "-"])
-    for param in params:
-        paramString += getTableLine([param, vistle.getParameterTooltip(
-            mod, param), vistle.getParameterType(mod, param)])
+    paramString += getHeadline("Parameters", "##") + "\n"
+
+    paramString += getParameterGroupTable(mod, "", params)   
+    for group in params.keys():
+        if group == "" or isCollapsibleParameterGroup(mod, group):
+            continue
+        paramString += getParameterGroupTable(mod, group, params)   
+    for group in collapsibleParameterGroups():
+        paramString += getParameterGroupTable(mod, group, params)   
+
     return paramString
 
 
