@@ -1,0 +1,87 @@
+# /usr/bin/env vistle
+# this is a Python workflow from Vistle 2025.1-3f9f7a319+
+
+MasterHub=getMasterHub()
+VistleSession=getVistleSession()
+WorkflowConfig=getWorkflowConfig()
+uuids = {}
+setIntParam(VistleSession, 'archive_compression', 1, True)
+applyParameters(VistleSession)
+
+
+
+# spawn all local modules
+umGendat1 = spawnAsync(MasterHub, 'Gendat')
+umToPoints2 = spawnAsync(MasterHub, 'ToPoints')
+umCOVER3 = spawnAsync(MasterHub, 'COVER')
+umThicken4 = spawnAsync(MasterHub, 'Thicken')
+umToTriangles5 = spawnAsync(MasterHub, 'ToTriangles')
+umToTriangles8 = spawnAsync(MasterHub, 'ToTriangles')
+umVectorField9 = spawnAsync(MasterHub, 'VectorField')
+umThicken10 = spawnAsync(MasterHub, 'Thicken')
+
+mGendat1 = waitForSpawn(umGendat1)
+setVectorParam(VistleSession, f'position[{mGendat1}]', -102.0, -969.0)
+setFloatParam(mGendat1, 'data_scale_scalar', 10.0, True)
+setIntParam(mGendat1, 'size_x', 3, True)
+setIntParam(mGendat1, 'size_y', 0, True)
+setIntParam(mGendat1, 'size_z', 0, True)
+setIntParam(mGendat1, 'blocks_x', 1, True)
+setIntParam(mGendat1, 'blocks_y', 1, True)
+setIntParam(mGendat1, 'blocks_z', 1, True)
+setVectorParam(mGendat1, 'min', -3.0, -3.0, -3.0, True)
+setVectorParam(mGendat1, 'max', 3.0, 3.0, 3.0, True)
+applyParameters(mGendat1)
+
+mToPoints2 = waitForSpawn(umToPoints2)
+setVectorParam(VistleSession, f'position[{mToPoints2}]', -168.8578513416335, -894.0136653202519)
+
+mCOVER3 = waitForSpawn(umCOVER3)
+setVectorParam(VistleSession, f'position[{mCOVER3}]', -79.49680656700282, -653.3405826316268)
+setIntParam(mCOVER3, 'render_mode', 4, True)
+setIntParam(mCOVER3, '_config:animationmanager::Animate', 0, True)
+setFloatParam(mCOVER3, '_config:animationmanager::Speed', 9.47580623626709, True)
+setVectorParam(mCOVER3, '_config:plugin/ClipPlane:plane0:equation', 0.0, 0.0, 0.0, 0.0, True)
+setVectorParam(mCOVER3, '_config:plugin/ClipPlane:plane1:equation', 0.0, 0.0, 0.0, 0.0, True)
+setVectorParam(mCOVER3, '_config:plugin/ClipPlane:plane2:equation', 0.0, 0.0, 0.0, 0.0, True)
+applyParameters(mCOVER3)
+
+mThicken4 = waitForSpawn(umThicken4)
+setVectorParam(VistleSession, f'position[{mThicken4}]', -178.3126853260085, -818.9908381718144)
+setFloatParam(mThicken4, 'sphere_scale', 0.02, True)
+setIntParam(mThicken4, 'map_mode', 2, True)
+setVectorParam(mThicken4, 'range', 0.0, 100.0, True)
+applyParameters(mThicken4)
+
+mToTriangles5 = waitForSpawn(umToTriangles5)
+setVectorParam(VistleSession, f'position[{mToTriangles5}]', -153.0, -748.0)
+
+mToTriangles8 = waitForSpawn(umToTriangles8)
+setVectorParam(VistleSession, f'position[{mToTriangles8}]', -17.0, -731.0)
+
+mVectorField9 = waitForSpawn(umVectorField9)
+setVectorParam(VistleSession, f'position[{mVectorField9}]', -17.0, -884.0)
+
+mThicken10 = waitForSpawn(umThicken10)
+setVectorParam(VistleSession, f'position[{mThicken10}]', -17.0, -816.0)
+setFloatParam(mThicken10, 'radius', 0.05, True)
+setFloatParam(mThicken10, 'sphere_scale', 1.0, True)
+setIntParam(mThicken10, 'map_mode', 6, True)
+setVectorParam(mThicken10, 'range', 0.0, 1000.0, True)
+setIntParam(mThicken10, 'end_style', 3, True)
+applyParameters(mThicken10)
+
+# all local connections
+connect(mGendat1,'data_out0', mToPoints2,'grid_in')
+connect(mGendat1,'data_out1', mVectorField9,'grid_in')
+connect(mToPoints2,'grid_out', mThicken4,'data_in')
+connect(mToPoints2,'grid_out', mThicken4,'grid_in')
+connect(mThicken4,'data_out', mToTriangles5,'grid_in')
+connect(mToTriangles5,'grid_out', mCOVER3,'data_in')
+connect(mToTriangles8,'grid_out', mCOVER3,'data_in')
+connect(mVectorField9,'grid_out', mThicken10,'grid_in')
+connect(mThicken10,'grid_out', mToTriangles8,'grid_in')
+
+# spawn all remote modules
+
+# connections between local and remote

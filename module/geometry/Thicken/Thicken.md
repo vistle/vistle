@@ -23,13 +23,11 @@ There are different modes for setting the radius of the resulting geometric bodi
 
 ## Usage Examples
 
-<figure float="left">
-    <img src="thickenWorkflow.png" width=300/>
-    <img src="thickenExampleResult.png" width=350/>
-    <figcaption>Fig.1. Example workflow using Thicken (left) and step-by-step results (right). On the top-right, a scalar data set is shown as points which can only be seen by zooming in considerably. In the center, the same data set is shown as spheres. At the bottom, the vector field has been added, after expanding its lines into tubes.</figcaption>
-</figure>
+[example]:<thicken>
+On the top-right, a scalar data set is shown as points which can only be seen by zooming in considerably. In the center, the same data set is shown as spheres. At the bottom, the vector field has been added, after expanding its lines into tubes.
 
 In this example, the scalar data field of a data set is first transformed into points via [ToPoints]() (see top-right image) and then thickened into spheres (see image in the center of the right image). The radii of the spheres depend on the scalar data field.
+
 **Note:** To avoid rendering errors, it is important to pass the output to the [ToTriangles]() module whose `transform spheres` parameter has been **enabled**.
 
 Moreover, three-dimensional input data is transformed into a vector field through the [VectorField]() module and the resulting lines are expanded into tubes (see bottom of the right image).
