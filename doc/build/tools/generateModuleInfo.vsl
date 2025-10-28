@@ -29,6 +29,12 @@ VSL_TAG = "vslFile"
 
 
 def createModuleImage(name, inPorts, outPorts):
+    red = "#c81e1eff"
+    turquoise = "#64c8c8ff"
+    red = "#c81e1eff"
+    grey = "#969696ff"
+    yellow = "#c8c81eff"
+
     size = 1.
     letterWidth = 58 / 100 * size
     widths = [len(name) * letterWidth + size, size *
@@ -41,14 +47,14 @@ def createModuleImage(name, inPorts, outPorts):
         height + spiderLegOffsetTop + spiderLegOffsetBot) + "em\" >\n"
     image += getStyle(size) + "\n"
     image += getRect(0, spiderLegOffsetTop, width,
-                     height, "#64c8c8ff", 0.1, 0.1) + "\n"
+                     height, turquoise, 0.1, 0.1) + "\n"
 
     portDistance = size/5
     portStartPos = portDistance
     num = len(inPorts)
     for port, tooltip in inPorts:
         image += getRect(portStartPos, spiderLegOffsetTop, size,
-                         size, color="#c81e1eff", tooltip=port) + "\n"
+                         size, color=red, tooltip=port) + "\n"
         text = tooltip + "<tspan> (" + port + ")</tspan>"
         image += getPortDescriptionSpider(size, portStartPos +
                                           size/2, spiderLegOffsetTop, num, text) + "\n"
@@ -62,7 +68,7 @@ def createModuleImage(name, inPorts, outPorts):
     portStartPos = portDistance
     for port, tooltip in outPorts:
         image += getRect(portStartPos, spiderLegOffsetTop + height -
-                         size, size, size, color="#c81e1eff", tooltip=port) + "\n"
+                         size, size, size, color=red, tooltip=port) + "\n"
         text = tooltip + "<tspan> (" + port + ")</tspan>"
         image += getPortDescriptionSpider(size, portStartPos +
                                           size/2, spiderLegOffsetTop + height, num, text) + "\n"
