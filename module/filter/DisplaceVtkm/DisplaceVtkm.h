@@ -5,10 +5,17 @@
 
 class DisplaceVtkm: public vistle::VtkmModule {
 public:
+    DEFINE_ENUM_WITH_STRING_CONVERSIONS(DisplaceComponent, (X)(Y)(Z)(All))
+    DEFINE_ENUM_WITH_STRING_CONVERSIONS(DisplaceOperation, (Set)(Add)(Multiply))
+
     DisplaceVtkm(const std::string &name, int moduleID, mpi::communicator comm);
     ~DisplaceVtkm();
 
 private:
+    vistle::IntParameter *p_operation = nullptr;
+    vistle::IntParameter *p_component = nullptr;
+    vistle::FloatParameter *p_scale = nullptr;
+
     std::unique_ptr<viskores::filter::Filter> setUpFilter() const override;
 };
 
