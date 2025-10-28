@@ -516,6 +516,21 @@ static std::vector<std::string> getParameters(int id)
     return state().getParameters(id);
 }
 
+static std::string getParameterGroup(int id, const std::string &name)
+{
+    std::unique_lock<PythonStateAccessor> guard(access());
+    const auto param = state().getParameter(id, name);
+    if (!param) {
+        std::cerr << "Python: getParameterGroup: no such parameter" << std::endl;
+        return "";
+    }
+    auto group = param->group();
+    if (group.empty() && !name.empty() && name[0] == '_') {
+        return "System";
+    }
+    return group;
+}
+
 static std::string getParameterType(int id, const std::string &name)
 {
     std::unique_lock<PythonStateAccessor> guard(access());
@@ -1591,6 +1606,7 @@ PY_MODULE(_vistle, m)
     m.def("getHub", getHub, "get ID of hub for module with ID `arg1`");
     m.def("getConnections", getConnections, "get connections to/from port `arg2` of module with ID `arg1`");
     m.def("getParameters", getParameters, "get list of parameters for module with ID `arg1`");
+    m.def("getParameterGroup", getParameterGroup, "get group of parameter named `arg2` of module with ID `arg1`");
     m.def("getParameterType", getParameterType, "get type of parameter named `arg2` of module with ID `arg1`");
     m.def("getParameterPresentation", getParameterPresentation,
           "get presentation of parameter named `arg2` of module with ID `arg1`");
