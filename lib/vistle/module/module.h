@@ -339,7 +339,13 @@ protected:
     void clearResultCaches();
     void enableResultCaches(bool on);
 
+    void addInputParameters();
+    void addOutputParameters();
+
 private:
+    bool m_inputParametersAdded = false;
+    bool m_outputParametersAdded = false;
+
     std::shared_ptr<StateTracker> m_stateTracker;
     int m_receivePolicy;
     int m_schedulingPolicy;

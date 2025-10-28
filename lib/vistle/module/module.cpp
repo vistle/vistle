@@ -272,15 +272,6 @@ Module::Module(const std::string &moduleName, const int moduleId, mpi::communica
               << hostname() << ":" << get_process_handle() << std::endl;
 #endif
 
-    auto cm = addIntParameter("_cache_mode", "input object caching", ObjectCache::CacheByName, Parameter::Choice);
-    V_ENUM_SET_CHOICES_SCOPE(cm, CacheMode, ObjectCache);
-    addIntParameter("_prioritize_visible", "prioritize currently visible timestep", m_prioritizeVisible,
-                    Parameter::Boolean);
-
-    auto validate = addIntParameter("_validate_objects", "validate data objects before sending to port",
-                                    m_validateObjects, Parameter::Choice);
-    V_ENUM_SET_CHOICES(validate, ObjectValidation);
-
     auto openmp_threads = addIntParameter("_openmp_threads", "number of OpenMP threads (0: system default)", 0);
     setParameterRange<Integer>(openmp_threads, 0, 4096);
     addIntParameter("_benchmark", "show timing information", m_benchmark ? 1 : 0, Parameter::Boolean);
@@ -299,6 +290,30 @@ Module::Module(const std::string &moduleName, const int moduleId, mpi::communica
     }
     mpi::broadcast(m_commShmGroup, leaderSubRank, 0);
     mpi::all_gather(m_comm, leaderSubRank, m_shmLeadersSubrank);
+}
+
+void Module::addInputParameters()
+{
+    if (m_inputParametersAdded)
+        return;
+    m_inputParametersAdded = true;
+
+    auto cm = addIntParameter("_cache_mode", "input object caching", ObjectCache::CacheByName, Parameter::Choice);
+    V_ENUM_SET_CHOICES_SCOPE(cm, CacheMode, ObjectCache);
+}
+
+void Module::addOutputParameters()
+{
+    if (m_outputParametersAdded)
+        return;
+    m_outputParametersAdded = true;
+
+    addIntParameter("_prioritize_visible", "prioritize currently visible timestep", m_prioritizeVisible,
+                    Parameter::Boolean);
+
+    auto validate = addIntParameter("_validate_objects", "validate data objects before sending to port",
+                                    m_validateObjects, Parameter::Choice);
+    V_ENUM_SET_CHOICES(validate, ObjectValidation);
 }
 
 config::Access *Module::configAccess() const
@@ -479,6 +494,8 @@ bool Module::havePort(const std::string &name)
 
 Port *Module::createInputPort(const std::string &name, const std::string &description, const int flags)
 {
+    addInputParameters();
+
     assert(!havePort(name));
     if (havePort(name)) {
         CERR << "createInputPort: already have port/parameter with name " << name << std::endl;
@@ -500,6 +517,8 @@ Port *Module::createInputPort(const std::string &name, const std::string &descri
 
 Port *Module::createOutputPort(const std::string &name, const std::string &description, const int flags)
 {
+    addOutputParameters();
+
     assert(!havePort(name));
     if (havePort(name)) {
         CERR << "createOutputPort: already have port/parameter with name " << name << std::endl;
