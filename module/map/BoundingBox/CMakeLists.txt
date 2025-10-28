@@ -1,4 +1,4 @@
-add_module(BoundingBox "compute bounding boxes" BoundingBox.cpp)
+add_module(BoundingBox "compute axis-aligned bounding boxes" BoundingBox.cpp)
 
 target_compile_definitions(BoundingBox PRIVATE -DBOUNDINGBOX)
 if(VISTLE_USE_OPENMP AND TARGET OpenMP::OpenMP_CXX)
