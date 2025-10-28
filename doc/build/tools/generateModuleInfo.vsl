@@ -287,7 +287,7 @@ def generateModuleDescriptions() -> None:
 
     # spawn the module and wait for its information to arrive at the hub
     mod = vistle.spawn(MODULE_NAME)
-    vistle.barrier()
+    vistle.barrier("spawn module")
 
     content_list = readAdditionalDocumentation(filename)
     output = []
