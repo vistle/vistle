@@ -23,7 +23,7 @@ using namespace vistle;
 
 ToTriangles::ToTriangles(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
-    auto pin = createInputPort("grid_in", "geometry, e.g. tubes, spheres, polygons");
+    auto pin = createInputPort("grid_in", "geometry, e.g. points or lines (also with radius), polygons");
     auto pout = createOutputPort("grid_out", "converted to or approximated by triangles");
     linkPorts(pin, pout);
 
