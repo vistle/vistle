@@ -24,5 +24,41 @@ DisplaceVtkm::~DisplaceVtkm()
 
 std::unique_ptr<viskores::filter::Filter> DisplaceVtkm::setUpFilter() const
 {
-    return std::make_unique<viskores::filter::field_transform::Warp>();
+    auto filter = std::make_unique<viskores::filter::field_transform::Warp>();
+
+    // TODO: implement Set and Multiply operations!
+    if (p_operation->getValue() == DisplaceOperation::Add) {
+        switch (p_component->getValue()) {
+        case DisplaceComponent::X:
+            filter->SetConstantDirection({1.0f, 0.0f, 0.0f});
+            break;
+        case DisplaceComponent::Y:
+            filter->SetConstantDirection({0.0f, 1.0f, 0.0f});
+            break;
+        case DisplaceComponent::Z:
+            filter->SetConstantDirection({0.0f, 0.0f, 1.0f});
+            break;
+        case DisplaceComponent::All:
+            filter->SetConstantDirection({1.0f, 1.0f, 1.0f});
+            break;
+        }
+        filter->SetUseConstantDirection(true);
+        filter->SetScaleField(getFieldName(0, false));
+        filter->SetScaleFactor(p_scale->getValue());
+    }
+    return filter;
+}
+
+DataBase::ptr DisplaceVtkm::prepareOutputField(const viskores::cont::DataSet &dataset,
+                                               const vistle::Object::const_ptr &inputGrid,
+                                               const vistle::DataBase::const_ptr &inputField,
+                                               const std::string &fieldName,
+                                               const vistle::Object::const_ptr &outputGrid) const
+{
+    // The default output field of the Warp filter seems to contain the adjusted point coordinates.
+    // To match Displace's behavior, we need to pass the original scalar field (which is also part
+    // of the output dataset, luckily).
+    return VtkmModule::prepareOutputField(dataset, inputGrid, inputField,
+                                          fieldName == getFieldName(0, true) ? getFieldName(0, false) : fieldName,
+                                          outputGrid);
 }
