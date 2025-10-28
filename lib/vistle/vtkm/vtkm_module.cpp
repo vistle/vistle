@@ -29,7 +29,9 @@ VtkmModule::VtkmModule(const std::string &name, int moduleID, mpi::communicator 
         }
     }
 
-    m_printObjectInfo = addIntParameter("_print_object_info", "print object info", false, Parameter::Boolean);
+    m_printObjectInfo =
+        addIntParameter("_print_object_info", "print information on generated data objects for debug purposes", false,
+                        Parameter::Boolean);
 }
 
 VtkmModule::~VtkmModule()
