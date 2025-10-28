@@ -15,10 +15,10 @@ This module is designed to read all CSV files in a directory and convert them to
 
 [parameters]:<>
 
-x and y name are mandatory to create at least 2D points, z name and data names are optional.
+`x_name` and `y_name` are mandatory to create at least 2D points, `z_name` and `data_name_?` are optional.
 
 ### Important to note
-Supported delimiters are comma, semicolon and tab. Decimal separators can be points or comma if comma is not used as delimiter.
+Supported delimiters are comma, semicolon and tab. Decimal separators can be points or comma, if comma is not used as delimiter.
 
 
 ## Example Usage
