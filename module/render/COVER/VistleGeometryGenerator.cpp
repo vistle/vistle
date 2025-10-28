@@ -54,6 +54,104 @@ std::map<std::string, std::string> get_shader_parameters()
     parammap["radiusAttrib"] = std::to_string(RadiusAttrib);
     return parammap;
 }
+
+struct SphereGenerator {
+    static const int MinNumLat = 4;
+    static const int MinNumLong = 7;
+    static_assert(MinNumLat >= 3, "too few vertices");
+    static_assert(MinNumLong >= 3, "too few vertices");
+
+    Index NumLat = MinNumLat;
+    Index NumLong = MinNumLong;
+    Index TriPerSphere = MinNumLong * (MinNumLat - 2) * 2;
+    Index CoordPerSphere = MinNumLong * (MinNumLat - 2) + 2;
+
+    SphereGenerator(int quality)
+    : NumLat(MinNumLat + quality)
+    , NumLong(MinNumLong + 2 * quality)
+    , TriPerSphere(NumLong * (NumLat - 2) * 2)
+    , CoordPerSphere(NumLong * (NumLat - 2) + 2)
+    {}
+
+    void addSphere(Scalar cx, Scalar cy, Scalar cz, Scalar r, Index idx, unsigned int *ti, osg::Vec3Array *vertices,
+                   osg::Vec3Array *normals)
+    {
+        const float psi = M_PI / (NumLat - 1);
+        const float phi = M_PI * 2 / NumLong;
+
+        // create normals
+        {
+            Index ci = idx;
+            // south pole
+            normals->at(ci).set(0, 0, -1);
+            ++ci;
+
+            float Psi = -M_PI * 0.5 + psi;
+            for (Index j = 0; j < NumLat - 2; ++j) {
+                float Phi = j * 0.5f * phi;
+                for (Index k = 0; k < NumLong; ++k) {
+                    auto nx = sin(Phi) * cos(Psi);
+                    auto ny = cos(Phi) * cos(Psi);
+                    auto nz = sin(Psi);
+                    normals->at(ci).set(nx, ny, nz);
+                    ++ci;
+                    Phi += phi;
+                }
+                Psi += psi;
+            }
+            // north pole
+            normals->at(ci).set(0, 0, 1);
+            ++ci;
+            assert(ci == idx + CoordPerSphere);
+        }
+
+        // create coordinates from normals
+        for (Index ci = idx; ci < idx + CoordPerSphere; ++ci) {
+            vertices->at(ci) = normals->at(ci) * r + osg::Vec3(cx, cy, cz);
+        }
+
+        // create index list
+        {
+            Index ii = 0;
+            // indices for ring around south pole
+            Index ci = idx + 1;
+            for (Index k = 0; k < NumLong; ++k) {
+                ti[ii++] = ci + k;
+                ti[ii++] = ci + (k + 1) % NumLong;
+                ti[ii++] = idx;
+            }
+
+            ci = idx + 1;
+            for (Index j = 0; j < NumLat - 3; ++j) {
+                for (Index k = 0; k < NumLong; ++k) {
+                    ti[ii++] = ci + k;
+                    ti[ii++] = ci + k + NumLong;
+                    ti[ii++] = ci + (k + 1) % NumLong;
+                    ti[ii++] = ci + (k + 1) % NumLong;
+                    ti[ii++] = ci + k + NumLong;
+                    ti[ii++] = ci + NumLong + (k + 1) % NumLong;
+                }
+                ci += NumLong;
+            }
+            assert(ci == idx + 1 + NumLong * (NumLat - 3));
+            assert(ci + NumLong + 1 == idx + CoordPerSphere);
+
+            // indices for ring around north pole
+            for (Index k = 0; k < NumLong; ++k) {
+                ti[ii++] = ci + (k + 1) % NumLong;
+                ti[ii++] = ci + k;
+                ti[ii++] = idx + CoordPerSphere - 1;
+            }
+            assert(ii == 3 * TriPerSphere);
+
+            for (Index j = 0; j < 3 * TriPerSphere; ++j) {
+                assert(ti[j] >= idx);
+                assert(ti[j] < idx + CoordPerSphere);
+            }
+        }
+    }
+};
+
 } // namespace
 
 template<class Geo>
@@ -664,7 +762,7 @@ float getValue<vistle::Vec<Scalar, 3>>(typename vistle::Vec<Scalar, 3>::const_pt
 
 template<class MappedObject>
 osg::FloatArray *buildArray(typename MappedObject::const_ptr data, Coords::const_ptr coords, std::stringstream &debug,
-                            const Options &options)
+                            const Options &options, std::vector<Index> *multiplicity = nullptr)
 {
     if (!data)
         return nullptr;
@@ -685,7 +783,16 @@ osg::FloatArray *buildArray(typename MappedObject::const_ptr data, Coords::const
         const Index *cl = nullptr;
         if (indexed && indexed->getNumCorners() > 0)
             cl = indexed->cl().data();
-        if (options.indexedGeometry || !cl) {
+        if (multiplicity) {
+            for (Index idx = 0; idx < multiplicity->size(); ++idx) {
+                const Index mult = (*multiplicity)[idx];
+                Index v = idx;
+                if (cl)
+                    v = cl[idx];
+                for (Index count = 0; count < mult; ++count)
+                    tc->push_back(getValue<MappedObject>(data, v));
+            }
+        } else if (options.indexedGeometry || !cl) {
             const auto numCoords = coords->getSize();
             const auto ntc = data->getSize();
             if (numCoords == ntc) {
@@ -714,16 +821,35 @@ osg::FloatArray *buildArray(typename MappedObject::const_ptr data, Coords::const
         if (indexed) {
             const auto el = indexed->el().data();
             const auto numElements = indexed->getNumElements();
-            for (Index index = 0; index < numElements; ++index) {
-                const Index num = el[index + 1] - el[index];
-                for (Index n = 0; n < num; n++) {
-                    tc->push_back(getValue<MappedObject>(data, index));
+            if (multiplicity) {
+                for (Index index = 0; index < numElements; ++index) {
+                    const Index num = el[index + 1] - el[index];
+                    for (Index n = 0; n < num; n++) {
+                        const Index mult = (*multiplicity)[index];
+                        for (Index count = 0; count < mult; ++count)
+                            tc->push_back(getValue<MappedObject>(data, index));
+                    }
+                }
+            } else {
+                for (Index index = 0; index < numElements; ++index) {
+                    const Index num = el[index + 1] - el[index];
+                    for (Index n = 0; n < num; n++) {
+                        tc->push_back(getValue<MappedObject>(data, index));
+                    }
                 }
             }
         } else {
             const auto numCoords = coords->getSize();
-            for (Index index = 0; index < numCoords; ++index) {
-                tc->push_back(getValue<MappedObject>(data, index));
+            if (multiplicity) {
+                for (Index index = 0; index < numCoords; ++index) {
+                    const Index mult = (*multiplicity)[index];
+                    for (Index count = 0; count < mult; ++count)
+                        tc->push_back(getValue<MappedObject>(data, index));
+                }
+            } else {
+                for (Index index = 0; index < numCoords; ++index) {
+                    tc->push_back(getValue<MappedObject>(data, index));
+                }
             }
         }
     } else {
@@ -944,6 +1070,7 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
             debug << "cached ";
     }
 
+    std::unique_ptr<std::vector<Index>> multiplicity; // how often a mapped value is used per supplied vertex
     const Byte *ghost = nullptr;
     switch (m_geo->getType()) {
     case vistle::Object::PLACEHOLDER: {
@@ -1324,14 +1451,15 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
     }
 
     case vistle::Object::LINES: {
-        m_options.indexedGeometry = false;
-
         vistle::Lines::const_ptr lines = vistle::Lines::as(m_geo);
         const Index numElements = lines->getNumElements();
         const Index numCorners = lines->getNumCorners();
 
-        debug << "Lines: [ #c " << numCorners << ", #e " << numElements << " ]";
+        auto radius = lines->radius();
 
+        debug << "Lines: [ #c " << numCorners << ", #e " << numElements << (radius ? " with radius" : "") << " ]";
+
+        m_options.indexedGeometry = false;
         auto geom = new osg::Geometry();
         draw.push_back(geom);
 
@@ -1346,41 +1474,329 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
             const vistle::Scalar *y = lines->y().data();
             const vistle::Scalar *z = lines->z().data();
 
-            osg::ref_ptr<osg::DrawArrayLengths> primitives = new osg::DrawArrayLengths(osg::PrimitiveSet::LINE_STRIP);
-
+            osg::ref_ptr<osg::PrimitiveSet> primitives;
             osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array();
+            if (radius) {
+                auto r = radius->x().data();
+                bool radiusPerElement = radius->guessMapping(m_geo) == DataBase::Element;
 
-            for (Index index = 0; index < numElements; index++) {
-                Index start = el[index];
-                Index end = el[index + 1];
-                Index num = end - start;
+                int quality = 2;
+                SphereGenerator gen(quality);
 
-                primitives->push_back(num);
+                const unsigned MinNumSect = 3;
+                static_assert(MinNumSect >= 3, "too few sectors");
+                unsigned NumSect = MinNumSect + quality;
+                Index TriPerSection = NumSect * 2;
+                Index TriPerSphere = gen.TriPerSphere;
+                Index CoordPerSphere = gen.CoordPerSphere;
 
-                for (Index n = 0; n < num; n++) {
-                    Index v = start + n;
-                    if (cl)
-                        v = cl[v];
-                    vertices->push_back(osg::Vec3(x[v], y[v], z[v]));
+                Index numEl = lines->getNumElements();
+                Index numEmptyEl = 0, numSinglePointEl = 0;
+                auto el = lines->el().data();
+                for (Index i = 0; i < numEl; ++i) {
+                    const Index begin = el[i], end = el[i + 1];
+                    if (end == begin) {
+                        ++numEmptyEl;
+                    } else if (end == begin + 1) {
+                        ++numSinglePointEl;
+                    }
                 }
+                Index numPoint = lines->getNumCoords();
+                Index numConn = lines->getNumCorners();
+                if (numEl == 0 || numEl == numEmptyEl) {
+                    numPoint = 0;
+                    numConn = 0;
+                } else if (numConn == 0) {
+                    numConn = numPoint;
+                } else {
+                    cl = lines->cl().data();
+                }
+                // we ignore connection style altogether and simplify start and end style
+                auto startStyle = lines->startStyle();
+                if (startStyle != Lines::Open) {
+                    startStyle = Lines::Flat;
+                }
+                auto endStyle = lines->endStyle();
+                if (endStyle != Lines::Arrow && endStyle != Lines::Open) {
+                    endStyle = Lines::Flat;
+                }
+                if (numEl == 0 || numConn == 0 || numPoint == 0) {
+                    startStyle = Lines::Open;
+                    endStyle = Lines::Open;
+                }
+
+                Index numCoordStart = 0, numCoordEnd = 0;
+                Index numIndStart = 0, numIndEnd = 0;
+                if (startStyle == Lines::Flat) {
+                    numCoordStart = 1 + NumSect;
+                    numIndStart = 3 * NumSect;
+                }
+                if (endStyle == Lines::Arrow) {
+                    numCoordEnd = 3 * NumSect;
+                    numIndEnd = 3 * 3 * NumSect;
+                } else if (endStyle == Lines::Flat) {
+                    numCoordEnd = 1 + NumSect;
+                    numIndEnd = 3 * NumSect;
+                }
+
+                const Index numSeg = numConn - (numEl - numEmptyEl);
+                const Index numVert = numSeg * 3 * TriPerSection +
+                                      (numEl - numEmptyEl - numSinglePointEl) * (numIndStart + numIndEnd) +
+                                      numSinglePointEl * 3 * TriPerSphere;
+                const Index numCoord =
+                    numVert > 0 ? (numConn - numSinglePointEl) * NumSect +
+                                      (numEl - numEmptyEl - numSinglePointEl) * (numCoordStart + numCoordEnd) +
+                                      numSinglePointEl * CoordPerSphere
+                                : 0;
+
+                osg::ref_ptr<osg::Vec3Array> gnormals = new osg::Vec3Array(numCoord);
+                auto corners = new osg::DrawElementsUInt(osg::PrimitiveSet::TRIANGLES, numVert);
+                primitives = corners;
+                vertices->resize(numCoord);
+                if (database) {
+                    multiplicity = std::make_unique<std::vector<Index>>();
+                    if (mapping == DataBase::Element) {
+                        multiplicity->reserve(numEl);
+                    } else {
+                        multiplicity->reserve(numConn);
+                    }
+                }
+                auto ti = &(*corners)[0];
+
+                Index ci = 0; // coord index
+                Index ii = 0; // index index
+                for (Index i = 0; i < numEl; ++i) {
+                    const Index begin = el[i], end = el[i + 1];
+                    if (multiplicity && mapping == DataBase::Element) {
+                        Index ntri = numIndStart / 3 + (end - begin - 1) * TriPerSection + numIndEnd / 3;
+                        if (begin == end) {
+                            ntri = 0;
+                        } else if (begin + 1 == end) {
+                            ntri = gen.TriPerSphere;
+                        }
+                        multiplicity->push_back(ntri * 3);
+                    }
+
+                    Vector3 normal, dir;
+                    for (Index k = begin; k < end; ++k) {
+                        Index idx = cl ? cl[k] : k;
+                        Index nidx = (cl && k + 1 < end) ? cl[k + 1] : k + 1;
+                        Index pidx = (cl && k > 0) ? cl[k - 1] : k - 1;
+                        auto curRad = radiusPerElement ? r[i] : r[idx];
+                        Vector3 cur(x[idx], y[idx], z[idx]);
+
+                        if (end == begin + 1) {
+                            // single point element: draw a sphere
+                            gen.addSphere(cur[0], cur[1], cur[2], curRad, ci, &ti[ii], vertices, gnormals);
+                            ci += gen.CoordPerSphere;
+                            ii += 3 * gen.TriPerSphere;
+
+                            if (multiplicity && mapping != DataBase::Element) {
+                                multiplicity->push_back(gen.CoordPerSphere);
+                            }
+                            break;
+                        }
+
+                        Vector3 next = k + 1 < end ? Vector3(x[nidx], y[nidx], z[nidx]) : cur;
+                        Vector3 l1 = next - cur;
+                        auto len1 = l1.norm(), len2 = Scalar();
+                        bool first = false, last = false;
+                        if (k == begin) {
+                            first = true;
+                            dir = l1.normalized();
+                        } else if (k + 1 == end) {
+                            last = true;
+                            // keep previous direction for final segment
+                        } else {
+                            Vector3 l2(x[idx] - x[pidx], y[idx] - y[pidx], z[idx] - z[pidx]);
+                            len2 = l2.norm();
+                            if (len2 > 100 * len1) {
+                                dir = l2.normalized();
+                            } else if (len1 > 100 * len2) {
+                                dir = l1.normalized();
+                            } else {
+                                dir = (l1.normalized() + l2.normalized()).normalized();
+                            }
+                        }
+
+                        if (multiplicity && mapping != DataBase::Element) {
+                            Index ncoord = NumSect;
+                            if (first) {
+                                ncoord += numCoordStart;
+                            }
+                            if (last) {
+                                ncoord += numCoordEnd;
+                            }
+                            multiplicity->push_back(ncoord);
+                        }
+
+                        if (first || normal.norm() < Scalar(0.5)) {
+                            normal = dir.cross(Vector3(0, 0, 1)).normalized();
+                            if (normal.norm() < Scalar(0.5)) {
+                                // try another direction
+                                normal = dir.cross(Vector3(0, 1, 0)).normalized();
+                            }
+                        } else if (len1 > 1e-4 || len2 > 1e-4) {
+                            normal = (normal - dir.dot(normal) * dir).normalized();
+                        }
+
+                        Quaternion qrot(AngleAxis(2. * M_PI / NumSect, dir));
+                        const auto rot = qrot.toRotationMatrix();
+                        const auto rot2 = Quaternion(AngleAxis(M_PI / NumSect, dir)).toRotationMatrix();
+
+                        // start cap
+                        if (first && startStyle == Lines::Flat) {
+                            vertices->at(ci) = osg::Vec3(cur[0], cur[1], cur[2]);
+                            gnormals->at(ci) = osg::Vec3(dir[0], dir[1], dir[2]);
+                            ++ci;
+
+                            for (Index l = 0; l < NumSect; ++l) {
+                                ti[ii++] = ci - 1;
+                                ti[ii++] = ci + l;
+                                ti[ii++] = ci + (l + 1) % NumSect;
+                            }
+
+                            Vector3 rad = normal;
+                            for (Index l = 0; l < NumSect; ++l) {
+                                gnormals->at(ci) = osg::Vec3(dir[0], dir[1], dir[2]);
+                                Vector3 p = cur + curRad * rad;
+                                rad = rot * rad;
+                                vertices->at(ci) = osg::Vec3(p[0], p[1], p[2]);
+                                ++ci;
+                            }
+                        }
+
+                        // indices
+                        if (!last) {
+                            for (Index l = 0; l < NumSect; ++l) {
+                                ti[ii++] = ci + l;
+                                ti[ii++] = ci + (l + 1) % NumSect;
+                                ti[ii++] = ci + (l + 1) % NumSect + NumSect;
+                                ti[ii++] = ci + l;
+                                ti[ii++] = ci + (l + 1) % NumSect + NumSect;
+                                ti[ii++] = ci + l + NumSect;
+                            }
+                        }
+
+                        // coordinates and normals
+                        auto n = normal;
+                        for (Index l = 0; l < NumSect; ++l) {
+                            gnormals->at(ci) = osg::Vec3(n[0], n[1], n[2]);
+                            Vector3 p = cur + curRad * n;
+                            vertices->at(ci) = osg::Vec3(p[0], p[1], p[2]);
+                            n = rot * n;
+                            ++ci;
+                        }
+
+                        // end cap/arrow
+                        if (last && endStyle != Lines::Open) {
+                            if (endStyle == Lines::Arrow) {
+                                Index tipStart = ci;
+                                for (Index l = 0; l < NumSect; ++l) {
+                                    vertices->at(ci) = vertices->at(ci - NumSect);
+                                    gnormals->at(ci) = osg::Vec3(dir[0], dir[1], dir[2]);
+                                    ++ci;
+                                }
+
+                                Scalar tipSize = 2.0;
+
+                                Vector3 n = normal;
+                                Vector3 tip = cur + tipSize * dir * curRad;
+                                for (Index l = 0; l < NumSect; ++l) {
+                                    Vector3 norm = (n + dir).normalized();
+                                    Vector3 p = cur + tipSize * curRad * n;
+                                    n = rot * n;
+
+                                    gnormals->at(ci) = osg::Vec3(norm[0], norm[1], norm[2]);
+                                    vertices->at(ci) = osg::Vec3(p[0], p[1], p[2]);
+                                    ++ci;
+                                }
+
+                                n = rot2 * normal;
+                                for (Index l = 0; l < NumSect; ++l) {
+                                    Vector3 norm = (n + dir).normalized();
+                                    n = rot * n;
+
+                                    gnormals->at(ci) = osg::Vec3(norm[0], norm[1], norm[2]);
+                                    vertices->at(ci) = osg::Vec3(tip[0], tip[1], tip[2]);
+                                    ++ci;
+                                }
+
+                                for (Index l = 0; l < NumSect; ++l) {
+                                    ti[ii++] = tipStart + l;
+                                    ti[ii++] = tipStart + (l + 1) % NumSect;
+                                    ti[ii++] = tipStart + NumSect + (l + 1) % NumSect;
+
+                                    ti[ii++] = tipStart + NumSect + (l + 1) % NumSect;
+                                    ti[ii++] = tipStart + NumSect + l;
+                                    ti[ii++] = tipStart + l;
+
+                                    ti[ii++] = tipStart + NumSect + l;
+                                    ti[ii++] = tipStart + NumSect + (l + 1) % NumSect;
+                                    ti[ii++] = tipStart + 2 * NumSect + l;
+                                }
+                            } else if (endStyle == Lines::Flat) {
+                                for (Index l = 0; l < NumSect; ++l) {
+                                    vertices->at(ci) = vertices->at(ci - NumSect);
+                                    gnormals->at(ci) = osg::Vec3(dir[0], dir[1], dir[2]);
+                                    ++ci;
+                                }
+
+                                vertices->at(ci) = osg::Vec3(cur[0], cur[1], cur[2]);
+                                gnormals->at(ci) = osg::Vec3(dir[0], dir[1], dir[2]);
+                                for (Index l = 0; l < NumSect; ++l) {
+                                    ti[ii++] = ci - NumSect + l;
+                                    ti[ii++] = ci - NumSect + (l + 1) % NumSect;
+                                    ti[ii++] = ci;
+                                }
+                                ++ci;
+                            }
+                        }
+                    }
+                }
+                assert(ci == numCoord);
+                assert(ii == numVert);
+                assert(!multiplicity || mapping != DataBase::Vertex || multiplicity->size() == numConn);
+
+                geom->setNormalArray(gnormals);
+                geom->setNormalBinding(osg::Geometry::BIND_PER_VERTEX);
+
+            } else {
+                auto strips = new osg::DrawArrayLengths(osg::PrimitiveSet::LINE_STRIP);
+                primitives = strips;
+
+                for (Index index = 0; index < numElements; index++) {
+                    Index start = el[index];
+                    Index end = el[index + 1];
+                    Index num = end - start;
+
+                    strips->push_back(num);
+
+                    for (Index n = 0; n < num; n++) {
+                        Index v = start + n;
+                        if (cl)
+                            v = cl[v];
+                        vertices->push_back(osg::Vec3(x[v], y[v], z[v]));
+                    }
+                }
+                lighted = false;
+                state->setAttributeAndModes(new osg::LineWidth(2.f), osg::StateAttribute::ON);
             }
+
             geom->setVertexArray(vertices.get());
             cache.vertices.push_back(vertices);
 
             geom->addPrimitiveSet(primitives.get());
             cache.primitives.push_back(primitives);
-        }
 
-        if (m_ro->hasSolidColor) {
-            const auto &c = m_ro->solidColor;
-            osg::Vec4Array *colArray = new osg::Vec4Array();
-            colArray->push_back(osg::Vec4(c[0], c[1], c[2], c[3]));
-            colArray->setBinding(osg::Array::BIND_OVERALL);
-            geom->setColorArray(colArray);
+            if (m_ro->hasSolidColor) {
+                const auto &c = m_ro->solidColor;
+                osg::Vec4Array *colArray = new osg::Vec4Array();
+                colArray->push_back(osg::Vec4(c[0], c[1], c[2], c[3]));
+                colArray->setBinding(osg::Array::BIND_OVERALL);
+                geom->setColorArray(colArray);
+            }
         }
-
-        lighted = false;
-        state->setAttributeAndModes(new osg::LineWidth(2.f), osg::StateAttribute::ON);
 
         break;
     }
@@ -1446,28 +1862,32 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
         if (triangles || polygons || quads) {
             // objects split and mapped data already applied accordingly
         } else if (vistle::Vec<Scalar>::const_ptr data = vistle::Vec<Scalar>::as(m_mapped)) {
-            osg::ref_ptr<osg::FloatArray> fl = buildArray<vistle::Vec<Scalar>>(data, coords, debug, m_options);
+            osg::ref_ptr<osg::FloatArray> fl =
+                buildArray<vistle::Vec<Scalar>>(data, coords, debug, m_options, multiplicity.get());
             if (fl && !fl->empty() && geom) {
                 //std::cerr << "VistleGeometryGenerator: setting VertexAttribArray for Vec<Scalar> of size " << fl->size() << std::endl;
                 geom->setVertexAttribArray(DataAttrib, fl, osg::Array::BIND_PER_VERTEX);
                 dataValid = true;
             }
         } else if (vistle::Vec<Scalar, 3>::const_ptr data = vistle::Vec<Scalar, 3>::as(m_mapped)) {
-            osg::ref_ptr<osg::FloatArray> fl = buildArray<vistle::Vec<Scalar, 3>>(data, coords, debug, m_options);
+            osg::ref_ptr<osg::FloatArray> fl =
+                buildArray<vistle::Vec<Scalar, 3>>(data, coords, debug, m_options, multiplicity.get());
             if (fl && !fl->empty() && geom) {
                 //std::cerr << "VistleGeometryGenerator: setting VertexAttribArray for Vec<Scalar,3> of size " << fl->size() << std::endl;
                 geom->setVertexAttribArray(DataAttrib, fl, osg::Array::BIND_PER_VERTEX);
                 dataValid = true;
             }
         } else if (vistle::Vec<Index>::const_ptr data = vistle::Vec<Index>::as(m_mapped)) {
-            osg::ref_ptr<osg::FloatArray> fl = buildArray<vistle::Vec<Index>>(data, coords, debug, m_options);
+            osg::ref_ptr<osg::FloatArray> fl =
+                buildArray<vistle::Vec<Index>>(data, coords, debug, m_options, multiplicity.get());
             if (fl && !fl->empty() && geom) {
                 //std::cerr << "VistleGeometryGenerator: setting VertexAttribArray for Vec<Index> of size " << fl->size() << std::endl;
                 geom->setVertexAttribArray(DataAttrib, fl, osg::Array::BIND_PER_VERTEX);
                 dataValid = true;
             }
         } else if (vistle::Vec<Byte>::const_ptr data = vistle::Vec<Byte>::as(m_mapped)) {
-            osg::ref_ptr<osg::FloatArray> fl = buildArray<vistle::Vec<Byte>>(data, coords, debug, m_options);
+            osg::ref_ptr<osg::FloatArray> fl =
+                buildArray<vistle::Vec<Byte>>(data, coords, debug, m_options, multiplicity.get());
             if (fl && !fl->empty() && geom) {
                 //std::cerr << "VistleGeometryGenerator: setting VertexAttribArray for Vec<Byte> of size " << fl->size() << std::endl;
                 geom->setVertexAttribArray(DataAttrib, fl, osg::Array::BIND_PER_VERTEX);
