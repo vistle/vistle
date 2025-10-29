@@ -5,9 +5,6 @@
 
 class DisplaceVtkm: public vistle::VtkmModule {
 public:
-    DEFINE_ENUM_WITH_STRING_CONVERSIONS(DisplaceComponent, (X)(Y)(Z)(All))
-    DEFINE_ENUM_WITH_STRING_CONVERSIONS(DisplaceOperation, (Set)(Add)(Multiply))
-
     DisplaceVtkm(const std::string &name, int moduleID, mpi::communicator comm);
     ~DisplaceVtkm();
 
@@ -17,11 +14,6 @@ private:
     vistle::FloatParameter *p_scale = nullptr;
 
     std::unique_ptr<viskores::filter::Filter> setUpFilter() const override;
-    vistle::DataBase::ptr prepareOutputField(const viskores::cont::DataSet &dataset,
-                                             const vistle::Object::const_ptr &inputGrid,
-                                             const vistle::DataBase::const_ptr &inputField,
-                                             const std::string &fieldName,
-                                             const vistle::Object::const_ptr &outputGrid) const override;
 };
 
 #endif // VISTLE_DISPLACEVTKM_DISPLACEVTKM_H
