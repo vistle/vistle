@@ -2142,16 +2142,16 @@ std::vector<int> StateTracker::waitForSlaveHubs(const std::vector<std::string> &
     return ids;
 }
 
-void StateTracker::registerObserver(StateObserver *observer) const
+bool StateTracker::registerObserver(StateObserver *observer) const
 {
     mutex_locker guard(m_stateMutex);
-    m_observers.insert(observer);
+    return m_observers.insert(observer).second;
 }
 
-void StateTracker::unregisterObserver(StateObserver *observer) const
+bool StateTracker::unregisterObserver(StateObserver *observer) const
 {
     mutex_locker guard(m_stateMutex);
-    m_observers.erase(observer);
+    return m_observers.erase(observer) > 0;
 }
 
 ParameterSet StateTracker::getConnectedParameters(const Parameter &param, bool onlyDirect) const

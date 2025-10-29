@@ -35,7 +35,7 @@ UserInterface::UserInterface(const std::string &host, const unsigned short port,
     message::DefaultSender::init(message::Id::UI, 0);
 
     if (m_observer) {
-        m_stateTracker.registerObserver(m_observer);
+        m_observerRegistered = m_stateTracker.registerObserver(m_observer);
         m_observer->uiLockChanged(m_locked);
     }
 
@@ -346,6 +346,11 @@ void UserInterface::removeFileBrowser(FileBrowser *browser)
 
 UserInterface::~UserInterface()
 {
+    if (m_observer && m_observerRegistered) {
+        m_stateTracker.unregisterObserver(m_observer);
+        m_observer = nullptr;
+        m_observerRegistered = false;
+    }
     std::cerr << "  userinterface [" << host() << "] [" << id() << "] quit" << std::endl;
 }
 
