@@ -12,4 +12,5 @@ add_subdirectory(ToPoints)
 add_subdirectory(ToTriangles)
 add_subdirectory(SpheresOverlap)
 add_subdirectory(VertexClusteringVtkm)
+add_subdirectory(ApplyTransformVtkm)
 
