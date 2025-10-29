@@ -1139,7 +1139,23 @@ public:
 #ifdef OBSERVER_DEBUG
     : m_out(std::cerr)
 #endif
-    {}
+    {
+        state().registerObserver(this);
+#ifdef OBSERVER_DEBUG
+        m_out << "TrivialStateObserver created" << std::endl;
+#endif
+    }
+
+    ~TrivialStateObserver()
+    {
+        if (pythonModuleInstance) {
+            pythonModuleInstance->access()->state().unregisterObserver(this);
+            //state().unregisterObserver(this);
+        }
+#ifdef OBSERVER_DEBUG
+        m_out << "TrivialStateObserver destroyed" << std::endl;
+#endif
+    }
 
     void newHub(int hubId, const message::AddHub &hub) override
     {
@@ -1700,6 +1716,9 @@ PythonModule::PythonModule(PythonStateAccessor &stateAccessor): m_access(&stateA
 PythonModule::~PythonModule()
 {
     pythonModuleInstance = nullptr;
+#ifdef DEBUG
+    std::cerr << "Vistle python module destroyed" << std::endl;
+#endif
 }
 
 PythonStateAccessor *PythonModule::access()

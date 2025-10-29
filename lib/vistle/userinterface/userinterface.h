@@ -82,6 +82,7 @@ protected:
     bool m_quit = false;
 
     StateObserver *m_observer = nullptr;
+    bool m_observerRegistered = false;
     StateTracker m_stateTracker;
 
     bool handleMessage(const message::Message *message, const buffer &payload);
