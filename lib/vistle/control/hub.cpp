@@ -1429,12 +1429,6 @@ bool Hub::dispatch()
             sendSlaves(make.message<message::CloseConnection>("user interrupt"));
             handleMessage(quit);
         }
-        m_workGuard.reset();
-        for (unsigned count = 0; count < 300; ++count) {
-            if (m_ioContext.stopped())
-                break;
-            usleep(10000);
-        }
         emergencyQuit();
     }
 
