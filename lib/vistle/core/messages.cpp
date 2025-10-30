@@ -2208,7 +2208,8 @@ std::ostream &operator<<(std::ostream &s, const Message &m)
     case ITEMINFO: {
         auto &mm = static_cast<const ItemInfo &>(m);
         s << ", type: " << mm.infoType();
-        s << ", port: " << mm.port();
+        if (mm.port() && *mm.port())
+            s << ", port: " << mm.port();
         if (mm.infoType() == ItemInfo::PortEnableState) {
             s << ", state: " << ItemInfo::toString(mm.portEnableState());
         }
