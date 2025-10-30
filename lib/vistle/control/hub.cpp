@@ -1416,10 +1416,9 @@ bool Hub::dispatch()
             }
         }
         lock.unlock();
-        boost::system::error_code error;
         if (sock) {
             work = true;
-            handleWrite(sock, error);
+            handleWrite(sock);
         }
     } while (!m_interrupt && !m_quitting && avail >= sizeof(uint32_t));
 
@@ -1533,15 +1532,8 @@ bool Hub::checkOutstandingDataConnections()
     return changed;
 }
 
-void Hub::handleWrite(Hub::socket_ptr sock, const boost::system::error_code &error)
+void Hub::handleWrite(Hub::socket_ptr sock)
 {
-    if (error) {
-        CERR << "error during write on socket: " << error.message() << std::endl;
-        removeSocket(sock);
-        //m_quitting = true;
-        return;
-    }
-
     message::Identify::Identity senderType = message::Identify::UNKNOWN;
     {
         std::unique_lock<std::mutex> lock(m_socketMutex);
