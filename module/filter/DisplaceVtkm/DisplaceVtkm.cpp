@@ -1,5 +1,6 @@
+#include "filter/DisplaceFilter.h"
+
 #include "DisplaceVtkm.h"
-#include "DisplaceVtkmFilter.h"
 
 MODULE_MAIN(DisplaceVtkm)
 
@@ -22,7 +23,7 @@ DisplaceVtkm::~DisplaceVtkm()
 
 std::unique_ptr<viskores::filter::Filter> DisplaceVtkm::setUpFilter() const
 {
-    auto filter = std::make_unique<DisplaceVtkmFilter>();
+    auto filter = std::make_unique<DisplaceFilter>();
     filter->SetDisplacementComponent(static_cast<DisplaceComponent>(p_component->getValue()));
     filter->SetDisplacementOperation(static_cast<DisplaceOperation>(p_operation->getValue()));
     filter->SetScale(static_cast<viskores::FloatDefault>(p_scale->getValue()));
