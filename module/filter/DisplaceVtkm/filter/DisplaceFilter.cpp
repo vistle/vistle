@@ -4,36 +4,33 @@ VISKORES_CONT DisplaceFilter::DisplaceFilter()
 : m_component(vistle::DisplaceComponent::X), m_operation(vistle::DisplaceOperation::Add), m_scale(1.0f)
 {}
 
-VISKORES_CONT viskores::cont::DataSet DisplaceFilter::DoExecute(const viskores::cont::DataSet &dataset)
+VISKORES_CONT viskores::cont::DataSet DisplaceFilter::DoExecute(const viskores::cont::DataSet &inputDataset)
 {
-    auto inputScalar = this->GetFieldFromDataSet(dataset);
-    auto inputCoords = dataset.GetCoordinateSystem(this->GetActiveCoordinateSystemIndex());
+    auto inputScalar = this->GetFieldFromDataSet(inputDataset);
+    auto inputCoords = inputDataset.GetCoordinateSystem(this->GetActiveCoordinateSystemIndex());
 
-    auto coordsArray = inputCoords.GetData();
+    viskores::cont::UnknownArrayHandle outputCoords;
 
-    viskores::cont::UnknownArrayHandle resultCoords;
-
-    this->CastAndCallVecField<3>(coordsArray, [&](const auto &concreteCoords) {
-        using CoordsArrayType = std::decay_t<decltype(concreteCoords)>;
+    this->CastAndCallVecField<3>(inputCoords.GetData(), [&](const auto &coords) {
+        using CoordsArrayType = std::decay_t<decltype(coords)>;
         using CoordType = typename CoordsArrayType::ValueType;
 
-        this->CastAndCallScalarField(inputScalar.GetData(), [&](const auto &concreteScalars) {
-            viskores::cont::ArrayHandle<CoordType> resultArray;
+        this->CastAndCallScalarField(inputScalar.GetData(), [&](const auto &scalars) {
+            viskores::cont::ArrayHandle<CoordType> result;
 
-            this->Invoke(vistle::DisplaceVtkmWorklet{m_component, m_operation, m_scale}, concreteScalars,
-                         concreteCoords, resultArray);
+            this->Invoke(vistle::DisplaceVtkmWorklet{m_component, m_operation, m_scale}, scalars, coords, result);
 
-            resultCoords = resultArray;
+            outputCoords = result;
         });
     });
 
-    auto outputName = this->GetOutputFieldName();
-    if (outputName == "")
-        outputName = inputScalar.GetName() + "_displaced";
+    auto outputFieldName = this->GetOutputFieldName();
+    if (outputFieldName == "")
+        outputFieldName = inputScalar.GetName() + "_displaced";
 
     return this->CreateResultCoordinateSystem(
-        dataset, dataset.GetCellSet(), inputCoords.GetName(), resultCoords,
+        inputDataset, inputDataset.GetCellSet(), inputCoords.GetName(), outputCoords,
         [&](viskores::cont::DataSet &out, const viskores::cont::Field &fieldToPass) {
-            out.AddField(viskores::cont::Field(outputName, fieldToPass.GetAssociation(), fieldToPass.GetData()));
+            out.AddField(viskores::cont::Field(outputFieldName, fieldToPass.GetAssociation(), fieldToPass.GetData()));
         });
 }

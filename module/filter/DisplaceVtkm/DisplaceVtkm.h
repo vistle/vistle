@@ -9,8 +9,8 @@ public:
     ~DisplaceVtkm();
 
 private:
-    vistle::IntParameter *p_operation = nullptr;
     vistle::IntParameter *p_component = nullptr;
+    vistle::IntParameter *p_operation = nullptr;
     vistle::FloatParameter *p_scale = nullptr;
 
     std::unique_ptr<viskores::filter::Filter> setUpFilter() const override;
