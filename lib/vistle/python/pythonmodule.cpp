@@ -489,7 +489,7 @@ static std::vector<std::string> getOutputPorts(int id)
     return state().portTracker()->getOutputPortNames(id);
 }
 
-std::string getPortDescription(int id, const std::string &portname)
+static std::string getPortDescription(int id, const std::string &portname)
 {
     std::unique_lock<PythonStateAccessor> guard(access());
     return state().portTracker()->getPortDescription(id, portname);
