@@ -198,6 +198,7 @@ private:
     std::shared_ptr<process::child> m_vrb;
     std::chrono::steady_clock::time_point m_lastVrbStart;
     int m_vrbStartWait = 1;
+    int m_nestingLevel = 0;
 
     std::string m_logfileFormat;
 

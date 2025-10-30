@@ -400,8 +400,10 @@ void Hub::initiateQuit()
 int Hub::run()
 {
     try {
-        while (dispatch())
-            ;
+        assert(m_nestingLevel == 0);
+        while (dispatch()) {
+            assert(m_nestingLevel == 0);
+        }
     } catch (vistle::exception &e) {
         std::cerr << "Hub: fatal exception: " << e.what() << std::endl << e.where() << std::endl;
         return 1;
@@ -1382,6 +1384,8 @@ void Hub::slaveReady(Slave &slave)
 
 bool Hub::dispatch()
 {
+    ++m_nestingLevel;
+
     bool ret = true;
     bool work = false;
     size_t avail = 0;
@@ -1397,6 +1401,7 @@ bool Hub::dispatch()
                 lock.unlock();
                 CERR << "socket closed" << std::endl;
                 removeSocket(s);
+                --m_nestingLevel;
                 return true;
             }
             boost::asio::socket_base::bytes_readable command(true);
@@ -1406,6 +1411,7 @@ bool Hub::dispatch()
                 lock.unlock();
                 CERR << "socket error: " << ex.what() << std::endl;
                 removeSocket(s);
+                --m_nestingLevel;
                 return true;
             }
             if (command.get() > avail) {
@@ -1416,7 +1422,17 @@ bool Hub::dispatch()
         lock.unlock();
         if (sock) {
             work = true;
-            handleWrite(sock);
+            if (!handleWrite(sock)) {
+                m_stateTracker.cancel();
+                if (m_nestingLevel > 1) {
+                    // interrupt script processing
+                    --m_nestingLevel;
+                    return false;
+                }
+                auto quit = make.message<message::Quit>();
+                handlePriv(quit, message::Identify::UI);
+                break;
+            }
         }
     } while (!m_interrupt && !m_quitting && avail >= sizeof(uint32_t));
 
@@ -1480,6 +1496,8 @@ bool Hub::dispatch()
             CERR << "dispatch: returning false for Quit" << std::endl;
         }
     }
+
+    --m_nestingLevel;
 
     return ret;
 }
@@ -1557,10 +1575,6 @@ bool Hub::handleWrite(Hub::socket_ptr sock)
         } else {
             ok = handleMessage(msg, sock, &payload);
         }
-        if (!ok) {
-            initiateQuit();
-        }
-
         return ok;
     } else if (ec) {
         CERR << "error during read from socket: " << ec.message() << std::endl;
@@ -1863,11 +1877,6 @@ bool Hub::hubReady()
         m_slavesToConnect.clear();
 
         if (!processStartupScripts() || !processScript()) {
-            initiateQuit();
-            auto q = make.message<message::Quit>();
-            sendSlaves(q);
-            sendManager(q);
-            handleMessage(q);
             return false;
         }
 
@@ -2607,14 +2616,6 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                 m_dataProxy->setHubId(m_hubId);
                 if (m_managerConnected) {
                     sendManager(set);
-                }
-                if (m_managerConnected) {
-#if 0
-               auto state = m_stateTracker.getLockedState();
-               for (auto &m: state.messages) {
-                  sendMessage(sock, m);
-               }
-#endif
                     if (!hubReady()) {
                         return false;
                     }
@@ -3723,22 +3724,24 @@ bool Hub::processScript()
     if (m_scriptPath.empty())
         return true;
 
+    bool doBarrier = m_barrierAfterLoad;
+
     if (!ends_with(m_scriptPath, ".vsl") && !ends_with(m_scriptPath, ".py")) {
         boost::system::error_code ec;
         if (!filesystem::exists(m_scriptPath, ec)) {
             for (const auto &ext: {".vsl", ".py"}) {
                 if (filesystem::exists(m_scriptPath + ext, ec)) {
-                    auto retval = processScript(m_scriptPath + ext, m_barrierAfterLoad, m_executeModules);
-                    if (retval) {
+                    if (processScript(m_scriptPath + ext, doBarrier, m_executeModules)) {
                         setLoadedFile(m_scriptPath + ext);
                         return true;
                     }
+                    return false;
                 }
             }
         }
     }
 
-    auto retval = processScript(m_scriptPath, m_barrierAfterLoad, m_executeModules);
+    auto retval = processScript(m_scriptPath, doBarrier, m_executeModules);
     if (retval) {
         setLoadedFile(m_scriptPath);
     }
@@ -3816,7 +3819,7 @@ bool Hub::handlePriv(const message::Quit &quit, message::Identify::Identity send
             sendManager(quit);
     };
     if (quit.id() == Id::Broadcast) {
-        if (m_verbose >= Verbosity::Normal) {
+        if (m_verbose > Verbosity::Normal) {
             CERR << "quit requested by " << senderType << std::endl;
         }
         m_uiManager.requestQuit();
@@ -4566,8 +4569,11 @@ bool Hub::checkChildProcesses(bool emergency, bool onMainThread)
 
 void Hub::emergencyQuit()
 {
-    if (m_emergency)
+    if (m_interrupt) {
+        m_interrupt = false;
+    } else if (m_emergency) {
         return;
+    }
 
     CERR << "forced to quit" << std::endl;
     m_emergency = true;
