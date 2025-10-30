@@ -79,6 +79,11 @@ void StateTracker::cancel()
     m_slaveCondition.notify_all();
 }
 
+bool StateTracker::cancelling() const
+{
+    return m_cancelling;
+}
+
 void StateTracker::setVerbose(bool verbose)
 {
     m_verbose = verbose;
@@ -2047,10 +2052,8 @@ std::shared_ptr<message::Buffer> StateTracker::waitForReply(const message::uuid_
 {
     std::unique_lock<mutex> locker(m_stateMutex);
     std::shared_ptr<message::Buffer> ret = removeRequest(uuid);
-    while (!ret && !m_quitting) {
+    while (!ret && !m_quitting && !m_cancelling) {
         m_replyCondition.wait(locker);
-        if (m_cancelling)
-            break;
         ret = removeRequest(uuid);
     }
     return ret;
