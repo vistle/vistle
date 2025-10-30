@@ -131,7 +131,7 @@ private:
     bool startServer();
     bool startManager(bool inCover, const std::string &libsimArg);
     bool startAccept(std::shared_ptr<acceptor> a);
-    void handleWrite(socket_ptr sock);
+    bool handleWrite(socket_ptr sock);
     void handleAccept(std::shared_ptr<acceptor> a, socket_ptr sock, const boost::system::error_code &error);
     void addSocket(socket_ptr sock, message::Identify::Identity ident = message::Identify::UNKNOWN);
     bool removeSocket(socket_ptr sock, bool close = true);

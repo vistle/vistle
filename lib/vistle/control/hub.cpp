@@ -1524,7 +1524,7 @@ bool Hub::checkOutstandingDataConnections()
     return changed;
 }
 
-void Hub::handleWrite(Hub::socket_ptr sock)
+bool Hub::handleWrite(Hub::socket_ptr sock)
 {
     message::Identify::Identity senderType = message::Identify::UNKNOWN;
     {
@@ -1536,7 +1536,7 @@ void Hub::handleWrite(Hub::socket_ptr sock)
 
     if (senderType == message::Identify::VRB) {
         handleVrb(sock);
-        return;
+        return true;
     }
 
     message::Buffer msg;
@@ -1559,13 +1559,17 @@ void Hub::handleWrite(Hub::socket_ptr sock)
         }
         if (!ok) {
             initiateQuit();
-            //break;
         }
+
+        return ok;
     } else if (ec) {
         CERR << "error during read from socket: " << ec.message() << std::endl;
         removeSocket(sock);
         //initiateQuit();
+        return false;
     }
+
+    return true;
 }
 
 bool Hub::sendMaster(const message::Message &msg, const buffer *payload)
