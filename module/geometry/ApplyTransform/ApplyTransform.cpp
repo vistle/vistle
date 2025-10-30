@@ -85,16 +85,10 @@ bool ApplyTransform::compute()
             m_gridCache.storeAndUnlock(gridEntry, outGrid);
         }
         if (split.mapped) {
-            auto mapping = split.mapped->guessMapping();
-            if (mapping != DataBase::Vertex) {
-                sendError("data has to be mapped per vertex");
-                out = outGrid;
-            } else {
-                auto data = split.mapped->clone();
-                data->setGrid(outGrid);
-                updateMeta(data);
-                out = data;
-            }
+            auto data = split.mapped->clone();
+            data->setGrid(outGrid);
+            updateMeta(data);
+            out = data;
         } else {
             out = outGrid;
         }
