@@ -4497,12 +4497,29 @@ bool Hub::checkChildProcesses(bool emergency, bool onMainThread)
             pname = "with id " + idstring + " (PID " + std::to_string(it->first->id()) + ")";
         }
         if (!exitOk && it->first->exit_code() != 0) {
+            bool ok = false;
             std::stringstream str;
+#ifdef _WIN32
             str << "process " << pname << " exited with code " << it->first->exit_code();
-            sendError(str.str(), id);
-            if (obs) {
-                str << std::endl;
-                obs->sendOutputToUi(!message::Id::isModule(id));
+#else
+            auto native = it->first->native_exit_code();
+            if (WIFSIGNALED(native)) {
+                int sig = WTERMSIG(native);
+                str << "process " << pname << " killed by signal " << sig;
+            } else if (WIFEXITED(native)) {
+                int ec = WEXITSTATUS(native);
+                str << "process " << pname << " exited with code " << ec;
+                if (ec == 0) {
+                    ok = true;
+                }
+            }
+#endif
+            if (!ok) {
+                sendError(str.str(), id);
+                if (obs) {
+                    str << std::endl;
+                    obs->sendOutputToUi(!message::Id::isModule(id));
+                }
             }
         } else {
             if (m_verbose >= Verbosity::Manager) {
