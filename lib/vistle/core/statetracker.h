@@ -134,6 +134,7 @@ public:
     void lock();
     void unlock();
     bool quitting() const;
+    bool cancelling() const;
 
     void setId(int id);
 

@@ -74,8 +74,9 @@ bool PythonInterpreter::error() const
 
 bool PythonInterpreter::quitting() const
 {
+    pybind11::gil_scoped_release release;
     std::lock_guard stateLocker(*m_access);
-    return m_access->state().quitting();
+    return m_access->state().quitting() || m_access->state().cancelling();
 }
 
 PythonExecutor::PythonExecutor(PythonInterpreter &inter, const std::string &command)
