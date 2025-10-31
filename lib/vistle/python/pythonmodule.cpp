@@ -31,7 +31,7 @@
 #endif
 
 //#define DEBUG
-#define OBSERVER_DEBUG
+//#define OBSERVER_DEBUG
 
 #include <vistle/core/statetracker.h>
 #include <vistle/core/porttracker.h>
