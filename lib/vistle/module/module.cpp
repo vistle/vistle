@@ -1066,7 +1066,7 @@ void Module::addResultCache(ResultCacheBase &cache)
 {
     if (!m_useResultCache) {
         m_useResultCache =
-            addIntParameter("_use_result_cache", "whether to try to cache results for re-use in subseqeuent timesteps",
+            addIntParameter("_use_result_cache", "whether to try to cache results for re-use in subsequent timesteps",
                             true, Parameter::Boolean);
     }
     cache.enable(m_useResultCache->getValue());
