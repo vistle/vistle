@@ -26,10 +26,13 @@ public:
     void sendMessage(const message::Message &msg, int id = message::Id::Broadcast,
                      const buffer *payload = nullptr) const;
     void addClient(std::shared_ptr<boost::asio::ip::tcp::socket> sock);
-    void lockUi(bool lock);
+
+    void lock();
+    void unlock();
     bool isLocked() const;
 
 private:
+    void lockUi(bool locked);
     bool sendMessage(std::shared_ptr<UiClient> c, const message::Message &msg, const buffer *payload = nullptr) const;
 
     void disconnect();

@@ -318,7 +318,7 @@ Hub::Hub(bool inManager)
 
     make.setId(m_hubId);
     make.setRank(0);
-    m_uiManager.lockUi(true);
+    m_uiManager.lock();
 
     for (int i = 0; i < 4; ++i)
         startIoThread();
@@ -858,10 +858,8 @@ bool Hub::init(int argc, char *argv[])
         sendUi(master);
 
         if (!hubReady()) {
-            m_uiManager.lockUi(false);
             return false;
         }
-        m_uiManager.lockUi(false);
     }
 
     return true;
@@ -1787,6 +1785,10 @@ message::AddHub Hub::addHubForSelf() const
 bool Hub::hubReady()
 {
     assert(m_proxyOnly || m_managerConnected);
+    assert(m_uiManager.isLocked());
+
+    std::unique_lock unlocker(m_uiManager);
+
     if (m_isMaster) {
         m_ready = true;
 
@@ -2052,11 +2054,9 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                         }
                     }
                     if (!hubReady()) {
-                        m_uiManager.lockUi(false);
                         return false;
                     }
                 }
-                m_uiManager.lockUi(false);
                 if (!m_snapshotFile.empty()) {
                     //handleMessage(make.message<Quit>());
                 }
@@ -2744,7 +2744,7 @@ bool Hub::spawnMirror(int hubId, const std::string &name, int mirroredId, int bl
 bool Hub::handlePriv(const message::LoadWorkflow &load)
 {
     std::cerr << "to load: " << load.pathname() << std::endl;
-    m_uiManager.lockUi(true);
+    auto guard = std::make_shared<std::unique_lock<UiManager>>(m_uiManager);
     auto mods = m_stateTracker.getRunningList();
     for (auto id: mods) {
         message::Kill m(id);
@@ -2752,9 +2752,8 @@ bool Hub::handlePriv(const message::LoadWorkflow &load)
         sendModule(m, id);
     }
     assert(!m_lastModuleQuitAction);
-    auto act = [this, load]() {
+    auto act = [this, load, guard]() {
         bool result = processScript(load.pathname(), true, false);
-        m_uiManager.lockUi(false);
         return result;
     };
     if (m_stateTracker.getNumRunning() == 0) {
@@ -2769,12 +2768,11 @@ bool Hub::handlePriv(const message::LoadWorkflow &load)
 bool Hub::handlePriv(const message::SaveWorkflow &save)
 {
     std::cerr << "to save: " << save.pathname() << std::endl;
-    m_uiManager.lockUi(true);
     std::string cmd = "save(\"";
     cmd += save.pathname();
     cmd += "\")";
+    std::unique_lock lock(m_uiManager);
     bool result = processCommand(cmd);
-    m_uiManager.lockUi(false);
     return result;
 }
 
