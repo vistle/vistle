@@ -3747,61 +3747,53 @@ bool Hub::processScript()
 
 bool Hub::processScript(const std::string &filename, bool barrierAfterLoad, bool executeModules)
 {
-    assert(m_uiManager.isLocked());
-#ifdef HAVE_PYTHON
-    if (!m_python) {
-        setStatus("Cannot load " + filename + " - no Python interpreter");
-        return false;
-    }
-    setStatus("Loading " + filename + "...");
     int flags = PythonExecutor::LoadFile;
     if (barrierAfterLoad)
         flags |= PythonExecutor::BarrierAfterLoad;
     if (executeModules)
         flags |= PythonExecutor::ExecuteModules;
     PythonExecutor exec(*m_python, flags, filename);
-    bool interrupt = false;
-    while (!interrupt && !exec.done()) {
-        if (!dispatch()) {
-            CERR << "interrupting script execution of " << filename << std::endl;
-            interrupt = true;
-        }
-    }
-    if (interrupt || exec.state() != PythonExecutor::Success) {
-        setStatus("Loading " + filename + " failed");
-        return false;
-    }
-    setStatus("Loading " + filename + " done");
-    return true;
-#else
-    setStatus("Cannot load " + filename + " - no Python support");
-    return false;
-#endif
+    return invokePython(exec, filename, true);
 }
 
 bool Hub::processCommand(const std::string &command)
 {
+    PythonExecutor exec(*m_python, command);
+    return invokePython(exec, command, false);
+}
+
+bool Hub::invokePython(PythonExecutor &exec, const std::string &arg, bool isFile)
+{
     assert(m_uiManager.isLocked());
+    const std::string verb = isFile ? "load" : "execute";
+    const std::string gerund = isFile ? "Loading" : "Executing";
 #ifdef HAVE_PYTHON
     if (!m_python) {
-        setStatus("Cannot execute: " + command + " - no Python interpreter");
+        setStatus("Cannot " + verb + " " + arg + " - no Python interpreter");
+    }
+    setStatus(gerund + " " + arg + "...");
+    while (!exec.done()) {
+        try {
+            if (!dispatch()) {
+                setStatus("Error occurred during processing of " + arg);
+                stateTracker().cancel();
+            }
+        } catch (const std::exception &e) {
+            setStatus(std::string("Exception during ") + verb + " of " + arg + ": " + e.what());
+            stateTracker().cancel();
+        } catch (...) {
+            setStatus(std::string("Unknown exception during ") + verb + " of " + arg);
+            stateTracker().cancel();
+        }
+    }
+    if (exec.state() != PythonExecutor::Success) {
+        setStatus(gerund + " " + arg + " failed");
         return false;
     }
-    setStatus("Executing " + command + "...");
-    PythonExecutor exec(*m_python, command);
-    bool interrupt = false;
-    while (!interrupt && !exec.done()) {
-        if (!dispatch())
-            interrupt = true;
-    }
-    if (interrupt || exec.state() != PythonExecutor::Success) {
-        setStatus("Executing " + command + " failed");
-        return false;
-    }
-    setStatus("Executing " + command + " done");
+    setStatus(gerund + " " + arg + " done");
     return true;
 #else
-    setStatus("Cannot execute: " + command + " - no Python support");
+    setStatus("Cannot " + verb + " " + filename + " - no Python support");
     return false;
 #endif
 }
