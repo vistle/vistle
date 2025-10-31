@@ -1933,768 +1933,783 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
     if (senderType == Identify::UI)
         msg.setSenderId(m_hubId);
 
-    switch (msg.type()) {
-    case message::TRACE: {
-        auto &mm = msg.as<Trace>();
-        CERR << "handle Trace: " << mm << std::endl;
-        if (mm.module() == m_hubId || !(Id::isHub(mm.module()) || Id::isModule(mm.module()))) {
-            if (mm.on())
-                m_traceMessages = mm.messageType();
-            else
-                m_traceMessages = message::INVALID;
-            m_dataProxy->setTrace(m_traceMessages);
-        }
-        break;
-    }
-    case message::CLOSECONNECTION: {
-        auto &mm = msg.as<CloseConnection>();
-        CERR << "remote closes socket - reason: " << mm.reason() << std::endl;
-        removeSocket(sock);
-        if (senderType == Identify::HUB || senderType == Identify::MANAGER) {
-            CERR << "terminating." << std::endl;
-            emergencyQuit();
-            initiateQuit();
-            return false;
-        }
-        return true;
-        break;
-    }
-    default: {
-        break;
-    }
-    }
-
-    if (msg.destId() == Id::ForBroadcast) {
-        if (m_isMaster) {
-            msg.setDestId(Id::Broadcast);
-        } else {
-            return sendMaster(msg, payload);
-        }
-    }
-
-    switch (msg.type()) {
-    case message::IDENTIFY: {
-        auto &id = static_cast<const Identify &>(msg);
-        if (m_verbose >= Verbosity::Manager) {
-            CERR << "ident msg: " << id.identity() << std::endl;
-        }
-        if (id.identity() == Identify::REQUEST) {
-            if (senderType == Identify::REMOTEBULKDATA) {
-                Identify reply(id, Identify::REMOTEBULKDATA, m_hubId);
-                reply.computeMac();
-                sendMessage(sock, reply);
-            } else if (senderType == Identify::LOCALBULKDATA) {
-                Identify reply(id, Identify::LOCALBULKDATA, -1);
-                reply.computeMac();
-                sendMessage(sock, reply);
-            } else if (m_isMaster) {
-                Identify reply(id, Identify::HUB, m_name);
-                reply.computeMac();
-                sendMessage(sock, reply);
-            } else {
-                Identify reply(id, Identify::SLAVEHUB, m_name);
-                reply.computeMac();
-                sendMessage(sock, reply);
+    try {
+        switch (msg.type()) {
+        case message::TRACE: {
+            auto &mm = msg.as<Trace>();
+            CERR << "handle Trace: " << mm << std::endl;
+            if (mm.module() == m_hubId || !(Id::isHub(mm.module()) || Id::isModule(mm.module()))) {
+                if (mm.on())
+                    m_traceMessages = mm.messageType();
+                else
+                    m_traceMessages = message::INVALID;
+                m_dataProxy->setTrace(m_traceMessages);
             }
             break;
         }
-        if (id.identity() != Identify::UNKNOWN && id.identity() != Identify::REQUEST) {
-            std::unique_lock<std::mutex> lock(m_socketMutex);
-            auto it = m_sockets.find(sock);
-            assert(it != m_sockets.end());
-            if (it != m_sockets.end())
-                it->second = id.identity();
-        }
-        if (!id.verifyMac()) {
-            CERR << "message authentication failed" << std::endl;
-            auto close = make.message<message::CloseConnection>("message authentication failed");
-            sendMessage(sock, close);
-            break;
-        }
-        switch (id.identity()) {
-        case Identify::MANAGER: {
-            assert(!m_managerConnected);
-            m_managerConnected = true;
-            m_localRanks = id.numRanks();
-            m_localManagerRank0Pid = id.pid();
-            m_dataProxy->setNumRanks(id.numRanks());
-            m_dataProxy->setBoostArchiveVersion(id.boost_archive_version());
-            m_dataProxy->setIndexSize(id.indexSize());
-            m_dataProxy->setScalarSize(id.scalarSize());
-            m_addHubPayload = getPayload<AddHub::Payload>(*payload);
-            if (m_verbose >= Verbosity::Normal) {
-                CERR << "manager connected with " << m_localRanks << " ranks" << std::endl;
+        case message::CLOSECONNECTION: {
+            auto &mm = msg.as<CloseConnection>();
+            CERR << "remote closes socket - reason: " << mm.reason() << std::endl;
+            removeSocket(sock);
+            if (senderType == Identify::HUB || senderType == Identify::MANAGER) {
+                CERR << "terminating." << std::endl;
+                emergencyQuit();
+                initiateQuit();
+                return false;
             }
-
-            if (m_verbose >= Verbosity::ManagerMessages) {
-                sendMessage(sock, make.message<message::Trace>(message::Id::Broadcast, message::ANY, true));
-            }
-
-            if (m_hubId == Id::MasterHub) {
-                auto master = addHubForSelf();
-                master.setDestId(Id::Broadcast);
-                if (m_verbose >= Verbosity::Manager) {
-                    CERR << "principal hub: " << master << std::endl;
-                }
-                auto pl = message::addPayload(master, m_addHubPayload);
-                m_stateTracker.handle(master, &pl);
-                sendUi(master, message::Id::Broadcast, &pl);
-            }
-
-            if (m_hubId != Id::Invalid) {
-                auto set = make.message<message::SetId>(m_hubId);
-                sendMessage(sock, set);
-                if (message::Id::isHub(m_hubId)) {
-                    auto state = m_stateTracker.getLockedState();
-                    for (auto &m: state.messages) {
-                        sendMessage(sock, m.message, m.payload.get());
-                    }
-                }
-                if (!hubReady()) {
-                    m_uiManager.lockUi(false);
-                    return false;
-                }
-            }
-            m_uiManager.lockUi(false);
-            if (!m_snapshotFile.empty()) {
-                //handleMessage(make.message<Quit>());
-            }
-            break;
-        }
-        case Identify::UI: {
-            m_uiManager.addClient(sock);
-            break;
-        }
-        case Identify::HUB: {
-            if (m_isMaster) {
-                CERR << "refusing connection from other master hub" << std::endl;
-                auto close = make.message<CloseConnection>("refusing connection from other master hub");
-                sendMessage(sock, close);
-                return true;
-            }
-            assert(!m_isMaster);
-            CERR << "master hub connected" << std::endl;
-            break;
-        }
-        case Identify::SLAVEHUB: {
-            if (!m_isMaster) {
-                CERR << "refusing connection from other slave hub, connect directly to a master" << std::endl;
-                auto close = make.message<CloseConnection>("refusing connection from other slave hub");
-                sendMessage(sock, close);
-                return true;
-            }
-            assert(m_isMaster);
-            CERR << "slave hub '" << id.name() << "' connected" << std::endl;
-            addSlave(id.name(), sock);
-            break;
-        }
-        case Identify::LOCALBULKDATA:
-        case Identify::REMOTEBULKDATA: {
-            m_dataProxy->addSocket(id, sock);
-            removeSocket(sock, false);
-            break;
-        }
-        case Identify::TUNNEL: {
-            m_tunnelManager.addSocket(id, sock);
-            removeSocket(sock, false);
+            return true;
             break;
         }
         default: {
-            CERR << "invalid identity: " << id.identity() << std::endl;
             break;
         }
         }
-        return true;
-    }
-    case message::ADDHUB: {
-        auto &mm = static_cast<const AddHub &>(msg);
-        auto addPl = getPayload<AddHub::Payload>(*payload);
-        auto add = mm;
-        CERR << "received AddHub: " << add << std::endl;
-        if (m_isMaster) {
-            auto it = m_slaves.find(add.id());
-            if (it == m_slaves.end()) {
-                std::cerr << "ignoring for unknown slave: " << msg << std::endl;
+
+        if (msg.destId() == Id::ForBroadcast) {
+            if (m_isMaster) {
+                msg.setDestId(Id::Broadcast);
+            } else {
+                return sendMaster(msg, payload);
+            }
+        }
+
+        switch (msg.type()) {
+        case message::IDENTIFY: {
+            auto &id = static_cast<const Identify &>(msg);
+            if (m_verbose >= Verbosity::Manager) {
+                CERR << "ident msg: " << id.identity() << std::endl;
+            }
+            if (id.identity() == Identify::REQUEST) {
+                if (senderType == Identify::REMOTEBULKDATA) {
+                    Identify reply(id, Identify::REMOTEBULKDATA, m_hubId);
+                    reply.computeMac();
+                    sendMessage(sock, reply);
+                } else if (senderType == Identify::LOCALBULKDATA) {
+                    Identify reply(id, Identify::LOCALBULKDATA, -1);
+                    reply.computeMac();
+                    sendMessage(sock, reply);
+                } else if (m_isMaster) {
+                    Identify reply(id, Identify::HUB, m_name);
+                    reply.computeMac();
+                    sendMessage(sock, reply);
+                } else {
+                    Identify reply(id, Identify::SLAVEHUB, m_name);
+                    reply.computeMac();
+                    sendMessage(sock, reply);
+                }
                 break;
             }
-            auto &slave = it->second;
-            slaveReady(slave);
-        } else {
-            if (add.id() == Id::MasterHub) {
-                CERR << "received AddHub for master with " << add.numRanks() << " ranks";
-                if (add.hasAddress()) {
-                    std::cerr << ", address is " << add.address() << std::endl;
-                } else {
-                    add.setAddress(m_masterSocket->remote_endpoint().address());
-                    std::cerr << ", using address " << add.address() << std::endl;
+            if (id.identity() != Identify::UNKNOWN && id.identity() != Identify::REQUEST) {
+                std::unique_lock<std::mutex> lock(m_socketMutex);
+                auto it = m_sockets.find(sock);
+                assert(it != m_sockets.end());
+                if (it != m_sockets.end())
+                    it->second = id.identity();
+            }
+            if (!id.verifyMac()) {
+                CERR << "message authentication failed" << std::endl;
+                auto close = make.message<message::CloseConnection>("message authentication failed");
+                sendMessage(sock, close);
+                break;
+            }
+            switch (id.identity()) {
+            case Identify::MANAGER: {
+                assert(!m_managerConnected);
+                m_managerConnected = true;
+                m_localRanks = id.numRanks();
+                m_localManagerRank0Pid = id.pid();
+                m_dataProxy->setNumRanks(id.numRanks());
+                m_dataProxy->setBoostArchiveVersion(id.boost_archive_version());
+                m_dataProxy->setIndexSize(id.indexSize());
+                m_dataProxy->setScalarSize(id.scalarSize());
+                m_addHubPayload = getPayload<AddHub::Payload>(*payload);
+                if (m_verbose >= Verbosity::Normal) {
+                    CERR << "manager connected with " << m_localRanks << " ranks" << std::endl;
+                }
+
+                if (m_verbose >= Verbosity::ManagerMessages) {
+                    sendMessage(sock, make.message<message::Trace>(message::Id::Broadcast, message::ANY, true));
+                }
+
+                if (m_hubId == Id::MasterHub) {
+                    auto master = addHubForSelf();
+                    master.setDestId(Id::Broadcast);
+                    if (m_verbose >= Verbosity::Manager) {
+                        CERR << "principal hub: " << master << std::endl;
+                    }
+                    auto pl = message::addPayload(master, m_addHubPayload);
+                    m_stateTracker.handle(master, &pl);
+                    sendUi(master, message::Id::Broadcast, &pl);
+                }
+
+                if (m_hubId != Id::Invalid) {
+                    auto set = make.message<message::SetId>(m_hubId);
+                    sendMessage(sock, set);
+                    if (message::Id::isHub(m_hubId)) {
+                        auto state = m_stateTracker.getLockedState();
+                        for (auto &m: state.messages) {
+                            sendMessage(sock, m.message, m.payload.get());
+                        }
+                    }
+                    if (!hubReady()) {
+                        m_uiManager.lockUi(false);
+                        return false;
+                    }
+                }
+                m_uiManager.lockUi(false);
+                if (!m_snapshotFile.empty()) {
+                    //handleMessage(make.message<Quit>());
+                }
+                break;
+            }
+            case Identify::UI: {
+                m_uiManager.addClient(sock);
+                break;
+            }
+            case Identify::HUB: {
+                if (m_isMaster) {
+                    CERR << "refusing connection from other master hub" << std::endl;
+                    auto close = make.message<CloseConnection>("refusing connection from other master hub");
+                    sendMessage(sock, close);
+                    return true;
+                }
+                assert(!m_isMaster);
+                CERR << "master hub connected" << std::endl;
+                break;
+            }
+            case Identify::SLAVEHUB: {
+                if (!m_isMaster) {
+                    CERR << "refusing connection from other slave hub, connect directly to a master" << std::endl;
+                    auto close = make.message<CloseConnection>("refusing connection from other slave hub");
+                    sendMessage(sock, close);
+                    return true;
+                }
+                assert(m_isMaster);
+                CERR << "slave hub '" << id.name() << "' connected" << std::endl;
+                addSlave(id.name(), sock);
+                break;
+            }
+            case Identify::LOCALBULKDATA:
+            case Identify::REMOTEBULKDATA: {
+                m_dataProxy->addSocket(id, sock);
+                removeSocket(sock, false);
+                break;
+            }
+            case Identify::TUNNEL: {
+                m_tunnelManager.addSocket(id, sock);
+                removeSocket(sock, false);
+                break;
+            }
+            default: {
+                CERR << "invalid identity: " << id.identity() << std::endl;
+                break;
+            }
+            }
+            return true;
+        }
+        case message::ADDHUB: {
+            auto &mm = static_cast<const AddHub &>(msg);
+            auto addPl = getPayload<AddHub::Payload>(*payload);
+            auto add = mm;
+            CERR << "received AddHub: " << add << std::endl;
+            if (m_isMaster) {
+                auto it = m_slaves.find(add.id());
+                if (it == m_slaves.end()) {
+                    std::cerr << "ignoring for unknown slave: " << msg << std::endl;
+                    break;
+                }
+                auto &slave = it->second;
+                slaveReady(slave);
+            } else {
+                if (add.id() == Id::MasterHub) {
+                    CERR << "received AddHub for master with " << add.numRanks() << " ranks";
+                    if (add.hasAddress()) {
+                        std::cerr << ", address is " << add.address() << std::endl;
+                    } else {
+                        add.setAddress(m_masterSocket->remote_endpoint().address());
+                        std::cerr << ", using address " << add.address() << std::endl;
+                    }
                 }
             }
-        }
-        std::unique_lock<std::mutex> guard(m_outstandingDataConnectionMutex);
-        auto it = m_outstandingDataConnections.find(add);
-        if (it == m_outstandingDataConnections.end()) {
-            m_outstandingDataConnections[add].fut = std::async(
-                std::launch::async, [this, add, addPl]() { return m_dataProxy->connectRemoteData(add, addPl); });
-            if (payload) {
-                m_outstandingDataConnections[add].payload = std::make_shared<buffer>(*payload);
+            std::unique_lock<std::mutex> guard(m_outstandingDataConnectionMutex);
+            auto it = m_outstandingDataConnections.find(add);
+            if (it == m_outstandingDataConnections.end()) {
+                m_outstandingDataConnections[add].fut = std::async(
+                    std::launch::async, [this, add, addPl]() { return m_dataProxy->connectRemoteData(add, addPl); });
+                if (payload) {
+                    m_outstandingDataConnections[add].payload = std::make_shared<buffer>(*payload);
+                }
+            } else {
+                CERR << "already connecting to hub " << add.id() << ":" << add << std::endl;
             }
-        } else {
-            CERR << "already connecting to hub " << add.id() << ":" << add << std::endl;
-        }
-        guard.unlock();
+            guard.unlock();
 
-        auto pl = addPayload<AddHub::Payload>(add, addPl);
-        m_stateTracker.handle(add, &pl, true);
-        sendManager(add, Id::LocalHub, &pl);
-        sendUi(add, message::Id::Broadcast, &pl);
-        if (m_isMaster) {
-            sendSlaves(add, true, &pl);
-        }
-        break;
-    }
-    case message::CONNECT: {
-        auto &mm = static_cast<const message::Connect &>(msg);
-        return handleConnectOrDisconnect(mm);
-    }
-    case message::DISCONNECT: {
-        auto &mm = static_cast<const message::Disconnect &>(msg);
-        return handleConnectOrDisconnect(mm);
-    }
-    case MODULEEXIT: {
-        auto &exit = msg.as<ModuleExit>();
-        handlePriv(exit);
-        break;
-    }
-    case KILL: {
-        auto &kill = msg.as<Kill>();
-        handlePriv(kill);
-        break;
-    }
-    default:
-        break;
-    }
-
-    const int dest = idToHub(msg.destId());
-    const int sender = idToHub(msg.senderId());
-
-    {
-        bool mgr = false, ui = false, master = false, slave = false;
-
-        if (m_hubId == Id::MasterHub) {
-            if (msg.destId() == Id::ForBroadcast)
-                msg.setDestId(Id::Broadcast);
-        }
-        bool track = Router::the().toTracker(msg, senderType) && msg.type() != message::ADDHUB;
-        m_stateTracker.handle(msg, payload ? payload->data() : nullptr, payload ? payload->size() : 0, track);
-
-        if (Router::the().toManager(msg, senderType, sender) || (Id::isModule(msg.destId()) && dest == m_hubId)) {
-            sendManager(msg, Id::LocalHub, payload);
-            mgr = true;
-        }
-        if (Router::the().toUi(msg, senderType)) {
-            sendUi(msg, Id::Broadcast, payload);
-            ui = true;
-        }
-        if (Id::isModule(msg.destId()) && !Id::isHub(dest)) {
-            CERR << "failed to translate module id " << msg.destId() << " to hub: " << msg << std::endl;
-        } else if (!Id::isHub(dest)) {
-            if (Router::the().toMasterHub(msg, senderType, sender)) {
-                sendMaster(msg, payload);
-                master = true;
+            auto pl = addPayload<AddHub::Payload>(add, addPl);
+            m_stateTracker.handle(add, &pl, true);
+            sendManager(add, Id::LocalHub, &pl);
+            sendUi(add, message::Id::Broadcast, &pl);
+            if (m_isMaster) {
+                sendSlaves(add, true, &pl);
             }
-            if (Router::the().toSlaveHub(msg, senderType, sender)) {
-                sendSlaves(msg, msg.destId() == Id::Broadcast /* return to sender */, payload);
-                slave = true;
+            break;
+        }
+        case message::CONNECT: {
+            auto &mm = static_cast<const message::Connect &>(msg);
+            return handleConnectOrDisconnect(mm);
+        }
+        case message::DISCONNECT: {
+            auto &mm = static_cast<const message::Disconnect &>(msg);
+            return handleConnectOrDisconnect(mm);
+        }
+        case MODULEEXIT: {
+            auto &exit = msg.as<ModuleExit>();
+            handlePriv(exit);
+            break;
+        }
+        case KILL: {
+            auto &kill = msg.as<Kill>();
+            handlePriv(kill);
+            break;
+        }
+        default:
+            break;
+        }
+
+        const int dest = idToHub(msg.destId());
+        const int sender = idToHub(msg.senderId());
+
+        {
+            bool mgr = false, ui = false, master = false, slave = false;
+
+            if (m_hubId == Id::MasterHub) {
+                if (msg.destId() == Id::ForBroadcast)
+                    msg.setDestId(Id::Broadcast);
             }
-            assert(!(slave && master));
-        } else {
-            if (dest != m_hubId) {
-                if (m_isMaster) {
-                    sendHub(dest, msg, payload);
-                    //sendSlaves(msg);
-                    slave = true;
-                } else if (sender == m_hubId) {
+            bool track = Router::the().toTracker(msg, senderType) && msg.type() != message::ADDHUB;
+            m_stateTracker.handle(msg, payload ? payload->data() : nullptr, payload ? payload->size() : 0, track);
+
+            if (Router::the().toManager(msg, senderType, sender) || (Id::isModule(msg.destId()) && dest == m_hubId)) {
+                sendManager(msg, Id::LocalHub, payload);
+                mgr = true;
+            }
+            if (Router::the().toUi(msg, senderType)) {
+                sendUi(msg, Id::Broadcast, payload);
+                ui = true;
+            }
+            if (Id::isModule(msg.destId()) && !Id::isHub(dest)) {
+                CERR << "failed to translate module id " << msg.destId() << " to hub: " << msg << std::endl;
+            } else if (!Id::isHub(dest)) {
+                if (Router::the().toMasterHub(msg, senderType, sender)) {
                     sendMaster(msg, payload);
                     master = true;
                 }
-            }
-        }
-
-        if (m_traceMessages == message::ANY || msg.type() == m_traceMessages ||
-            (msg.type() == message::SPAWN && m_verbose >= Verbosity::Manager)
-#ifdef DEBUG_DISTRIBUTED
-            || msg.type() == message::ADDOBJECT || msg.type() == message::ADDOBJECTCOMPLETED
-#endif
-        ) {
-            if (track)
-                std::cerr << "t";
-            else
-                std::cerr << ".";
-            if (mgr)
-                std::cerr << "m";
-            else
-                std::cerr << ".";
-            if (ui)
-                std::cerr << "u";
-            else
-                std::cerr << ".";
-            if (slave) {
-                std::cerr << "s";
-            } else if (master) {
-                std::cerr << "M";
-            } else
-                std::cerr << ".";
-            std::cerr << " " << msg << std::endl;
-        }
-    }
-
-    checkLastModuleQuit();
-
-    if (Router::the().toHandler(msg, senderType)) {
-        switch (msg.type()) {
-        case message::CREATEMODULECOMPOUND: {
-            if (!payload || payload->empty()) {
-                std::cerr << "missing payload for CREATEMODULECOMPOUND message!" << std::endl;
-                break;
-            }
-            ModuleCompound comp(msg.as<message::CreateModuleCompound>(), *payload);
-#ifdef HAVE_PYTHON
-            moduleCompoundToFile(comp);
-#endif
-            comp.send(std::bind(&Hub::sendManager, this, std::placeholders::_1, message::Id::LocalHub,
-                                std::placeholders::_2));
-            break;
-        }
-
-        case message::LOADWORKFLOW: {
-            auto &load = msg.as<LoadWorkflow>();
-            handlePriv(load);
-            break;
-        }
-
-        case message::SAVEWORKFLOW: {
-            auto &save = msg.as<SaveWorkflow>();
-            handlePriv(save);
-            break;
-        }
-
-        case message::SPAWN: {
-            auto &spawn = static_cast<const Spawn &>(msg);
-            handlePriv(spawn);
-            break;
-        }
-
-        case message::SETNAME: {
-            auto &setname = static_cast<const SetName &>(msg);
-            handlePriv(setname);
-            break;
-        }
-
-        case message::ADDHUB: {
-            auto &add = static_cast<const AddHub &>(msg);
-            if (m_isMaster && add.hasUserInterface()) {
-                std::map<int, std::string> toMirror;
-                std::map<int, int> blueprintIds;
-                for (const auto &it: m_stateTracker.runningMap) {
-                    const auto &m = it.second;
-                    if (m.mirrorOfId == m.id) {
-                        toMirror[m.id] = m.name;
-                    }
+                if (Router::the().toSlaveHub(msg, senderType, sender)) {
+                    sendSlaves(msg, msg.destId() == Id::Broadcast /* return to sender */, payload);
+                    slave = true;
                 }
-
-                for (auto &m: toMirror) {
-                    spawnMirror(add.id(), m.second, m.first, blueprintIds[m.first]);
-                }
-            }
-            break;
-        }
-
-        case message::ADDPARAMETER: {
-            auto addParam = msg.as<message::AddParameter>();
-            if (!m_isMaster) {
-                // set up parameter connections on master hub
-                break;
-            }
-            if (addParam.destId() == settings.id()) {
-                settings.handleMessage(addParam);
-            }
-            int id = addParam.senderId();
-            if (m_stateTracker.getMirrorId(id) != id) {
-                // connect parameters of mirrored instances to original parameter only
-                handleQueue();
-                break;
-            }
-            auto pn = addParam.getName();
-            auto mirrors = m_stateTracker.getMirrors(id);
-            for (auto &m: mirrors) {
-                if (m == id) {
-                    // skip connection to self
-                    continue;
-                }
-                auto con = message::Connect(id, pn, m, pn);
-                handleMessage(con);
-            }
-
-            break;
-        }
-
-        case message::REMOVEPARAMETER: {
-            if (!m_isMaster) {
-                // set up parameter connections on master hub
-                break;
-            }
-
-            auto removeParam = msg.as<message::RemoveParameter>();
-            if (removeParam.destId() == session.id()) {
-                session.handleMessage(removeParam);
-            }
-            if (removeParam.destId() == settings.id()) {
-                settings.handleMessage(removeParam);
-            }
-            if (removeParam.destId() == params.id()) {
-                params.handleMessage(removeParam);
-            }
-            break;
-        }
-
-        case message::SETPARAMETER: {
-            auto setParam = msg.as<message::SetParameter>();
-
-            if (setParam.destId() == session.id()) {
-                session.handleMessage(setParam);
-            }
-
-            if (setParam.destId() == settings.id()) {
-                settings.handleMessage(setParam);
-            }
-
-            if (setParam.destId() == params.id()) {
-                params.handleMessage(setParam);
-            }
-
-            if (Id::isModule(setParam.destId())) {
-                const std::string name = setParam.getName();
-                if (name == "_position" || name == "_layer") {
-                    // for old workflows
-                    int id = setParam.destId();
-                    std::string suffix = "[" + std::to_string(id) + "]";
-                    std::string nname = name.substr(1) + suffix;
-                    auto nparam = setParam;
-                    nparam.setName(nname);
-                    nparam.setDestId(Id::Vistle);
-                    session.handleMessage(nparam);
-                }
-            }
-
-            updateLinkedParameters(setParam);
-            break;
-        }
-        case message::SPAWNPREPARED: {
-            auto &spawn = static_cast<const SpawnPrepared &>(msg);
-            if (spawn.isNotification()) {
-                auto it = m_sendAfterSpawn.find(spawn.spawnId());
-                if (it != m_sendAfterSpawn.end()) {
-                    for (auto &m: it->second) {
-                        handleMessage(m);
-                    }
-                    m_sendAfterSpawn.erase(it);
-                }
+                assert(!(slave && master));
             } else {
-#ifndef MODULE_THREAD
-                assert(spawn.hubId() == m_hubId);
-                assert(m_ready);
-
-                bool isCover = spawn.getName() == std::string("COVER");
-                if (m_coverIsManager && isCover) {
-                    CERR << "assuming that COVER running cluster manager loads Vistle plugin" << std::endl;
-                } else {
-                    if (const AvailableModule *mod = findModule({spawn.hubId(), spawn.getName()})) {
-                        spawnModule(mod->path(), spawn.getName(), spawn.spawnId());
-                    } else {
-                        if (spawn.hubId() == m_hubId) {
-                            std::stringstream str;
-                            str << "refusing to spawn " << spawn.getName() << ":" << spawn.spawnId()
-                                << ": not in list of available modules";
-                            sendError(str.str());
-                            auto ex = make.message<message::ModuleExit>();
-                            ex.setSenderId(spawn.spawnId());
-                            sendManager(ex);
-                        }
+                if (dest != m_hubId) {
+                    if (m_isMaster) {
+                        sendHub(dest, msg, payload);
+                        //sendSlaves(msg);
+                        slave = true;
+                    } else if (sender == m_hubId) {
+                        sendMaster(msg, payload);
+                        master = true;
                     }
                 }
-#endif
             }
-            break;
+
+            if (m_traceMessages == message::ANY || msg.type() == m_traceMessages ||
+                (msg.type() == message::SPAWN && m_verbose >= Verbosity::Manager)
+#ifdef DEBUG_DISTRIBUTED
+                || msg.type() == message::ADDOBJECT || msg.type() == message::ADDOBJECTCOMPLETED
+#endif
+            ) {
+                if (track)
+                    std::cerr << "t";
+                else
+                    std::cerr << ".";
+                if (mgr)
+                    std::cerr << "m";
+                else
+                    std::cerr << ".";
+                if (ui)
+                    std::cerr << "u";
+                else
+                    std::cerr << ".";
+                if (slave) {
+                    std::cerr << "s";
+                } else if (master) {
+                    std::cerr << "M";
+                } else
+                    std::cerr << ".";
+                std::cerr << " " << msg << std::endl;
+            }
         }
 
-        case message::DEBUG: {
-            auto &debug = msg.as<message::Debug>();
-            int modId = debug.getModule();
-            auto req = debug.getRequest();
-            switch (req) {
-            case Debug::AttachDebugger: {
-                if (idToHub(modId) != m_hubId) {
-                    std::stringstream str;
-                    str << "Not trying to debug non-local module id " << modId;
-                    sendError(str.str());
+        checkLastModuleQuit();
+
+        if (Router::the().toHandler(msg, senderType)) {
+            switch (msg.type()) {
+            case message::CREATEMODULECOMPOUND: {
+                if (!payload || payload->empty()) {
+                    std::cerr << "missing payload for CREATEMODULECOMPOUND message!" << std::endl;
                     break;
                 }
-#ifdef VISTLE_USE_FMT
-                fmt::dynamic_format_arg_store<fmt::format_context> nargs;
-                {
-                    unsigned long rank0pid = 0;
-                    if (modId == m_hubId) {
-                        rank0pid = m_localManagerRank0Pid;
-                    } else {
-                        auto it = m_stateTracker.runningMap.find(modId);
-                        if (it != m_stateTracker.runningMap.end()) {
-                            const auto &mod = it->second;
-                            rank0pid = mod.rank0Pid;
+                ModuleCompound comp(msg.as<message::CreateModuleCompound>(), *payload);
+#ifdef HAVE_PYTHON
+                moduleCompoundToFile(comp);
+#endif
+                comp.send(std::bind(&Hub::sendManager, this, std::placeholders::_1, message::Id::LocalHub,
+                                    std::placeholders::_2));
+                break;
+            }
+
+            case message::LOADWORKFLOW: {
+                auto &load = msg.as<LoadWorkflow>();
+                handlePriv(load);
+                break;
+            }
+
+            case message::SAVEWORKFLOW: {
+                auto &save = msg.as<SaveWorkflow>();
+                handlePriv(save);
+                break;
+            }
+
+            case message::SPAWN: {
+                auto &spawn = static_cast<const Spawn &>(msg);
+                handlePriv(spawn);
+                break;
+            }
+
+            case message::SETNAME: {
+                auto &setname = static_cast<const SetName &>(msg);
+                handlePriv(setname);
+                break;
+            }
+
+            case message::ADDHUB: {
+                auto &add = static_cast<const AddHub &>(msg);
+                if (m_isMaster && add.hasUserInterface()) {
+                    std::map<int, std::string> toMirror;
+                    std::map<int, int> blueprintIds;
+                    for (const auto &it: m_stateTracker.runningMap) {
+                        const auto &m = it.second;
+                        if (m.mirrorOfId == m.id) {
+                            toMirror[m.id] = m.name;
                         }
                     }
-                    if (rank0pid == 0) {
+
+                    for (auto &m: toMirror) {
+                        spawnMirror(add.id(), m.second, m.first, blueprintIds[m.first]);
+                    }
+                }
+                break;
+            }
+
+            case message::ADDPARAMETER: {
+                auto addParam = msg.as<message::AddParameter>();
+                if (!m_isMaster) {
+                    // set up parameter connections on master hub
+                    break;
+                }
+                if (addParam.destId() == settings.id()) {
+                    settings.handleMessage(addParam);
+                }
+                int id = addParam.senderId();
+                if (m_stateTracker.getMirrorId(id) != id) {
+                    // connect parameters of mirrored instances to original parameter only
+                    handleQueue();
+                    break;
+                }
+                auto pn = addParam.getName();
+                auto mirrors = m_stateTracker.getMirrors(id);
+                for (auto &m: mirrors) {
+                    if (m == id) {
+                        // skip connection to self
+                        continue;
+                    }
+                    auto con = message::Connect(id, pn, m, pn);
+                    handleMessage(con);
+                }
+
+                break;
+            }
+
+            case message::REMOVEPARAMETER: {
+                if (!m_isMaster) {
+                    // set up parameter connections on master hub
+                    break;
+                }
+
+                auto removeParam = msg.as<message::RemoveParameter>();
+                if (removeParam.destId() == session.id()) {
+                    session.handleMessage(removeParam);
+                }
+                if (removeParam.destId() == settings.id()) {
+                    settings.handleMessage(removeParam);
+                }
+                if (removeParam.destId() == params.id()) {
+                    params.handleMessage(removeParam);
+                }
+                break;
+            }
+
+            case message::SETPARAMETER: {
+                auto setParam = msg.as<message::SetParameter>();
+
+                if (setParam.destId() == session.id()) {
+                    session.handleMessage(setParam);
+                }
+
+                if (setParam.destId() == settings.id()) {
+                    settings.handleMessage(setParam);
+                }
+
+                if (setParam.destId() == params.id()) {
+                    params.handleMessage(setParam);
+                }
+
+                if (Id::isModule(setParam.destId())) {
+                    const std::string name = setParam.getName();
+                    if (name == "_position" || name == "_layer") {
+                        // for old workflows
+                        int id = setParam.destId();
+                        std::string suffix = "[" + std::to_string(id) + "]";
+                        std::string nname = name.substr(1) + suffix;
+                        auto nparam = setParam;
+                        nparam.setName(nname);
+                        nparam.setDestId(Id::Vistle);
+                        session.handleMessage(nparam);
+                    }
+                }
+
+                updateLinkedParameters(setParam);
+                break;
+            }
+            case message::SPAWNPREPARED: {
+                auto &spawn = static_cast<const SpawnPrepared &>(msg);
+                if (spawn.isNotification()) {
+                    auto it = m_sendAfterSpawn.find(spawn.spawnId());
+                    if (it != m_sendAfterSpawn.end()) {
+                        for (auto &m: it->second) {
+                            handleMessage(m);
+                        }
+                        m_sendAfterSpawn.erase(it);
+                    }
+                } else {
+#ifndef MODULE_THREAD
+                    assert(spawn.hubId() == m_hubId);
+                    assert(m_ready);
+
+                    bool isCover = spawn.getName() == std::string("COVER");
+                    if (m_coverIsManager && isCover) {
+                        CERR << "assuming that COVER running cluster manager loads Vistle plugin" << std::endl;
+                    } else {
+                        if (const AvailableModule *mod = findModule({spawn.hubId(), spawn.getName()})) {
+                            spawnModule(mod->path(), spawn.getName(), spawn.spawnId());
+                        } else {
+                            if (spawn.hubId() == m_hubId) {
+                                std::stringstream str;
+                                str << "refusing to spawn " << spawn.getName() << ":" << spawn.spawnId()
+                                    << ": not in list of available modules";
+                                sendError(str.str());
+                                auto ex = make.message<message::ModuleExit>();
+                                ex.setSenderId(spawn.spawnId());
+                                sendManager(ex);
+                            }
+                        }
+                    }
+#endif
+                }
+                break;
+            }
+
+            case message::DEBUG: {
+                auto &debug = msg.as<message::Debug>();
+                int modId = debug.getModule();
+                auto req = debug.getRequest();
+                switch (req) {
+                case Debug::AttachDebugger: {
+                    if (idToHub(modId) != m_hubId) {
                         std::stringstream str;
-                        str << "Did not find PID of process to attach to for id " << modId;
+                        str << "Not trying to debug non-local module id " << modId;
                         sendError(str.str());
                         break;
                     }
-                    nargs.push_back(fmt::arg("rank0pid", rank0pid));
-                }
-                {
+#ifdef VISTLE_USE_FMT
+                    fmt::dynamic_format_arg_store<fmt::format_context> nargs;
+                    {
+                        unsigned long rank0pid = 0;
+                        if (modId == m_hubId) {
+                            rank0pid = m_localManagerRank0Pid;
+                        } else {
+                            auto it = m_stateTracker.runningMap.find(modId);
+                            if (it != m_stateTracker.runningMap.end()) {
+                                const auto &mod = it->second;
+                                rank0pid = mod.rank0Pid;
+                            }
+                        }
+                        if (rank0pid == 0) {
+                            std::stringstream str;
+                            str << "Did not find PID of process to attach to for id " << modId;
+                            sendError(str.str());
+                            break;
+                        }
+                        nargs.push_back(fmt::arg("rank0pid", rank0pid));
+                    }
+                    {
 #ifdef MODULE_THREAD
-                    modId = Process::Manager;
+                        modId = Process::Manager;
 #endif
-                    long mpipid = 0;
+                        long mpipid = 0;
 #ifdef VISTLE_USE_MPI
-                    bool found = false;
-                    std::unique_lock<std::mutex> guard(m_processMutex);
-                    for (auto &p: m_processMap) {
-                        if (p.second == modId) {
-                            found = true;
-                            mpipid = p.first->id();
+                        bool found = false;
+                        std::unique_lock<std::mutex> guard(m_processMutex);
+                        for (auto &p: m_processMap) {
+                            if (p.second == modId) {
+                                found = true;
+                                mpipid = p.first->id();
+                                break;
+                            }
+                        }
+                        guard.unlock();
+                        if (!found) {
+                            std::stringstream str;
+                            str << "Did not find launcher PID to debug module id " << modId << " on " << m_name;
+                            sendError(str.str());
+                            break;
+                        }
+#endif
+                        nargs.push_back(fmt::arg("mpipid", mpipid));
+                    }
+                    if (auto home = getenv("HOME")) {
+                        nargs.push_back(fmt::arg("home", home));
+                    } else {
+                        sendError("HOME environment variable not set");
+                        break;
+                    }
+                    if (auto user = getenv("USER")) {
+                        nargs.push_back(fmt::arg("user", user));
+                    } else {
+                        sendError("USER environment variable not set");
+                        break;
+                    }
+
+                    decltype(m_config->array<std::string>("", "", "")) arr;
+                    if (!m_hasUi) {
+                        std::string suffix = "_batch";
+                        arr = m_config->array<std::string>("system", "debugger", platform + suffix);
+                        if (arr->size() == 0 && !platform_fallback.empty()) {
+                            arr = m_config->array<std::string>("system", "debugger", platform_fallback + suffix);
+                        }
+                    }
+                    if (m_hasUi || arr->size() == 0) {
+                        arr.reset();
+                        arr = m_config->array<std::string>("system", "debugger", platform);
+                        if (arr->size() == 0 && !platform_fallback.empty()) {
+                            arr = m_config->array<std::string>("system", "debugger", platform_fallback);
+                        }
+                    }
+                    if (arr->size() == 0) {
+                        std::stringstream info;
+                        info << "no debugger configured in \"system: [debugger]\"";
+                        sendInfo(info.str());
+                        break;
+                    }
+                    std::vector<std::string> cmd_args;
+                    for (auto &arg: arr->value()) {
+                        cmd_args.push_back(fmt::vformat(arg, nargs));
+                    }
+                    auto cmd = cmd_args[0];
+                    auto args = std::vector<std::string>(cmd_args.begin() + 1, cmd_args.end());
+                    auto child = launchProcess(Process::Debugger, cmd, args);
+                    if (child) {
+                        std::stringstream info;
+                        info << "Debugging " << debug.getModule() << " with " << cmd << " as PID " << child->id();
+                        sendInfo(info.str());
+                    }
+#else
+                    std::stringstream info;
+                    info << "fmt library not available, no support for reading debugger configuration";
+                    sendInfo(info.str());
+#endif
+                    break;
+                }
+                case Debug::PrintState: {
+                    break;
+                }
+                case Debug::ReplayOutput: {
+                    if (modId == m_hubId) {
+                        modId = Process::Manager;
+                    }
+                    const ObservedChild *obs = nullptr;
+                    for (auto &ch: m_observedChildren) {
+                        if (ch.second.moduleId == modId) {
+                            obs = &ch.second;
                             break;
                         }
                     }
-                    guard.unlock();
-                    if (!found) {
-                        std::stringstream str;
-                        str << "Did not find launcher PID to debug module id " << modId << " on " << m_name;
-                        sendError(str.str());
-                        break;
+                    if (obs) {
+                        obs->sendOutputToUi();
                     }
-#endif
-                    nargs.push_back(fmt::arg("mpipid", mpipid));
-                }
-                if (auto home = getenv("HOME")) {
-                    nargs.push_back(fmt::arg("home", home));
-                } else {
-                    sendError("HOME environment variable not set");
                     break;
                 }
-                if (auto user = getenv("USER")) {
-                    nargs.push_back(fmt::arg("user", user));
-                } else {
-                    sendError("USER environment variable not set");
+                case Debug::SwitchOutputStreaming: {
+                    if (modId == m_hubId) {
+                        modId = Process::Manager;
+                    }
+                    ObservedChild *obs = nullptr;
+                    for (auto &ch: m_observedChildren) {
+                        if (ch.second.moduleId == modId) {
+                            obs = &ch.second;
+                            break;
+                        }
+                    }
+                    if (obs) {
+                        switch (debug.getSwitchAction()) {
+                        case Debug::SwitchAction::SwitchOn: {
+                            obs->setOutputStreaming(true);
+                            break;
+                        }
+                        case Debug::SwitchAction::SwitchOff: {
+                            obs->setOutputStreaming(false);
+                            break;
+                        }
+                        }
+                    }
                     break;
                 }
+                }
+                break;
+            }
 
-                decltype(m_config->array<std::string>("", "", "")) arr;
-                if (!m_hasUi) {
-                    std::string suffix = "_batch";
-                    arr = m_config->array<std::string>("system", "debugger", platform + suffix);
-                    if (arr->size() == 0 && !platform_fallback.empty()) {
-                        arr = m_config->array<std::string>("system", "debugger", platform_fallback + suffix);
-                    }
+            case message::SETID: {
+                assert(!m_isMaster);
+                auto &set = static_cast<const SetId &>(msg);
+                m_hubId = set.getId();
+                m_stateTracker.setId(m_hubId);
+                params.setId(m_hubId);
+                if (!m_inManager) {
+                    message::DefaultSender::init(m_hubId, 0);
                 }
-                if (m_hasUi || arr->size() == 0) {
-                    arr.reset();
-                    arr = m_config->array<std::string>("system", "debugger", platform);
-                    if (arr->size() == 0 && !platform_fallback.empty()) {
-                        arr = m_config->array<std::string>("system", "debugger", platform_fallback);
-                    }
+                make.setId(m_hubId);
+                make.setRank(0);
+                Router::init(message::Identify::SLAVEHUB, m_hubId);
+                CERR << "got hub id " << m_hubId << std::endl;
+                m_dataProxy->setHubId(m_hubId);
+                if (m_managerConnected) {
+                    sendManager(set);
                 }
-                if (arr->size() == 0) {
-                    std::stringstream info;
-                    info << "no debugger configured in \"system: [debugger]\"";
-                    sendInfo(info.str());
-                    break;
-                }
-                std::vector<std::string> cmd_args;
-                for (auto &arg: arr->value()) {
-                    cmd_args.push_back(fmt::vformat(arg, nargs));
-                }
-                auto cmd = cmd_args[0];
-                auto args = std::vector<std::string>(cmd_args.begin() + 1, cmd_args.end());
-                auto child = launchProcess(Process::Debugger, cmd, args);
-                if (child) {
-                    std::stringstream info;
-                    info << "Debugging " << debug.getModule() << " with " << cmd << " as PID " << child->id();
-                    sendInfo(info.str());
-                }
-#else
-                std::stringstream info;
-                info << "fmt library not available, no support for reading debugger configuration";
-                sendInfo(info.str());
-#endif
-                break;
-            }
-            case Debug::PrintState: {
-                break;
-            }
-            case Debug::ReplayOutput: {
-                const ObservedChild *obs = nullptr;
-                for (auto &ch: m_observedChildren) {
-                    if (ch.second.moduleId == modId) {
-                        obs = &ch.second;
-                        break;
-                    }
-                }
-                if (obs) {
-                    obs->sendOutputToUi();
-                }
-                break;
-            }
-            case Debug::SwitchOutputStreaming: {
-                ObservedChild *obs = nullptr;
-                for (auto &ch: m_observedChildren) {
-                    if (ch.second.moduleId == modId) {
-                        obs = &ch.second;
-                        break;
-                    }
-                }
-                if (obs) {
-                    switch (debug.getSwitchAction()) {
-                    case Debug::SwitchAction::SwitchOn: {
-                        obs->setOutputStreaming(true);
-                        break;
-                    }
-                    case Debug::SwitchAction::SwitchOff: {
-                        obs->setOutputStreaming(false);
-                        break;
-                    }
-                    }
-                }
-                break;
-            }
-            }
-            break;
-        }
-
-        case message::SETID: {
-            assert(!m_isMaster);
-            auto &set = static_cast<const SetId &>(msg);
-            m_hubId = set.getId();
-            m_stateTracker.setId(m_hubId);
-            params.setId(m_hubId);
-            if (!m_inManager) {
-                message::DefaultSender::init(m_hubId, 0);
-            }
-            make.setId(m_hubId);
-            make.setRank(0);
-            Router::init(message::Identify::SLAVEHUB, m_hubId);
-            CERR << "got hub id " << m_hubId << std::endl;
-            m_dataProxy->setHubId(m_hubId);
-            if (m_managerConnected) {
-                sendManager(set);
-            }
-            if (m_managerConnected) {
+                if (m_managerConnected) {
 #if 0
                auto state = m_stateTracker.getLockedState();
                for (auto &m: state.messages) {
                   sendMessage(sock, m);
                }
 #endif
-                if (!hubReady()) {
-                    return false;
+                    if (!hubReady()) {
+                        return false;
+                    }
                 }
+                break;
             }
-            break;
+
+            case message::QUIT: {
+                auto &quit = static_cast<const Quit &>(msg);
+                handlePriv(quit, senderType);
+                break;
+            }
+
+            case message::REMOVEHUB: {
+                auto &rm = static_cast<const RemoveHub &>(msg);
+                handlePriv(rm);
+                break;
+            }
+
+            case message::EXECUTE: {
+                auto &exec = static_cast<const Execute &>(msg);
+                handlePriv(exec);
+                break;
+            }
+
+            case message::EXECUTIONDONE: {
+                auto &done = static_cast<const ExecutionDone &>(msg);
+                handlePriv(done);
+                break;
+            }
+
+            case message::CANCELEXECUTE: {
+                auto &cancel = static_cast<const CancelExecute &>(msg);
+                handlePriv(cancel);
+                break;
+            }
+
+            case message::BARRIER: {
+                auto &barr = static_cast<const Barrier &>(msg);
+                handlePriv(barr);
+                break;
+            }
+
+            case message::BARRIERREACHED: {
+                auto &reached = static_cast<const BarrierReached &>(msg);
+                handlePriv(reached);
+                break;
+            }
+
+            case message::REQUESTTUNNEL: {
+                auto &tunnel = static_cast<const RequestTunnel &>(msg);
+                handlePriv(tunnel);
+                break;
+            }
+
+            case message::ADDPORT: {
+                handleQueue();
+                break;
+            }
+            case FILEQUERY: {
+                auto &query = msg.as<FileQuery>();
+                handlePriv(query, payload);
+                break;
+            }
+            case FILEQUERYRESULT: {
+                auto &result = msg.as<FileQueryResult>();
+                handlePriv(result, payload);
+                break;
+            }
+            case COVER: {
+                auto &cover = msg.as<Cover>();
+                handlePriv(cover, payload);
+                break;
+            }
+            case COLORMAP: {
+                auto &cmap = msg.as<Colormap>();
+                handlePriv(cmap, payload);
+                break;
+            }
+            case REMOVECOLORMAP: {
+                auto &rcm = msg.as<RemoveColormap>();
+                handlePriv(rcm);
+                break;
+            }
+            default: {
+                break;
+            }
+            }
         }
 
-        case message::QUIT: {
-            auto &quit = static_cast<const Quit &>(msg);
-            handlePriv(quit, senderType);
-            break;
-        }
-
-        case message::REMOVEHUB: {
-            auto &rm = static_cast<const RemoveHub &>(msg);
-            handlePriv(rm);
-            break;
-        }
-
-        case message::EXECUTE: {
-            auto &exec = static_cast<const Execute &>(msg);
-            handlePriv(exec);
-            break;
-        }
-
-        case message::EXECUTIONDONE: {
-            auto &done = static_cast<const ExecutionDone &>(msg);
-            handlePriv(done);
-            break;
-        }
-
-        case message::CANCELEXECUTE: {
-            auto &cancel = static_cast<const CancelExecute &>(msg);
-            handlePriv(cancel);
-            break;
-        }
-
-        case message::BARRIER: {
-            auto &barr = static_cast<const Barrier &>(msg);
-            handlePriv(barr);
-            break;
-        }
-
-        case message::BARRIERREACHED: {
-            auto &reached = static_cast<const BarrierReached &>(msg);
-            handlePriv(reached);
-            break;
-        }
-
-        case message::REQUESTTUNNEL: {
-            auto &tunnel = static_cast<const RequestTunnel &>(msg);
-            handlePriv(tunnel);
-            break;
-        }
-
-        case message::ADDPORT: {
-            handleQueue();
-            break;
-        }
-        case FILEQUERY: {
-            auto &query = msg.as<FileQuery>();
-            handlePriv(query, payload);
-            break;
-        }
-        case FILEQUERYRESULT: {
-            auto &result = msg.as<FileQueryResult>();
-            handlePriv(result, payload);
-            break;
-        }
-        case COVER: {
-            auto &cover = msg.as<Cover>();
-            handlePriv(cover, payload);
-            break;
-        }
-        case COLORMAP: {
-            auto &cmap = msg.as<Colormap>();
-            handlePriv(cmap, payload);
-            break;
-        }
-        case REMOVECOLORMAP: {
-            auto &rcm = msg.as<RemoveColormap>();
-            handlePriv(rcm);
-            break;
-        }
-        default: {
-            break;
-        }
-        }
+        return true;
+    } catch (vistle::exception &e) {
+        CERR << "handleMessage: exception handling " << msg << ": " << e.what() << e.info() << e.where() << std::endl;
+    } catch (std::exception &e) {
+        CERR << "handleMessage: exception handling " << msg << ": " << e.what() << std::endl;
+    } catch (...) {
+        CERR << "handleMessage: unknown exception handling " << msg << std::endl;
     }
-
-    return true;
+    return false;
 }
 
 bool Hub::spawnMirror(int hubId, const std::string &name, int mirroredId, int blueprintId)
