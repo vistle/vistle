@@ -4431,6 +4431,12 @@ bool Hub::checkChildProcesses(bool emergency, bool onMainThread)
 
     while (!exited.empty()) {
         auto it = exited.begin();
+        try {
+            it->first->wait();
+        } catch (const std::exception &e) {
+            // probably already waited for together with other processes
+            //CERR << "waiting for process with id " << it->second << " terminated with exception: " << e.what() << std::endl;
+        }
 
         const int id = it->second;
         std::string idstring;
@@ -4496,6 +4502,7 @@ bool Hub::checkChildProcesses(bool emergency, bool onMainThread)
         } else {
             pname = "with id " + idstring + " (PID " + std::to_string(it->first->id()) + ")";
         }
+
         if (!exitOk && it->first->exit_code() != 0) {
             bool ok = false;
             std::stringstream str;
@@ -4512,6 +4519,14 @@ bool Hub::checkChildProcesses(bool emergency, bool onMainThread)
                 if (ec == 0) {
                     ok = true;
                 }
+            } else if (WIFSTOPPED(native)) {
+                // should not happen
+                int sig = WSTOPSIG(native);
+                str << "process " << pname << " stopped by signal " << sig;
+                ok = true;
+            } else {
+                str << "process " << pname << " exited abnormally with native code " << native << "/"
+                    << it->first->exit_code();
             }
 #endif
             if (!ok) {
