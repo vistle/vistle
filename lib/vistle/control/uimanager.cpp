@@ -194,6 +194,16 @@ void UiManager::lockUi(bool locked)
     }
 }
 
+void UiManager::lock()
+{
+    lockUi(true);
+}
+
+void UiManager::unlock()
+{
+    lockUi(false);
+}
+
 bool UiManager::isLocked() const
 {
     return m_locked;
