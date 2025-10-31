@@ -735,9 +735,9 @@ static int findFirstModule(const std::string &moduleName)
 {
     py::gil_scoped_release release;
     for (auto mod: state().getRunningList())
-        if (getModuleName(mod) == moduleName)
+        if (state().getModuleName(mod) == moduleName)
             return mod;
-    return 0;
+    return message::Id::Invalid;
 }
 
 static std::string getModuleDescription(int id)
