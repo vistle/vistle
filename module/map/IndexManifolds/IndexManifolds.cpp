@@ -36,9 +36,6 @@ IndexManifolds::IndexManifolds(const std::string &name, int moduleID, mpi::commu
     addResultCache(m_surfaceCache);
 }
 
-IndexManifolds::~IndexManifolds()
-{}
-
 bool IndexManifolds::changeParameter(const vistle::Parameter *p)
 {
     if (p == p_coord || p == p_direction) {

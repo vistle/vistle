@@ -15,7 +15,6 @@
 class Threshold: public vistle::Module {
 public:
     Threshold(const std::string &name, int moduleID, mpi::communicator comm);
-    ~Threshold();
 
     typedef std::map<vistle::Index, vistle::Index> VerticesMapping;
     typedef std::vector<vistle::Index> ElementsMapping;

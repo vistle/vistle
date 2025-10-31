@@ -6,7 +6,6 @@
 class VertexClusteringVtkm: public vistle::VtkmModule {
 public:
     VertexClusteringVtkm(const std::string &name, int moduleID, mpi::communicator comm);
-    ~VertexClusteringVtkm();
 
 private:
     std::unique_ptr<viskores::filter::Filter> setUpFilter() const override;

@@ -12,7 +12,6 @@ struct VtkFile;
 class Transversalflussmaschine: public vistle::Reader {
 public:
     Transversalflussmaschine(const std::string &name, int moduleID, mpi::communicator comm);
-    ~Transversalflussmaschine() override;
 
 private:
     // Ports

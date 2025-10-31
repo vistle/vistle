@@ -14,9 +14,6 @@ CreateCuboids::CreateCuboids(const std::string &name, int moduleID, mpi::communi
     createOutputPort("grid_out", "grid containing cuboids");
 }
 
-CreateCuboids::~CreateCuboids()
-{}
-
 // returns an unstructured hexahedral grid containing the cuboids defined by `cuboidCenters` and `edgeLengths`
 UnstructuredGrid::ptr createCuboidGrid(Coords::const_ptr cuboidCenters, Vec<Scalar, 3>::const_ptr edgeLengths)
 {

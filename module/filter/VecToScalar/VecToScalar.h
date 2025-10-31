@@ -8,7 +8,6 @@
 class VecToScalar: public vistle::Module {
 public:
     VecToScalar(const std::string &name, int moduleID, mpi::communicator comm);
-    ~VecToScalar();
 
 private:
     virtual bool compute();

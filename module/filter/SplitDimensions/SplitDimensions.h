@@ -9,7 +9,6 @@
 class SplitDimensions: public vistle::Module {
 public:
     SplitDimensions(const std::string &name, int moduleID, mpi::communicator comm);
-    ~SplitDimensions();
 
     typedef std::map<vistle::Index, vistle::Index> VerticesMapping;
 

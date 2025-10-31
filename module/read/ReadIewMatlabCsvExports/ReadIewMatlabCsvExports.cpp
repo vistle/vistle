@@ -25,9 +25,6 @@ Transversalflussmaschine::Transversalflussmaschine(const std::string &name, int 
     observeParameter(m_format);
 }
 
-Transversalflussmaschine::~Transversalflussmaschine()
-{}
-
 constexpr size_t numCoords = 3;
 
 bool checkFormat(const std::array<std::unique_ptr<rapidcsv::Document>, 3> &data)

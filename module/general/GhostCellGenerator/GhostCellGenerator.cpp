@@ -52,9 +52,6 @@ GhostCellGenerator::GhostCellGenerator(const std::string &name, int moduleID, mp
     createOutputPort("data_out", "grid with added ghost/halo cells");
 }
 
-GhostCellGenerator::~GhostCellGenerator()
-{}
-
 void checkData(UnstructuredGrid::const_ptr ugrid)
 {}
 

@@ -9,7 +9,6 @@
 class GhostCellGenerator: public vistle::Module {
 public:
     GhostCellGenerator(const std::string &name, int moduleID, mpi::communicator comm);
-    ~GhostCellGenerator();
 
     typedef std::vector<vistle::Index> DataMapping;
 

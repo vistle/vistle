@@ -7,7 +7,6 @@
 class CuttingSurfaceVtkm: public vistle::VtkmModule {
 public:
     CuttingSurfaceVtkm(const std::string &name, int moduleID, mpi::communicator comm);
-    ~CuttingSurfaceVtkm();
 
 private:
     std::unique_ptr<viskores::filter::Filter> setUpFilter() const override;

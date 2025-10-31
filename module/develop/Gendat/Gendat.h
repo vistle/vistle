@@ -6,7 +6,6 @@
 class Gendat: public vistle::Reader {
 public:
     Gendat(const std::string &name, int moduleID, mpi::communicator comm);
-    ~Gendat() override;
 
 private:
     bool examine(const vistle::Parameter *param) override;

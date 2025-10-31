@@ -21,9 +21,6 @@ ExtractGrid::ExtractGrid(const std::string &name, int moduleID, mpi::communicato
     addResultCache(m_normalsCache);
 }
 
-ExtractGrid::~ExtractGrid()
-{}
-
 bool ExtractGrid::compute()
 {
     auto container = expect<Object>(m_dataIn);

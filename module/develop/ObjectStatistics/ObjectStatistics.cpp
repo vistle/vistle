@@ -24,7 +24,6 @@ static const int NumDim = 4;
 class ObjectStatistics: public vistle::Module {
 public:
     ObjectStatistics(const std::string &name, int moduleID, mpi::communicator comm);
-    ~ObjectStatistics();
 
     struct stats {
         Index blocks; //!< no. of blocks/partitions
@@ -162,9 +161,6 @@ ObjectStatistics::ObjectStatistics(const std::string &name, int moduleID, mpi::c
                         vistle::Parameter::Boolean);
     createInputPort("data_in", "input data", Port::MULTI);
 }
-
-ObjectStatistics::~ObjectStatistics()
-{}
 
 bool ObjectStatistics::compute()
 {

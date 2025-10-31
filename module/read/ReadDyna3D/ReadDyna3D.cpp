@@ -88,10 +88,6 @@ ReadDyna3D::ReadDyna3D(const std::string &name, int moduleID, mpi::communicator 
     observeParameter(p_Selection);
 }
 
-ReadDyna3D::~ReadDyna3D()
-{}
-
-
 bool ReadDyna3D::prepareRead()
 {
     if (!dyna3dReader) {

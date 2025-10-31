@@ -14,7 +14,6 @@ namespace mpi = boost::mpi;
 class Sample: public vistle::Module {
 public:
     Sample(const std::string &name, int moduleID, mpi::communicator comm);
-    ~Sample();
 
 private:
     //virtual bool compute() override;

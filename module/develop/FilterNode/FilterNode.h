@@ -8,7 +8,6 @@
 class FilterNode: public vistle::Module {
 public:
     FilterNode(const std::string &name, int moduleID, mpi::communicator comm);
-    ~FilterNode();
 
 private:
     virtual bool compute() override;

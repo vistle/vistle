@@ -638,11 +638,6 @@ OSGRenderer::OSGRenderer(const std::string &name, int moduleID, mpi::communicato
     CERR << "creation done" << std::endl;
 }
 
-OSGRenderer::~OSGRenderer()
-{
-    CERR << "destroying" << std::endl;
-}
-
 void OSGRenderer::flush()
 {
     CERR << "flushing outstanding frames..." << std::endl;

@@ -73,10 +73,6 @@ ReadEnsight::ReadEnsight(const std::string &name, int moduleID, mpi::communicato
     setParallelizationMode(ParallelizeTimeAndBlocks);
 }
 
-ReadEnsight::~ReadEnsight()
-{}
-
-
 bool ReadEnsight::examine(const vistle::Parameter *param)
 {
     if (!param || param == m_casefile || param == m_earlyPartList) {

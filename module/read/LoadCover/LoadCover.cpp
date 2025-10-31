@@ -23,9 +23,6 @@ LoadCover::LoadCover(const std::string &name, int moduleID, mpi::communicator co
                       "keep the generated scene graph object for this many seconds after being unloaded", 0.0);
 }
 
-LoadCover::~LoadCover()
-{}
-
 bool LoadCover::compute()
 {
     return true;

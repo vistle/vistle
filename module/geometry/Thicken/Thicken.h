@@ -6,7 +6,6 @@
 class Thicken: public vistle::Module {
 public:
     Thicken(const std::string &name, int moduleID, mpi::communicator comm);
-    ~Thicken();
 
 private:
     virtual bool compute();

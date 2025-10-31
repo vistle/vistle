@@ -88,9 +88,6 @@ ReadSubzoneTecplot::ReadSubzoneTecplot(const std::string &name, int moduleID, mp
     observeParameter(m_filedir); // examine method is called when parameter is changed
 }
 
-ReadSubzoneTecplot::~ReadSubzoneTecplot() = default;
-
-
 bool ReadSubzoneTecplot::examine(const vistle::Parameter *param)
 {
     StopWatch w("ReadSubzoneTecplot::examine");

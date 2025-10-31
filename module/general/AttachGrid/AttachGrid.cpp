@@ -19,9 +19,6 @@ AttachGrid::AttachGrid(const std::string &name, int moduleID, mpi::communicator 
     }
 }
 
-AttachGrid::~AttachGrid()
-{}
-
 bool AttachGrid::compute()
 {
     bool ok = true;

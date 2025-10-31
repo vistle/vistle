@@ -11,7 +11,6 @@
 class SpheresOverlap: public vistle::Module {
 public:
     SpheresOverlap(const std::string &name, int moduleID, mpi::communicator comm);
-    ~SpheresOverlap();
 
 private:
     vistle::Port *m_spheresIn, *m_linesOut, *m_dataOut;

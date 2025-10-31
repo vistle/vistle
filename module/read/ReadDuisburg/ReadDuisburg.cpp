@@ -61,8 +61,6 @@ ReadDuisburg::ReadDuisburg(const std::string &name, int moduleID, mpi::communica
     observeParameter(m_gridFile);
 }
 
-ReadDuisburg::~ReadDuisburg()
-{}
 
 bool ReadDuisburg::examine(const vistle::Parameter *param)
 {

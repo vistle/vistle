@@ -360,9 +360,6 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm): Mod
     updateHaveData();
 }
 
-Color::~Color()
-{}
-
 namespace {
 template<class V>
 void updateMinMax(typename V::const_ptr &v, Scalar &min, Scalar &max)

@@ -116,9 +116,6 @@ ReadFOAM::ReadFOAM(const std::string &name, int moduleId, mpi::communicator comm
 }
 
 
-ReadFOAM::~ReadFOAM() //Destructor
-{}
-
 std::vector<std::string> ReadFOAM::getFieldList() const
 {
     std::vector<std::string> choices;

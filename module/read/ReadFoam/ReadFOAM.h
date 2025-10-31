@@ -96,7 +96,6 @@ public:
     enum GhostMode { ALL, BASE, COORDS };
 
     ReadFOAM(const std::string &name, int moduleId, mpi::communicator comm);
-    ~ReadFOAM() override;
 
 private:
     //Parameter

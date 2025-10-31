@@ -53,9 +53,6 @@ Thicken::Thicken(const std::string &name, int moduleID, mpi::communicator comm):
                                      Parameter::Boolean);
 }
 
-Thicken::~Thicken()
-{}
-
 bool Thicken::compute()
 {
     auto updateOutput = [&](OutputGeometry og) {

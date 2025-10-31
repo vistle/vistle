@@ -6,7 +6,6 @@
 class SplitPolyhedra: public vistle::Module {
 public:
     SplitPolyhedra(const std::string &name, int moduleID, mpi::communicator comm);
-    ~SplitPolyhedra();
 
 private:
     bool prepare() override;

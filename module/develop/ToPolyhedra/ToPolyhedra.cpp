@@ -18,10 +18,6 @@ ToPolyhedra::ToPolyhedra(const std::string &name, int moduleID, mpi::communicato
     createOutputPort("grid_out", "unstructured grid with tesselated polyhedra");
 }
 
-ToPolyhedra::~ToPolyhedra()
-{}
-
-
 bool ToPolyhedra::compute()
 {
     auto data = expect<DataBase>("grid_in");

@@ -11,9 +11,6 @@ TestDynamicPorts::TestDynamicPorts(const std::string &name, int moduleID, mpi::c
     setParameterRange(m_numPortsParam, (Integer)0, (Integer)10);
 }
 
-TestDynamicPorts::~TestDynamicPorts()
-{}
-
 std::string portName(int num)
 {
     std::stringstream str;

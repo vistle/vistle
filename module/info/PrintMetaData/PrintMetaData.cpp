@@ -74,11 +74,6 @@ PrintMetaData::PrintMetaData(const std::string &name, int moduleID, mpi::communi
     util_printMPIInfo("ctor:");
 }
 
-// DESTRUCTOR
-//-------------------------------------------------------------------------
-PrintMetaData::~PrintMetaData()
-{}
-
 bool PrintMetaData::changeParameter(const Parameter *p)
 {
     if (p == m_param_doPrintTotals || p == m_param_doPrintMinMax) {

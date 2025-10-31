@@ -89,7 +89,6 @@ private:
 
 public:
     ReadDyna3D(const std::string &name, int moduleID, mpi::communicator comm);
-    ~ReadDyna3D() override;
 
     std::unique_ptr<Dyna3DReaderBase> dyna3dReader;
 };

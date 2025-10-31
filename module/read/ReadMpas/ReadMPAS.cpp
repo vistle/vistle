@@ -147,10 +147,6 @@ ReadMPAS::ReadMPAS(const std::string &name, int moduleID, mpi::communicator comm
     observeParameter(m_varDim);
 }
 
-// DESTRUCTOR
-ReadMPAS::~ReadMPAS()
-{}
-
 // PREPARE READING
 // set number of partitions and timesteps
 bool ReadMPAS::prepareRead()

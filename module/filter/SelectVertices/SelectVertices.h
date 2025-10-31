@@ -10,7 +10,6 @@
 class SelectVertices: public vistle::Module {
 public:
     SelectVertices(const std::string &name, int moduleID, mpi::communicator comm);
-    ~SelectVertices();
 
     typedef std::map<vistle::Index, vistle::Index> VerticesMapping;
 

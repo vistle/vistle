@@ -12,7 +12,6 @@ using namespace vistle;
 class ReadDuisburg: public vistle::Reader {
 public:
     ReadDuisburg(const std::string &name, int moduleID, mpi::communicator comm);
-    ~ReadDuisburg() override;
 
 private:
     bool prepareRead() override;

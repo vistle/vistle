@@ -34,9 +34,6 @@ SplitPolyhedra::SplitPolyhedra(const std::string &name, int moduleID, mpi::commu
     V_ENUM_SET_CHOICES(m_mode, Mode);
 }
 
-SplitPolyhedra::~SplitPolyhedra()
-{}
-
 template<typename T>
 struct R {
     R(const T *begin, const T *end): m_begin(begin), m_end(end) {}

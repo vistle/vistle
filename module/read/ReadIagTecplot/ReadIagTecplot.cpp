@@ -239,6 +239,3 @@ ReadIagTecplot::ReadIagTecplot(const std::string &name, int moduleID, mpi::commu
 
     observeParameter(m_filename);
 }
-
-ReadIagTecplot::~ReadIagTecplot()
-{}

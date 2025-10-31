@@ -18,9 +18,6 @@ CellToVertVtkm::CellToVertVtkm(const std::string &name, int moduleID, mpi::commu
 : VtkmModule(name, moduleID, comm)
 {}
 
-CellToVertVtkm::~CellToVertVtkm()
-{}
-
 ModuleStatusPtr CellToVertVtkm::prepareInputField(const Port *port, const Object::const_ptr &grid,
                                                   const DataBase::const_ptr &field, std::string &fieldName,
                                                   viskores::cont::DataSet &dataset) const

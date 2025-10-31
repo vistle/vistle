@@ -42,8 +42,6 @@ VectorField::VectorField(const std::string &name, int moduleID, mpi::communicato
         addIntParameter("all_coordinates", "include all or only referenced coordinates", false, Parameter::Boolean);
 }
 
-VectorField::~VectorField() = default;
-
 bool VectorField::compute()
 {
     auto vecs = expect<Vec<Scalar, 3>>(m_gridIn);

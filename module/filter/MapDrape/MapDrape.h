@@ -19,7 +19,6 @@ class MapDrape: public vistle::Module {
 
 public:
     MapDrape(const std::string &name, int moduleID, mpi::communicator comm);
-    ~MapDrape() override;
 
 private:
     bool compute() override;

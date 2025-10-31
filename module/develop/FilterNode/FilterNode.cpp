@@ -23,9 +23,6 @@ FilterNode::FilterNode(const std::string &name, int moduleID, mpi::communicator 
     m_invertParam = addIntParameter("invert", "Invert block selection", 0, Parameter::Boolean);
 }
 
-FilterNode::~FilterNode()
-{}
-
 bool FilterNode::changeParameter(const Parameter *p)
 {
     if (p == m_criterionParam) {

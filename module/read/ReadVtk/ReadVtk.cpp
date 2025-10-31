@@ -388,9 +388,6 @@ ReadVtk::ReadVtk(const std::string &name, int moduleID, mpi::communicator comm):
     observeParameter(m_readPieces);
 }
 
-ReadVtk::~ReadVtk()
-{}
-
 bool ReadVtk::examine(const vistle::Parameter *param)
 {
     if (param == nullptr || param == m_filename || param == m_readPieces) {

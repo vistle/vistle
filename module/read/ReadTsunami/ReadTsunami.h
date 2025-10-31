@@ -76,7 +76,6 @@ public:
 
     //default constructor
     ReadTsunami(const string &name, int moduleID, mpi::communicator comm);
-    ~ReadTsunami() override;
 
 private:
     typedef unique_ptr<NcFile> NcFilePtr;

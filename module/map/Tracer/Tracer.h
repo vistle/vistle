@@ -31,7 +31,6 @@ class Tracer: public vistle::Module {
 public:
     static const int NumPorts = 3;
     Tracer(const std::string &name, int moduleID, mpi::communicator comm);
-    ~Tracer();
 
     typedef std::map<std::string, std::string> AttributeMap;
 

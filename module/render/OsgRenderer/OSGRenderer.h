@@ -84,7 +84,6 @@ class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
 
 public:
     OSGRenderer(const std::string &name, int moduleID, mpi::communicator comm);
-    ~OSGRenderer() override;
 
 private:
     bool handleMessage(const vistle::message::Message *message, const vistle::MessagePayload &payload) override;

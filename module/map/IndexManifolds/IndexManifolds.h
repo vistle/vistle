@@ -7,7 +7,6 @@
 class IndexManifolds: public vistle::Module {
 public:
     IndexManifolds(const std::string &name, int moduleID, mpi::communicator comm);
-    ~IndexManifolds();
 
 private:
     bool changeParameter(const vistle::Parameter *p) override;

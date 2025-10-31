@@ -36,9 +36,6 @@ Sample::Sample(const std::string &name, int moduleID, mpi::communicator comm): M
     V_ENUM_SET_CHOICES(m_hits, MultiHits);
 }
 
-Sample::~Sample()
-{}
-
 int Sample::SampleToGrid(const vistle::GeometryInterface *target, vistle::DataBase::const_ptr inData,
                          vistle::DataBase::ptr &sampled)
 {

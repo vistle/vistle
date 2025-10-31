@@ -49,9 +49,6 @@ ShowGrid::ShowGrid(const std::string &name, int moduleID, mpi::communicator comm
     addResultCache(m_cache);
 }
 
-ShowGrid::~ShowGrid()
-{}
-
 bool ShowGrid::compute()
 {
     std::array<bool, UnstructuredGrid::NUM_TYPES> showTypes;

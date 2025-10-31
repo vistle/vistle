@@ -13,9 +13,6 @@ DomainSurfaceVtkm::DomainSurfaceVtkm(const std::string &name, int moduleID, mpi:
 : VtkmModule(name, moduleID, comm, 1, MappedDataHandling::Use)
 {}
 
-DomainSurfaceVtkm::~DomainSurfaceVtkm()
-{}
-
 ModuleStatusPtr DomainSurfaceVtkm::prepareInputGrid(const vistle::Object::const_ptr &grid,
                                                     viskores::cont::DataSet &dataset) const
 {

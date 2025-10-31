@@ -8,7 +8,6 @@
 class CutGeometry: public vistle::Module {
 public:
     CutGeometry(const std::string &name, int moduleID, mpi::communicator comm);
-    ~CutGeometry();
 
     vistle::Object::ptr cutGeometry(vistle::Object::const_ptr object) const;
 

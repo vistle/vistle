@@ -48,9 +48,6 @@ DomainSurface::DomainSurface(const std::string &name, int moduleID, mpi::communi
     addResultCache(m_cache);
 }
 
-DomainSurface::~DomainSurface()
-{}
-
 namespace {
 
 template<class Connected>

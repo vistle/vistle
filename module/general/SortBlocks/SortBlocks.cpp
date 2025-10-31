@@ -30,9 +30,6 @@ SortBlocks::SortBlocks(const std::string &name, int moduleID, mpi::communicator 
     m_invertParam = addIntParameter("invert", "Invert roles of 1st and 2nd output", false, Parameter::Boolean);
 }
 
-SortBlocks::~SortBlocks()
-{}
-
 bool SortBlocks::changeParameter(const Parameter *p)
 {
     if (p == m_criterionParam) {

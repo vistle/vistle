@@ -6,7 +6,7 @@
 class GenNormalsVtkm: public vistle::VtkmModule {
 public:
     GenNormalsVtkm(const std::string &name, int moduleID, mpi::communicator comm);
-    ~GenNormalsVtkm();
+
     std::string getFieldName(int i, bool output = false) const override;
     bool changeParameter(const vistle::Parameter *p) override;
 

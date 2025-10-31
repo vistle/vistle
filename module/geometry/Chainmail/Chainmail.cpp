@@ -43,10 +43,6 @@ Chainmail::Chainmail(const std::string &name, int moduleID, mpi::communicator co
                                      "number of quads used to aproximate the torus around its axis", 5);
 }
 
-Chainmail::~Chainmail()
-{}
-
-
 template<typename T>
 Vector3 vec(const T &t, Index i)
 {

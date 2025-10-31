@@ -26,9 +26,6 @@ GenIsoDat::GenIsoDat(const std::string &name, int moduleID, mpi::communicator co
     m_caseNumParam = addIntParameter("case_num", "case number (-1: all)", -1);
 }
 
-GenIsoDat::~GenIsoDat()
-{}
-
 bool GenIsoDat::prepare()
 {
     std::cerr << "cell type: " << m_cellTypeParam->getValue() << std::endl;

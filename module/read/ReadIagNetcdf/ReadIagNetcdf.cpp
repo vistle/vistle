@@ -114,9 +114,6 @@ ReadIagNetcdf::ReadIagNetcdf(const std::string &name, int moduleID, mpi::communi
     setAllowTimestepDistribution(true);
 }
 
-ReadIagNetcdf::~ReadIagNetcdf()
-{}
-
 bool ReadIagNetcdf::setVariableList(FileType type, int ncid)
 {
     auto &variables = type == GridFile ? m_gridVariables : m_dataVariables;

@@ -6,7 +6,6 @@
 class ManipulateGhosts: public vistle::Module {
 public:
     ManipulateGhosts(const std::string &name, int moduleID, mpi::communicator comm);
-    ~ManipulateGhosts();
 
 private:
     vistle::Port *m_gridIn = nullptr, *m_gridOut = nullptr;

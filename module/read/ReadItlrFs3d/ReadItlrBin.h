@@ -12,7 +12,6 @@
 class ReadItlrBin: public vistle::Reader {
 public:
     ReadItlrBin(const std::string &name, int moduleID, mpi::communicator comm);
-    ~ReadItlrBin();
 
     // reader interface
     bool examine(const vistle::Parameter *param) override;
