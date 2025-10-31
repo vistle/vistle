@@ -8,7 +8,7 @@ public:
     TestCellSearch(const std::string &name, int moduleID, mpi::communicator comm);
 
 private:
-    virtual bool compute();
+    bool compute() override;
 
     vistle::VectorParameter *m_point;
     vistle::IntParameter *m_block, *m_cell;

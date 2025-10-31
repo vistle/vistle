@@ -10,7 +10,7 @@ public:
 
 private:
     std::map<int, vistle::Object::const_ptr> m_objs;
-    virtual bool compute();
+    bool compute() override;
 
     vistle::IntParameter *m_kind;
     vistle::IntParameter *m_modulus;

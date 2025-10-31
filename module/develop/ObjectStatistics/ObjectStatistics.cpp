@@ -96,10 +96,10 @@ public:
 private:
     static const int MaxDim = ParamVector::MaxDimension;
 
-    virtual bool compute();
-    virtual bool reduce(int timestep);
+    bool compute() override;
+    bool reduce(int timestep) override;
 
-    bool prepare();
+    bool prepare() override;
 
     int m_timesteps; //!< no. of time steps
     std::map<int, int> m_objectsInTimestep;

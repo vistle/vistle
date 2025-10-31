@@ -11,8 +11,7 @@ public:
 private:
     vistle::Port *m_gridIn, *m_indexOut;
 
-
-    virtual bool compute() override;
+    bool compute() override;
 
     vistle::ResultCache<vistle::Vec<vistle::Index>::ptr> m_cache;
 };

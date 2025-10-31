@@ -15,7 +15,7 @@ public:
     Chainmail(const std::string &name, int moduleID, mpi::communicator comm);
 
 private:
-    virtual bool compute();
+    bool compute() override;
     std::vector<vistle::Vector3> toTorus(const std::vector<vistle::Vector3> &points, vistle::Index numTorusSegments,
                                          vistle::Index numDiameterSegments);
     std::vector<vistle::Vector3> toTorusCircle(const std::vector<vistle::Vector3> &points,

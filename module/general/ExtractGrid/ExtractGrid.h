@@ -11,7 +11,7 @@ public:
 
 private:
     vistle::Port *m_dataIn, *m_gridOut, *m_normalsOut;
-    virtual bool compute();
+    bool compute() override;
     vistle::ResultCache<vistle::Object::ptr> m_gridCache;
     vistle::ResultCache<vistle::Normals::ptr> m_normalsCache;
 };

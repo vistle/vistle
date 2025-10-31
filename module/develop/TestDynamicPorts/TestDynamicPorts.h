@@ -11,8 +11,8 @@ public:
     vistle::IntParameter *m_numPortsParam;
 
 private:
-    virtual bool compute() override;
-    virtual bool changeParameter(const vistle::Parameter *param) override;
+    bool compute() override;
+    bool changeParameter(const vistle::Parameter *param) override;
 };
 
 #endif

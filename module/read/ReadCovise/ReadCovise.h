@@ -67,10 +67,10 @@ class ReadCovise: public vistle::Reader {
 public:
     ReadCovise(const std::string &name, int moduleID, mpi::communicator comm);
 
-    virtual bool examine(const vistle::Parameter *param) override;
-    virtual bool prepareRead() override;
-    virtual bool read(Token &token, int timestep = -1, int block = -1) override;
-    virtual bool finishRead() override;
+    bool examine(const vistle::Parameter *param) override;
+    bool prepareRead() override;
+    bool read(Token &token, int timestep = -1, int block = -1) override;
+    bool finishRead() override;
 
 private:
     bool readSkeleton(const int port, Element *elem);

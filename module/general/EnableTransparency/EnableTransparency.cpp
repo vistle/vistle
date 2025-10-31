@@ -11,7 +11,7 @@ public:
     ~EnableTransparency();
 
 private:
-    virtual bool compute();
+    bool compute() override;
 
     IntParameter *p_transparency = nullptr;
     IntParameter *p_numPrimitives = nullptr;

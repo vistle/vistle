@@ -11,7 +11,7 @@ public:
 private:
     vistle::Port *m_gridIn;
     std::vector<vistle::Port *> m_dataIn, m_dataOut;
-    virtual bool compute();
+    bool compute() override;
 };
 
 #endif

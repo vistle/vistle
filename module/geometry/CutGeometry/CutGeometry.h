@@ -13,7 +13,7 @@ public:
 
 private:
     bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
-    virtual bool changeParameter(const vistle::Parameter *param) override;
+    bool changeParameter(const vistle::Parameter *param) override;
     IsoController isocontrol;
 };
 

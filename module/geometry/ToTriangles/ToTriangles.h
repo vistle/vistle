@@ -9,7 +9,7 @@ public:
     ToTriangles(const std::string &name, int moduleID, mpi::communicator comm);
 
 private:
-    virtual bool compute();
+    bool compute() override;
 
     vistle::IntParameter *p_transformSpheres = nullptr;
     vistle::IntParameter *p_tessellationQuality = nullptr;
