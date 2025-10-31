@@ -21,22 +21,22 @@ VISKORES_EXEC T applyOperation(const T &value, const S &displacement, DisplaceOp
     case Multiply:
         return value * displacement;
     default:
-        std::cerr << "DisplaceVtkmWorklet: Unknown DisplaceOperation " << static_cast<int>(operation) << std::endl;
+        std::cerr << "DisplaceWorklet: Unknown DisplaceOperation " << static_cast<int>(operation) << std::endl;
         return value;
     }
 }
 
-struct DisplaceVtkmWorklet: viskores::worklet::WorkletMapField {
+struct DisplaceWorklet: viskores::worklet::WorkletMapField {
     DisplaceComponent m_component;
     DisplaceOperation m_operation;
     viskores::FloatDefault m_scale;
 
-    VISKORES_CONT DisplaceVtkmWorklet()
+    VISKORES_CONT DisplaceWorklet()
     : m_component(DisplaceComponent::X), m_operation(DisplaceOperation::Add), m_scale(1.0f)
     {}
 
-    VISKORES_CONT DisplaceVtkmWorklet(DisplaceComponent component, DisplaceOperation operation,
-                                      viskores::FloatDefault scale)
+    VISKORES_CONT DisplaceWorklet(DisplaceComponent component, DisplaceOperation operation,
+                                  viskores::FloatDefault scale)
     : m_component(component), m_operation(operation), m_scale(scale)
     {}
 

@@ -18,7 +18,7 @@ VISKORES_CONT viskores::cont::DataSet DisplaceFilter::DoExecute(const viskores::
         this->CastAndCallScalarField(inputScalar.GetData(), [&](const auto &scalars) {
             viskores::cont::ArrayHandle<CoordType> result;
 
-            this->Invoke(vistle::DisplaceVtkmWorklet{m_component, m_operation, m_scale}, scalars, coords, result);
+            this->Invoke(vistle::DisplaceWorklet{m_component, m_operation, m_scale}, scalars, coords, result);
 
             outputCoords = result;
         });
