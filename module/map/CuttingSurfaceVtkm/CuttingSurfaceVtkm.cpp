@@ -14,9 +14,6 @@ CuttingSurfaceVtkm::CuttingSurfaceVtkm(const std::string &name, int moduleID, mp
         addIntParameter("compute_normals", "compute normals (structured grids only)", 0, Parameter::Boolean);
 }
 
-CuttingSurfaceVtkm::~CuttingSurfaceVtkm()
-{}
-
 bool CuttingSurfaceVtkm::changeParameter(const Parameter *param)
 {
     bool ok = m_implFuncControl.changeParameter(param);

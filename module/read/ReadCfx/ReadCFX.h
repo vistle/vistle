@@ -94,7 +94,7 @@ class ReadCFX: public vistle::Module {
 
 public:
     ReadCFX(const std::string &name, int moduleID, mpi::communicator comm);
-    ~ReadCFX();
+
     virtual bool prepare() override;
     static const int usr_level =
         0; // Query the number of variables at interest level usr_level or below. If usr_level is 0, then the

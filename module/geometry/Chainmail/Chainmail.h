@@ -13,7 +13,6 @@ Extrapolates rings from quads and triangles of an uniform grid
 class Chainmail: public vistle::Module {
 public:
     Chainmail(const std::string &name, int moduleID, mpi::communicator comm);
-    ~Chainmail();
 
 private:
     virtual bool compute();

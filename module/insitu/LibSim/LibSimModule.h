@@ -12,7 +12,6 @@
 class LibSimModule: public vistle::insitu::InSituModuleBase {
 public:
     LibSimModule(const std::string &name, int moduleID, mpi::communicator comm);
-    ~LibSimModule();
 
 private:
     std::unique_ptr<vistle::insitu::message::MessageHandler> connectToSim() override;

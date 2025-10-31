@@ -8,7 +8,6 @@
 class ScalarToVec: public vistle::Module {
 public:
     ScalarToVec(const std::string &name, int moduleID, mpi::communicator comm);
-    ~ScalarToVec();
 
 private:
     static const int NumScalars = 3;

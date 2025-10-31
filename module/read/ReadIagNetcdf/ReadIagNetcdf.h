@@ -16,7 +16,6 @@ using namespace vistle;
 class ReadIagNetcdf: public vistle::Reader {
 public:
     ReadIagNetcdf(const std::string &name, int moduleID, mpi::communicator comm);
-    ~ReadIagNetcdf() override;
 
 private:
     static const unsigned NUMPORTS = 3;

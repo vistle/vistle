@@ -67,7 +67,6 @@ public:
     };
 
     PrintMetaData(const std::string &name, int moduleID, mpi::communicator comm);
-    ~PrintMetaData();
 
 private:
     // overridden functions

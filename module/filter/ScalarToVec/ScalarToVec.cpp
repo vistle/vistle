@@ -21,9 +21,6 @@ ScalarToVec::ScalarToVec(const std::string &name, int moduleID, mpi::communicato
     m_species = addStringParameter("species", "Species for output", "");
 }
 
-ScalarToVec::~ScalarToVec()
-{}
-
 bool ScalarToVec::compute()
 {
     Vec<Scalar>::const_ptr data_in[NumScalars]{};

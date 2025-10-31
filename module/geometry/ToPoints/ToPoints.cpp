@@ -27,9 +27,6 @@ ToPoints::ToPoints(const std::string &name, int moduleID, mpi::communicator comm
     addResultCache(m_resultCache);
 }
 
-ToPoints::~ToPoints()
-{}
-
 bool ToPoints::compute()
 {
     auto o = expect<Object>("grid_in");

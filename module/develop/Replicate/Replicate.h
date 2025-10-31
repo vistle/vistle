@@ -7,7 +7,6 @@
 class Replicate: public vistle::Module {
 public:
     Replicate(const std::string &name, int moduleID, mpi::communicator comm);
-    ~Replicate();
 
 private:
     std::map<int, vistle::Object::const_ptr> m_objs;

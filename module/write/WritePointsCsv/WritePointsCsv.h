@@ -9,7 +9,6 @@
 class WritePointsCsv: public vistle::Module {
 public:
     WritePointsCsv(const std::string &name, int moduleID, mpi::communicator comm);
-    ~WritePointsCsv();
 
     static const int NumPorts = 3;
     std::array<vistle::Port *, NumPorts> m_port;

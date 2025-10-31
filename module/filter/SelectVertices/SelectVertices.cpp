@@ -36,9 +36,6 @@ SelectVertices::SelectVertices(const std::string &name, int moduleID, mpi::commu
     addResultCache(m_gridCache);
 }
 
-SelectVertices::~SelectVertices()
-{}
-
 bool SelectVertices::prepare()
 {
     m_invert = p_invert->getValue();

@@ -25,9 +25,6 @@ ApplyTransform::ApplyTransform(const std::string &name, int moduleID, mpi::commu
     addResultCache(m_resultCache);
 }
 
-ApplyTransform::~ApplyTransform()
-{}
-
 bool ApplyTransform::compute()
 {
     auto o = expect<Object>("grid_in");

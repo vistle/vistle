@@ -22,9 +22,6 @@ Replicate::Replicate(const std::string &name, int moduleID, mpi::communicator co
     createOutputPort("grid_out", "replicated data");
 }
 
-Replicate::~Replicate()
-{}
-
 bool Replicate::compute()
 {
     if (hasObject("grid_in")) {

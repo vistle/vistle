@@ -94,9 +94,6 @@ Gendat::Gendat(const std::string &name, int moduleID, mpi::communicator comm): R
     setParallelizationMode(ParallelizeBlocks);
 }
 
-Gendat::~Gendat()
-{}
-
 bool Gendat::examine(const Parameter *)
 {
     size_t nblocks = m_blocks[0]->getValue() * m_blocks[1]->getValue() * m_blocks[2]->getValue();

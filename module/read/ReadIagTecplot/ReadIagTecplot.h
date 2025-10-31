@@ -6,15 +6,9 @@
 class ReadIagTecplot: public vistle::Reader {
 public:
     ReadIagTecplot(const std::string &name, int moduleID, mpi::communicator comm);
-    ~ReadIagTecplot();
 
 private:
     static const int NumPorts = 3;
-
-#if 0
-   bool changeParameter(const vistle::Parameter *p) override;
-   bool prepare() override;
-#endif
 
     bool examine(const vistle::Parameter *param) override;
     bool read(Token &token, int timestep, int block) override;

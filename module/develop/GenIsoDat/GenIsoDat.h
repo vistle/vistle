@@ -6,7 +6,6 @@
 class GenIsoDat: public vistle::Module {
 public:
     GenIsoDat(const std::string &name, int moduleID, mpi::communicator comm);
-    ~GenIsoDat();
 
 private:
     bool prepare() override;

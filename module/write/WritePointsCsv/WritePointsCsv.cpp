@@ -35,8 +35,6 @@ WritePointsCsv::WritePointsCsv(const std::string &name, int moduleID, mpi::commu
     m_writeIndex = addIntParameter("write_index", "write vertex index", true, Parameter::Boolean);
 }
 
-WritePointsCsv::~WritePointsCsv() = default;
-
 bool WritePointsCsv::prepare()
 {
     return true;

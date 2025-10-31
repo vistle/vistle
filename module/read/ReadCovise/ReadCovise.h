@@ -66,7 +66,6 @@ class ReadCovise: public vistle::Reader {
 
 public:
     ReadCovise(const std::string &name, int moduleID, mpi::communicator comm);
-    ~ReadCovise() override;
 
     virtual bool examine(const vistle::Parameter *param) override;
     virtual bool prepareRead() override;

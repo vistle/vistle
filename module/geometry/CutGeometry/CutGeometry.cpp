@@ -25,9 +25,6 @@ CutGeometry::CutGeometry(const std::string &name, int moduleID, mpi::communicato
     linkPorts(pin, pout);
 }
 
-CutGeometry::~CutGeometry()
-{}
-
 Object::ptr CutGeometry::cutGeometry(Object::const_ptr object) const
 {
     auto coords = Coords::as(object);

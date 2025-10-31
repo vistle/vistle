@@ -23,7 +23,6 @@ using namespace vistle;
 class ReadMPAS: public vistle::Reader {
 public:
     ReadMPAS(const std::string &name, int moduleID, mpi::communicator comm);
-    ~ReadMPAS() override;
 
 private:
     enum FileType { grid_type, data_type, zgrid_type };

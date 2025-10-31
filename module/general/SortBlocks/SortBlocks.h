@@ -8,7 +8,6 @@
 class SortBlocks: public vistle::Module {
 public:
     SortBlocks(const std::string &name, int moduleID, mpi::communicator comm);
-    ~SortBlocks();
 
 private:
     virtual bool compute() override;

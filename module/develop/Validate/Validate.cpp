@@ -12,9 +12,6 @@ Validate::Validate(const std::string &name, int moduleID, mpi::communicator comm
     createInputPort("data_in", "data");
 }
 
-Validate::~Validate()
-{}
-
 bool Validate::compute()
 {
     Object::const_ptr obj = expect<Object>("data_in");

@@ -39,9 +39,6 @@ SpheresOverlap::SpheresOverlap(const std::string &name, int moduleID, mpi::commu
 }
 
 
-SpheresOverlap::~SpheresOverlap()
-{}
-
 bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
 {
     auto dataIn = task->expect<Object>("spheres_in");

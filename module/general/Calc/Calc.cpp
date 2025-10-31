@@ -245,9 +245,6 @@ Calc::Calc(const std::string &name, int moduleID, mpi::communicator comm): Modul
     m_species = addStringParameter("species", "species of output data", "computed");
 }
 
-Calc::~Calc()
-{}
-
 bool Calc::compute(const std::shared_ptr<BlockTask> &task) const
 {
     Object::const_ptr oin[NumPorts];

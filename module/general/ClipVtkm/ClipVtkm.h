@@ -7,7 +7,6 @@
 class ClipVtkm: public vistle::VtkmModule {
 public:
     ClipVtkm(const std::string &name, int moduleID, mpi::communicator comm);
-    ~ClipVtkm();
 
 private:
     vistle::IntParameter *m_flip = nullptr;

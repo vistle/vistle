@@ -101,12 +101,6 @@ ReadTsunami::ReadTsunami(const string &name, int moduleID, mpi::communicator com
 }
 
 /**
- * @brief Destructor.
- */
-ReadTsunami::~ReadTsunami()
-{}
-
-/**
  * @brief Initialize scalar choice parameter and ports.
  */
 void ReadTsunami::initScalarParamReader()

@@ -28,7 +28,6 @@ struct VtkFile {
 class ReadVtk: public vistle::Reader {
 public:
     ReadVtk(const std::string &name, int moduleID, mpi::communicator comm);
-    ~ReadVtk() override;
 
     // reader interface
     bool examine(const vistle::Parameter *param) override;

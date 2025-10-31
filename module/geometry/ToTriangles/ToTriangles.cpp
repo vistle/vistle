@@ -35,9 +35,6 @@ ToTriangles::ToTriangles(const std::string &name, int moduleID, mpi::communicato
     addResultCache(m_resultCache);
 }
 
-ToTriangles::~ToTriangles()
-{}
-
 template<int Dim>
 struct ReplicateData {
     DataBase::const_ptr object;

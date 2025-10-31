@@ -223,9 +223,6 @@ MapDrape::MapDrape(const std::string &name, int moduleID, mpi::communicator comm
 #endif
 }
 
-MapDrape::~MapDrape()
-{}
-
 bool MapDrape::compute()
 {
     Coords::ptr outCoords;

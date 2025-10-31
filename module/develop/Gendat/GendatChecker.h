@@ -6,7 +6,6 @@
 class GendatChecker: public vistle::Module {
 public:
     GendatChecker(const std::string &name, int moduleID, mpi::communicator comm);
-    ~GendatChecker();
 
 private:
     virtual bool compute();

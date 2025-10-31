@@ -6,7 +6,6 @@
 class TestCellSearch: public vistle::Module {
 public:
     TestCellSearch(const std::string &name, int moduleID, mpi::communicator comm);
-    ~TestCellSearch();
 
 private:
     virtual bool compute();

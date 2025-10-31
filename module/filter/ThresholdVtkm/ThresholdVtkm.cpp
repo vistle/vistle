@@ -21,9 +21,6 @@ ThresholdVtkm::ThresholdVtkm(const std::string &name, int moduleID, mpi::communi
     m_threshold = addFloatParameter("threshold", "selection threshold", 0);
 }
 
-ThresholdVtkm::~ThresholdVtkm()
-{}
-
 std::unique_ptr<viskores::filter::Filter> ThresholdVtkm::setUpFilter() const
 {
     auto filter = std::make_unique<viskores::filter::entity_extraction::Threshold>();

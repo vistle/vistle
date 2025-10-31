@@ -12,7 +12,6 @@ namespace vistle {
 class ReadSubzoneTecplot: public vistle::Reader {
 public:
     ReadSubzoneTecplot(const std::string &name, int moduleID, mpi::communicator comm);
-    ~ReadSubzoneTecplot() override;
 
 private:
     vistle::IntParameter *m_staticGeometry = nullptr; // 0 dynamic, 1 static

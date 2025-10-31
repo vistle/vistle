@@ -6,7 +6,6 @@
 class DomainSurfaceVtkm: public vistle::VtkmModule {
 public:
     DomainSurfaceVtkm(const std::string &name, int moduleID, mpi::communicator comm);
-    ~DomainSurfaceVtkm();
 
 private:
     ModuleStatusPtr prepareInputGrid(const vistle::Object::const_ptr &grid,

@@ -30,9 +30,6 @@ ShowCelltree::ShowCelltree(const std::string &name, int moduleID, mpi::communica
     createOutputPort("invalid_out", "invalid");
 }
 
-ShowCelltree::~ShowCelltree()
-{}
-
 void visit(const Celltree3::Node *nodes, const Celltree3::Node &cur, Vector3 min, Vector3 max, Lines::ptr lines,
            Vec<Scalar>::ptr data, int depth, int mindepth, int maxdepth, int show)
 {

@@ -8,7 +8,6 @@
 class Calc: public vistle::Module {
 public:
     Calc(const std::string &name, int moduleID, mpi::communicator comm);
-    ~Calc();
 
 private:
     static const int NumPorts = 3;

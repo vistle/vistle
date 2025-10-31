@@ -18,8 +18,6 @@ GenNormalsVtkm::GenNormalsVtkm(const std::string &name, int moduleID, mpi::commu
     setParameterReadOnly(m_inward, m_autoOrient->getValue() == 0);
 }
 
-GenNormalsVtkm::~GenNormalsVtkm() = default;
-
 std::string GenNormalsVtkm::getFieldName(int i, bool output) const
 {
     if (i == 0 && output) {

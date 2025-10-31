@@ -50,11 +50,6 @@ ToUnstructured::ToUnstructured(const std::string &name, int moduleID, mpi::commu
     addResultCache(m_cache);
 }
 
-// DESTRUCTOR
-//-------------------------------------------------------------------------
-ToUnstructured::~ToUnstructured()
-{}
-
 // COMPUTE FUNCTION
 //-------------------------------------------------------------------------
 bool ToUnstructured::compute()

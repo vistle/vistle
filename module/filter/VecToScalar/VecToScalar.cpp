@@ -27,9 +27,6 @@ VecToScalar::VecToScalar(const std::string &name, int moduleID, mpi::communicato
     V_ENUM_SET_CHOICES(m_caseParam, Choices);
 }
 
-VecToScalar::~VecToScalar()
-{}
-
 bool VecToScalar::compute()
 {
     auto data_in = expect<Vec<Scalar, 3>>("data_in");

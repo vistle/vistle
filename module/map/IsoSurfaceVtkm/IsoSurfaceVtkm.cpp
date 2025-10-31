@@ -57,9 +57,6 @@ IsoSurfaceVtkm::IsoSurfaceVtkm(const std::string &name, int moduleID, mpi::commu
         addIntParameter("compute_normals", "compute per-vertex surface normals", false, Parameter::Boolean);
 }
 
-IsoSurfaceVtkm::~IsoSurfaceVtkm()
-{}
-
 bool IsoSurfaceVtkm::changeParameter(const Parameter *param)
 {
     if (param == m_pointOrValue) {

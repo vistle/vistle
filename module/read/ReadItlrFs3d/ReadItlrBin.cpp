@@ -395,9 +395,6 @@ ReadItlrBin::ReadItlrBin(const std::string &name, int moduleID, mpi::communicato
     observeParameter(m_numPartitions);
 }
 
-ReadItlrBin::~ReadItlrBin()
-{}
-
 bool ReadItlrBin::examine(const Parameter *param)
 {
     if (!param || param == m_numPartitions) {

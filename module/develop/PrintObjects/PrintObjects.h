@@ -6,7 +6,6 @@
 class PrintObjects: public vistle::Module {
 public:
     PrintObjects(const std::string &name, int moduleID, mpi::communicator comm);
-    ~PrintObjects();
 
 private:
     bool compute() override;

@@ -174,9 +174,6 @@ Tracer::Tracer(const std::string &name, int moduleID, mpi::communicator comm): M
         addFloatParameter("simplification_error", "tolerable relative error for result simplification", 3e-3);
 }
 
-Tracer::~Tracer()
-{}
-
 void Tracer::addDescription(int kind, const std::string &name, const std::string &description)
 {
     m_addFieldName[kind] = name;

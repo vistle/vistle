@@ -20,9 +20,6 @@ TestCellSearch::TestCellSearch(const std::string &name, int moduleID, mpi::commu
     m_createCelltree = addIntParameter("create_celltree", "create celltree", 0, Parameter::Boolean);
 }
 
-TestCellSearch::~TestCellSearch()
-{}
-
 bool TestCellSearch::compute()
 {
     const Vector3 point = m_point->getValue();

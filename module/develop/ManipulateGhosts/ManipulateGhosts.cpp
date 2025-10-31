@@ -28,9 +28,6 @@ ManipulateGhosts::ManipulateGhosts(const std::string &name, int moduleID, mpi::c
     V_ENUM_SET_CHOICES(m_operation, Operation);
 }
 
-ManipulateGhosts::~ManipulateGhosts()
-{}
-
 namespace {
 template<class Geo>
 typename Geo::ptr applyGhostOp(const typename Geo::const_ptr &geo, Operation op)

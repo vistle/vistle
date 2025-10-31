@@ -23,9 +23,6 @@ FlattenTriangles::FlattenTriangles(const std::string &name, int moduleID, mpi::c
     linkPorts(gin, gout);
 }
 
-FlattenTriangles::~FlattenTriangles()
-{}
-
 template<int Dim>
 struct Flatten {
     Triangles::const_ptr tri;

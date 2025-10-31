@@ -16,7 +16,6 @@ https://wias-berlin.de/software/index.jsp?id=TetGen&lang=1
 class DelaunayTriangulator: public vistle::Module {
 public:
     DelaunayTriangulator(const std::string &name, int moduleID, mpi::communicator comm);
-    ~DelaunayTriangulator();
 
 private:
     bool compute() override;

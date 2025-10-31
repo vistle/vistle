@@ -6,7 +6,6 @@
 class IsoSurfaceVtkm: public vistle::Module {
 public:
     IsoSurfaceVtkm(const std::string &name, int moduleID, mpi::communicator comm);
-    ~IsoSurfaceVtkm();
     static const int NumPorts = 3;
 
 private:

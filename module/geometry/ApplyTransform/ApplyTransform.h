@@ -7,7 +7,6 @@
 class ApplyTransform: public vistle::Module {
 public:
     ApplyTransform(const std::string &name, int moduleID, mpi::communicator comm);
-    ~ApplyTransform();
 
 private:
     bool compute() override;

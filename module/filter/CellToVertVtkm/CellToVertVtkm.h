@@ -10,7 +10,6 @@
 class CellToVertVtkm: public vistle::VtkmModule {
 public:
     CellToVertVtkm(const std::string &name, int moduleID, mpi::communicator comm);
-    ~CellToVertVtkm();
 
 private:
     ModuleStatusPtr prepareInputField(const vistle::Port *port, const vistle::Object::const_ptr &grid,

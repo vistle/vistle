@@ -54,9 +54,6 @@ LibSimModule::LibSimModule(const string &name, int moduleID, mpi::communicator c
                                            vistle::Parameter::Boolean));
 }
 
-LibSimModule::~LibSimModule()
-{}
-
 std::unique_ptr<vistle::insitu::message::MessageHandler> LibSimModule::connectToSim()
 {
 #ifdef MODULE_THREAD

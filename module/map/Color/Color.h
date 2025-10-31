@@ -33,7 +33,6 @@ public:
 class Color: public vistle::Module {
 public:
     Color(const std::string &name, int moduleID, mpi::communicator comm);
-    ~Color();
 
 private:
     void getMinMax(vistle::DataBase::const_ptr object, vistle::Scalar &min, vistle::Scalar &max);

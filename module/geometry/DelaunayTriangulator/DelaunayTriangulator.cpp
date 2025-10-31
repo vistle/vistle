@@ -378,9 +378,6 @@ DelaunayTriangulator::DelaunayTriangulator(const std::string &name, int moduleID
     V_ENUM_SET_CHOICES(m_methodChoice, Method);
 }
 
-DelaunayTriangulator::~DelaunayTriangulator()
-{}
-
 bool DelaunayTriangulator::changeParameter(const vistle::Parameter *param)
 {
 #ifndef HAVE_CGAL

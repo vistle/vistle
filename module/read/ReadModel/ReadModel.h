@@ -11,7 +11,6 @@
 class ReadModel: public vistle::Reader {
 public:
     ReadModel(const std::string &name, int moduleID, mpi::communicator comm);
-    ~ReadModel() override;
 
     // reader interface
     bool examine(const vistle::Parameter *param) override;

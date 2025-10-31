@@ -6,7 +6,6 @@
 class ThresholdVtkm: public vistle::VtkmModule {
 public:
     ThresholdVtkm(const std::string &name, int moduleID, mpi::communicator comm);
-    ~ThresholdVtkm();
 
 private:
     vistle::IntParameter *m_invert = nullptr;

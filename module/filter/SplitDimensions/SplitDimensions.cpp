@@ -30,9 +30,6 @@ SplitDimensions::SplitDimensions(const std::string &name, int moduleID, mpi::com
                               false, Parameter::Boolean);
 }
 
-SplitDimensions::~SplitDimensions()
-{}
-
 bool SplitDimensions::compute(const std::shared_ptr<BlockTask> &task) const
 {
     DataBase::const_ptr data;

@@ -24,9 +24,6 @@ TestInterpolation::TestInterpolation(const std::string &name, int moduleID, mpi:
     V_ENUM_SET_CHOICES_SCOPE(m_mode, InterpolationMode, GridInterface);
 }
 
-TestInterpolation::~TestInterpolation()
-{}
-
 namespace {
 Vector3 randpoint(const Vector3 &min, const Vector3 &max)
 {

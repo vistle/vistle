@@ -100,8 +100,6 @@ IsoSurface::IsoSurface(const std::string &name, int moduleID, mpi::communicator 
 #endif
 }
 
-IsoSurface::~IsoSurface() = default;
-
 bool IsoSurface::changeParameter(const Parameter *param)
 {
     bool ok = isocontrol.changeParameter(param);

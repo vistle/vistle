@@ -20,7 +20,6 @@ class ReadEnsight: public vistle::Reader {
 
 public:
     ReadEnsight(const std::string &name, int moduleID, mpi::communicator comm);
-    ~ReadEnsight() override;
 
     bool examine(const vistle::Parameter *param) override;
     bool prepareRead() override;

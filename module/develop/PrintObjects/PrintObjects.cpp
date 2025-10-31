@@ -22,9 +22,6 @@ PrintObjects::PrintObjects(const std::string &name, int moduleID, mpi::communica
     m_iterations = addStringParameter("iterations", "iterations ranges", "all", Parameter::Restraint);
 }
 
-PrintObjects::~PrintObjects()
-{}
-
 bool PrintObjects::compute()
 {
     Object::const_ptr obj = expect<Object>("data_in");

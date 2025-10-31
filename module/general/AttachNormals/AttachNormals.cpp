@@ -17,9 +17,6 @@ AttachNormals::AttachNormals(const std::string &name, int moduleID, mpi::communi
     m_gridOut = createOutputPort("grid_out", "grid with attached normals");
 }
 
-AttachNormals::~AttachNormals()
-{}
-
 bool AttachNormals::compute()
 {
     auto grid = expect<Coords>(m_gridIn);

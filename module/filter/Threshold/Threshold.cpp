@@ -181,9 +181,6 @@ Threshold::Threshold(const std::string &name, int moduleID, mpi::communicator co
     addResultCache(m_gridCache);
 }
 
-Threshold::~Threshold()
-{}
-
 bool Threshold::changeParameter(const vistle::Parameter *p)
 {
 #ifndef CELLSELECT

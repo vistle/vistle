@@ -35,9 +35,6 @@ MetaData::MetaData(const std::string &name, int moduleID, mpi::communicator comm
     m_modulus = addIntParameter("modulus", "wrap around output value", -1);
 }
 
-MetaData::~MetaData()
-{}
-
 bool MetaData::compute()
 {
     auto obj = expect<Object>("grid_in");

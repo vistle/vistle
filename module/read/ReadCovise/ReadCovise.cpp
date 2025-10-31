@@ -103,9 +103,6 @@ ReadCovise::ReadCovise(const std::string &name, int moduleID, mpi::communicator 
     }
 }
 
-ReadCovise::~ReadCovise()
-{}
-
 bool ReadCovise::examine(const Parameter *param)
 {
 #ifdef READ_DIRECTORY

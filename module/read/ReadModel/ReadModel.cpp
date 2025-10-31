@@ -42,9 +42,6 @@ ReadModel::ReadModel(const std::string &name, int moduleID, mpi::communicator co
     observeParameter(m_last);
 }
 
-ReadModel::~ReadModel()
-{}
-
 bool ReadModel::examine(const Parameter *param)
 {
     vistle::Integer numtime = 0;

@@ -13,9 +13,6 @@ ClipVtkm::ClipVtkm(const std::string &name, int moduleID, mpi::communicator comm
     m_flip = addIntParameter("flip", "flip inside out", false, Parameter::Boolean);
 }
 
-ClipVtkm::~ClipVtkm()
-{}
-
 std::unique_ptr<viskores::filter::Filter> ClipVtkm::setUpFilter() const
 {
     auto filt = std::make_unique<viskores::filter::contour::ClipWithImplicitFunction>();
