@@ -23,6 +23,7 @@ class Access;
 }
 
 class PythonInterpreter;
+class PythonExecutor;
 class Directory;
 class Hub;
 
@@ -144,6 +145,7 @@ private:
     bool processScript(const std::string &filename, bool barrierAfterLoad, bool executeModules);
     bool processStartupScripts();
     bool processCommand(const std::string &filename);
+    bool invokePython(PythonExecutor &exec, const std::string &arg, bool isFile = true);
 
     bool isCachable(int oldModuleId, int newModuleId);
     void cachePortConnections(int oldModuleId, int newModuleId);
