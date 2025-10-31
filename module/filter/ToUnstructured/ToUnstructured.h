@@ -28,7 +28,7 @@ public:
 
 private:
     // overridden functions
-    virtual bool compute() override;
+    bool compute() override;
 
     // private helper functions
     void compute_uniformVecs(vistle::UniformGrid::const_ptr obj, vistle::UnstructuredGrid::ptr unstrGridOut,

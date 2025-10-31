@@ -12,7 +12,7 @@ public:
 private:
     static const int NumScalars = 3;
 
-    virtual bool compute();
+    bool compute() override;
 
     vistle::Port *m_scalarIn[NumScalars];
     vistle::Port *m_vecOut = nullptr;

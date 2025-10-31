@@ -179,7 +179,7 @@ void CompositorIceT::screenBounds(int *bounds, const CompositeData &cd, const Vi
 
 struct CompositeCallback: public osg::Camera::DrawCallback {
     CompositeCallback(CompositorIceT *plugin, int view): plugin(plugin), view(view) {}
-    virtual void operator()(const osg::Camera &cam) const override
+    void operator()(const osg::Camera &cam) const override
     {
         //CERR << "Camera::DrawCallback: view=" << view << std::endl;
 

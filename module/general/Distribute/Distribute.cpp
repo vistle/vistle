@@ -9,7 +9,7 @@ public:
     ~Distribute();
 
 private:
-    virtual bool compute() override;
+    bool compute() override;
 };
 
 using namespace vistle;

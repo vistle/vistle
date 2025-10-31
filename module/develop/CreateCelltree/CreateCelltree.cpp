@@ -10,7 +10,7 @@ public:
     ~CreateCelltree();
 
 private:
-    virtual bool compute();
+    bool compute() override;
 };
 
 using namespace vistle;

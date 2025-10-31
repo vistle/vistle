@@ -10,7 +10,7 @@ public:
 
 private:
     vistle::Port *m_gridIn, *m_dataIn, *m_gridOut;
-    virtual bool compute();
+    bool compute() override;
 };
 
 #endif

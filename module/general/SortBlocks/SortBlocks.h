@@ -10,8 +10,8 @@ public:
     SortBlocks(const std::string &name, int moduleID, mpi::communicator comm);
 
 private:
-    virtual bool compute() override;
-    virtual bool changeParameter(const vistle::Parameter *p) override;
+    bool compute() override;
+    bool changeParameter(const vistle::Parameter *p) override;
     vistle::IntParameter *m_criterionParam = nullptr;
     vistle::IntParameter *m_minParam = nullptr;
     vistle::IntParameter *m_maxParam = nullptr;

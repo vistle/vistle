@@ -9,7 +9,7 @@ public:
     ShowGrid(const std::string &name, int moduleID, mpi::communicator comm);
 
 private:
-    virtual bool compute();
+    bool compute() override;
 
     vistle::FloatParameter *m_cellScale = nullptr;
     vistle::IntParameter *m_CellNrMin = nullptr;
