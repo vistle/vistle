@@ -7,7 +7,7 @@ MODULE_MAIN(DisplaceVtkm)
 using namespace vistle;
 
 DisplaceVtkm::DisplaceVtkm(const std::string &name, int moduleID, mpi::communicator comm)
-: VtkmModule(name, moduleID, comm, 1, MappedDataHandling::Require)
+: VtkmModule(name, moduleID, comm, 5, MappedDataHandling::Require)
 {
     p_component = addIntParameter("component", "component to displace for scalar input",
                                   DisplaceFilter::DisplaceComponent::Z, Parameter::Choice);
