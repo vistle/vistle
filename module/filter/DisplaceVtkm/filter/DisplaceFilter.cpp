@@ -1,7 +1,10 @@
+#include <string>
+
 #include "DisplaceFilter.h"
+#include "DisplaceWorklet.h"
 
 VISKORES_CONT DisplaceFilter::DisplaceFilter()
-: m_component(vistle::DisplaceComponent::X), m_operation(vistle::DisplaceOperation::Add), m_scale(1.0f)
+: m_component(DisplaceComponent::X), m_operation(DisplaceOperation::Add), m_scale(1.0f)
 {}
 
 VISKORES_CONT viskores::cont::DataSet DisplaceFilter::DoExecute(const viskores::cont::DataSet &inputDataset)
@@ -14,25 +17,31 @@ VISKORES_CONT viskores::cont::DataSet DisplaceFilter::DoExecute(const viskores::
     this->CastAndCallVecField<3>(inputCoords.GetData(), [&](const auto &coords) {
         using CoordsArrayType = std::decay_t<decltype(coords)>;
         using CoordType = typename CoordsArrayType::ValueType;
+        constexpr int N = CoordType::NUM_COMPONENTS;
 
         this->CastAndCallScalarField(inputScalar.GetData(), [&](const auto &scalars) {
             viskores::cont::ArrayHandle<CoordType> result;
 
-            viskores::Vec<viskores::FloatDefault, 3> mask{0.0f, 0.0f, 0.0f};
+            viskores::Vec<viskores::FloatDefault, N> mask(0.0f);
+
+            viskores::IdComponent c = 0; // must be declared outside switch-case
             switch (m_component) {
-            case vistle::DisplaceComponent::X:
-                mask[0] = 1.0f;
+            case DisplaceComponent::X:
+            case DisplaceComponent::Y:
+            case DisplaceComponent::Z:
+                c = static_cast<viskores::IdComponent>(m_component);
+                if (c < N) {
+                    mask[c] = 1.0f;
+                } else {
+                    throw viskores::cont::ErrorBadValue(
+                        "Error in DisplaceFilter: DisplaceComponent value (" + std::to_string(c) +
+                        ") out of bounds for coordinate dimension (" + std::to_string(N) + ")!");
+                }
                 break;
-            case vistle::DisplaceComponent::Y:
-                mask[1] = 1.0f;
-                break;
-            case vistle::DisplaceComponent::Z:
-                mask[2] = 1.0f;
-                break;
-            case vistle::DisplaceComponent::All:
-                mask[0] = 1.0f;
-                mask[1] = 1.0f;
-                mask[2] = 1.0f;
+            case DisplaceComponent::All:
+                for (auto c = 0; c < N; c++) {
+                    mask[c] = 1.0f;
+                }
                 break;
             default:
                 throw viskores::cont::ErrorBadValue(
@@ -40,14 +49,14 @@ VISKORES_CONT viskores::cont::DataSet DisplaceFilter::DoExecute(const viskores::
             }
 
             switch (m_operation) {
-            case vistle::DisplaceOperation::Set:
-                this->Invoke(SetDisplaceWorklet{m_scale, mask}, scalars, coords, result);
+            case DisplaceOperation::Set:
+                this->Invoke(SetDisplaceWorklet<N>{m_scale, mask}, scalars, coords, result);
                 break;
-            case vistle::DisplaceOperation::Add:
-                this->Invoke(AddDisplaceWorklet{m_scale, mask}, scalars, coords, result);
+            case DisplaceOperation::Add:
+                this->Invoke(AddDisplaceWorklet<N>{m_scale, mask}, scalars, coords, result);
                 break;
-            case vistle::DisplaceOperation::Multiply:
-                this->Invoke(MultiplyDisplaceWorklet{m_scale, mask}, scalars, coords, result);
+            case DisplaceOperation::Multiply:
+                this->Invoke(MultiplyDisplaceWorklet<N>{m_scale, mask}, scalars, coords, result);
                 break;
             default:
                 throw viskores::cont::ErrorBadValue(

@@ -3,7 +3,7 @@
 
 #include <viskores/filter/Filter.h>
 
-#include "DisplaceWorklet.h"
+#include <vistle/util/enum.h>
 
 /*
     This Viskores filter displaces the coordinates of a dataset according to a scalar field.
@@ -12,12 +12,10 @@
     `SetDisplacementOperation`). An additional scaling factor can be set with `SetScale`.
 */
 class DisplaceFilter: public viskores::filter::Filter {
-private:
-    vistle::DisplaceComponent m_component;
-    vistle::DisplaceOperation m_operation;
-    viskores::FloatDefault m_scale;
-
 public:
+    DEFINE_ENUM_WITH_STRING_CONVERSIONS(DisplaceComponent, (X)(Y)(Z)(All))
+    DEFINE_ENUM_WITH_STRING_CONVERSIONS(DisplaceOperation, (Set)(Add)(Multiply))
+
     VISKORES_CONT DisplaceFilter();
 
     VISKORES_CONT viskores::cont::DataSet DoExecute(const viskores::cont::DataSet &dataset) override;
@@ -26,30 +24,35 @@ public:
         Set the component to displace.
 
         Available values:
-            `vistle::DisplaceComponent::X`
-            `vistle::DisplaceComponent::Y`
-            `vistle::DisplaceComponent::Z`
-            `vistle::DisplaceComponent::All`
+            `DisplaceComponent::X`
+            `DisplaceComponent::Y`
+            `DisplaceComponent::Z`
+            `DisplaceComponent::All`
     */
-    VISKORES_CONT void SetDisplacementComponent(const vistle::DisplaceComponent &component) { m_component = component; }
+    VISKORES_CONT void SetDisplacementComponent(const DisplaceComponent &component) { m_component = component; }
     /*
         Set the operation to apply for displacement.
 
         Available values:
-            `vistle::DisplaceOperation::Set` - sets the selected component(s) to the value in the scalar field
-            `vistle::DisplaceOperation::Add` - adds the value in the scalar field to the selected component(s)
-            `vistle::DisplaceOperation::Multiply` - multiplies the selected component(s) by the value in the scalar field
+            `DisplaceOperation::Set` - sets the selected component(s) to the value in the scalar field
+            `DisplaceOperation::Add` - adds the value in the scalar field to the selected component(s)
+            `DisplaceOperation::Multiply` - multiplies the selected component(s) by the value in the scalar field
     */
-    VISKORES_CONT void SetDisplacementOperation(const vistle::DisplaceOperation &operation) { m_operation = operation; }
+    VISKORES_CONT void SetDisplacementOperation(const DisplaceOperation &operation) { m_operation = operation; }
 
     /*
         Set the scaling factor for displacement.
     */
     VISKORES_CONT void SetScale(const viskores::FloatDefault &scale) { m_scale = scale; }
 
-    VISKORES_CONT vistle::DisplaceComponent GetDisplacementComponent() const { return m_component; }
-    VISKORES_CONT vistle::DisplaceOperation GetDisplacementOperation() const { return m_operation; }
+    VISKORES_CONT DisplaceComponent GetDisplacementComponent() const { return m_component; }
+    VISKORES_CONT DisplaceOperation GetDisplacementOperation() const { return m_operation; }
     VISKORES_CONT viskores::FloatDefault GetScale() const { return m_scale; }
+
+private:
+    DisplaceComponent m_component;
+    DisplaceOperation m_operation;
+    viskores::FloatDefault m_scale;
 };
 
 #endif
