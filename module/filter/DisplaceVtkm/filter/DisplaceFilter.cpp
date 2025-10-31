@@ -74,6 +74,8 @@ VISKORES_CONT viskores::cont::DataSet DisplaceFilter::DoExecute(const viskores::
     return this->CreateResultCoordinateSystem(
         inputDataset, inputDataset.GetCellSet(), inputCoords.GetName(), outputCoords,
         [&](viskores::cont::DataSet &out, const viskores::cont::Field &fieldToPass) {
-            out.AddField(viskores::cont::Field(outputFieldName, fieldToPass.GetAssociation(), fieldToPass.GetData()));
+            out.AddField(viskores::cont::Field(
+                fieldToPass.GetName() == this->GetActiveFieldName() ? outputFieldName : fieldToPass.GetName(),
+                fieldToPass.GetAssociation(), fieldToPass.GetData()));
         });
 }
