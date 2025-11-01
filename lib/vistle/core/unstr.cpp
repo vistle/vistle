@@ -41,7 +41,7 @@ constexpr std::array<UnstructuredGrid::Type, NumSupportedTypes> SupportedTypes =
 
 const char *UnstructuredGrid::toString(Type t, bool abbreviation)
 {
-    assert(t > 0 && t < NUM_TYPES);
+    assert(t >= NONE && t < NUM_TYPES);
     return abbreviation ? TypeNameAbbreviations[t] : TypeNames[t];
 }
 
