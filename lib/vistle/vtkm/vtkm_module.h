@@ -43,7 +43,6 @@ public:
 
     VtkmModule(const std::string &name, int moduleID, mpi::communicator comm, int numPorts = 1,
                MappedDataHandling mode = MappedDataHandling::Require);
-    ~VtkmModule();
 
 protected:
     const int m_numPorts;
