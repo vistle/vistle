@@ -34,9 +34,6 @@ VtkmModule::VtkmModule(const std::string &name, int moduleID, mpi::communicator 
                         Parameter::Boolean);
 }
 
-VtkmModule::~VtkmModule()
-{}
-
 std::string VtkmModule::getFieldName(int i, bool output) const
 {
     std::string name = "data_at_port_" + std::to_string(i);

@@ -18,7 +18,6 @@ class V_RENDEREREXPORT Renderer: public Module {
 
 public:
     Renderer(const std::string &name, const int moduleID, mpi::communicator comm);
-    virtual ~Renderer();
 
     bool dispatch(bool block = true, bool *messageReceived = nullptr, unsigned int minPrio = 0) override;
 
