@@ -32,14 +32,13 @@ constexpr std::array<Variable, 19> checkedVars(const std::array<Variable, 19> &v
 constexpr std::array<Variable, 19> SUPPORTED_VARIABLES = {
     Variable{"cellDiameter",
              [](const Args &args) {
-                 auto t = args.grid->tl()[args.elementIndex];
-                 return static_cast<double>(vistle::UnstructuredGrid::Dimensionality[t]);
+                 return static_cast<double>(args.grid->cellDiameter(args.elementIndex));
              }},
     Variable{"datavalue",
              [](const Args &args) {
                  if (!args.data)
                      return 0.0;
-                 if (args.data->mapping() == vistle::DataBase::Vertex)
+                 if (args.data->mapping() == vistle::DataBase::Element)
                      return args.data->value(args.elementIndex);
                  else {
                      const vistle::Index begin = args.grid->el()[args.elementIndex],
