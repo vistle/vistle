@@ -15,7 +15,7 @@ using namespace vistle;
 
 Symbols::Symbols()
 {
-    for (size_t i = UnstructuredGrid::NONE + 1; i < UnstructuredGrid::NUM_TYPES; i++) {
+    for (size_t i = UnstructuredGrid::NONE; i < UnstructuredGrid::NUM_TYPES; i++) {
         auto name = UnstructuredGrid::toString(static_cast<UnstructuredGrid::Type>(i));
         if (strcmp(name, "") == 0)
             continue;
@@ -228,7 +228,7 @@ bool FilterCells::compute()
                 ++numVertsFiltered;
             vertexKept[i] = numVertsFiltered;
         }
-        //adjust connectivity indicees
+        //adjust connectivity indices
         for (size_t i = 0; i < out->cl().size(); i++) {
             out->cl()[i] -= vertexKept[out->cl()[i]];
             assert(out->cl()[i] < out->getNumVertices());
