@@ -272,6 +272,7 @@ Module::Module(const std::string &moduleName, const int moduleId, mpi::communica
               << hostname() << ":" << get_process_handle() << std::endl;
 #endif
 
+    setCurrentParameterGroup("System");
     auto openmp_threads = addIntParameter("_openmp_threads", "number of OpenMP threads (0: system default)", 0);
     setParameterRange<Integer>(openmp_threads, 0, 4096);
     addIntParameter("_benchmark", "show timing information", m_benchmark ? 1 : 0, Parameter::Boolean);
@@ -290,6 +291,7 @@ Module::Module(const std::string &moduleName, const int moduleId, mpi::communica
     }
     mpi::broadcast(m_commShmGroup, leaderSubRank, 0);
     mpi::all_gather(m_comm, leaderSubRank, m_shmLeadersSubrank);
+    setCurrentParameterGroup("");
 }
 
 void Module::addInputParameters()
@@ -298,8 +300,10 @@ void Module::addInputParameters()
         return;
     m_inputParametersAdded = true;
 
+    setCurrentParameterGroup("System");
     auto cm = addIntParameter("_cache_mode", "input object caching", ObjectCache::CacheByName, Parameter::Choice);
     V_ENUM_SET_CHOICES_SCOPE(cm, CacheMode, ObjectCache);
+    setCurrentParameterGroup("");
 }
 
 void Module::addOutputParameters()
@@ -308,12 +312,14 @@ void Module::addOutputParameters()
         return;
     m_outputParametersAdded = true;
 
+    setCurrentParameterGroup("System");
     addIntParameter("_prioritize_visible", "prioritize currently visible timestep", m_prioritizeVisible,
                     Parameter::Boolean);
 
     auto validate = addIntParameter("_validate_objects", "validate data objects before sending to port",
                                     m_validateObjects, Parameter::Choice);
     V_ENUM_SET_CHOICES(validate, ObjectValidation);
+    setCurrentParameterGroup("");
 }
 
 config::Access *Module::configAccess() const
@@ -1065,6 +1071,7 @@ vistle::Object::const_ptr Module::takeFirstObject(const std::string &portName)
 void Module::addResultCache(ResultCacheBase &cache)
 {
     if (!m_useResultCache) {
+        setCurrentParameterGroup("System");
         m_useResultCache =
             addIntParameter("_use_result_cache", "whether to try to cache results for re-use in subsequent timesteps",
                             true, Parameter::Boolean);

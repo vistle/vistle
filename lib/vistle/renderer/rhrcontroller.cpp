@@ -37,6 +37,7 @@ RhrController::RhrController(vistle::Renderer *module, int displayRank)
     m_imageOutPort = m_module->createOutputPort("image_out", "connect to COVER");
     m_module->linkPorts(m_module->m_dataIn, m_imageOutPort);
 
+    module->setCurrentParameterGroup("Connection");
     m_rhrConnectionMethod = module->addIntParameter(
         "rhr_connection_method", "how local/remote endpoint should be determined", RendezvousOnHub, Parameter::Choice);
     module->V_ENUM_SET_CHOICES(m_rhrConnectionMethod, ConnectionMethod);
