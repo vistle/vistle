@@ -1,3 +1,5 @@
+% auto-generated from vistle/doc/module/categories.md.in
+
 # Module Categories
 
 The modules in Vistle are categorized according to the role they can take in a visualization workflow.
