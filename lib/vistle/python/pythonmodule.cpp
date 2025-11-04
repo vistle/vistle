@@ -31,7 +31,6 @@
 #endif
 
 //#define DEBUG
-//#define OBSERVER_DEBUG
 
 #include <vistle/core/statetracker.h>
 #include <vistle/core/porttracker.h>
@@ -1135,26 +1134,22 @@ static void moduleCompoundCreate(int compoundId)
 
 class TrivialStateObserver: public StateObserver {
 public:
-    TrivialStateObserver()
-#ifdef OBSERVER_DEBUG
-    : m_out(std::cerr)
-#endif
+    TrivialStateObserver(bool verbose = false): m_out(std::cerr), m_verbose(verbose)
     {
         state().registerObserver(this);
-#ifdef OBSERVER_DEBUG
-        m_out << "TrivialStateObserver created" << std::endl;
-#endif
+        if (m_verbose) {
+            m_out << "TrivialStateObserver created" << std::endl;
+        }
     }
 
     ~TrivialStateObserver()
     {
         if (pythonModuleInstance) {
             pythonModuleInstance->access()->state().unregisterObserver(this);
-            //state().unregisterObserver(this);
         }
-#ifdef OBSERVER_DEBUG
-        m_out << "TrivialStateObserver destroyed" << std::endl;
-#endif
+        if (m_verbose) {
+            m_out << "TrivialStateObserver destroyed" << std::endl;
+        }
     }
 
     void newHub(int hubId, const message::AddHub &hub) override
@@ -1165,17 +1160,17 @@ public:
     void newHubSimple(int hubId, const std::string &name, int numRanks, const std::string &host,
                       const std::string &username, const std::string &realname)
     {
-#ifdef OBSERVER_DEBUG
-        m_out << "   hub " << name << " on " << host << " added with " << numRanks << " ranks, operated by " << realname
-              << " (" << username << ")" << std::endl;
-#endif
+        if (m_verbose) {
+            m_out << "   hub " << name << " on " << host << " added with " << numRanks << " ranks, operated by "
+                  << realname << " (" << username << ")" << std::endl;
+        }
     }
 
     void deleteHub(int hub) override
     {
-#ifdef OBSERVER_DEBUG
-        m_out << "   hub " << hub << " deleted" << std::endl;
-#endif
+        if (m_verbose) {
+            m_out << "   hub " << hub << " deleted" << std::endl;
+        }
     }
 
     void moduleAvailable(const AvailableModule &mod) override
@@ -1185,131 +1180,140 @@ public:
 
     void moduleAvailableSimple(int hubId, const std::string &name, const std::string &path)
     {
-#ifdef OBSERVER_DEBUG
-        m_out << "   hub: " << hubId << ", module: " << name << " (" << path << ")" << std::endl;
-#endif
+        if (m_verbose) {
+            m_out << "   hub: " << hubId << ", module: " << name << " (" << path << ")" << std::endl;
+        }
     }
 
     void newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName) override
     {
         (void)spawnUuid;
-#ifdef OBSERVER_DEBUG
-        m_out << "   module " << moduleName << " started: " << moduleId << std::endl;
-#endif
+        if (m_verbose) {
+            m_out << "   module " << moduleName << " started: " << moduleId << std::endl;
+        }
     }
 
     void deleteModule(int moduleId) override
     {
-#ifdef OBSERVER_DEBUG
-        m_out << "   module deleted: " << moduleId << std::endl;
-#endif
+        if (m_verbose) {
+            m_out << "   module deleted: " << moduleId << std::endl;
+        }
     }
 
     void moduleStateChanged(int moduleId, int stateBits) override
     {
-#ifdef OBSERVER_DEBUG
-        m_out << "   module state change: " << moduleId << " (";
-        if (stateBits & StateObserver::Initialized)
-            m_out << "I";
-        if (stateBits & StateObserver::Killed)
-            m_out << "K";
-        if (stateBits & StateObserver::Busy)
-            m_out << "B";
-        m_out << ")" << std::endl;
-#endif
+        if (m_verbose) {
+            m_out << "   module state change: " << moduleId << " (";
+            if (stateBits & StateObserver::Initialized)
+                m_out << "I";
+            if (stateBits & StateObserver::Killed)
+                m_out << "K";
+            if (stateBits & StateObserver::Busy)
+                m_out << "B";
+            m_out << ")" << std::endl;
+        }
     }
 
     void newParameter(int moduleId, const std::string &parameterName) override
     {
-#ifdef OBSERVER_DEBUG
-        m_out << "   new parameter: " << moduleId << ":" << parameterName << std::endl;
-#endif
+        if (m_verbose) {
+            m_out << "   new parameter: " << moduleId << ":" << parameterName << std::endl;
+        }
     }
 
     void deleteParameter(int moduleId, const std::string &parameterName) override
     {
-#ifdef OBSERVER_DEBUG
-        m_out << "   delete parameter: " << moduleId << ":" << parameterName << std::endl;
-#endif
+        if (m_verbose) {
+            m_out << "   delete parameter: " << moduleId << ":" << parameterName << std::endl;
+        }
     }
 
     void parameterValueChanged(int moduleId, const std::string &parameterName) override
     {
-#ifdef OBSERVER_DEBUG
-        m_out << "   parameter value changed: " << moduleId << ":" << parameterName << std::endl;
-#endif
+        if (m_verbose) {
+            m_out << "   parameter value changed: " << moduleId << ":" << parameterName << std::endl;
+        }
     }
 
     void parameterChoicesChanged(int moduleId, const std::string &parameterName) override
     {
-#ifdef OBSERVER_DEBUG
-        m_out << "   parameter choices changed: " << moduleId << ":" << parameterName << std::endl;
-#endif
+        if (m_verbose) {
+            m_out << "   parameter choices changed: " << moduleId << ":" << parameterName << std::endl;
+        }
     }
 
     void newPort(int moduleId, const std::string &portName) override
     {
-#ifdef OBSERVER_DEBUG
-        m_out << "   new port: " << moduleId << ":" << portName << std::endl;
-#endif
+        if (m_verbose) {
+            m_out << "   new port: " << moduleId << ":" << portName << std::endl;
+        }
     }
 
     void deletePort(int moduleId, const std::string &portName) override
     {
-#ifdef OBSERVER_DEBUG
-        m_out << "   delete port: " << moduleId << ":" << portName << std::endl;
-#endif
+        if (m_verbose) {
+            m_out << "   delete port: " << moduleId << ":" << portName << std::endl;
+        }
     }
 
     void newConnection(int fromId, const std::string &fromName, int toId, const std::string &toName) override
     {
-#ifdef OBSERVER_DEBUG
-        m_out << "   new connection: " << fromId << ":" << fromName << " -> " << toId << ":" << toName << std::endl;
-#endif
+        if (m_verbose) {
+            m_out << "   new connection: " << fromId << ":" << fromName << " -> " << toId << ":" << toName << std::endl;
+        }
     }
 
     void deleteConnection(int fromId, const std::string &fromName, int toId, const std::string &toName) override
     {
-#ifdef OBSERVER_DEBUG
-        m_out << "   connection removed: " << fromId << ":" << fromName << " -> " << toId << ":" << toName << std::endl;
-#endif
+        if (m_verbose) {
+            m_out << "   connection removed: " << fromId << ":" << fromName << " -> " << toId << ":" << toName
+                  << std::endl;
+        }
     }
 
     void info(const std::string &text, message::SendText::TextType textType, int senderId, int senderRank,
               message::Type refType, const message::uuid_t &refUuid) override
     {
-#ifdef OBSERVER_DEBUG
-        std::cerr << senderId << "(" << senderRank << "): " << text << std::endl;
-#endif
+        if (m_verbose) {
+            m_out << senderId << "(" << senderRank << "): " << text << std::endl;
+        }
     }
 
     void status(int id, const std::string &text, message::UpdateStatus::Importance prio) override
     {
-#ifdef OBSERVER_DEBUG
-        std::cerr << "Module status: " << id << ": " << text << std::endl;
-#endif
+        if (m_verbose) {
+            m_out << "Module status: " << id << ": " << text << std::endl;
+        }
     }
 
     void updateStatus(int id, const std::string &text, message::UpdateStatus::Importance prio) override
     {
-#ifdef OBSERVER_DEBUG
-        std::cerr << "Overall status: " << id << ": " << text << std::endl;
-#endif
+        if (m_verbose) {
+            m_out << "Overall status: " << id << ": " << text << std::endl;
+        }
     }
 
     void itemInfo(const std::string &text, message::ItemInfo::InfoType type, int senderId,
                   const std::string &port) override
     {
-#ifdef OBSERVER_DEBUG
-        std::cerr << "Item info: " << senderId << ": " << text << ", type=" << type << ", port=" << port
-                  << ", sender=" << senderId << std::endl;
-#endif
+        if (m_verbose) {
+            m_out << "   item info: " << senderId << ": " << text << ", type=" << type << ", port=" << port
+                  << std::endl;
+        }
+    }
+    void portState(message::ItemInfo::PortState state, int senderId, const std::string &port) override
+    {
+        if (m_verbose) {
+            m_out << "   port state changed: " << senderId << ":"
+                  << port
+                  //<< ", state=" << message::ItemInfo::toString(state) << std::endl;
+                  << ", state=" << state << std::endl;
+        }
     }
 
-#ifdef OBSERVER_DEBUG
 private:
     std::ostream &m_out;
-#endif
+    bool m_verbose = false;
 };
 
 
@@ -1404,6 +1408,10 @@ public:
                   const std::string &port) override
     {
         PYBIND11_OVERRIDE(void, Base, itemInfo, text, type, senderId, port);
+    }
+    void portState(message::ItemInfo::PortState state, int senderId, const std::string &port) override
+    {
+        PYBIND11_OVERRIDE(void, Base, portState, state, senderId, port);
     }
 };
 
@@ -1520,9 +1528,11 @@ PY_MODULE(_vistle, m)
     py::class_<message::SendText> st(m, "Text");
     vistle::message::SendText::enumForPython_TextType(st, "Type");
 
-    // make values of vistle::message::ItemInfo::InfoType enum known to Python as Item.xxx
     py::class_<message::ItemInfo> ii(m, "Item");
-    vistle::message::ItemInfo::enumForPython_InfoType(ii, "Type");
+    // make values of vistle::message::ItemInfo::InfoType enum known to Python as Item.xxx
+    vistle::message::ItemInfo::enumForPython_InfoType(ii, "Item");
+    // make values of vistle::message::ItemInfo::PortState enum known to Python as PortState.xxx
+    vistle::message::ItemInfo::enumForPython_PortState(ii, "PortState");
 
     py::class_<message::Id> id(m, "Id");
     py::enum_<message::Id::Reserved>(id, "Id")
@@ -1553,11 +1563,12 @@ PY_MODULE(_vistle, m)
         .def("info", &SO::info)
         .def("status", &SO::status)
         .def("itemInfo", &SO::itemInfo)
+        .def("portState", &SO::portState)
         .def("updateStatus", &SO::updateStatus);
 
     typedef vistle::TrivialStateObserver TSO;
     py::class_<TrivialStateObserver, PyStateObserver, StateObserver>(m, "StateObserver")
-        .def(py::init([]() { return new PyStateObserver; }))
+        .def(py::init([](bool verbose) { return new PyStateObserver(verbose); }))
         .def("newHub", &TSO::newHubSimple)
         .def("deleteHub", &TSO::deleteHub)
         .def("moduleAvailable", &TSO::moduleAvailableSimple)
@@ -1575,6 +1586,7 @@ PY_MODULE(_vistle, m)
         .def("info", &TSO::info)
         .def("status", &TSO::status)
         .def("itemInfo", &TSO::itemInfo)
+        .def("portState", &TSO::portState)
         .def("updateStatus", &TSO::updateStatus);
 
     m.def("version", &vistle_version, "version of Vistle");
