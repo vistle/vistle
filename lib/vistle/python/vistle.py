@@ -365,8 +365,8 @@ def snapshotGui(file, quitAfter = False):
    _vistle.snapshotGui(file, quitAfter)
 
 class PythonStateObserver(_vistle.StateObserver):
-    def __init__(self):
-        super(PythonStateObserver, self).__init__()
+    def __init__(self, verbose = False):
+        super(PythonStateObserver, self).__init__(verbose)
     def moduleAvailable(self, hub, name, path):
         super(PythonStateObserver, self).moduleAvailable(hub, name, path)
     def newModule(self, moduleId, spawnUuid, moduleName):
@@ -478,6 +478,7 @@ Message = _vistle.Message
 StateObserver = _vistle.StateObserver
 Text = _vistle.Text
 Status = _vistle.Status
+Item = _vistle.Item
 
 moduleCompoundAlloc = _vistle.moduleCompoundAlloc
 moduleCompoundAddModule = _vistle.moduleCompoundAddModule
