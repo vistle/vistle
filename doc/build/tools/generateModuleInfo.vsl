@@ -25,6 +25,27 @@ PARAM_TAG = "parameters"
 EXAMPLE_TAG = "example"
 VSL_TAG = "vslFile"
 
+class ModuleStateObserver(vistle.PythonStateObserver):
+    portStates = {}
+
+    def __init__(self):
+        super(ModuleStateObserver, self).__init__()
+    def itemInfo(self, text, type, senderId, port):
+        #print(f"ItemInfo: text={text}, type={type}, senderId={senderId}, port={port}")
+        super(ModuleStateObserver, self).itemInfo(text, type, senderId, port)
+    def portState(self, state, sender, port):
+        key = (sender, port)
+        self.portStates[key] = state
+        #print(f"PortState: state={state}, sender={sender}, port={port}")
+        super(ModuleStateObserver, self).portState(state, sender, port)
+
+    def getPortState(self, id, port):
+        key = (id, port)
+        if key in self.portStates:
+            return self.portStates[key]
+        return None
+
+observer = ModuleStateObserver()
 #-------------Functions-------------#
 
 
@@ -52,9 +73,14 @@ def createModuleImage(name, inPorts, outPorts):
     portDistance = size/5
     portStartPos = portDistance
     num = len(inPorts)
-    for port, tooltip in inPorts:
+    for port, tooltip, state in inPorts:
+        col = red
+        if state == vistle.Item.PortState.Disabled:
+            col = grey
+        if state == vistle.Item.PortState.Optional:
+            col = yellow
         image += getRect(portStartPos, spiderLegOffsetTop, size,
-                         size, color=red, tooltip=port) + "\n"
+                         size, color=col, tooltip=port) + "\n"
         text = tooltip + "<tspan> (" + port + ")</tspan>"
         image += getPortDescriptionSpider(size, portStartPos +
                                           size/2, spiderLegOffsetTop, num, text) + "\n"
@@ -66,9 +92,14 @@ def createModuleImage(name, inPorts, outPorts):
 
     num = -1 * len(outPorts)
     portStartPos = portDistance
-    for port, tooltip in outPorts:
+    for port, tooltip, state in outPorts:
+        col = red
+        if state == vistle.Item.PortState.Disabled:
+            col = grey
+        if state == vistle.Item.PortState.Optional:
+            col = yellow
         image += getRect(portStartPos, spiderLegOffsetTop + height -
-                         size, size, size, color=red, tooltip=port) + "\n"
+                         size, size, size, color=col, tooltip=port) + "\n"
         text = tooltip + "<tspan> (" + port + ")</tspan>"
         image += getPortDescriptionSpider(size, portStartPos +
                                           size/2, spiderLegOffsetTop + height, num, text) + "\n"
@@ -151,10 +182,10 @@ def getModuleHeadLine(mod):
 def getModuleHtml(mod):
     inPorts = []
     for p in vistle.getInputPorts(mod):
-        inPorts.append([p, vistle.getPortDescription(mod, p)])
+        inPorts.append([p, vistle.getPortDescription(mod, p), observer.getPortState(mod, p)])
     outPorts = []
     for p in vistle.getOutputPorts(mod):
-        outPorts.append([p, vistle.getPortDescription(mod, p)])
+        outPorts.append([p, vistle.getPortDescription(mod, p), observer.getPortState(mod, p)])
     return "\n" + createModuleImage(vistle.getModuleName(mod), inPorts, outPorts) + "\n"
 
 
@@ -325,14 +356,14 @@ def findTag(line, tags):
 
 
 def generateModuleDescriptions() -> None:
-    # print("MODULE_SOURCE_DIR: " + MODULE_SOURCE_DIR)
-    # print("MODULE_NAME: " + MODULE_NAME)
-    # print("MODULE_CATEGORY: " + MODULE_CATEGORY)
-    # print("DESTDIR: " + DESTDIR)
+    #print("MODULE_SOURCE_DIR: " + MODULE_SOURCE_DIR)
+    #print("MODULE_NAME: " + MODULE_NAME)
+    #print("MODULE_CATEGORY: " + MODULE_CATEGORY)
+    #print("DESTDIR: " + DESTDIR)
     
     
     filename = MODULE_SOURCE_DIR + "/" + MODULE_NAME + ".md"
-    # tags with the format [tag]:<value> can be replace by asignig a replacement function to the tag:
+    # tags with the format [tag]:<value> can be replace by assigning a replacement function to the tag:
     essential_tags = {  # these can only appear once and if not found these will be added at the end
         HEADLINE_TAG: getModuleHeadLine,
         HTML_TAG: getModuleHtml,
@@ -344,16 +375,38 @@ def generateModuleDescriptions() -> None:
         EXAMPLE_TAG: getExampleString
     }
 
+
     # spawn the module and wait for its information to arrive at the hub
     mod = vistle.spawn(MODULE_NAME)
     vistle.barrier("spawn module")
+
+    # if there are disabled output ports, connect dummy to all non-optional input ports, so that the module activates them
+    dummy = None
+    haveDisabledPorts = False
+    for p in vistle.getOutputPorts(mod):
+        state = observer.getPortState(mod, p)
+        if state == vistle.Item.PortState.Disabled:
+            haveDisabledPorts = True
+            break
+    if haveDisabledPorts:
+        connectionAdded = False
+        for p in vistle.getInputPorts(mod):
+            state = observer.getPortState(mod, p)
+            if state != vistle.Item.PortState.Optional:
+                if dummy is None:
+                    dummy = vistle.spawn("Gendat")
+                    vistle.barrier("spawn connection dummy")
+                vistle.connect(dummy, "grid_out", mod, p)
+                connectionAdded = True
+        if connectionAdded:
+            vistle.barrier("connect optional inputs")
 
     content_list = readAdditionalDocumentation(filename)
     output = []
     used_tags = set()
     for line in content_list:
         tag, _ = findTag(line, essential_tags.keys())
-        # check if its an essential tag
+        # check if it's an essential tag
         if tag is not None:
             line = essential_tags[tag](mod)
             used_tags.add(tag)
