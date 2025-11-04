@@ -71,134 +71,181 @@ typename Obj::ptr toIndexed(viskores::cont::CellSetSingleType<> &scellset)
     return toIndexed<Obj>(connectivity, elements);
 };
 
+template<typename CellSet>
+typename Object::ptr fromCellSetSingleType(const viskores::cont::UnknownCellSet &cellset,
+                                           const viskores::cont::DataSet &dataset)
+{
+    if (!cellset.CanConvert<CellSet>()) {
+        return nullptr;
+    }
+
+    auto scellset = cellset.AsCellSet<CellSet>();
+
+    if (cellset.GetCellShape(0) == viskores::CELL_SHAPE_VERTEX) {
+        Points::ptr points(new Points(Object::Initialized));
+        return points;
+    } else if (cellset.GetCellShape(0) == viskores::CELL_SHAPE_LINE) {
+        auto numPoints = dataset.GetNumberOfPoints();
+        // get connectivity array of the dataset
+        auto connectivity =
+            scellset.GetConnectivityArray(viskores::TopologyElementTagCell(), viskores::TopologyElementTagPoint());
+        auto numConn = connectivity.GetNumberOfValues();
+        auto numElem = numConn > 0 ? numConn / 2 : numPoints / 2;
+        Lines::ptr lines(new Lines(numElem, 0, 0));
+        lines->d()->cl->setHandle(connectivity);
+        for (viskores::Id index = 0; index < numElem; index++) {
+            lines->el()[index] = 2 * index;
+        }
+        lines->el()[numElem] = numConn;
+        return lines;
+    } else if (cellset.GetCellShape(0) == viskores::CELL_SHAPE_POLY_LINE) {
+        return toIndexed<Lines>(scellset);
+    } else if (cellset.GetCellShape(0) == viskores::CELL_SHAPE_TRIANGLE) {
+        return toNgons<Triangles>(scellset);
+    } else if (cellset.GetCellShape(0) == viskores::CELL_SHAPE_QUAD) {
+        return toNgons<Quads>(scellset);
+    } else if (cellset.GetCellShape(0) == viskores::CELL_SHAPE_POLYGON) {
+        return toIndexed<Polygons>(scellset);
+    } else {
+        std::cerr << "ERROR vtkmGetTopology: encountered unsupported cell type (" << cellset.GetCellShape(0) << ")"
+                  << std::endl;
+    }
+
+    return nullptr;
+}
+
+template<typename CellSet>
+typename Object::ptr fromCellSetExplicit(const viskores::cont::UnknownCellSet &cellset)
+{
+    if (!cellset.CanConvert<CellSet>()) {
+        return nullptr;
+    }
+
+    auto ecellset = cellset.AsCellSet<CellSet>();
+    auto elements = ecellset.GetOffsetsArray(viskores::TopologyElementTagCell(), viskores::TopologyElementTagPoint());
+    auto eshapes = ecellset.GetShapesArray(viskores::TopologyElementTagCell(), viskores::TopologyElementTagPoint());
+    auto econn = ecellset.GetConnectivityArray(viskores::TopologyElementTagCell(), viskores::TopologyElementTagPoint());
+
+    const auto [mindim, maxdim] = getMinMaxDims(eshapes);
+
+    if (mindim > maxdim) {
+        std::cerr << "vtkmGetTopology: empty cell set" << std::endl;
+    } else if (mindim == -2) {
+        std::cerr << "ERROR vtkmGetTopology: polyhedral cells are not supported!" << std::endl;
+    } else if (mindim == -3) {
+        std::cerr << "ERROR vtkmGetTopology: encountered unsupported cell type!" << std::endl;
+    } else if (mindim != maxdim || maxdim == 3 || mindim == -1) {
+        // require UnstructuredGrid for mixed cells
+        UnstructuredGrid::ptr unstr(new UnstructuredGrid(0, 0, 0));
+        unstr->d()->cl->setHandle(econn);
+        unstr->d()->el->setHandle(elements);
+        unstr->d()->tl->setHandle(eshapes);
+        return unstr;
+    } else if (mindim == 0) {
+        Points::ptr points(new Points(Object::Initialized));
+        return points;
+    } else if (mindim == 1) {
+        return toIndexed<Lines>(econn, elements);
+    } else if (mindim == 2) {
+        // all 2D cells representable as Polygons
+        return toIndexed<Polygons>(econn, elements);
+    }
+
+    return nullptr;
+}
+
 } // namespace
 
 Object::ptr vtkmGetTopology(const viskores::cont::DataSet &dataset)
 {
+    using viskores::cont::StorageTagConstant;
+    using viskores::cont::StorageTagIndex;
+    using viskores::cont::StorageTagBasic;
+
+    using viskores::cont::CellSetSingleType;
+    using viskores::cont::CellSetExplicit;
+
     // get vertices that make up the dataset grid
     auto cellset = dataset.GetCellSet();
-    auto uPointCoordinates = dataset.GetCoordinateSystem().GetData();
-    viskores::cont::UnknownArrayHandle unknown(uPointCoordinates);
 
-    // first try structured grids
-    bool isUniform = unknown.CanConvert<viskores::cont::ArrayHandleUniformPointCoordinates>();
-    bool isLayered = unknown.CanConvert<AHLG<vistle::Scalar>>();
-    bool isCartesian = false;
-    bool isStructured = false;
-    vistle::Index ncells[3] = {0, 0, 0};
-
-    if (cellset.CanConvert<viskores::cont::CellSetStructured<1>>()) {
-        isStructured = true;
-        auto scellset = cellset.AsCellSet<viskores::cont::CellSetStructured<1>>();
-        auto d = scellset.GetCellDimensions();
-        ncells[0] = d;
-    } else if (cellset.CanConvert<viskores::cont::CellSetStructured<2>>()) {
-        isStructured = true;
-        auto scellset = cellset.AsCellSet<viskores::cont::CellSetStructured<2>>();
-        auto d = scellset.GetCellDimensions();
-        for (int i = 0; i < 2; ++i)
-            ncells[i] = d[i];
-        isCartesian = unknown.CanConvert<AHCP<vistle::Scalar>>();
-    } else if (cellset.CanConvert<viskores::cont::CellSetStructured<3>>()) {
-        isStructured = true;
-        auto scellset = cellset.AsCellSet<viskores::cont::CellSetStructured<3>>();
-        auto d = scellset.GetCellDimensions();
-        for (int i = 0; i < 3; ++i)
-            ncells[i] = d[i];
-        isCartesian = unknown.CanConvert<AHCP<vistle::Scalar>>();
+    if (dataset.GetNumberOfCoordinateSystems() == 0) {
+        std::cerr << "vtkm: dataset has no coordinate system, returning empty topology" << std::endl;
+        dataset.PrintSummary(std::cerr);
     }
 
-    if (isStructured && isUniform) {
-        return std::make_shared<vistle::UniformGrid>(ncells[0] + 1, ncells[1] + 1, ncells[2] + 1);
-    } else if (isStructured && isCartesian) {
-        return std::make_shared<vistle::RectilinearGrid>(ncells[0] + 1, ncells[1] + 1, ncells[2] + 1);
-    } else if (isStructured && isLayered) {
-        // FIXME: still need to find a way to get at the individual components of an ArrayHandleExtractComponent
-        //return std::make_shared<vistle::LayerGrid>(ncells[0] + 1, ncells[1] + 1, ncells[2] + 1);
-        return std::make_shared<vistle::StructuredGrid>(ncells[0] + 1, ncells[1] + 1, ncells[2] + 1);
-    } else if (isStructured) {
-        return std::make_shared<vistle::StructuredGrid>(ncells[0] + 1, ncells[1] + 1, ncells[2] + 1);
+    if (dataset.GetNumberOfCoordinateSystems() > 0) {
+        auto uPointCoordinates = dataset.GetCoordinateSystem().GetData();
+        viskores::cont::UnknownArrayHandle unknown(uPointCoordinates);
+
+        // first try structured grids
+        bool isCartesian = false;
+        bool isStructured = false;
+        bool isUniform = unknown.CanConvert<viskores::cont::ArrayHandleUniformPointCoordinates>();
+        bool isLayered = unknown.CanConvert<AHLG<vistle::Scalar>>();
+        vistle::Index ncells[3] = {0, 0, 0};
+
+        if (cellset.CanConvert<viskores::cont::CellSetStructured<1>>()) {
+            isStructured = true;
+            auto scellset = cellset.AsCellSet<viskores::cont::CellSetStructured<1>>();
+            auto d = scellset.GetCellDimensions();
+            ncells[0] = d;
+        } else if (cellset.CanConvert<viskores::cont::CellSetStructured<2>>()) {
+            isStructured = true;
+            auto scellset = cellset.AsCellSet<viskores::cont::CellSetStructured<2>>();
+            auto d = scellset.GetCellDimensions();
+            for (int i = 0; i < 2; ++i)
+                ncells[i] = d[i];
+            isCartesian = unknown.CanConvert<AHCP<vistle::Scalar>>();
+        } else if (cellset.CanConvert<viskores::cont::CellSetStructured<3>>()) {
+            isStructured = true;
+            auto scellset = cellset.AsCellSet<viskores::cont::CellSetStructured<3>>();
+            auto d = scellset.GetCellDimensions();
+            for (int i = 0; i < 3; ++i)
+                ncells[i] = d[i];
+            isCartesian = unknown.CanConvert<AHCP<vistle::Scalar>>();
+        }
+
+        if (isStructured && isUniform) {
+            return std::make_shared<vistle::UniformGrid>(ncells[0] + 1, ncells[1] + 1, ncells[2] + 1);
+        } else if (isStructured && isCartesian) {
+            return std::make_shared<vistle::RectilinearGrid>(ncells[0] + 1, ncells[1] + 1, ncells[2] + 1);
+        } else if (isStructured && isLayered) {
+            // FIXME: still need to find a way to get at the individual components of an ArrayHandleExtractComponent
+            //return std::make_shared<vistle::LayerGrid>(ncells[0] + 1, ncells[1] + 1, ncells[2] + 1);
+            return std::make_shared<vistle::StructuredGrid>(ncells[0] + 1, ncells[1] + 1, ncells[2] + 1);
+        } else if (isStructured) {
+            return std::make_shared<vistle::StructuredGrid>(ncells[0] + 1, ncells[1] + 1, ncells[2] + 1);
+        }
     }
 
     // try conversion for uniform cell types first
-    if (cellset.CanConvert<viskores::cont::CellSetSingleType<viskores::cont::StorageTagIndex>>()) {
-        auto scellset = cellset.AsCellSet<viskores::cont::CellSetSingleType<viskores::cont::StorageTagIndex>>();
+    if (cellset.CanConvert<CellSetSingleType<StorageTagIndex>>()) {
+        auto scellset = cellset.AsCellSet<CellSetSingleType<StorageTagIndex>>();
         if (cellset.GetCellShape(0) == viskores::CELL_SHAPE_VERTEX) {
             Points::ptr points(new Points(Object::Initialized));
             return points;
         }
     }
 
-    // try conversion for uniform cell types first
-    if (cellset.CanConvert<viskores::cont::CellSetSingleType<>>()) {
-        auto scellset = cellset.AsCellSet<viskores::cont::CellSetSingleType<>>();
-
+    if (cellset.CanConvert<CellSetSingleType<StorageTagConstant>>()) {
+        auto scellset = cellset.AsCellSet<CellSetSingleType<StorageTagConstant>>();
         if (cellset.GetCellShape(0) == viskores::CELL_SHAPE_VERTEX) {
             Points::ptr points(new Points(Object::Initialized));
             return points;
-        } else if (cellset.GetCellShape(0) == viskores::CELL_SHAPE_LINE) {
-            auto numPoints = dataset.GetNumberOfPoints();
-            // get connectivity array of the dataset
-            auto connectivity =
-                scellset.GetConnectivityArray(viskores::TopologyElementTagCell(), viskores::TopologyElementTagPoint());
-            auto numConn = connectivity.GetNumberOfValues();
-            auto numElem = numConn > 0 ? numConn / 2 : numPoints / 2;
-            Lines::ptr lines(new Lines(numElem, 0, 0));
-            lines->d()->cl->setHandle(connectivity);
-            for (viskores::Id index = 0; index < numElem; index++) {
-                lines->el()[index] = 2 * index;
-            }
-            lines->el()[numElem] = numConn;
-            return lines;
-        } else if (cellset.GetCellShape(0) == viskores::CELL_SHAPE_POLY_LINE) {
-            return toIndexed<Lines>(scellset);
-        } else if (cellset.GetCellShape(0) == viskores::CELL_SHAPE_TRIANGLE) {
-            return toNgons<Triangles>(scellset);
-        } else if (cellset.GetCellShape(0) == viskores::CELL_SHAPE_QUAD) {
-            return toNgons<Quads>(scellset);
-        } else if (cellset.GetCellShape(0) == viskores::CELL_SHAPE_POLYGON) {
-            return toIndexed<Polygons>(scellset);
-        } else {
-            std::cerr << "ERROR vtkmGetTopology: encountered unsupported cell type (" << cellset.GetCellShape(0) << ")"
-                      << std::endl;
-            return nullptr;
         }
     }
 
-    //arbitrary unstructured grids with mixed cell types
-    if (cellset.CanConvert<viskores::cont::CellSetExplicit<>>()) {
-        auto ecellset = cellset.AsCellSet<viskores::cont::CellSetExplicit<>>();
-        auto elements =
-            ecellset.GetOffsetsArray(viskores::TopologyElementTagCell(), viskores::TopologyElementTagPoint());
-        auto eshapes = ecellset.GetShapesArray(viskores::TopologyElementTagCell(), viskores::TopologyElementTagPoint());
-        auto econn =
-            ecellset.GetConnectivityArray(viskores::TopologyElementTagCell(), viskores::TopologyElementTagPoint());
+    auto ret = fromCellSetSingleType<CellSetSingleType<>>(cellset, dataset);
+    if (ret)
+        return ret;
 
-        const auto [mindim, maxdim] = getMinMaxDims(eshapes);
+    ret = fromCellSetExplicit<CellSetExplicit<StorageTagConstant>>(cellset);
+    if (ret)
+        return ret;
 
-        if (mindim > maxdim) {
-            std::cerr << "vtkmGetTopology: empty cell set" << std::endl;
-        } else if (mindim == -2) {
-            std::cerr << "ERROR vtkmGetTopology: polyhedral cells are not supported!" << std::endl;
-        } else if (mindim == -3) {
-            std::cerr << "ERROR vtkmGetTopology: encountered unsupported cell type!" << std::endl;
-        } else if (mindim != maxdim || maxdim == 3 || mindim == -1) {
-            // require UnstructuredGrid for mixed cells
-            UnstructuredGrid::ptr unstr(new UnstructuredGrid(0, 0, 0));
-            unstr->d()->cl->setHandle(econn);
-            unstr->d()->el->setHandle(elements);
-            unstr->d()->tl->setHandle(eshapes);
-            return unstr;
-        } else if (mindim == 0) {
-            Points::ptr points(new Points(Object::Initialized));
-            return points;
-        } else if (mindim == 1) {
-            return toIndexed<Lines>(econn, elements);
-        } else if (mindim == 2) {
-            // all 2D cells representable as Polygons
-            return toIndexed<Polygons>(econn, elements);
-        }
-    }
+    ret = fromCellSetExplicit<CellSetExplicit<>>(cellset);
+    if (ret)
+        return ret;
 
     return nullptr;
 }
