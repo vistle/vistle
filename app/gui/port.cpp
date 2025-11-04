@@ -208,8 +208,12 @@ void Port::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWid
             if (text == "Empty") {
                 text = "";
             }
+            if (text == "Normals") {
+                //text = "⟂";
+                text = "n";
+            }
             if (text == "Points") {
-                text = ".";
+                text = "•";
             }
             if (text == "Lines") {
                 text = "-";
@@ -221,7 +225,8 @@ void Port::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWid
                 text = "□";
             }
             if (text == "Polygons") {
-                text = "p";
+                //text = "★";
+                text = "☆";
             }
             if (text == "UniformGrid") {
                 text = "c";
@@ -238,14 +243,14 @@ void Port::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWid
             if (text == "UnstructuredGrid") {
                 text = "u";
             }
-            if (text.startsWith("Texture")) {
-                text = "t";
-            }
             if (text.startsWith("Scalar")) {
                 text = text.right(1);
             }
             if (text.startsWith("Index")) {
                 text = "x";
+            }
+            if (text.startsWith("Byte")) {
+                text = "b";
             }
             return text;
         };
