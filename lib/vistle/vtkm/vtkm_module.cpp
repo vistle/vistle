@@ -200,6 +200,17 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
     bool useInputData =
         m_mappedDataHandling != MappedDataHandling::Discard && m_mappedDataHandling != MappedDataHandling::Generate;
     auto activeField = useInputData ? fieldNames[0] : "";
+
+    if (printInfo) {
+        std::stringstream str;
+        str << "<pre>Input ";
+        inputDataset.PrintSummary(str);
+        str << "</pre>" << std::endl;
+        auto msg = str.str();
+        std::cout << msg << std::endl;
+        //sendInfo("%s", msg.c_str());
+    }
+
     if (m_mappedDataHandling != MappedDataHandling::Require || inputDataset.HasField(activeField)) {
         if (auto filter = setUpFilter()) {
             if (inputDataset.HasField(activeField)) {
@@ -215,39 +226,37 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
             filter->SetOutputFieldName(getFieldName(0, true));
             filter->SetFieldsToPass("", viskores::cont::Field::Association::Any,
                                     viskores::filter::FieldSelection::Mode::All);
-            outputDataset = filter->Execute(inputDataset);
+
             if (printInfo) {
-                {
-                    std::stringstream str;
-                    str << "<pre>Input ";
-                    inputDataset.PrintSummary(str);
-                    inputDataset.PrintSummary(std::cout);
-                    str << "</pre>" << std::endl;
-                    auto msg = str.str();
-                    std::cout << msg << std::endl;
-                    //sendInfo("%s", msg.c_str());
-                }
+                std::stringstream str;
+                str << "Filter: " << typeid(decltype(*filter)).name() << std::endl;
+                auto msg = str.str();
+                std::cout << msg << std::endl;
+                //sendInfo("%s", msg.c_str());
+            }
+            outputDataset = filter->Execute(inputDataset);
 
-                {
-                    std::stringstream str;
-                    str << "Filter: " << typeid(decltype(*filter)).name() << std::endl;
-                    auto msg = str.str();
-                    std::cout << msg << std::endl;
-                    //sendInfo("%s", msg.c_str());
-                }
-
-                {
-                    std::stringstream str;
-                    str << "<pre>Output ";
-                    outputDataset.PrintSummary(str);
-                    str << "</pre>" << std::endl;
-                    auto msg = str.str();
-                    std::cout << msg << std::endl;
-                    //sendInfo("%s", msg.c_str());
-                }
+            if (printInfo) {
+                std::stringstream str;
+                str << "<pre>Output ";
+                outputDataset.PrintSummary(str);
+                str << "</pre>" << std::endl;
+                auto msg = str.str();
+                std::cout << msg << std::endl;
+                //sendInfo("%s", msg.c_str());
             }
         } else {
             outputDataset = inputDataset;
+
+            if (printInfo) {
+                std::stringstream str;
+                str << "<pre>Output ";
+                outputDataset.PrintSummary(str);
+                str << "</pre>" << std::endl;
+                auto msg = str.str();
+                std::cout << msg << std::endl;
+                //sendInfo("%s", msg.c_str());
+            }
         }
     }
 
