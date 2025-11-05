@@ -36,6 +36,7 @@ struct OsgColorMap {
     std::shared_ptr<opencover::coVRShader> shaderSpheresCorrectDepth;
     std::vector<std::shared_ptr<opencover::coVRShader>> allShaders;
 #endif
+    std::string species;
     bool blendWithMaterial = false;
     float rangeMin = 0.f, rangeMax = 1.f;
     osg::ref_ptr<osg::Texture1D> texture;
