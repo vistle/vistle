@@ -49,7 +49,7 @@ DataComponents splitContainerObject(Object::const_ptr container)
     if (auto ph = vistle::PlaceHolder::as(container)) {
         grid = ph->geometry();
         auto normals = ph->normals();
-        auto data = ph->texture();
+        auto data = ph->mapped();
         GETMETA;
         return split;
     } else {
