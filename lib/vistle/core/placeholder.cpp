@@ -62,24 +62,24 @@ PlaceHolder::const_ptr PlaceHolder::normals() const
     return d()->normals.getObject();
 }
 
-void PlaceHolder::setTexture(Object::const_ptr tex)
+void PlaceHolder::setMapped(Object::const_ptr map)
 {
-    if (!tex) {
-        d()->texture = PlaceHolder::const_ptr();
+    if (!map) {
+        d()->mapped = PlaceHolder::const_ptr();
         return;
     }
 
-    if (auto ph = PlaceHolder::as(tex)) {
-        d()->texture = ph;
+    if (auto ph = PlaceHolder::as(map)) {
+        d()->mapped = ph;
     }
 
-    PlaceHolder::const_ptr ph(new PlaceHolder(tex));
-    d()->texture = ph;
+    PlaceHolder::const_ptr ph(new PlaceHolder(map));
+    d()->mapped = ph;
 }
 
-PlaceHolder::const_ptr PlaceHolder::texture() const
+PlaceHolder::const_ptr PlaceHolder::mapped() const
 {
-    return d()->texture.getObject();
+    return d()->mapped.getObject();
 }
 
 void PlaceHolder::refreshImpl() const
@@ -102,7 +102,7 @@ bool PlaceHolder::checkImpl(std::ostream &os, bool quick) const
     VALIDATE_SUB(real());
     VALIDATE_SUB(geometry());
     VALIDATE_SUB(normals());
-    VALIDATE_SUB(texture());
+    VALIDATE_SUB(mapped());
 }
 
 void PlaceHolder::print(std::ostream &os, bool verbose) const

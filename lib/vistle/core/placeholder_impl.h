@@ -16,7 +16,7 @@ void PlaceHolder::Data::serialize(Archive &ar)
 
     ar &V_NAME(ar, "geometry", geometry);
     ar &V_NAME(ar, "normals", normals);
-    ar &V_NAME(ar, "texture", texture);
+    ar &V_NAME(ar, "mapped", mapped);
 }
 
 } // namespace vistle
