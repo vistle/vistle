@@ -3,6 +3,8 @@
 #include <vistle/core/points.h>
 #include <vistle/core/lines.h>
 #include <vistle/core/vec.h>
+#include <vistle/config/access.h>
+#include <vistle/config/value.h>
 #include <cassert>
 
 #include "renderobject.h"
@@ -33,11 +35,17 @@ bool rgb_txt_init_from_file()
         return rgb_name.size() > 1;
 
     rgb_initialized = true;
+    auto config = config::Access();
+    double min = *config.value<double>("renderer", "rgb", "min", 0.0);
+    double max = *config.value<double>("renderer", "rgb", "max", 1.0);
+    std::string rgbfile = *config.value<std::string>("renderer", "rgb", "file", "");
 
     for (std::string prefix: {"", "/usr", "/usr/local", "/usr/X11R6", "/opt/X11", "/opt/homebrew"}) {
         std::string filename;
         if (prefix.empty()) {
-            if (const char *cd = getenv("COVISEDIR")) {
+            if (!rgbfile.empty()) {
+                filename = rgbfile;
+            } else if (const char *cd = getenv("COVISEDIR")) {
                 filename = cd;
                 filename += "/share/covise/rgb.txt";
             } else {
@@ -57,6 +65,10 @@ bool rgb_txt_init_from_file()
                 sscanf(line, "%d%d%d %100[a-zA-z0-9 ]", &r, &g, &b, name);
                 std::string colorname = rgb_normalize_name(name);
                 rgb_name[colorname] = Vector4(r / 255.f, g / 255.f, b / 255.f, 1.f);
+
+                for (int i = 0; i < 3; ++i) {
+                    rgb_name[colorname][i] = rgb_name[colorname][i] * (max - min) + min;
+                }
                 //std::cerr << "color " << colorname << " -> " << rgb_name[colorname] << std::endl;
             }
             fclose(fp);
@@ -108,8 +120,10 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort, Object::
     std::string color;
     if (geometry && geometry->hasAttribute(attribute::Color)) {
         color = geometry->getAttribute(attribute::Color);
+        std::cerr << "RenderObject color: " << color << " from geometry " << geometry->getName() << std::endl;
     } else if (container && container->hasAttribute(attribute::Color)) {
         color = container->getAttribute(attribute::Color);
+        std::cerr << "RenderObject color: " << color << " from container " << container->getName() << std::endl;
     }
 
     if (!color.empty()) {
