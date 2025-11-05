@@ -95,7 +95,7 @@ struct ReplicateData {
                     for (Index j = 0; j < numMult; ++j) {
                         Index idx = j;
                         for (Index k = 0; k < mult[j]; ++k) {
-                            assert(dout - out->x(i).data() < out->getSize());
+                            assert(dout - out->x(i).data() < static_cast<ptrdiff_t>(out->getSize()));
                             *dout++ = din[idx];
                         }
                     }
@@ -103,7 +103,7 @@ struct ReplicateData {
                     for (Index e = 0; e < numMult; ++e) {
                         Index idx = e;
                         for (Index k = 0; k < mult[e]; ++k) {
-                            assert(dout - out->x(i).data() < out->getSize());
+                            assert(dout - out->x(i).data() < static_cast<ptrdiff_t>(out->getSize()));
                             *dout++ = din[idx];
                         }
                     }
