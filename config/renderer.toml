@@ -1,0 +1,5 @@
+[rgb]
+# limit range so that colors do not blow out
+min = 0.1
+max = 0.8
+#file = "/opt/homebrew/share/X11/rgb.txt"
