@@ -1542,6 +1542,9 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
     }
 
     state->addUniform(new osg::Uniform("dataValid", dataValid));
+
+    debug << ", colormap: " << (colormap ? colormap->species : "NO")
+          << ", dataValid: " << (dataValid ? "true" : "false");
 #else
     (void)dataValid;
 #endif
@@ -1630,6 +1633,7 @@ OsgColorMap::OsgColorMap(): OsgColorMap(true)
 
 void OsgColorMap::setName(const std::string &species)
 {
+    this->species = species;
     texture->setName("Colormap texture: species=" + species);
     image->setName("Colormap image: species=" + species);
 }
