@@ -313,6 +313,12 @@ bool Adapter::recvAndHandeMessage(bool blocking)
     return true;
 }
 
+int Adapter::moduleId() const
+{
+    assert(m_internals->moduleInfo.isInitialized());
+    return m_internals->moduleInfo.id();
+}
+
 bool Adapter::initModule(const Message &msg)
 {
     if (m_connected) {

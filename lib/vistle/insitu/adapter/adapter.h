@@ -38,6 +38,7 @@ public:
     }
     void updateMeta(vistle::Object::ptr obj) const;
     bool paused() const;
+    int moduleId() const;
 
 private:
     ObjectRetriever m_callbacks;
@@ -69,7 +70,7 @@ private:
     bool objectRequested(const std::string &name, const std::string &meshName = "");
 
     void dumpConnectionFile(MPI_Comm Comm); // create a file in which the in situ
-        // module can find the connection info
+    // module can find the connection info
     bool recvAndHandeMessage(bool blocking = false);
     bool initModule(const vistle::insitu::message::Message &msg);
     bool checkHostName() const;
