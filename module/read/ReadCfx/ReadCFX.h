@@ -94,6 +94,7 @@ class ReadCFX: public vistle::Module {
 
 public:
     ReadCFX(const std::string &name, int moduleID, mpi::communicator comm);
+    ~ReadCFX();
 
     bool prepare() override;
     static const int usr_level =
