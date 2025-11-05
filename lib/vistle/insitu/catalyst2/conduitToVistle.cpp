@@ -151,7 +151,7 @@ UnstructuredGrid::ptr toUnstructured(const conduit_cpp::Node &coords, const cond
 }
 
 
-Object::ptr conduitMeshToVistle(const conduit_cpp::Node &mesh)
+Object::ptr conduitMeshToVistle(const conduit_cpp::Node &mesh, int sourceId)
 {
     // create vistle object
     conduit_cpp::Node info;
@@ -190,7 +190,7 @@ Object::ptr conduitMeshToVistle(const conduit_cpp::Node &mesh)
 // fields/field/offsets: (integer array) (optional - for strided structured topology)
 // fields/field/strides: (integer array) (optional - for strided structured topology)
 
-vistle::DataBase::ptr conduitDataToVistle(const conduit_cpp::Node &field)
+vistle::DataBase::ptr conduitDataToVistle(const conduit_cpp::Node &field, int sourceId)
 {
     std::string mappingName = field["association"].as_string();
     assert(mappingName == "vertex" || mappingName == "element");
@@ -213,7 +213,7 @@ vistle::DataBase::ptr conduitDataToVistle(const conduit_cpp::Node &field)
                 std::make_shared<vistle::Vec<vistle::Scalar, 3>>((size_t)values["x"].dtype().number_of_elements());
             getCoords(field, vec->x().data(), vec->y().data(), vec->z().data());
             vec->setMapping(mapping);
-            vec->describe(field.name());
+            vec->describe(field.name(), sourceId);
             return vec;
         } else {
             std::cerr << "conduitToVistle: 2D fieldss are not supported" << std::endl;
@@ -223,7 +223,7 @@ vistle::DataBase::ptr conduitDataToVistle(const conduit_cpp::Node &field)
         auto vec = std::make_shared<vistle::Vec<vistle::Scalar, 1>>((size_t)values["x"].dtype().number_of_elements());
         getCoord(values, vec->x().data());
         vec->setMapping(mapping);
-        vec->describe(field.name());
+        vec->describe(field.name(), sourceId);
         return vec;
     }
 

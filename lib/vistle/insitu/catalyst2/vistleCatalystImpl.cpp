@@ -90,7 +90,7 @@ enum catalyst_status catalyst_initialize_vistle(const conduit_node *cparams)
 
 vistle::Object::ptr getMesh(const conduit_cpp::Node &mesh, float time, int timestep)
 {
-    auto vistleMesh = conduitMeshToVistle(mesh);
+    auto vistleMesh = conduitMeshToVistle(mesh, adapter->moduleId());
     vistleMesh->setRealTime(time);
     vistleMesh->setTimestep(timestep);
     adapter->updateMeta(vistleMesh);
@@ -167,7 +167,7 @@ enum catalyst_status catalyst_execute_vistle(const conduit_node *cparams)
             objects.push_back(vistle::insitu::ObjectRetriever::PortAssignedObject(requestedMesh.name(), vistleMesh));
             for (const auto &requestedField: requestedMesh) {
                 auto field = mesh["fields/" + requestedField];
-                auto data = conduitDataToVistle(field);
+                auto data = conduitDataToVistle(field, adapter->moduleId());
                 data->setRealTime(time);
                 data->setGrid(vistleMesh);
                 data->setTimestep(timestep);

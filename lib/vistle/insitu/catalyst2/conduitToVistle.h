@@ -6,7 +6,7 @@
 #include <vistle/core/object.h>
 #include <catalyst_conduit.hpp>
 #include <vistle/core/database.h>
-vistle::Object::ptr conduitMeshToVistle(const conduit_cpp::Node &mesh);
-vistle::DataBase::ptr conduitDataToVistle(const conduit_cpp::Node &field);
+vistle::Object::ptr conduitMeshToVistle(const conduit_cpp::Node &mesh, int sourceId);
+vistle::DataBase::ptr conduitDataToVistle(const conduit_cpp::Node &field, int sourceId);
 
 #endif
