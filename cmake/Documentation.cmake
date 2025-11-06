@@ -219,8 +219,8 @@ macro(add_module_doc_target modulename CATEGORY)
         ${CMAKE_COMMAND} -E env VISTLE_DOCUMENTATION_TARGET=${modulename} VISTLE_BINARY_DIR=${CMAKE_BINARY_DIR}
         VISTLE_MODULE_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR} VISTLE_DOCUMENTATION_CATEGORY=${category}
         VISTLE_DOCUMENTATION_SOURCE_DIR=${VISTLE_DOCUMENTATION_SOURCE_DIR}
-        VISTLE_LOGFILE=${PROJECT_BINARY_DIR}/logs/vistle_doc/geninfo-${modulename}_{port}_{id}_{name}.log
-        ${RUN_VISTLE} --batch ${VISTLE_DOCUMENTATION_WORKFLOW})
+        VISTLE_LOGFILE=${PROJECT_BINARY_DIR}/logs/vistle_doc/geninfo-${modulename}_{port}_{id}_{name}.log ${RUN_VISTLE} --batch
+        ${VISTLE_DOCUMENTATION_WORKFLOW})
 
     add_custom_command(
         OUTPUT ${OUTPUT_FILE}
@@ -248,6 +248,16 @@ macro(add_module_doc_target modulename CATEGORY)
         # prevents vistle from asking to save the workflow
         generate_result_snapshot(${modulename} ${workflow} ${output_dir})
         generate_network_snapshot_and_quit(${modulename} ${workflow} ${output_dir})
+        set(out ${output_dir}/${workflow}.vsl)
+        set(in ${CMAKE_CURRENT_LIST_DIR}/${workflow}.vsl)
+        add_custom_command(
+            OUTPUT ${out}
+            COMMAND ${CMAKE_COMMAND} -E copy ${in} ${out}
+            DEPENDS ${in} ${modulename}
+            COMMENT "Documentation - copying workflow: ${in} -> ${out}")
+        set(custom_target ${modulename}_${workflow}_copy)
+        add_custom_target(${custom_target} DEPENDS ${out})
+        add_dependencies(vistle_module_doc ${custom_target})
     endforeach()
 endmacro()
 
@@ -284,18 +294,18 @@ macro(generate_snapshot_base modulename network_file output_dir workflow result)
         set(script ${TOOLDIR}/snapShot.py)
         add_custom_command(
             OUTPUT ${output_files}
-            COMMAND ${CMAKE_COMMAND} -E env VISTLE_DOC_IMAGE_NAME=${network_file} VISTLE_DOC_SOURCE_DIR=${CMAKE_CURRENT_LIST_DIR}
-            VISTLE_DOC_TARGET_DIR=${output_dir} VISTLE_DOC_ARGS=${VISTLE_DOC_ARGS} COCONFIG=${coconfig}
-            VISTLE_LOGFILE=${PROJECT_BINARY_DIR}/logs/vistle_doc/snapshot-${network_file}_{port}_{id}_{name}.log
-            ${RUN_VISTLE} ${batch} ${script}
+            COMMAND
+                ${CMAKE_COMMAND} -E env VISTLE_DOC_IMAGE_NAME=${network_file} VISTLE_DOC_SOURCE_DIR=${CMAKE_CURRENT_LIST_DIR}
+                VISTLE_DOC_TARGET_DIR=${output_dir} VISTLE_DOC_ARGS=${VISTLE_DOC_ARGS} COCONFIG=${coconfig}
+                VISTLE_LOGFILE=${PROJECT_BINARY_DIR}/logs/vistle_doc/snapshot-${network_file}_{port}_{id}_{name}.log ${RUN_VISTLE} ${batch} ${script}
             DEPENDS ${modulename}
-            ${CMAKE_CURRENT_LIST_DIR}/${network_file}.vsl
-            ${viewpoint}
-            ${script}
-            ${coconfig}
-            ${ALL_MODULES}
-            vistle_manager
-            vistle_gui
+                    ${CMAKE_CURRENT_LIST_DIR}/${network_file}.vsl
+                    ${viewpoint}
+                    ${script}
+                    ${coconfig}
+                    ${ALL_MODULES}
+                    vistle_manager
+                    vistle_gui
             COMMENT "Generating network and result snapshot for ${network_file}.vsl")
         add_custom_target(${custom_target} DEPENDS ${output_files})
         add_dependencies(${modulename}_module_doc ${custom_target})
