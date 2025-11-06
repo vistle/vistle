@@ -281,9 +281,11 @@ def getParametersString(mod):
 
 def getExampleString(mod, example) -> str:
     link =f"vistle:///open#module/{MODULE_CATEGORY}/{MODULE_NAME}/{example}"
+    wf = f"{example}_workflow.png"
+    res = f"{example}_result.png"
     line = f"""<figure float=\"left\">
-    <a href=\"{link}"><img src=\"{example}_workflow.png\" width=\"200\" /></a>
-    <img src=\"{example}_result.png\" width=\"300\"/>
+    <a href=\"{wf}\"><img src=\"{wf}\" width=\"38%\" /></a>
+    <a href=\"{res}\"><img src=\"{res}\" width=\"58%\"/></a>
     <figcaption>Fig.1 <a href=\"{link}\">{example}</a> workflow (left) and expected result (right).</figcaption>
 </figure>"""
 
