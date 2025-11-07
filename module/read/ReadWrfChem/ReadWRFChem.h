@@ -23,14 +23,10 @@
 
 /* #include <netcdfcpp.h> */
 
-#ifdef OLD_NETCDFCXX
-#include <netcdfcpp>
-#else
 #include <ncFile.h>
 #include <ncVar.h>
 #include <ncDim.h>
-using namespace netCDF;
-#endif
+
 #define NUMPARAMS 6
 
 using namespace vistle;
@@ -56,8 +52,8 @@ private:
     };
 
     bool inspectDir();
-    bool addDataToPort(Reader::Token &token, NcFile *ncDataFile, int vi, Object::ptr outGrid, Block *b, Index block,
-                       int t) const;
+    bool addDataToPort(Reader::Token &token, netCDF::NcFile *ncDataFile, int vi, Object::ptr outGrid, Block *b,
+                       Index block, int t) const;
     Object::ptr generateGrid(Block *b) const;
     Block computeBlock(Index part, size_t nBlocks, Index blockBegin, size_t cellsPerBlock, size_t numCellTot) const;
 
@@ -69,6 +65,8 @@ private:
 
     int numFiles = 0;
     int numBlocks = 1;
+    Index numBlocksLat = 0;
+    Index numBlocksVer = 0;
 
     Port *m_gridOut = nullptr;
     Port *m_dataOut[NUMPARAMS];
@@ -84,7 +82,8 @@ private:
 
     IntParameter *m_numPartitionsLat, *m_numPartitionsVer;
 
-    NcFile *ncFirstFile;
+    mutable std::mutex m_ncMutex;
+    std::unique_ptr<netCDF::NcFile> m_ncFirstFile;
 };
 
 #endif

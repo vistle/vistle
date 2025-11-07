@@ -32,8 +32,6 @@ namespace fs = vistle::filesystem;
 ReadWRFChem::ReadWRFChem(const std::string &name, int moduleID, mpi::communicator comm)
 : vistle::Reader(name, moduleID, comm)
 {
-    ncFirstFile = NULL;
-
     m_gridOut = createOutputPort("grid_out", "grid");
     m_filedir =
         addStringParameter("file_dir", "NC files directory", "/mnt/raid/home/hpcleker/Desktop/test_files/NC/test_time",
@@ -92,8 +90,8 @@ ReadWRFChem::ReadWRFChem(const std::string &name, int moduleID, mpi::communicato
     setParameterChoices(m_PHB, varChoices);
     setParameterChoices(m_gridZ, varChoices);
 
-    setParallelizationMode(Serial);
     setAllowTimestepDistribution(true);
+    setParallelizationMode(Reader::ParallelizeTimeAndBlocks);
 
     observeParameter(m_filedir);
     observeParameter(m_varDim);
@@ -102,10 +100,7 @@ ReadWRFChem::ReadWRFChem(const std::string &name, int moduleID, mpi::communicato
 
 ReadWRFChem::~ReadWRFChem()
 {
-    if (ncFirstFile) {
-        delete ncFirstFile;
-        ncFirstFile = nullptr;
-    }
+    m_ncFirstFile.reset();
 }
 
 
@@ -164,11 +159,11 @@ bool ReadWRFChem::inspectDir()
 
 bool ReadWRFChem::prepareRead()
 {
-    if (!ncFirstFile) {
+    if (!m_ncFirstFile) {
         ReadWRFChem::examine(nullptr);
     }
 
-    /*   if (ncFirstFile->is_valid()) {
+    /*   if (m_ncFirstFile->is_valid()) {
         for (int vi=0; vi<NUMPARAMS; ++vi) {
             std::string name = "";
             int nDim = 0;
@@ -176,7 +171,7 @@ bool ReadWRFChem::prepareRead()
 
             name = m_variables[vi]->getValue();
             if (!name.empty() && name != Reader::InvalidChoice) {
-                NcVar* var = ncFirstFile->get_var(name.c_str());
+                NcVar* var = m_ncFirstFile->get_var(name.c_str());
                 nDim = var->num_dims();
                 if (strcmp(refDim[0],"")!=0) {
                     for(int di=0; di<nDim;++di) {
@@ -198,27 +193,34 @@ bool ReadWRFChem::prepareRead()
     int N_p = static_cast<int>(m_numPartitionsLat->getValue() * m_numPartitionsLat->getValue() *
                                m_numPartitionsVer->getValue());
     setPartitions(N_p);
+
+    numBlocksLat = m_numPartitionsLat->getValue();
+    numBlocksVer = m_numPartitionsVer->getValue();
+    if ((numBlocksLat <= 0) || (numBlocksVer <= 0)) {
+        sendInfo("Number of partitions cannot be zero!");
+        return false;
+    }
+    numBlocks = numBlocksLat * numBlocksLat * numBlocksVer;
+
     return true;
 }
 
 
 bool ReadWRFChem::examine(const vistle::Parameter *param)
 {
+    using netCDF::NcFile;
+
     if (!param || param == m_filedir || param == m_varDim) {
         if (!inspectDir())
             return false;
         sendInfo("File %s is used as base", fileList.front().c_str());
 
-        if (ncFirstFile) {
-            delete ncFirstFile;
-            ncFirstFile = nullptr;
-        }
         std::string sDir = /* m_filedir->getValue() + "/" + */ fileList.front();
 
-        ncFirstFile = new NcFile(sDir.c_str(), NcFile::read);
+        m_ncFirstFile.reset(new NcFile(sDir.c_str(), NcFile::read));
 
-        /* if (ncFirstFile->is_valid()) { */
-        if (!ncFirstFile->isNull()) {
+        /* if (m_ncFirstFile->is_valid()) { */
+        if (!m_ncFirstFile->isNull()) {
             std::vector<std::string> AxisChoices;
             std::vector<std::string> Axis2dChoices;
 
@@ -229,7 +231,7 @@ bool ReadWRFChem::examine(const vistle::Parameter *param)
             bool is_fav = false;
             std::vector<std::string> favVars = {"co", "no2", "PM10", "o3", "U", "V", "W"};
 
-            for (auto &name_var: ncFirstFile->getVars()) {
+            for (auto &name_var: m_ncFirstFile->getVars()) {
                 auto name = name_var.first;
                 auto var = name_var.second;
 
@@ -348,6 +350,8 @@ ReadWRFChem::Block ReadWRFChem::computeBlock(Index part, size_t nBlocks, Index b
 //generateGrid: set grid coordinates for block b and attach ghosts
 Object::ptr ReadWRFChem::generateGrid(Block *b) const
 {
+    using netCDF::NcVar;
+
     size_t bSizeX = b[0].end - b[0].begin, bSizeY = b[1].end - b[1].begin, bSizeZ = b[2].end - b[2].begin;
     Object::ptr geoOut;
 
@@ -362,22 +366,30 @@ Object::ptr ReadWRFChem::generateGrid(Block *b) const
         std::vector<float> lat(bSizeY * bSizeZ);
         std::vector<float> lon(bSizeY * bSizeZ);
 
-        NcVar varLat = ncFirstFile->getVar(m_gridLat->getValue().c_str());
-        NcVar varLon = ncFirstFile->getVar(m_gridLon->getValue().c_str());
+        std::unique_lock lock(m_ncMutex);
+        NcVar varLat = m_ncFirstFile->getVar(m_gridLat->getValue().c_str());
+        NcVar varLon = m_ncFirstFile->getVar(m_gridLon->getValue().c_str());
+        lock.unlock();
 
         //extract (2D) lat, lon, hgt
         std::vector<size_t> startCorner{0, b[1].begin, b[2].begin};
         std::vector<size_t> count{1, bSizeY, bSizeZ};
+        lock.lock();
         varLat.getVar(startCorner, count, lat.data());
         varLon.getVar(startCorner, count, lon.data());
+        lock.unlock();
 
         if (!emptyValue(m_gridZ)) {
             std::vector<float> z((bSizeX + 1) * bSizeY * bSizeZ);
-            NcVar varZ = ncFirstFile->getVar(m_gridZ->getValue().c_str());
+            lock.lock();
+            NcVar varZ = m_ncFirstFile->getVar(m_gridZ->getValue().c_str());
+            lock.unlock();
 
             std::vector<size_t> startCorner{0, b[0].begin, b[1].begin, b[2].begin};
             std::vector<size_t> numElem{1, bSizeX + 1, bSizeY, bSizeZ};
+            lock.lock();
             varZ.getVar(startCorner, numElem, z.data());
+            lock.unlock();
 
             Index n = 0;
             for (Index k = 0; k < bSizeZ; k++) {
@@ -396,8 +408,10 @@ Object::ptr ReadWRFChem::generateGrid(Block *b) const
         } else if (!emptyValue(m_PH) && !emptyValue(m_PHB)) {
             std::vector<float> ph((bSizeX + 1) * bSizeY * bSizeZ);
             std::vector<float> phb((bSizeX + 1) * bSizeY * bSizeZ);
-            NcVar varPH = ncFirstFile->getVar(m_PH->getValue().c_str());
-            NcVar varPHB = ncFirstFile->getVar(m_PHB->getValue().c_str());
+            lock.lock();
+            NcVar varPH = m_ncFirstFile->getVar(m_PH->getValue().c_str());
+            NcVar varPHB = m_ncFirstFile->getVar(m_PHB->getValue().c_str());
+            lock.unlock();
 
             //extract (3D) geopotential for z-coord calculation
             /* int numDimElem = 4; */
@@ -405,8 +419,10 @@ Object::ptr ReadWRFChem::generateGrid(Block *b) const
             std::vector<size_t> startCorner{0, b[0].begin, b[1].begin, b[2].begin};
             std::vector<size_t> numElem{1, bSizeX + 1, bSizeY, bSizeZ};
 
+            lock.lock();
             varPH.getVar(startCorner, numElem, ph.data());
             varPHB.getVar(startCorner, numElem, phb.data());
+            lock.unlock();
 
             //geopotential height is defined on stagged grid -> one additional layer
             //thus it is evaluated (vertically) inbetween vertices to match lat/lon grid
@@ -440,13 +456,17 @@ Object::ptr ReadWRFChem::generateGrid(Block *b) const
         auto ptrOnYcoords = strGrid->y().data();
         auto ptrOnZcoords = strGrid->z().data();
 
-        /* NcVar *varHGT = ncFirstFile->get_var(m_trueHGT->getValue().c_str()); */
-        NcVar varHGT = ncFirstFile->getVar(m_trueHGT->getValue().c_str());
+        std::unique_lock lock(m_ncMutex);
+        /* NcVar *varHGT = m_ncFirstFile->get_var(m_trueHGT->getValue().c_str()); */
+        NcVar varHGT = m_ncFirstFile->getVar(m_trueHGT->getValue().c_str());
+        lock.unlock();
         std::vector<float> hgt(bSizeY * bSizeZ);
 
         std::vector<size_t> startCorner{0, b[1].begin, b[2].begin};
         std::vector<size_t> count{1, bSizeY, bSizeZ};
+        lock.lock();
         varHGT.getVar(startCorner, count, hgt.data());
+        lock.unlock();
 
         Index n = 0;
         for (Index k = 0; k < bSizeZ; k++) {
@@ -485,14 +505,20 @@ Object::ptr ReadWRFChem::generateGrid(Block *b) const
 
 
 //addDataToPort: read and set values for variable and add them to the output port
-bool ReadWRFChem::addDataToPort(Token &token, NcFile *ncDataFile, int vi, Object::ptr outGrid, Block *b, Index block,
-                                int t) const
+bool ReadWRFChem::addDataToPort(Token &token, netCDF::NcFile *ncDataFile, int vi, Object::ptr outGrid, Block *b,
+                                Index block, int t) const
 {
+    using netCDF::NcFile;
+    using netCDF::NcVar;
+
     if (!(StructuredGrid::as(outGrid) || UniformGrid::as(outGrid)))
         return true;
+
+    std::unique_lock lock(m_ncMutex);
     NcVar varData = ncDataFile->getVar(m_variables[vi]->getValue().c_str());
     std::string unit = varData.getAtt("units").getName();
     int numDimElem = varData.getDimCount();
+    lock.unlock();
     size_t bSizeX = b[0].end - b[0].begin, bSizeY = b[1].end - b[1].begin, bSizeZ = b[2].end - b[2].begin;
     std::vector<size_t> startCorner(numDimElem);
     startCorner.at(numDimElem - 3) = b[0].begin;
@@ -513,7 +539,9 @@ bool ReadWRFChem::addDataToPort(Token &token, NcFile *ncDataFile, int vi, Object
         numElem[numDimElem - 3] = bSizeX + 1;
         std::vector<float> longdata((bSizeX + 1) * bSizeY * bSizeZ);
 
+        lock.lock();
         varData.getVar(startCorner, numElem, longdata.data());
+        lock.unlock();
         Index n = 0;
         for (Index k = 0; k < bSizeZ; k++) {
             for (Index j = 0; j < bSizeY; j++) {
@@ -527,7 +555,9 @@ bool ReadWRFChem::addDataToPort(Token &token, NcFile *ncDataFile, int vi, Object
         }
     } else {
         std::vector<float> longdata(bSizeX * bSizeY * bSizeZ);
+        lock.lock();
         varData.getVar(startCorner, numElem, longdata.data());
+        lock.unlock();
         Index n = 0;
         for (Index k = 0; k < bSizeZ; k++) {
             for (Index j = 0; j < bSizeY; j++) {
@@ -554,15 +584,11 @@ bool ReadWRFChem::addDataToPort(Token &token, NcFile *ncDataFile, int vi, Object
 
 bool ReadWRFChem::read(Token &token, int timestep, int block)
 {
-    Index numBlocksLat = m_numPartitionsLat->getValue();
-    Index numBlocksVer = m_numPartitionsVer->getValue();
-    if ((numBlocksLat <= 0) || (numBlocksVer <= 0)) {
-        sendInfo("Number of partitions cannot be zero!");
-        return false;
-    }
-    numBlocks = numBlocksLat * numBlocksLat * numBlocksVer;
+    using netCDF::NcFile;
+    using netCDF::NcVar;
+    using netCDF::NcDim;
 
-    if (!ncFirstFile->isNull()) {
+    if (!m_ncFirstFile->isNull()) {
         NcVar var;
         std::vector<NcDim> edges;
         int numdims = 0;
@@ -572,7 +598,9 @@ bool ReadWRFChem::read(Token &token, int timestep, int block)
             std::string name = "";
             name = m_variables[vi]->getValue();
             if (!name.empty() && name != Reader::InvalidChoice) {
-                var = ncFirstFile->getVar(name);
+                std::unique_lock lock(m_ncMutex);
+                var = m_ncFirstFile->getVar(name);
+                lock.unlock();
                 if (var.getDimCount() > numdims) {
                     numdims = var.getDimCount();
                     edges = var.getDims();
@@ -617,21 +645,22 @@ bool ReadWRFChem::read(Token &token, int timestep, int block)
             // ******** DATA *************
             std::string sDir = fileList.at(timestep);
 
-            NcFile *ncDataFile = new NcFile(sDir, NcFile::read);
+            std::unique_lock lock(m_ncMutex);
+            NcFile ncDataFile(sDir, NcFile::read);
 
-            if (ncDataFile->isNull()) {
+            if (ncDataFile.isNull()) {
                 sendError("Could not open data file at time %i", timestep);
                 return false;
             }
+            lock.unlock();
 
             for (Index vi = 0; vi < NUMPARAMS; ++vi) {
                 if (emptyValue(m_variables[vi])) {
                     continue;
                 }
-                addDataToPort(token, ncDataFile, vi, outObject[block], b, block, timestep);
+                addDataToPort(token, &ncDataFile, vi, outObject[block], b, block, timestep);
             }
-            delete ncDataFile;
-            ncDataFile = nullptr;
+            lock.lock(); // for destroying ncDataFile
         }
         return true;
     }
@@ -640,10 +669,7 @@ bool ReadWRFChem::read(Token &token, int timestep, int block)
 
 bool ReadWRFChem::finishRead()
 {
-    if (ncFirstFile) {
-        delete ncFirstFile;
-        ncFirstFile = nullptr;
-    }
+    m_ncFirstFile.reset();
     return true;
 }
 
