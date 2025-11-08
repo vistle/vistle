@@ -745,7 +745,10 @@ bool Color::compute()
 
     assert(data);
 
-    getMinMax(data, m_dataMin, m_dataMax);
+    if (m_autoRange || m_constrain->getValue() || (m_nest && m_autoInsetCenter)) {
+        getMinMax(data, m_dataMin, m_dataMax);
+    }
+
     bool preview = getIntParameter("preview");
     if (m_autoRange) {
         m_inputQueue.push_back(data);
