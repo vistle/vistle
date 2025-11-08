@@ -375,8 +375,11 @@ void updateMinMax(typename V::const_ptr &v, Scalar &min, Scalar &max)
 }
 } // namespace
 
-void Color::getMinMax(vistle::DataBase::const_ptr object, vistle::Scalar &min, vistle::Scalar &max)
+
+std::pair<vistle::Scalar, vistle::Scalar> Color::getMinMax(vistle::DataBase::const_ptr object) const
 {
+    auto min = std::numeric_limits<Scalar>::max(), max = -std::numeric_limits<Scalar>::max();
+
     if (Vec<Byte>::const_ptr scal = Vec<Byte>::as(object)) {
         updateMinMax<Vec<Byte>>(scal, min, max);
     } else if (Vec<Index>::const_ptr scal = Vec<Index>::as(object)) {
@@ -387,34 +390,57 @@ void Color::getMinMax(vistle::DataBase::const_ptr object, vistle::Scalar &min, v
         const vistle::Scalar *x = vec->x().data();
         const vistle::Scalar *y = vec->y().data();
         const vistle::Scalar *z = vec->z().data();
-#ifdef USE_OPENMP
-#pragma omp parallel
-#endif
-        {
-            Scalar tmin = std::numeric_limits<Scalar>::max();
-            Scalar tmax = -std::numeric_limits<Scalar>::max();
-            const ssize_t numElements = object->getSize();
-#ifdef USE_OPENMP
-#pragma omp for
-#endif
-            for (ssize_t index = 0; index < numElements; index++) {
-                Scalar v = Vector3(x[index], y[index], z[index]).norm();
-                if (v < tmin)
-                    tmin = v;
-                if (v > tmax)
-                    tmax = v;
-            }
-#ifdef USE_OPENMP
-#pragma omp critical
-#endif
+
+        const auto numElements = object->getSize();
+        auto abs2 = [x, y, z](Index i) {
+            //return Vector3(x[i], y[i], z[i]).squaredNorm();
+            return x[i] * x[i] + y[i] * y[i] + z[i] * z[i];
+        };
+#if 0
+        class It: public std::iterator<std::forward_iterator_tag, Index> {
+            Index i;
+            const vistle::Scalar *x, *y, *z;
+
+        public:
+            It(Index idx, const Scalar *x, const Scalar *y, const Scalar *z): i(idx), x(x), y(y), z(z) {}
+            It &operator=(const It &other)
             {
-                if (tmin < min)
-                    min = tmin;
-                if (tmax > max)
-                    max = tmax;
+                i = other.i;
+                return *this;
             }
+            Scalar operator*() const
+            {
+                return abs2(i);
+            }
+            It &operator++()
+            {
+                ++i;
+                return *this;
+            }
+
+            bool operator==(const It &other) const { return i == other.i; }
+        };
+
+        auto mm = std::minmax_element(It{Index{0}, x, y, z}, It{numElements, x, y, z});
+        min = std::sqrt(*mm.first);
+        max = std::sqrt(*mm.second);
+#else
+        if (numElements > 0) {
+            min = max = Vector3(x[0], y[0], z[0]).squaredNorm();
+            for (Index i = 0; i < numElements; ++i) {
+                Scalar v = abs2(i);
+                if (v < min)
+                    min = v;
+                else if (v > max)
+                    max = v;
+            }
+            min = std::sqrt(min);
+            max = std::sqrt(max);
         }
+#endif
     }
+
+    return {min, max};
 }
 
 void Color::binData(vistle::DataBase::const_ptr object, std::vector<unsigned long> &binsVec)
@@ -746,7 +772,13 @@ bool Color::compute()
     assert(data);
 
     if (m_autoRange || m_constrain->getValue() || (m_nest && m_autoInsetCenter)) {
-        getMinMax(data, m_dataMin, m_dataMax);
+        auto [min, max] = getMinMax(data);
+        if (min <= max) {
+            if (m_dataMin > min)
+                m_dataMin = min;
+            if (m_dataMax < max)
+                m_dataMax = max;
+        }
     }
 
     bool preview = getIntParameter("preview");

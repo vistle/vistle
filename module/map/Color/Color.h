@@ -35,7 +35,7 @@ public:
     Color(const std::string &name, int moduleID, mpi::communicator comm);
 
 private:
-    void getMinMax(vistle::DataBase::const_ptr object, vistle::Scalar &min, vistle::Scalar &max);
+    std::pair<vistle::Scalar, vistle::Scalar> getMinMax(vistle::DataBase::const_ptr object) const;
     void binData(vistle::DataBase::const_ptr object, std::vector<unsigned long> &binsVec);
     void computeMap();
     void sendColorMap();
