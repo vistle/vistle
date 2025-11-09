@@ -226,11 +226,10 @@ void Module::setParameterDefaults()
 {
     if (vistle::message::Id::isModule(m_id)) {
         // module id already known
-#if 0
-        vistle::message::ResetParameters m(m_id);
+        vistle::message::SetParameter m(m_id);
+        m.setInit();
         m.setDestId(m_id);
         vistle::VistleConnection::the().sendMessage(m);
-#endif
     }
 }
 

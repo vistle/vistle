@@ -273,6 +273,12 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
             mod->deleteModule();
         }
     });
+    connect(m_mainWindow->moduleView(), &ModuleView::setDefaultValues, [this](int id) {
+        auto mod = m_scene->findModule(id);
+        if (mod) {
+            mod->setParameterDefaults();
+        }
+    });
     connect(m_mainWindow->moduleView(), &ModuleView::toggleOutputStreaming, [this](int id, bool enable) {
         auto mod = m_scene->findModule(id);
         if (mod) {
@@ -284,6 +290,11 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
         if (mod) {
             mod->replayOutput();
         }
+    });
+    connect(m_mainWindow->moduleView(), &ModuleView::help, [this](int id) {
+        auto cat = QString::fromStdString(m_scene->state().getModuleCategory(id)).toLower();
+        auto mod = QString::fromStdString(m_scene->state().getModuleName(id));
+        QDesktopServices::openUrl(QUrl(QString("https://vistle.io/module/%0/%1/%1.html").arg(cat, mod)));
     });
 
     m_mainWindow->show();

@@ -79,7 +79,7 @@
            <x>0</x>
            <y>0</y>
            <width>430</width>
-           <height>252</height>
+           <height>290</height>
           </rect>
          </property>
         </widget>
@@ -109,40 +109,107 @@
        </widget>
       </widget>
      </item>
-     <item>
-      <layout class="QHBoxLayout" name="buttonLayout">
-       <item>
-        <widget class="QDialogButtonBox" name="buttonBox">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="standardButtons">
-          <set>QDialogButtonBox::StandardButton::NoButton</set>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLabel" name="messagesLabel">
-         <property name="text">
-          <string>Output:</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QDialogButtonBox" name="messagesButtonBox">
-         <property name="standardButtons">
-          <set>QDialogButtonBox::StandardButton::NoButton</set>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
     </layout>
    </item>
   </layout>
+  <action name="actionExecute">
+   <property name="icon">
+    <iconset resource="gui.qrc">
+     <normaloff>:/icons/execute.svg</normaloff>:/icons/execute.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Execute</string>
+   </property>
+   <property name="toolTip">
+    <string>Execute module</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
+   </property>
+  </action>
+  <action name="actionStream">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Stream</string>
+   </property>
+   <property name="toolTip">
+    <string>Toggle streaming of module messages</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
+   </property>
+  </action>
+  <action name="actionClear">
+   <property name="text">
+    <string>Clear</string>
+   </property>
+   <property name="toolTip">
+    <string>Clear module messages</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
+   </property>
+  </action>
+  <action name="actionReplay">
+   <property name="text">
+    <string>Replay</string>
+   </property>
+   <property name="toolTip">
+    <string>Show module messages again</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
+   </property>
+  </action>
+  <action name="actionHelp">
+   <property name="text">
+    <string>Help</string>
+   </property>
+   <property name="toolTip">
+    <string>Open help for module in web browser</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
+   </property>
+  </action>
+  <action name="actionMessages">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Messages</string>
+   </property>
+   <property name="toolTip">
+    <string>Toggle visibility of module messages</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
+   </property>
+  </action>
+  <action name="actionDefaults">
+   <property name="text">
+    <string>Defaults</string>
+   </property>
+   <property name="toolTip">
+    <string>Reset module parameters to default values</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
+   </property>
+  </action>
+  <action name="actionDelete">
+   <property name="text">
+    <string>Delete</string>
+   </property>
+   <property name="toolTip">
+    <string>Remove module from workflow</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
@@ -152,6 +219,8 @@
    <container>1</container>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="gui.qrc"/>
+ </resources>
  <connections/>
 </ui>
