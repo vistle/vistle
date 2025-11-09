@@ -282,6 +282,16 @@ std::string StateTracker::getModuleDisplayName(int id) const
     return std::string();
 }
 
+std::string StateTracker::getModuleCategory(int id) const
+{
+    AvailableModule::Key key{getHub(id), getModuleName(id)};
+    auto mod = m_availableModules.find(key);
+    if (mod == m_availableModules.end()) {
+        return "";
+    }
+    return mod->second.category();
+}
+
 std::string StateTracker::getModuleDescription(int id) const
 {
     AvailableModule::Key key{getHub(id), getModuleName(id)};
