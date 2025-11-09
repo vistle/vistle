@@ -151,6 +151,7 @@ public:
     const HubData &getHubData(int id) const;
     std::string getModuleName(int id) const;
     std::string getModuleDisplayName(int id) const;
+    std::string getModuleCategory(int id) const;
     std::string getModuleDescription(int id) const;
     bool isCompound(int id);
 
