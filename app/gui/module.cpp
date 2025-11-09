@@ -490,6 +490,8 @@ void Module::doLayout()
 
     setRect(0., 0., w, h);
     m_errorIndicator->setPos(errorPos());
+
+    update(boundingRect());
 }
 
 /*!
@@ -534,7 +536,6 @@ void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
         } else {
             painter->setPen(highlightPen);
         }
-        painter->setBrush(brush);
     }
 
     painter->drawRoundedRect(rect(), portDistance, portDistance);
@@ -1140,7 +1141,8 @@ QPointF Module::errorPos() const
 {
     if (!m_errorIndicator->isVisible())
         return QPointF();
-    return QPointF(rect().right() - m_errorIndicator->size() - 0.5 * portDistance,
+    qreal w = rect().width();
+    return QPointF(w - m_errorIndicator->size() - 0.5 * portDistance,
                    portDistance + 1.5 * Port::portSize - 0.5 * m_errorIndicator->size());
 }
 
@@ -1220,7 +1222,6 @@ void Module::setStatus(Module::Status status)
     }
 
     doLayout();
-    update();
 }
 
 void Module::setToolTip(QString text)
