@@ -4,9 +4,8 @@
 #include <QWidget>
 #include "module.h"
 
-class QAbstractButton;
-class QPushButton;
 class QScrollArea;
+class QToolBar;
 
 namespace gui {
 
@@ -35,27 +34,21 @@ signals:
     void toggleOutputStreaming(int id, bool enable);
     void replayOutput(int id);
     void messagesVisibilityChanged(int id, bool visible);
+    void help(int id);
 
 public slots:
     void appendMessage(int senderId, int type, QString text);
     void setOutputStreaming(int id, bool enable);
-private slots:
-    void buttonClicked(QAbstractButton *button);
 
 private:
     void setColor(int type);
-    void updateMessageButton();
+    void updateMessagesAction();
 
     Ui::ModuleView *ui = nullptr;
-    QPushButton *m_executeButton = nullptr;
-    QPushButton *m_messagesButton = nullptr;
-    QPushButton *m_defaultsButton = nullptr;
-    QPushButton *m_deleteButton = nullptr;
-    QPushButton *m_clearButton = nullptr;
-    QPushButton *m_streamOutput = nullptr;
-    QPushButton *m_replayOutput = nullptr;
-    int m_id = 0;
 
+    QToolBar *m_toolbar = nullptr;
+
+    int m_id = 0;
     QList<Module::Message> m_messages;
 };
 

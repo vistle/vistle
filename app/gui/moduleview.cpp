@@ -1,7 +1,8 @@
 #include "moduleview.h"
 #include "ui_moduleview.h"
-#include <QPushButton>
 #include <QRegularExpression>
+#include <QToolBar>
+#include <QLabel>
 #include <vistle/core/message.h>
 
 namespace gui {
@@ -9,22 +10,6 @@ namespace gui {
 ModuleView::ModuleView(QWidget *parent): QWidget(parent), ui(new Ui::ModuleView)
 {
     ui->setupUi(this);
-
-    auto *bb = ui->buttonBox;
-    m_deleteButton = bb->addButton("Delete", QDialogButtonBox::DestructiveRole);
-    m_executeButton = bb->addButton("Execute", QDialogButtonBox::ApplyRole);
-    m_defaultsButton = bb->addButton("Defaults", QDialogButtonBox::ResetRole);
-    connect(bb, SIGNAL(clicked(QAbstractButton *)), SLOT(buttonClicked(QAbstractButton *)));
-
-    auto *mbb = ui->messagesButtonBox;
-    m_messagesButton = mbb->addButton("Messages", QDialogButtonBox::ActionRole);
-    m_messagesButton->setEnabled(false);
-    m_clearButton = mbb->addButton("Clear", QDialogButtonBox::ActionRole);
-    m_replayOutput = mbb->addButton("Replay", QDialogButtonBox::ActionRole);
-    m_streamOutput = mbb->addButton("Stream", QDialogButtonBox::ActionRole);
-    m_streamOutput->setCheckable(true);
-    m_streamOutput->setChecked(false);
-    connect(mbb, SIGNAL(clicked(QAbstractButton *)), SLOT(buttonClicked(QAbstractButton *)));
 
     ui->messages->setVisible(false);
     ui->splitter->setCollapsible(0, false);
@@ -44,14 +29,64 @@ ModuleView::ModuleView(QWidget *parent): QWidget(parent), ui(new Ui::ModuleView)
                     ui->splitter->setSizes(sizes);
                 }
             }
-            updateMessageButton();
+            updateMessagesAction();
         }
     });
 
-    setId(vistle::message::Id::Invalid);
 
-    m_defaultsButton->setVisible(false);
-    m_deleteButton->setVisible(false);
+    m_toolbar = new QToolBar(this);
+    auto &tb = m_toolbar;
+    ui->verticalLayout->addWidget(tb);
+
+    ui->actionExecute->setToolTip("Execute module");
+    connect(ui->actionExecute, &QAction::triggered, [this]() { emit executeModule(m_id); });
+    tb->addAction(ui->actionExecute);
+
+    tb->addSeparator();
+
+    auto output = new QLabel(tb);
+    output->setText("Output:");
+    tb->addWidget(output);
+    connect(ui->actionMessages, &QAction::triggered, [this]() {
+        ui->messages->setVisible(!ui->messages->isVisible());
+        updateMessagesAction();
+    });
+    ui->actionMessages->setEnabled(false);
+    tb->addAction(ui->actionMessages);
+
+    connect(ui->actionClear, &QAction::triggered, [this]() {
+        emit clearMessages(m_id);
+        m_messages.clear();
+        ui->messages->clear();
+        ui->messages->setVisible(false);
+        updateMessagesAction();
+    });
+    tb->addAction(ui->actionClear);
+
+    connect(ui->actionReplay, &QAction::triggered, [this]() {
+        ui->messages->setVisible(true);
+        emit replayOutput(m_id);
+    });
+    tb->addAction(ui->actionReplay);
+
+    connect(ui->actionStream, &QAction::toggled, [this](bool checked) { emit toggleOutputStreaming(m_id, checked); });
+    ui->actionStream->setCheckable(true);
+    tb->addAction(ui->actionStream);
+
+    tb->addSeparator();
+
+    connect(ui->actionDefaults, &QAction::triggered, [this]() { emit setDefaultValues(m_id); });
+    tb->addAction(ui->actionDefaults);
+
+    connect(ui->actionDelete, &QAction::triggered, [this]() { emit deleteModule(m_id); });
+    tb->addAction(ui->actionDelete);
+
+    tb->addSeparator();
+
+    connect(ui->actionHelp, &QAction::triggered, [this]() { emit help(m_id); });
+    tb->addAction(ui->actionHelp);
+
+    setId(vistle::message::Id::Invalid);
 }
 
 ModuleView::~ModuleView()
@@ -64,36 +99,6 @@ QScrollArea *ModuleView::parameterScroller() const
     return ui->parameterScroller;
 }
 
-void ModuleView::buttonClicked(QAbstractButton *button)
-{
-    if (button == m_messagesButton) {
-        ui->messages->setVisible(!ui->messages->isVisible());
-        updateMessageButton();
-    }
-    if (button == m_deleteButton) {
-        emit deleteModule(m_id);
-    }
-    if (button == m_executeButton) {
-        emit executeModule(m_id);
-    }
-    if (button == m_defaultsButton) {
-        emit setDefaultValues(m_id);
-    }
-    if (button == m_clearButton) {
-        emit clearMessages(m_id);
-        m_messages.clear();
-        ui->messages->clear();
-        updateMessageButton();
-    }
-    if (button == m_streamOutput) {
-        emit toggleOutputStreaming(m_id, m_streamOutput->isChecked());
-    }
-    if (button == m_replayOutput) {
-        ui->messages->setVisible(true);
-        emit replayOutput(m_id);
-    }
-}
-
 int ModuleView::id() const
 {
     return m_id;
@@ -103,22 +108,25 @@ void ModuleView::setId(int id)
 {
     m_id = id;
     bool visible = vistle::message::Id::isModule(id);
-    ui->buttonBox->setVisible(visible);
+    m_toolbar->setVisible(visible);
+
+#if 0
     ui->messagesLabel->setVisible(visible);
-    ui->messagesButtonBox->setVisible(visible);
-    //m_deleteButton->setVisible(visible);
-    m_executeButton->setVisible(visible);
-    m_messagesButton->setVisible(visible);
-    m_streamOutput->setVisible(visible);
-    m_replayOutput->setVisible(visible);
+    //ui->actionDelete->setVisible(visible);
+    //ui->actionDefaults->setVisible(visible);
+    ui->actionExecute->setVisible(visible);
+    ui->actionMessages->setVisible(visible);
+    ui->actionStream->setVisible(visible);
+    ui->actionReplay->setVisible(visible);
     //ui->parameters->setModule(id);
     ui->messages->setVisible(false);
+#endif
 }
 
 void ModuleView::setOutputStreaming(int id, bool enable)
 {
     if (m_id == id) {
-        m_streamOutput->setChecked(enable);
+        ui->actionStream->setChecked(enable);
     }
 }
 
@@ -147,19 +155,19 @@ void ModuleView::setColor(int type)
     }
 }
 
-void ModuleView::updateMessageButton()
+void ModuleView::updateMessagesAction()
 {
-    m_messagesButton->setEnabled(!m_messages.empty());
+    ui->actionMessages->setEnabled(!m_messages.empty());
 
     QString arrow = ui->messages->isVisible() ? "▼" : "▲";
     if (m_messages.size() == 1) {
-        m_messagesButton->setText(QString("%1 Message %2").arg(m_messages.size()).arg(arrow));
+        ui->actionMessages->setText(QString("%1 Message %2").arg(m_messages.size()).arg(arrow));
     } else {
-        m_messagesButton->setText(QString("%1 Messages %2").arg(m_messages.size()).arg(arrow));
+        ui->actionMessages->setText(QString("%1 Messages %2").arg(m_messages.size()).arg(arrow));
     }
 
-    m_clearButton->setEnabled(!m_messages.empty());
-    //m_clearButton->setVisible(ui->messages->isVisible());
+    ui->actionClear->setEnabled(!m_messages.empty());
+    //ui->actionClear->setVisible(ui->messages->isVisible());
 
     emit messagesVisibilityChanged(m_id, ui->messages->isVisible());
 }
@@ -187,7 +195,7 @@ void ModuleView::appendMessage(int senderId, int type, QString text)
 #endif
 
     ui->messages->setVisible(true);
-    updateMessageButton();
+    updateMessagesAction();
 }
 
 void ModuleView::setMessages(QList<Module::Message> &messages, bool visible)
@@ -218,7 +226,7 @@ void ModuleView::setMessages(QList<Module::Message> &messages, bool visible)
     } else {
         ui->messages->setVisible(visible);
     }
-    updateMessageButton();
+    updateMessagesAction();
 }
 
 } // namespace gui
