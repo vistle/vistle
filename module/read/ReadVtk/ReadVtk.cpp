@@ -23,12 +23,14 @@
 #include <vtkPointData.h>
 #include <vtkUnstructuredGrid.h>
 #include <vtkStructuredGrid.h>
+#include <vtkRectilinearGrid.h>
 #include <vtkImageData.h>
 #include <vtkPolyData.h>
 #include <vtkXMLGenericDataObjectReader.h>
 #include <vtkXMLMultiBlockDataReader.h>
 #include <vtkXMLUnstructuredGridReader.h>
 #include <vtkXMLStructuredGridReader.h>
+#include <vtkXMLRectilinearGridReader.h>
 #include <vtkXMLImageDataReader.h>
 #include <vtkXMLPolyDataReader.h>
 #include <vtkVersion.h>
@@ -188,6 +190,9 @@ VtkFile getDataSet(const std::string &filename, int piece = -1, bool ghost = fal
     }
     if (!fileinfo.dataset) {
         fileinfo = readFile<vtkXMLStructuredGridReader>(filename, piece, ghost, onlyMeta);
+    }
+    if (!fileinfo.dataset) {
+        fileinfo = readFile<vtkXMLRectilinearGridReader>(filename, piece, ghost, onlyMeta);
     }
     if (!fileinfo.dataset) {
         fileinfo = readFile<vtkXMLImageDataReader>(filename, piece, ghost, onlyMeta);
