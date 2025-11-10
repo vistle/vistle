@@ -120,6 +120,9 @@ public:
     bool applyDelayedChanges();
 
 private:
+    bool resetParameterToDefault(const std::string &name, const message::SetParameter *inResponseTo = nullptr);
+    template<class T>
+    bool resetParameterToDefault(Parameter *parameter, const message::SetParameter *inResponseTo);
     bool parameterChangedWrapper(const Parameter *p); //< wrapper to prevent recursive calls to parameterChanged
 
     int m_id = message::Id::Invalid;

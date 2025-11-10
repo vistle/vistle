@@ -149,6 +149,12 @@ bool ParameterManager::handleMessage(const message::SetParameter &param)
     bool handled = false;
     switch (param.getParameterType()) {
     case Parameter::Invalid:
+        if (param.isInitialization()) {
+            applyDelayedChanges();
+            for (auto &p: m_parameters) {
+                resetParameterToDefault(p.first);
+            }
+        }
         applyDelayedChanges();
         handled = true;
         break;
@@ -536,6 +542,53 @@ StringParamVector ParameterManager::getStringVectorParameter(const std::string &
     StringParamVector value;
     getParameter(name, value);
     return value;
+}
+
+template<class T>
+bool ParameterManager::resetParameterToDefault(Parameter *parameter, const message::SetParameter *inResponseTo)
+{
+    if (!parameter) {
+        CERR << "resetParameterToDefault: null parameter" << std::endl;
+        return false;
+    }
+
+    auto param = dynamic_cast<ParameterBase<T> *>(parameter);
+    if (!param) {
+        CERR << "resetParameterToDefault: type mismatch" << std::endl;
+        return false;
+    }
+
+    param->setValue(param->getDefaultValue());
+    return updateParameter(param->getName(), param, inResponseTo, Parameter::Value);
+}
+
+bool ParameterManager::resetParameterToDefault(const std::string &name, const message::SetParameter *inResponseTo)
+{
+    auto param = findParameter(name);
+    if (!param) {
+        CERR << "resetParameterToDefault: parameter " << name << " not found" << std::endl;
+        return false;
+    }
+
+    switch (param->type()) {
+    case Parameter::Integer:
+        return resetParameterToDefault<Integer>(param.get(), inResponseTo);
+    case Parameter::Float:
+        return resetParameterToDefault<Float>(param.get(), inResponseTo);
+    case Parameter::Vector:
+        return resetParameterToDefault<ParameterVector<Float>>(param.get(), inResponseTo);
+    case Parameter::IntVector:
+        return resetParameterToDefault<ParameterVector<Integer>>(param.get(), inResponseTo);
+    case Parameter::String:
+        return resetParameterToDefault<std::string>(param.get(), inResponseTo);
+    case Parameter::StringVector:
+        return resetParameterToDefault<ParameterVector<std::string>>(param.get(), inResponseTo);
+    default:
+        CERR << "resetParameterToDefault: parameter " << name << " has invalid type " << param->type() << std::endl;
+        return false;
+    }
+
+    return true;
 }
 
 bool ParameterManager::setParameterReadOnly(Parameter *param, bool readOnly)
