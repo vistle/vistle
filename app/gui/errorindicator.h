@@ -29,7 +29,7 @@ public:
     double size() const;
 
 signals:
-    void clicked(ErrorIndicator *ei);
+    void clicked();
 
 protected:
     void hoverEnterEvent(QGraphicsSceneHoverEvent *event) override;
