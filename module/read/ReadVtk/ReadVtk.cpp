@@ -33,6 +33,9 @@
 #include <vtkXMLRectilinearGridReader.h>
 #include <vtkXMLImageDataReader.h>
 #include <vtkXMLPolyDataReader.h>
+#if VTK_MAJOR_VERSION >= 9
+#include <vtkHDFReader.h>
+#endif
 #include <vtkVersion.h>
 #if VTK_MAJOR_VERSION < 5
 #include <vtkIdType.h>
@@ -84,7 +87,7 @@ std::vector<std::string> getFields(VO *dsa)
 }
 
 template<class Reader>
-VtkFile readFile(const std::string &filename, int piece = -1, bool ghost = false, bool onlyMeta = false)
+VtkFile readFile(const std::string &filename, int piece = -1, const ReadOptions &options = ReadOptions())
 {
     VtkFile result;
     result.filename = filename;
@@ -100,6 +103,11 @@ VtkFile readFile(const std::string &filename, int piece = -1, bool ghost = false
             return result;
         }
     }
+#if (VTK_MAJOR_VERSION == 9 && VTK_MINOR_VERSION >= 2) || VTK_MAJOR_VERSION > 9
+    if (auto hdfreader = vtkHDFReader::SafeDownCast(reader)) {
+        hdfreader->SetUseCache(options.useCache);
+    }
+#endif
     reader->SetFileName(filename.c_str());
     reader->UpdateInformation();
     int numPieces = 1;
@@ -136,7 +144,7 @@ VtkFile readFile(const std::string &filename, int piece = -1, bool ghost = false
             result.pointfields.push_back(dsreader->GetVectorsNameInFile(i));
     }
 
-    if (onlyMeta) {
+    if (options.onlyMeta) {
         if (reader->GetOutput()) {
             reader->GetOutput()->Register(reader);
 
@@ -161,7 +169,7 @@ VtkFile readFile(const std::string &filename, int piece = -1, bool ghost = false
         auto info = vtkSmartPointer<vtkInformation>::New();
         info->Set(vtkStreamingDemandDrivenPipeline::UPDATE_PIECE_NUMBER(), piece);
         info->Set(vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_PIECES(), numPieces);
-        info->Set(vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS(), ghost ? 1 : 0);
+        info->Set(vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS(), options.ghost ? 1 : 0);
         reader->Update(info);
     } else
 #endif
@@ -177,37 +185,42 @@ VtkFile readFile(const std::string &filename, int piece = -1, bool ghost = false
 }
 
 
-VtkFile getDataSet(const std::string &filename, int piece = -1, bool ghost = false, bool onlyMeta = false)
+VtkFile getDataSet(const std::string &filename, int piece = -1, const ReadOptions &options = ReadOptions())
 {
     VtkFile fileinfo;
     bool triedLegacy = false;
     if (boost::algorithm::ends_with(filename, ".vtk")) {
-        fileinfo = readFile<vtkDataSetReader>(filename, piece, ghost, onlyMeta);
+        fileinfo = readFile<vtkDataSetReader>(filename, piece, options);
         triedLegacy = true;
     }
     if (!fileinfo.dataset) {
-        fileinfo = readFile<vtkXMLUnstructuredGridReader>(filename, piece, ghost, onlyMeta);
+        fileinfo = readFile<vtkXMLUnstructuredGridReader>(filename, piece, options);
     }
     if (!fileinfo.dataset) {
-        fileinfo = readFile<vtkXMLStructuredGridReader>(filename, piece, ghost, onlyMeta);
+        fileinfo = readFile<vtkXMLStructuredGridReader>(filename, piece, options);
     }
     if (!fileinfo.dataset) {
-        fileinfo = readFile<vtkXMLRectilinearGridReader>(filename, piece, ghost, onlyMeta);
+        fileinfo = readFile<vtkXMLRectilinearGridReader>(filename, piece, options);
     }
     if (!fileinfo.dataset) {
-        fileinfo = readFile<vtkXMLImageDataReader>(filename, piece, ghost, onlyMeta);
+        fileinfo = readFile<vtkXMLImageDataReader>(filename, piece, options);
     }
     if (!fileinfo.dataset) {
-        fileinfo = readFile<vtkXMLPolyDataReader>(filename, piece, ghost, onlyMeta);
+        fileinfo = readFile<vtkXMLPolyDataReader>(filename, piece, options);
     }
     if (!fileinfo.dataset) {
-        fileinfo = readFile<vtkXMLMultiBlockDataReader>(filename, piece, ghost, onlyMeta);
+        fileinfo = readFile<vtkXMLMultiBlockDataReader>(filename, piece, options);
     }
     if (!fileinfo.dataset) {
-        fileinfo = readFile<vtkXMLGenericDataObjectReader>(filename, piece, ghost, onlyMeta);
+        fileinfo = readFile<vtkXMLGenericDataObjectReader>(filename, piece, options);
     }
+#if VTK_MAJOR_VERSION >= 9
+    if (!fileinfo.dataset) {
+        fileinfo = readFile<vtkHDFReader>(filename, piece, options);
+    }
+#endif
     if (!triedLegacy && !fileinfo.dataset) {
-        fileinfo = readFile<vtkDataSetReader>(filename, piece, ghost, onlyMeta);
+        fileinfo = readFile<vtkDataSetReader>(filename, piece, options);
     }
     return fileinfo;
 }
@@ -216,7 +229,9 @@ VtkFile ReadVtk::getDataSetMeta(const std::string &filename)
 {
     auto &fileinfo = m_files[filename];
     if (!fileinfo.dataset) {
-        fileinfo = getDataSet(filename, -1, false, true);
+        ReadOptions options;
+        options.onlyMeta = true;
+        fileinfo = getDataSet(filename, -1, options);
     }
     return fileinfo;
 }
@@ -356,14 +371,22 @@ ReadVtk::ReadVtk(const std::string &name, int moduleID, mpi::communicator comm):
 {
     auto gout = createOutputPort("grid_out", "grid or geometry");
     m_filename = addStringParameter("filename", "name of VTK file", "", Parameter::ExistingFilename);
-    setParameterFilters(m_filename, "PVD Files (*.pvd)/XML VTK Files (*.vti *.vtp *.vtr *.vts *.vtu)/Parallel XML VTK "
-                                    "Files(*.pvti *.pvtp *.pvtr *.pvts *.pvtu)/Legacy VTK Files "
-                                    "(*.vtk)/XML VTK Multiblock Data (*.vtm)");
+    setParameterFilters(m_filename, "PVD Files (*.pvd)/"
+                                    "XML VTK Files (*.vti *.vtp *.vtr *.vts *.vtu)/"
+                                    "Parallel XML VTK Files(*.pvti *.pvtp *.pvtr *.pvts *.pvtu)/"
+                                    "XML VTK Multiblock Data (*.vtm)/"
+#if VTK_MAJOR_VERSION >= 9
+                                    "VTK HDF Files (*.vtkhdf *.hdf)/"
+#endif
+                                    "Legacy VTK Files (*.vtk)");
     linkPortAndParameter(gout, m_filename);
     m_readPieces = addIntParameter("read_pieces", "create block for every piece in an unstructured grid", false,
                                    Parameter::Boolean);
     m_ghostCells = addIntParameter("create_ghost_cells", "create ghost cells for multi-piece unstructured grids", true,
                                    Parameter::Boolean);
+    m_useCache = addIntParameter(
+        "use_cache", "cache for improved performance for transient data on stationary grids (VTK HDF format only)",
+        true, Parameter::Boolean);
 
     for (int i = 0; i < NumPorts; ++i) {
         std::stringstream spara;
@@ -491,6 +514,11 @@ bool ReadVtk::read(Token &token, int timestep, int block)
 {
     const bool readPieces = m_readPieces->getValue();
     const bool ghostCells = m_ghostCells->getValue();
+    const bool useCache = m_useCache->getValue();
+
+    ReadOptions options;
+    options.ghost = ghostCells;
+    options.useCache = useCache;
 
     vistle::Meta m;
     m.setBlock(block);
@@ -501,9 +529,9 @@ bool ReadVtk::read(Token &token, int timestep, int block)
     if (m_d->timesteps.empty()) {
         const std::string filename = m_filename->getValue();
         if (readPieces) {
-            return load(token, filename, m, block, ghostCells);
+            return load(token, filename, options, m, block);
         } else {
-            return load(token, filename);
+            return load(token, filename, options);
         }
     } else {
         bool constant = true;
@@ -526,7 +554,7 @@ bool ReadVtk::read(Token &token, int timestep, int block)
                     m.setRealTime(f.realtime);
 
                 if (b <= block && block < b + f.pieces) {
-                    if (!load(token, f.filename, m, readPieces ? block - b : -1, ghostCells, f.part))
+                    if (!load(token, f.filename, options, m, readPieces ? block - b : -1, f.part))
                         return false;
                 }
 
@@ -538,10 +566,10 @@ bool ReadVtk::read(Token &token, int timestep, int block)
     return true;
 }
 
-bool ReadVtk::load(Token &token, const std::string &filename, const vistle::Meta &meta, int piece, bool ghost,
-                   const std::string &part) const
+bool ReadVtk::load(Token &token, const std::string &filename, const ReadOptions &options, const vistle::Meta &meta,
+                   int piece, const std::string &part) const
 {
-    auto ds_pieces = getDataSet(filename, piece, ghost);
+    auto ds_pieces = getDataSet(filename, piece, options);
     auto dobj = ds_pieces.dataset;
     if (!dobj) {
         sendError("could not read data set '%s'", filename.c_str());
