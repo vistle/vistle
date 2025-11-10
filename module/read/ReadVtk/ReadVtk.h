@@ -25,6 +25,12 @@ struct VtkFile {
     std::vector<std::string> cellfields;
 };
 
+struct ReadOptions {
+    bool onlyMeta = false;
+    bool ghost = false;
+    bool useCache = false;
+};
+
 class ReadVtk: public vistle::Reader {
 public:
     ReadVtk(const std::string &name, int moduleID, mpi::communicator comm);
@@ -38,10 +44,8 @@ public:
 private:
     static const int NumPorts = 3;
 
-    //bool compute() override;
-
-    bool load(Token &token, const std::string &filename, const vistle::Meta &meta = vistle::Meta(), int piece = -1,
-              bool ghost = false, const std::string &part = std::string()) const;
+    bool load(Token &token, const std::string &filename, const ReadOptions &options,
+              const vistle::Meta &meta = vistle::Meta(), int piece = -1, const std::string &part = std::string()) const;
     void setChoices(const VtkFile &fileinfo);
 
     VtkFile getDataSetMeta(const std::string &filename);
@@ -51,7 +55,7 @@ private:
     vistle::StringParameter *m_filename;
     vistle::StringParameter *m_cellDataChoice[NumPorts], *m_pointDataChoice[NumPorts];
     vistle::Port *m_cellPort[NumPorts], *m_pointPort[NumPorts];
-    vistle::IntParameter *m_readPieces, *m_ghostCells;
+    vistle::IntParameter *m_readPieces = nullptr, *m_ghostCells = nullptr, *m_useCache = nullptr;
 
     ReadVtkData *m_d = nullptr;
     std::map<std::string, VtkFile> m_files;

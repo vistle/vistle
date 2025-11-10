@@ -1161,6 +1161,7 @@ vistle_find_package(
     COMPONENTS
     vtkCommonDataModel
     vtkIOXML
+    vtkIOHDF
     vtkIOLegacy
     # vtkCommonCore
     # vtkFiltersCore
