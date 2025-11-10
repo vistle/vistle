@@ -85,7 +85,10 @@ Module::Module(QGraphicsItem *parent, QString name)
     setLayer(m_layer);
 
     connect(this, &Module::callshowErrorInMainThread, this, &Module::showError);
-    connect(m_errorIndicator, &ErrorIndicator::clicked, this, &Module::showError);
+    connect(m_errorIndicator, &ErrorIndicator::clicked, [this]() {
+        m_errorState = false;
+        setStatus(m_Status);
+    });
 }
 
 Module::~Module()
@@ -234,7 +237,6 @@ void Module::setParameterDefaults()
 void Module::showError()
 {
     setStatus(m_Status);
-    doLayout();
 }
 
 void Module::highlightModule(int moduleId)
@@ -1264,7 +1266,6 @@ void Module::clearMessages()
     m_messages.clear();
     m_errorState = false;
     setStatus(m_Status);
-    doLayout();
 }
 
 void Module::moduleMessage(int type, QString message)
@@ -1275,7 +1276,6 @@ void Module::moduleMessage(int type, QString message)
         if (!m_errorState) {
             m_errorState = true;
             setStatus(m_Status);
-            doLayout();
             emit callshowErrorInMainThread();
         }
     }

@@ -80,16 +80,15 @@ QPointF ErrorIndicator::scenePos() const
 
 void ErrorIndicator::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
-    Base::mousePressEvent(event);
+    //Base::mousePressEvent(event);
 }
 
 void ErrorIndicator::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 {
     if (rect().contains(event->pos())) {
-        emit clicked(this);
+        emit clicked();
     }
-
-    Base::mouseReleaseEvent(event);
+    //Base::mouseReleaseEvent(event);
 }
 
 void ErrorIndicator::hoverEnterEvent(QGraphicsSceneHoverEvent *event)
