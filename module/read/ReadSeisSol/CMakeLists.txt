@@ -24,7 +24,7 @@ if(MSVC)
         ${HDF5_LIBRARIES}
         ${Iconv_LIBRARIES})
 else()
-    target_link_libraries(ReadSeisSol vistle_xdmf XdmfCore ${XDMF_LIBNAME} ${HDF5_LIBRARIES})
+    target_link_libraries(ReadSeisSol PRIVATE vistle_xdmf XdmfCore ${XDMF_LIBNAME} ${HDF5_LIBRARIES})
 endif()
 target_include_directories(ReadSeisSol PRIVATE ${XDMF_XdmfCore_INCLUDE_DIRS} ${XDMF_INCLUDE_DIRS} ${XDMF_Iconv_INCLUDE_DIRS})
 
