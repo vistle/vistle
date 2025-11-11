@@ -103,7 +103,7 @@ VtkFile readFile(const std::string &filename, int piece = -1, const ReadOptions 
             return result;
         }
     }
-#if (VTK_MAJOR_VERSION == 9 && VTK_MINOR_VERSION >= 2) || VTK_MAJOR_VERSION > 9
+#if (VTK_MAJOR_VERSION == 9 && VTK_MINOR_VERSION >= 4) || VTK_MAJOR_VERSION > 9
     if (auto hdfreader = vtkHDFReader::SafeDownCast(reader)) {
         hdfreader->SetUseCache(options.useCache);
     }
