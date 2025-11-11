@@ -19,6 +19,16 @@
  set -euo pipefail            # fail fast, treat unset vars as error
  IFS=$'\n\t'
 
+ SHOW_SUCCESS=false
+
+ while [[ $# -gt 0 ]]; do
+     case "$1" in
+         --success) SHOW_SUCCESS=true ;;
+         *) echo "Unknown option: $1" >&2; exit 1 ;;
+     esac
+     shift
+ done
+
  #########################
  ## Configuration
  #########################
@@ -38,6 +48,13 @@
  #########################
  ## Helper functions
  #########################
+ print_last_result() {
+    if [[ -f "$LOG_FILE" ]] then
+        tail -n 1 "$LOG_FILE"
+    else
+        echo "No log file found. Have you run the script yet?"
+    fi
+ }
 
  log() { echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >>"$LOG_FILE"; }
 
@@ -101,6 +118,15 @@ send_email() {
  #########################
  ## Main flow
  #########################
+
+ if $SHOW_SUCCESS; then
+     print_last_result
+     if grep -q "✅" "$LOG_FILE"; then
+         exit 0   # success
+     else
+         exit 1   # failure or unknown
+     fi
+ fi
 
  # If the repo dir does not exist, clone it first
  if [[ ! -d "$REPO_DIR/.git" ]]; then
