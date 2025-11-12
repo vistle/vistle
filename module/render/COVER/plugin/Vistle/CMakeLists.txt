@@ -23,5 +23,3 @@ target_include_directories(
     PRIVATE ${COVER_INCLUDE_DIRS}
     PRIVATE .. # VistlePluginUtil
 )
-
-target_compile_definitions(VistlePlugin PRIVATE COVER_PLUGIN)

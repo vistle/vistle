@@ -27,22 +27,18 @@
 #include <vistle/core/layergrid.h>
 #include <vistle/core/celltypes.h>
 
-#ifdef COVER_PLUGIN
 #include <cover/RenderObject.h>
 #include <cover/VRSceneGraph.h>
 #include <cover/coVRShader.h>
 #include <cover/coVRPluginSupport.h>
 #include <PluginUtil/Tipsify.h>
-#endif
 
 using namespace vistle;
 typedef VistleGeometryGenerator::Options Options;
 
 namespace {
-#ifdef COVER_PLUGIN
 const Index TileSize = 256;
 const int RadiusAttrib = 11; // nvidia: gl_MultiTexCoord3
-#endif
 const int TfTexUnit = 0;
 const int DataAttrib = 10; // nvidia: gl_MultiTexCoord2
 } // namespace
@@ -50,7 +46,6 @@ const int DataAttrib = 10; // nvidia: gl_MultiTexCoord2
 std::mutex VistleGeometryGenerator::s_coverMutex;
 
 namespace {
-#ifdef COVER_PLUGIN
 std::map<std::string, std::string> get_shader_parameters()
 {
     std::map<std::string, std::string> parammap;
@@ -59,8 +54,6 @@ std::map<std::string, std::string> get_shader_parameters()
     parammap["radiusAttrib"] = std::to_string(RadiusAttrib);
     return parammap;
 }
-#endif
-
 } // namespace
 
 template<class Geo>
@@ -534,11 +527,9 @@ osg::PrimitiveSet *buildTrianglesFromTriangles(const PrimitiveBin &bin, const Op
                 continue;
             corners->push_back(cl[corner]);
         }
-#ifdef COVER_PLUGIN
         if (options.optimizeIndices) {
             opencover::tipsify(&(*corners)[0], corners->size());
         }
-#endif
         assert(ghost || corners->size() == numTri * 3);
         return corners;
     } else if (ghost) {
@@ -550,11 +541,9 @@ osg::PrimitiveSet *buildTrianglesFromTriangles(const PrimitiveBin &bin, const Op
                 continue;
             corners->push_back(corner);
         }
-#ifdef COVER_PLUGIN
         if (options.optimizeIndices) {
             opencover::tipsify(&(*corners)[0], corners->size());
         }
-#endif
         return corners;
     } else {
         return new osg::DrawArrays(osg::PrimitiveSet::TRIANGLES, 0, bin.ntri * 3);
@@ -577,11 +566,9 @@ osg::PrimitiveSet *buildTrianglesFromQuads(const PrimitiveBin &bin, const Option
                 continue;
             corners->push_back(cl[corner]);
         }
-#ifdef COVER_PLUGIN
         if (options.optimizeIndices) {
             opencover::tipsify(&(*corners)[0], corners->size());
         }
-#endif
         assert(ghost || corners->size() == numTri * 3);
         return corners;
     } else if (ghost) {
@@ -593,11 +580,9 @@ osg::PrimitiveSet *buildTrianglesFromQuads(const PrimitiveBin &bin, const Option
                 continue;
             corners->push_back(corner);
         }
-#ifdef COVER_PLUGIN
         if (options.optimizeIndices) {
             opencover::tipsify(&(*corners)[0], corners->size());
         }
-#endif
         return corners;
     } else {
         return new osg::DrawArrays(osg::PrimitiveSet::TRIANGLES, 0, bin.ntri * 3);
@@ -628,11 +613,9 @@ osg::PrimitiveSet *buildTriangles(const PrimitiveBin &bin, const Index *el, cons
             }
             begin = end;
         }
-#ifdef COVER_PLUGIN
         if (options.optimizeIndices) {
             opencover::tipsify(&(*corners)[0], corners->size());
         }
-#endif
         return corners;
     } else if (ghost) {
         auto corners = new osg::DrawElementsUInt(osg::PrimitiveSet::TRIANGLES, 0);
@@ -653,11 +636,9 @@ osg::PrimitiveSet *buildTriangles(const PrimitiveBin &bin, const Index *el, cons
             }
             begin = end;
         }
-#ifdef COVER_PLUGIN
         if (options.optimizeIndices) {
             opencover::tipsify(&(*corners)[0], corners->size());
         }
-#endif
         return corners;
     } else {
         return new osg::DrawArrays(osg::PrimitiveSet::TRIANGLES, 0, bin.ntri * 3);
@@ -817,7 +798,6 @@ bool fillTexture(std::stringstream &debug, S *tex, Index sx, Index sy, typename 
 
 const OsgColorMap *VistleGeometryGenerator::getColorMap(const vistle::ColorMapKey &key) const
 {
-#ifdef COVER_PLUGIN
     std::lock_guard<std::mutex> lock(s_coverMutex);
     if (m_colormaps) {
         auto it = m_colormaps->find(key);
@@ -825,7 +805,6 @@ const OsgColorMap *VistleGeometryGenerator::getColorMap(const vistle::ColorMapKe
             return &it->second;
         }
     }
-#endif
     return nullptr;
 }
 
@@ -900,13 +879,11 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
     if (defaultState) {
         state = new osg::StateSet(*defaultState);
     } else {
-#ifdef COVER_PLUGIN
         if (transparent) {
             state = opencover::VRSceneGraph::instance()->loadTransparentGeostate();
         } else {
             state = opencover::VRSceneGraph::instance()->loadDefaultGeostate();
         }
-#endif
     }
     if (!state) {
         state = new osg::StateSet;
@@ -929,14 +906,12 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
     }
 
     bool dataValid = false;
-#ifdef COVER_PLUGIN
     const OsgColorMap *colormap = nullptr;
     bool haveSpheres = false;
     bool correctDepth = true;
     if (m_geo && m_geo->hasAttribute(attribute::ApproximateDepth)) {
         correctDepth = m_geo->getAttribute(attribute::ApproximateDepth) != "true";
     }
-#endif
     vistle::DataBase::const_ptr database = vistle::DataBase::as(m_mapped);
     vistle::DataBase::Mapping mapping = vistle::DataBase::Unspecified;
     if (database) {
@@ -952,9 +927,7 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
     vistle::Vec<Index>::const_ptr idata = vistle::Vec<Index>::as(m_mapped);
     vistle::Vec<Byte>::const_ptr bdata = vistle::Vec<Byte>::as(m_mapped);
     if (sdata || vdata || idata || bdata) {
-#ifdef COVER_PLUGIN
         colormap = getColorMap(m_colorMapKey);
-#endif
     } else if (database) {
         debug << "Unsupported mapped data: type=" << Object::toString(database->getType()) << " ("
               << database->getType() << ")";
@@ -1021,7 +994,6 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
                 }
             }
 
-#ifdef COVER_PLUGIN
             if (radius) {
                 haveSpheres = true;
                 const vistle::Scalar *r = radius->x().data();
@@ -1040,15 +1012,12 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
                     // required for applying shader
                     colormap = getColorMap(ColorMapKey());
                 }
-            } else
-#endif
-            {
+            } else {
                 lighted = false;
             }
         }
         break;
     }
-#ifdef COVER_PLUGIN
     case vistle::Object::LAYERGRID: {
         static_assert(TileSize >= 4,
                       "TileSize needs to be at least four (start and end border and repeated border vertices)");
@@ -1127,7 +1096,6 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
         m_options.indexedGeometry = false;
         break;
     }
-#endif
 
     case vistle::Object::TRIANGLES: {
         vistle::Triangles::const_ptr triangles = vistle::Triangles::as(m_geo);
@@ -1470,11 +1438,8 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
     state->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
     state->setMode(GL_LIGHTING, lighted ? osg::StateAttribute::ON : osg::StateAttribute::OFF);
 
-#ifdef COVER_PLUGIN
     if (lg) {
-    } else
-#endif
-        if (coords) {
+    } else if (coords) {
         osg::Geometry *geom = nullptr;
         if (!draw.empty())
             geom = draw[0]->asGeometry();
@@ -1511,7 +1476,6 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
         }
     }
 
-#ifdef COVER_PLUGIN
     if (colormap) {
         if (dataValid) {
             state->setTextureAttributeAndModes(TfTexUnit, colormap->texture, osg::StateAttribute::ON);
@@ -1545,9 +1509,6 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
 
     debug << ", colormap: " << (colormap ? colormap->species : "NO")
           << ", dataValid: " << (dataValid ? "true" : "false");
-#else
-    (void)dataValid;
-#endif
 
     int count = 0;
     for (auto d: draw) {
@@ -1558,7 +1519,6 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
             name += std::to_string(count);
         d->setName(name);
 
-#ifdef COVER_PLUGIN
         opencover::cover->setRenderStrategy(d.get());
 
 #if (OSG_VERSION_GREATER_OR_EQUAL(3, 4, 0))
@@ -1568,7 +1528,6 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
                 builder->apply(*geom);
             }
         }
-#endif
 #endif
 
         geode->setStateSet(state.get());
@@ -1604,7 +1563,6 @@ OsgColorMap::OsgColorMap(bool withData): texture(new osg::Texture1D), image(new 
 
     texture->setImage(image);
 
-#ifdef COVER_PLUGIN
     //s_coverMutex.lock();
     auto parammap = get_shader_parameters();
 
@@ -1625,7 +1583,6 @@ OsgColorMap::OsgColorMap(bool withData): texture(new osg::Texture1D), image(new 
         s->setBoolUniform("blendWithMaterial", blendWithMaterial);
     }
     //s_coverMutex.unlock();
-#endif
 }
 
 OsgColorMap::OsgColorMap(): OsgColorMap(true)
@@ -1642,20 +1599,17 @@ void OsgColorMap::setRange(float min, float max)
 {
     rangeMin = min;
     rangeMax = max;
-#ifdef COVER_PLUGIN
     for (auto s: allShaders) {
         if (s) {
             s->setFloatUniform("rangeMin", min);
             s->setFloatUniform("rangeMax", max);
         }
     }
-#endif
 }
 
 void OsgColorMap::setBlendWithMaterial(bool enable)
 {
     blendWithMaterial = enable;
-#ifdef COVER_PLUGIN
     for (auto s: allShaders) {
         if (s) {
             if (s) {
@@ -1663,5 +1617,4 @@ void OsgColorMap::setBlendWithMaterial(bool enable)
             }
         }
     }
-#endif
 }
