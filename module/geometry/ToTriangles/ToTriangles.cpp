@@ -29,6 +29,8 @@ ToTriangles::ToTriangles(const std::string &name, int moduleID, mpi::communicato
 
     p_transformSpheres =
         addIntParameter("transform_spheres", "also generate triangles for sphere impostors", false, Parameter::Boolean);
+    p_transformTubes =
+        addIntParameter("transform_tubes", "also generate tessellated geometry for tubes", false, Parameter::Boolean);
     p_tessellationQuality = addIntParameter("quality", "tessellation quality", 2);
     setParameterRange(p_tessellationQuality, Integer(0), Integer(10));
 
@@ -409,7 +411,7 @@ bool ToTriangles::compute()
             if (data) {
                 ndata = replicateData(data, gen.CoordPerSphere);
             }
-        } else if (lines && radius) {
+        } else if (lines && radius && p_transformTubes->getValue()) {
             const unsigned MinNumSect = 3;
             static_assert(MinNumSect >= 3, "too few sectors");
             unsigned NumSect = MinNumSect + quality;

@@ -12,6 +12,7 @@ private:
     bool compute() override;
 
     vistle::IntParameter *p_transformSpheres = nullptr;
+    vistle::IntParameter *p_transformTubes = nullptr;
     vistle::IntParameter *p_tessellationQuality = nullptr;
     vistle::ResultCache<vistle::Object::ptr> m_resultCache;
 };
