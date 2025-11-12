@@ -3,6 +3,7 @@
 
 #include <vistle/vtkm/vtkm_module.h>
 
+// TODO: make sure input grid are polyhedra only
 class ToTrianglesVtkm: public vistle::VtkmModule {
 public:
     ToTrianglesVtkm(const std::string &name, int moduleID, mpi::communicator comm);
