@@ -788,6 +788,10 @@ bool ToTriangles::compute()
         }
 
         if (tri) {
+            if (tri->getNumCorners() == 0) {
+                // we only build indexed triangles, so avoid empty index array as being interpreted as non-indexed triangles
+                tri->resetCoords();
+            }
             tri->copyAttributes(obj);
             updateMeta(tri);
 
