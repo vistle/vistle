@@ -179,7 +179,7 @@ inline Scalar computeData(Scalar x, Scalar y, Scalar z, DataMode mode, Scalar sc
     return 0.;
 }
 
-void setDataCells(Scalar *d, const GridInterface *grid, DataMode mode, Scalar scale, AnimDataMode anim, Index time)
+void setDataCells(Scalar *d, const ElementInterface *grid, DataMode mode, Scalar scale, AnimDataMode anim, Index time)
 {
     Index numElem = grid->getNumElements();
     for (Index idx = 0; idx < numElem; ++idx) {
@@ -521,7 +521,8 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
 
     const int dtime = time < 0 ? 0 : time;
     if (elementData) {
-        const GridInterface *grid = geoOut->getInterface<GridInterface>();
+        const ElementInterface *grid = geoOut->getInterface<ElementInterface>();
+        assert(grid);
         if (scalar) {
             setDataCells(scalar->x().data(), grid, (DataMode)m_dataModeScalar->getValue(),
                          m_dataScaleScalar->getValue(), (AnimDataMode)m_animData->getValue(), dtime);

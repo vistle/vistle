@@ -37,6 +37,7 @@ class ReadSeisSol final: public vistle::Reader {
 public:
     //default constructor
     ReadSeisSol(const std::string &name, int moduleID, mpi::communicator comm);
+    ~ReadSeisSol() override;
 
 private:
     /*************** template **************/
