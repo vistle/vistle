@@ -20,9 +20,6 @@ DisplaceVtkm::DisplaceVtkm(const std::string &name, int moduleID, mpi::communica
     p_scale = addFloatParameter("scale", "scaling factor for displacement", 1.);
 }
 
-DisplaceVtkm::~DisplaceVtkm()
-{}
-
 std::unique_ptr<viskores::filter::Filter> DisplaceVtkm::setUpFilter() const
 {
     auto filter = std::make_unique<DisplaceFilter>();

@@ -6,7 +6,6 @@
 class DisplaceVtkm: public vistle::VtkmModule {
 public:
     DisplaceVtkm(const std::string &name, int moduleID, mpi::communicator comm);
-    ~DisplaceVtkm();
 
 private:
     vistle::IntParameter *p_component = nullptr;
