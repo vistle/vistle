@@ -756,6 +756,12 @@ void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
         });
     }
 
+    if (m_Status == CRASHED) {
+        m_moduleMenu->insertAction(m_deleteThisAct, m_restartAct);
+    } else {
+        m_moduleMenu->removeAction(m_restartAct);
+    }
+
     m_moduleMenu->popup(event->screenPos());
 }
 
