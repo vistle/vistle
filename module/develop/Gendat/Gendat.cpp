@@ -500,6 +500,9 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
         }
     }
 
+    if (auto eif = geoOut->getInterface<ElementInterface>()) {
+        numCells = eif->getNumElements();
+    }
     Index numData = elementData ? numCells : numVert;
 
     Vec<Scalar, 1>::ptr scalar;

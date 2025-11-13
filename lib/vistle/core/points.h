@@ -6,7 +6,7 @@
 
 namespace vistle {
 
-class V_COREEXPORT Points: public Coords {
+class V_COREEXPORT Points: public Coords, virtual public ElementInterface {
     V_OBJECT(Points);
 
 public:
@@ -20,6 +20,13 @@ public:
 
     Vec<Scalar>::const_ptr radius() const;
     void setRadius(Vec<Scalar>::const_ptr radius);
+
+    Index getNumElements() override;
+    Index getNumElements() const override;
+    Index cellNumFaces(Index elem) const override;
+    Index cellNumVertices(Index elem) const override;
+    std::vector<Index> cellVertices(Index elem) const override;
+    Vector3 cellCenter(Index elem) const override;
 
     V_DATA_BEGIN(Points);
     shm_obj_ref<Vec<Scalar>> radius;
