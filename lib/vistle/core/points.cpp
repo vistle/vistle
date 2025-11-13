@@ -60,6 +60,39 @@ void Points::setRadius(Vec<Scalar>::const_ptr radius)
     d()->radius = radius;
 }
 
+Index Points::getNumElements()
+{
+    return getNumPoints();
+}
+
+Index Points::getNumElements() const
+{
+    return getNumPoints();
+}
+
+Index Points::cellNumFaces(Index elem) const
+{
+    return 0;
+}
+
+Index Points::cellNumVertices(Index elem) const
+{
+    return 1;
+}
+
+std::vector<Index> Points::cellVertices(Index elem) const
+{
+    return std::vector<Index>(1, elem);
+}
+
+Vector3 Points::cellCenter(Index elem) const
+{
+    const Scalar *x = this->x().data();
+    const Scalar *y = this->y().data();
+    const Scalar *z = this->z().data();
+    return Vector3(x[elem], y[elem], z[elem]);
+}
+
 std::set<Object::const_ptr> Points::referencedObjects() const
 {
     auto objs = Base::referencedObjects();
