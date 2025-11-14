@@ -1,3 +1,5 @@
+#include "vtkm_module.h"
+
 #include <sstream>
 
 #include <viskores/cont/Error.h>
@@ -10,7 +12,6 @@
 #include <viskores/cont/ErrorInternal.h>
 
 
-#include "vtkm_module.h"
 #include "convert.h"
 
 
