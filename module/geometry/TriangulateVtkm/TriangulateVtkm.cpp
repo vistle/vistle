@@ -6,18 +6,18 @@
 
 #include <vistle/vtkm/convert_worklets.h>
 
-#include "ToTrianglesVtkm.h"
+#include "TriangulateVtkm.h"
 
-MODULE_MAIN(ToTrianglesVtkm)
+MODULE_MAIN(TriangulateVtkm)
 
 using namespace vistle;
 
-ToTrianglesVtkm::ToTrianglesVtkm(const std::string &name, int moduleID, mpi::communicator comm)
+TriangulateVtkm::TriangulateVtkm(const std::string &name, int moduleID, mpi::communicator comm)
 : VtkmModule(name, moduleID, comm, 1, MappedDataHandling::Use)
 {}
 
 
-std::unique_ptr<viskores::filter::Filter> ToTrianglesVtkm::setUpFilter() const
+std::unique_ptr<viskores::filter::Filter> TriangulateVtkm::setUpFilter() const
 {
     return std::make_unique<viskores::filter::geometry_refinement::Triangulate>();
 }
