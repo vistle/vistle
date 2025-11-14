@@ -1,6 +1,10 @@
+#include <sstream>
+
+#include <viskores/cont/Error.h>
+
 #include "vtkm_module.h"
 #include "convert.h"
-#include <sstream>
+
 
 using namespace vistle;
 
@@ -234,7 +238,16 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
                 std::cout << msg << std::endl;
                 //sendInfo("%s", msg.c_str());
             }
-            outputDataset = filter->Execute(inputDataset);
+            try {
+                outputDataset = filter->Execute(inputDataset);
+            } catch (const viskores::cont::Error &error) {
+                sendError("The following error occurred while executing the Viskores filter: " + error.GetMessage());
+                return true;
+            } catch (...) {
+                sendError("An unknown error occurred while executing the Viskores filter.");
+                return true;
+            }
+
 
             if (printInfo) {
                 std::stringstream str;
