@@ -114,6 +114,9 @@ protected:
 
 private:
     vistle::IntParameter *m_printObjectInfo = nullptr;
+
+    bool tryToExecuteFilter(const std::unique_ptr<viskores::filter::Filter> &filter,
+                            const viskores::cont::DataSet &inputDataset, viskores::cont::DataSet &outputDataset) const;
 };
 } // namespace vistle
 #endif
