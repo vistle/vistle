@@ -1,6 +1,18 @@
+#include <sstream>
+
+#include <viskores/cont/Error.h>
+#include <viskores/cont/ErrorBadAllocation.h>
+#include <viskores/cont/ErrorBadDevice.h>
+#include <viskores/cont/ErrorBadType.h>
+#include <viskores/cont/ErrorBadValue.h>
+#include <viskores/cont/ErrorExecution.h>
+#include <viskores/cont/ErrorFilterExecution.h>
+#include <viskores/cont/ErrorInternal.h>
+
+
 #include "vtkm_module.h"
 #include "convert.h"
-#include <sstream>
+
 
 using namespace vistle;
 
@@ -234,7 +246,9 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
                 std::cout << msg << std::endl;
                 //sendInfo("%s", msg.c_str());
             }
-            outputDataset = filter->Execute(inputDataset);
+
+            if (!tryToExecuteFilter(filter, inputDataset, outputDataset))
+                return true;
 
             if (printInfo) {
                 std::stringstream str;
@@ -296,4 +310,43 @@ bool VtkmModule::isValid(const ModuleStatusPtr &status) const
         sendText(status->messageType(), status->message());
 
     return status->continueExecution();
+}
+
+bool VtkmModule::tryToExecuteFilter(const std::unique_ptr<viskores::filter::Filter> &filter,
+                                    const viskores::cont::DataSet &inputDataset,
+                                    viskores::cont::DataSet &outputDataset) const
+{
+    try {
+        outputDataset = filter->Execute(inputDataset);
+        return true;
+    } catch (const viskores::cont::ErrorBadAllocation &error) {
+        sendError("A memory access error occurred while executing the filter: " + error.GetMessage());
+        return false;
+    } catch (const viskores::cont::ErrorBadDevice &error) {
+        sendError("The filter attempted to perform an operation that is not supported by the execution device: " +
+                  error.GetMessage());
+        return false;
+    } catch (const viskores::cont::ErrorBadType &error) {
+        sendError("An unsupported data type was encountered while executing the filter: " + error.GetMessage());
+        return false;
+    } catch (const viskores::cont::ErrorBadValue &error) {
+        sendError("An invalid value was encountered while executing the filter: " + error.GetMessage());
+        return false;
+    } catch (const viskores::cont::ErrorExecution &error) {
+        sendError("An error occurred in the execution environment while executing the filter: " + error.GetMessage());
+        return false;
+    } catch (const viskores::cont::ErrorFilterExecution &error) {
+        sendError("The filter has not been set up correctly : " + error.GetMessage());
+        return false;
+    } catch (const viskores::cont::ErrorInternal &error) {
+        sendError("An internal error occurred while executing the filter, indicating a bug in Viskores: " +
+                  error.GetMessage());
+        return false;
+    } catch (const viskores::cont::Error &error) {
+        sendError("An error occurred while executing the filter: " + error.GetMessage());
+        return false;
+    } catch (...) {
+        sendError("An unknown error occurred while executing the filter.");
+        return false;
+    }
 }
