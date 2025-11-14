@@ -8,6 +8,10 @@ public:
     TubeVtkm(const std::string &name, int moduleID, mpi::communicator comm);
 
 private:
+    vistle::FloatParameter *m_radius;
+    vistle::IntParameter *m_numberOfSides;
+    vistle::IntParameter *m_addCaps;
+
     std::unique_ptr<viskores::filter::Filter> setUpFilter() const override;
 };
 
