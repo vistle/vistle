@@ -19,8 +19,6 @@ target_include_directories(
     PRIVATE .. # VistlePluginUtil
 )
 
-target_compile_definitions(VistleManagerPlugin PRIVATE COVER_PLUGIN)
-
 if(NOT VISTLE_MULTI_PROCESS)
     if(VISTLE_USE_OPENMP AND TARGET OpenMP::OpenMP_CXX)
         target_link_libraries(VistleManagerPlugin OpenMP::OpenMP_CXX)

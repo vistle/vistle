@@ -84,7 +84,7 @@ std::array<Object::const_ptr, 3> splitObject(Object::const_ptr container)
     if (auto ph = vistle::PlaceHolder::as(container)) {
         grid = ph->geometry();
         normals = ph->normals();
-        data = ph->texture();
+        data = ph->mapped();
     } else {
         auto split = vistle::splitContainerObject(container);
         grid = split.geometry;
@@ -169,15 +169,15 @@ bool Renderer::handleAddObject(const message::AddObject &add)
         if (rm != AllRanks && pol == ObjectReceivePolicy::Distribute) {
             std::string phName;
             if (add.rank() == rank()) {
-                auto geo_norm_tex = splitObject(obj);
-                auto &grid = geo_norm_tex[0];
-                auto &normals = geo_norm_tex[1];
-                auto &tex = geo_norm_tex[2];
+                auto geo_norm_map = splitObject(obj);
+                auto &grid = geo_norm_map[0];
+                auto &normals = geo_norm_map[1];
+                auto &map = geo_norm_map[2];
 
                 auto ph = std::make_shared<PlaceHolder>(obj);
                 ph->setGeometry(grid);
                 ph->setNormals(normals);
-                ph->setTexture(tex);
+                ph->setMapped(map);
                 placeholder = ph;
                 phName = ph->getName();
             }
@@ -357,10 +357,10 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
             return true;
     }
 
-    auto geo_norm_tex = splitObject(object);
+    auto geo_norm_map = splitObject(object);
 
     std::shared_ptr<RenderObject> ro =
-        addObjectWrapper(sender, senderPort, object, geo_norm_tex[0], geo_norm_tex[1], geo_norm_tex[2]);
+        addObjectWrapper(sender, senderPort, object, geo_norm_map[0], geo_norm_map[1], geo_norm_map[2]);
     if (ro) {
         assert(ro->timestep >= -1);
         if (m_objectList.size() <= size_t(ro->timestep + 1))
@@ -387,9 +387,9 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
 
 std::shared_ptr<RenderObject> Renderer::addObjectWrapper(int senderId, const std::string &senderPort,
                                                          Object::const_ptr container, Object::const_ptr geom,
-                                                         Object::const_ptr normal, Object::const_ptr texture)
+                                                         Object::const_ptr normal, Object::const_ptr mapped)
 {
-    auto ro = addObject(senderId, senderPort, container, geom, normal, texture);
+    auto ro = addObject(senderId, senderPort, container, geom, normal, mapped);
     if (ro && !ro->variant.empty()) {
         auto it = m_variants.find(ro->variant);
         if (it == m_variants.end()) {

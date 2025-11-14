@@ -1,3 +1,16 @@
+vistle_find_package(
+    OpenSceneGraph
+    3.2.0
+    COMPONENTS
+    osgViewer
+    osgGA
+    osgDB
+    osgUtil
+    osgText
+    osgParticle
+    osgSim
+    osgFX)
+
 vistle_find_package(COVER)
 if(NOT COVER_FOUND)
     message("COVER not found - not building COVER wrapper")
@@ -5,7 +18,6 @@ if(NOT COVER_FOUND)
 endif()
 
 add_definitions(-DHAS_MPI)
-add_definitions(-DCOVER_PLUGIN)
 
 set(visibility EXPORT)
 set(vistle_install_include_directory "module/render/COVER")
