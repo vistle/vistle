@@ -382,7 +382,7 @@ if(NOT VISTLE_GUI_ONLY)
             enable_language(CUDA)
 
             if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
-                set(CMAKE_CUDA_ARCHITECTURES 89) # be compatible with P6000/GP100
+                set(CMAKE_CUDA_ARCHITECTURES 60) # be compatible with P6000/GP100
             endif()
 
             add_definitions(-DVISTLE_USE_CUDA)
