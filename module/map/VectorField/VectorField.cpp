@@ -1,5 +1,3 @@
-#include <sstream>
-#include <iomanip>
 
 #include <vistle/core/object.h>
 #include <vistle/core/lines.h>
@@ -12,11 +10,19 @@
 
 #include "VectorField.h"
 
+#ifdef VECTORFIELDVTKM
+#include <viskores/Types.h>
+#include <viskores/cont/ArrayHandle.h>
+#include <viskores/cont/Invoker.h>
+#include "filter/VectorFieldWorklet.h"
+#endif
+
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(AttachmentPoint, (Bottom)(Middle)(Top))
 
 MODULE_MAIN(VectorField)
 
 using namespace vistle;
+
 
 VectorField::VectorField(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
@@ -146,11 +152,95 @@ bool VectorField::compute()
 
     const AttachmentPoint att = (AttachmentPoint)m_attachmentPoint->getValue();
 
-    Lines::ptr lines(new Lines(numPoints, 2 * numPoints, 2 * numPoints));
-    const auto px = coords->x().data(), py = coords->y().data(), pz = coords->z().data();
-    const auto vx = vecs->x().data(), vy = vecs->y().data(), vz = vecs->z().data();
+    const auto px = coords->x().data();
+    const auto py = coords->y().data();
+    const auto pz = coords->z().data();
+    const auto vx = vecs->x().data();
+    const auto vy = vecs->y().data();
+    const auto vz = vecs->z().data();
+
+    Lines::ptr lines;
+
+#ifdef VECTORFIELDVTKM
+    // ---- GPU path using Viskores worklet ----
+    using ViskVec3 = viskores::Vec<viskores::FloatDefault, 3>;
+
+    std::vector<ViskVec3> gpuVecs;
+    std::vector<ViskVec3> gpuCoords;
+    gpuVecs.resize(numPoints);
+    gpuCoords.resize(numPoints);
+
+    // Precompute the vectors and seed points (vertex or cell center) on the host.
+    for (Index i = 0; i < numPoints; ++i) {
+        Index ii = indexed ? verts[i] : i;
+
+        // Input vector
+        Vector3 v(vx[ii], vy[ii], vz[ii]);
+        gpuVecs[i] = ViskVec3(static_cast<viskores::FloatDefault>(v[0]),
+                              static_cast<viskores::FloatDefault>(v[1]),
+                              static_cast<viskores::FloatDefault>(v[2]));
+
+        // Seed position (vertex position or element center)
+        Vector3 p;
+        if (perElement) {
+            p = elements->cellCenter(ii);
+        } else {
+            p = Vector3(px[ii], py[ii], pz[ii]);
+        }
+        gpuCoords[i] = ViskVec3(static_cast<viskores::FloatDefault>(p[0]),
+                                static_cast<viskores::FloatDefault>(p[1]),
+                                static_cast<viskores::FloatDefault>(p[2]));
+    }
+
+    // Create Viskores array handles
+    auto vecAH = viskores::cont::make_ArrayHandle(gpuVecs, viskores::CopyFlag::On);
+    auto coordAH = viskores::cont::make_ArrayHandle(gpuCoords, viskores::CopyFlag::On);
+
+
+    viskores::cont::ArrayHandle<ViskVec3> endpointsAH;
+    endpointsAH.Allocate(static_cast<viskores::Id>(numPoints * 2));
+
+    // Configure and invoke the worklet
+    VectorFieldWorklet worklet;
+    worklet.MinLength = static_cast<viskores::FloatDefault>(minLen);
+    worklet.MaxLength = static_cast<viskores::FloatDefault>(maxLen);
+    worklet.Scale     = static_cast<viskores::FloatDefault>(scale);
+    worklet.Attachment =
+        static_cast<viskores::IdComponent>(att); // Bottom/Middle/Top -> 0/1/2
+
+    viskores::cont::Invoker invoker;
+    invoker(worklet, vecAH, coordAH, endpointsAH);
+
+    auto endpointsPortal = endpointsAH.ReadPortal();
+
+    // Build Vistle Lines from the GPU-computed endpoints
+    lines.reset(new Lines(numPoints, 2 * numPoints, 2 * numPoints));
     auto lx = lines->x().data(), ly = lines->y().data(), lz = lines->z().data();
     auto el = lines->el().data(), cl = lines->cl().data();
+
+    el[0] = 0;
+    for (Index i = 0; i < numPoints; ++i) {
+        const auto p0 = endpointsPortal.Get(static_cast<viskores::Id>(2) * i);
+        const auto p1 = endpointsPortal.Get(static_cast<viskores::Id>(2) * i + 1);
+
+        lx[2 * i]     = p0[0];
+        ly[2 * i]     = p0[1];
+        lz[2 * i]     = p0[2];
+        lx[2 * i + 1] = p1[0];
+        ly[2 * i + 1] = p1[1];
+        lz[2 * i + 1] = p1[2];
+
+        cl[2 * i]     = 2 * i;
+        cl[2 * i + 1] = 2 * i + 1;
+        el[i + 1]     = 2 * (i + 1);
+    }
+
+#else
+    // ---- Original CPU path ----
+    lines.reset(new Lines(numPoints, 2 * numPoints, 2 * numPoints));
+    auto lx = lines->x().data(), ly = lines->y().data(), lz = lines->z().data();
+    auto el = lines->el().data(), cl = lines->cl().data();
+
 
     el[0] = 0;
     for (Index i = 0; i < numPoints; ++i) {
@@ -199,7 +289,9 @@ bool VectorField::compute()
         cl[2 * i + 1] = 2 * i + 1;
         el[i + 1] = 2 * (i + 1);
     }
+#endif
 
+    // Common post-processing (unchanged)
     lines->setMeta(vecs->meta());
     lines->setTimestep(split.timestep);
     lines->copyAttributes(coords);
