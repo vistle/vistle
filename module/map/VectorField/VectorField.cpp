@@ -176,8 +176,7 @@ bool VectorField::compute()
 
         // Input vector
         Vector3 v(vx[ii], vy[ii], vz[ii]);
-        gpuVecs[i] = ViskVec3(static_cast<viskores::FloatDefault>(v[0]),
-                              static_cast<viskores::FloatDefault>(v[1]),
+        gpuVecs[i] = ViskVec3(static_cast<viskores::FloatDefault>(v[0]), static_cast<viskores::FloatDefault>(v[1]),
                               static_cast<viskores::FloatDefault>(v[2]));
 
         // Seed position (vertex position or element center)
@@ -187,8 +186,7 @@ bool VectorField::compute()
         } else {
             p = Vector3(px[ii], py[ii], pz[ii]);
         }
-        gpuCoords[i] = ViskVec3(static_cast<viskores::FloatDefault>(p[0]),
-                                static_cast<viskores::FloatDefault>(p[1]),
+        gpuCoords[i] = ViskVec3(static_cast<viskores::FloatDefault>(p[0]), static_cast<viskores::FloatDefault>(p[1]),
                                 static_cast<viskores::FloatDefault>(p[2]));
     }
 
@@ -204,9 +202,8 @@ bool VectorField::compute()
     VectorFieldWorklet worklet;
     worklet.MinLength = static_cast<viskores::FloatDefault>(minLen);
     worklet.MaxLength = static_cast<viskores::FloatDefault>(maxLen);
-    worklet.Scale     = static_cast<viskores::FloatDefault>(scale);
-    worklet.Attachment =
-        static_cast<viskores::IdComponent>(att); // Bottom/Middle/Top -> 0/1/2
+    worklet.Scale = static_cast<viskores::FloatDefault>(scale);
+    worklet.Attachment = static_cast<viskores::IdComponent>(att); // Bottom/Middle/Top -> 0/1/2
 
     viskores::cont::Invoker invoker;
     invoker(worklet, vecAH, coordAH, endpointsAH);
@@ -223,16 +220,16 @@ bool VectorField::compute()
         const auto p0 = endpointsPortal.Get(static_cast<viskores::Id>(2) * i);
         const auto p1 = endpointsPortal.Get(static_cast<viskores::Id>(2) * i + 1);
 
-        lx[2 * i]     = p0[0];
-        ly[2 * i]     = p0[1];
-        lz[2 * i]     = p0[2];
+        lx[2 * i] = p0[0];
+        ly[2 * i] = p0[1];
+        lz[2 * i] = p0[2];
         lx[2 * i + 1] = p1[0];
         ly[2 * i + 1] = p1[1];
         lz[2 * i + 1] = p1[2];
 
-        cl[2 * i]     = 2 * i;
+        cl[2 * i] = 2 * i;
         cl[2 * i + 1] = 2 * i + 1;
-        el[i + 1]     = 2 * (i + 1);
+        el[i + 1] = 2 * (i + 1);
     }
 
 #else

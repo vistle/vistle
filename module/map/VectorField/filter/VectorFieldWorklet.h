@@ -4,7 +4,7 @@
 #include <viskores/Types.h>
 #include <viskores/worklet/WorkletMapField.h>
 
-struct VectorFieldWorklet : public viskores::worklet::WorkletMapField {
+struct VectorFieldWorklet: public viskores::worklet::WorkletMapField {
     using Vec3 = viskores::Vec<viskores::FloatDefault, 3>;
 
     // Input: one vector + one position per work item
@@ -16,22 +16,18 @@ struct VectorFieldWorklet : public viskores::worklet::WorkletMapField {
     // Parameters set from host (VectorField.cpp)
     viskores::FloatDefault MinLength = 0.0f;
     viskores::FloatDefault MaxLength = 0.0f;
-    viskores::FloatDefault Scale     = 1.0f;
+    viskores::FloatDefault Scale = 1.0f;
     // 0 = Bottom, 1 = Middle, 2 = Top (matches AttachmentPoint enum)
     viskores::IdComponent Attachment = 0;
 
-    template <typename VecInType, typename CoordInType, typename PortalOutType>
-    VISKORES_EXEC void operator()(const VecInType &vecIn,
-                                  const CoordInType &coordIn,
-                                  PortalOutType &endpointPortal,
+    template<typename VecInType, typename CoordInType, typename PortalOutType>
+    VISKORES_EXEC void operator()(const VecInType &vecIn, const CoordInType &coordIn, PortalOutType &endpointPortal,
                                   const viskores::Id &workIdx) const
     {
-        Vec3 v(static_cast<viskores::FloatDefault>(vecIn[0]),
-               static_cast<viskores::FloatDefault>(vecIn[1]),
+        Vec3 v(static_cast<viskores::FloatDefault>(vecIn[0]), static_cast<viskores::FloatDefault>(vecIn[1]),
                static_cast<viskores::FloatDefault>(vecIn[2]));
 
-        Vec3 p(static_cast<viskores::FloatDefault>(coordIn[0]),
-               static_cast<viskores::FloatDefault>(coordIn[1]),
+        Vec3 p(static_cast<viskores::FloatDefault>(coordIn[0]), static_cast<viskores::FloatDefault>(coordIn[1]),
                static_cast<viskores::FloatDefault>(coordIn[2]));
 
         // Clamp vector length
@@ -67,7 +63,7 @@ struct VectorFieldWorklet : public viskores::worklet::WorkletMapField {
 
         // Each work index writes two endpoints into a flat array
         const viskores::Id base = static_cast<viskores::Id>(2) * workIdx;
-        endpointPortal.Set(base,     p0);
+        endpointPortal.Set(base, p0);
         endpointPortal.Set(base + 1, p1);
     }
 };
