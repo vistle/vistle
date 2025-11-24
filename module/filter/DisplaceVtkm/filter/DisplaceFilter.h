@@ -6,10 +6,11 @@
 #include <vistle/util/enum.h>
 
 /*
-    This Viskores filter displaces the coordinates of a dataset according to a scalar field.
-    The displacement can be applied to a specific component (X, Y, Z) or all components (see
-    `SetDisplacementComponent`) and supports different operations (Set, Add, Multiply; see
-    `SetDisplacementOperation`). An additional scaling factor can be set with `SetScale`.
+    This Viskores filter displaces the coordinates of a dataset according to a given field.
+    Different displacement operations are implemented (Set, Add, Multiply) and can be selected
+    with `SetDisplacementOperation`. An additional scaling factor can be set with `SetScale`.
+    If the data field is scalar, the displacement can be applied to a specific component 
+    (X, Y, Z) or all components, which can be set with `SetDisplacementComponent`.
 */
 class DisplaceFilter: public viskores::filter::Filter {
 public:
@@ -21,7 +22,7 @@ public:
     VISKORES_CONT viskores::cont::DataSet DoExecute(const viskores::cont::DataSet &dataset) override;
 
     /*
-        Set the component to displace.
+        Set the component to displace. This is ignored if the data field is not scalar.
 
         Available values:
             `DisplaceComponent::X`
