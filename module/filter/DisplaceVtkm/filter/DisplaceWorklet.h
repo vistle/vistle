@@ -25,16 +25,24 @@ struct SetDisplaceWorklet: BaseDisplaceWorklet<N>, viskores::worklet::WorkletMap
     : BaseDisplaceWorklet<N>(scale, mask)
     {}
 
-    using ControlSignature = void(FieldIn scalarField, FieldIn coords, FieldOut result);
+    using ControlSignature = void(FieldIn field, FieldIn coords, FieldOut result);
     using ExecutionSignature = void(_1, _2, _3);
     using InputDomain = _1;
 
     template<typename T, typename S>
-    VISKORES_EXEC void operator()(const T &scalar, const viskores::Vec<S, N> &coord,
+    VISKORES_EXEC void operator()(const T &fieldValue, const viskores::Vec<S, N> &coord,
                                   viskores::Vec<S, N> &displacedCoord) const
     {
         for (auto c = 0; c < N; c++)
-            displacedCoord[c] = this->m_mask[c] * (scalar * this->m_scale) + (1 - this->m_mask[c]) * coord[c];
+            displacedCoord[c] = this->m_mask[c] * (fieldValue * this->m_scale) + (1 - this->m_mask[c]) * coord[c];
+    }
+
+    template<typename T, typename S>
+    VISKORES_EXEC void operator()(const viskores::Vec<T, N> &fieldValue, const viskores::Vec<S, N> &coord,
+                                  viskores::Vec<S, N> &displacedCoord) const
+    {
+        for (auto c = 0; c < N; c++)
+            displacedCoord[c] = fieldValue[c] * this->m_scale;
     }
 };
 
@@ -46,17 +54,25 @@ struct AddDisplaceWorklet: BaseDisplaceWorklet<N>, viskores::worklet::WorkletMap
     : BaseDisplaceWorklet<N>(scale, mask)
     {}
 
-    using ControlSignature = void(FieldIn scalarField, FieldIn coords, FieldOut result);
+    using ControlSignature = void(FieldIn field, FieldIn coords, FieldOut result);
     using ExecutionSignature = void(_1, _2, _3);
     using InputDomain = _1;
 
     template<typename T, typename S>
-    VISKORES_EXEC void operator()(const T &scalar, const viskores::Vec<S, N> &coord,
+    VISKORES_EXEC void operator()(const T &fieldValue, const viskores::Vec<S, N> &coord,
                                   viskores::Vec<S, N> &displacedCoord) const
     {
         for (auto c = 0; c < N; c++)
             displacedCoord[c] =
-                this->m_mask[c] * (coord[c] + scalar * this->m_scale) + (1 - this->m_mask[c]) * coord[c];
+                this->m_mask[c] * (coord[c] + fieldValue * this->m_scale) + (1 - this->m_mask[c]) * coord[c];
+    }
+
+    template<typename T, typename S>
+    VISKORES_EXEC void operator()(const viskores::Vec<T, N> &fieldValue, const viskores::Vec<S, N> &coord,
+                                  viskores::Vec<S, N> &displacedCoord) const
+    {
+        for (auto c = 0; c < N; c++)
+            displacedCoord[c] = coord[c] + fieldValue[c] * this->m_scale;
     }
 };
 
@@ -68,17 +84,25 @@ struct MultiplyDisplaceWorklet: BaseDisplaceWorklet<N>, viskores::worklet::Workl
     : BaseDisplaceWorklet<N>(scale, mask)
     {}
 
-    using ControlSignature = void(FieldIn scalarField, FieldIn coords, FieldOut result);
+    using ControlSignature = void(FieldIn field, FieldIn coords, FieldOut result);
     using ExecutionSignature = void(_1, _2, _3);
     using InputDomain = _1;
 
     template<typename T, typename S>
-    VISKORES_EXEC void operator()(const T &scalar, const viskores::Vec<S, N> &coord,
+    VISKORES_EXEC void operator()(const T &fieldValue, const viskores::Vec<S, N> &coord,
                                   viskores::Vec<S, N> &displacedCoord) const
     {
         for (auto c = 0; c < N; c++)
             displacedCoord[c] =
-                this->m_mask[c] * (coord[c] * scalar * this->m_scale) + (1 - this->m_mask[c]) * coord[c];
+                this->m_mask[c] * (coord[c] * fieldValue * this->m_scale) + (1 - this->m_mask[c]) * coord[c];
+    }
+
+    template<typename T, typename S>
+    VISKORES_EXEC void operator()(const viskores::Vec<T, N> &fieldValue, const viskores::Vec<S, N> &coord,
+                                  viskores::Vec<S, N> &displacedCoord) const
+    {
+        for (auto c = 0; c < N; c++)
+            displacedCoord[c] = coord[c] * fieldValue[c] * this->m_scale;
     }
 };
 
