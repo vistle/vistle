@@ -28,8 +28,8 @@ public:
     PlaceHolder::const_ptr geometry() const;
     void setNormals(Object::const_ptr norm);
     PlaceHolder::const_ptr normals() const;
-    void setTexture(Object::const_ptr tex);
-    PlaceHolder::const_ptr texture() const;
+    void setMapped(Object::const_ptr tex);
+    PlaceHolder::const_ptr mapped() const;
 
     V_DATA_BEGIN(PlaceHolder);
     shm_obj_ref<Object> real;
@@ -44,7 +44,7 @@ private:
     Meta originalMeta;
     Object::Type originalType;
 
-    shm_obj_ref<PlaceHolder> geometry, normals, texture;
+    shm_obj_ref<PlaceHolder> geometry, normals, mapped;
     V_DATA_END(PlaceHolder);
 };
 
