@@ -53,6 +53,25 @@ private:
     DisplaceComponent m_component;
     DisplaceOperation m_operation;
     viskores::FloatDefault m_scale;
+
+    /*
+        Creates a suitable mask using `m_component`, which needs to be passed to the displace worklets.
+    */
+    template<int CoordsDim>
+    viskores::Vec<viskores::FloatDefault, CoordsDim> createMask();
+
+    /*
+        Calls the desired displace operation, defined by `m_operation`, using the provided data field `field`
+        and the input coordinates `inputCoords`. The result is stored in `resultCoords`.
+
+        Note: CoordsArrayType and ResultArrayType might have different storage types, so we cannot use one
+              type for both the input and output coordinates.
+    */
+    template<int CoordsDim, typename FieldArrayType, typename CoordsArrayType, typename ResultArrayType>
+    void applyDisplaceOperation(const FieldArrayType &field, const CoordsArrayType &inputCoords,
+                                ResultArrayType &resultCoords);
 };
+
+#include "DisplaceFilter.tpp"
 
 #endif
