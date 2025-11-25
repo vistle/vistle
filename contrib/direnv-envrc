@@ -30,7 +30,7 @@ case $os in
         ;;
 esac
 
-if [ -z ${MANPATH} ]; then
+if [ -z ${MANPATH+x} ]; then
 case $os in
     darwin|freebsd)
         export MANPATH="$(manpath)"
@@ -42,14 +42,14 @@ esac
 fi
 path_add MANPATH "$(pwd -P)/3rdparty/IceT/doc/man"
 
-if [ -z "$SPACK_ENV" ]; then
+if [ -z ${SPACK_ENV+x} ]; then
     if [ -e .spack ]; then
         env="$(cat .spack)"
         eval $(spack env activate --sh "$env") && echo
     fi
 fi
-if [ -n "$SPACK_ENV" ]; then
-    if [ -z "$ARCHSUFFIX" ]; then
+if [ ! -z ${SPACK_ENV+x} ]; then
+    if [ -z ${ARCHSUFFIX+x} ]; then
         env="${SPACK_ENV##*/}"
         export ARCHSUFFIX="spack${env%default}"
     fi
@@ -58,10 +58,12 @@ else
     builddir="build-$os$arch$mpi"
 fi
 
-if [ -z "${COVISEDIR}" -a -d "../covise" ]; then
-   export COVISEDIR="$(cd ../covise; pwd -P)"
+if [ -z ${COVISEDIR+x} ]; then
+    if [ -d "../covise" ]; then
+        export COVISEDIR="$(cd ../covise; pwd -P)"
+    fi
 fi
-if [ -z "${COVISEDIR}" -a -d "${HOME}/covise" ]; then
+if [ -z ${COVISEDIR+x} -a -d "${HOME}/covise" ]; then
    export COVISEDIR=${HOME}/covise
 fi
 if [ -z "${COVISEDIR}" ]; then
@@ -73,7 +75,7 @@ if [ -n "${COVISEDIR}" ]; then
     . "${COVISEDIR}/.covise.sh"
 fi
 
-if [ -n "${VISTLE_FLAVOR}" ]; then
+if [ ! -z ${VISTLE_FLAVOR+x} ]; then
     builddir="${builddir}-${VISTLE_FLAVOR}"
 elif [ -s .flavor ]; then
     VISTLE_FLAVOR="$(cat .flavor)"
@@ -135,10 +137,12 @@ export ${libvar}
 
 case "$os" in
    darwin*)
-       if [ -n "$EXTERNLIBS" -a -d "$EXTERNLIBS"/ALL ]; then
-           path_add DYLD_FRAMEWORK_PATH "$(${COVISEDIR}/bin/print_covise_env EXTERNLIBS)/ALL"
-           export DYLD_FRAMEWORK_PATH
-           export VISTLE_DYLD_FRAMEWORK_PATH="$DYLD_FRAMEWORK_PATH"
+       if [ ! -z ${EXTERNLIBS+x} ]; then
+           if [ -d "$EXTERNLIBS"/ALL ]; then
+               path_add DYLD_FRAMEWORK_PATH "$(${COVISEDIR}/bin/print_covise_env EXTERNLIBS)/ALL"
+               export DYLD_FRAMEWORK_PATH
+               export VISTLE_DYLD_FRAMEWORK_PATH="$DYLD_FRAMEWORK_PATH"
+           fi
        fi
        export VISTLE_DYLD_LIBRARY_PATH="$DYLD_LIBRARY_PATH"
    ;;
