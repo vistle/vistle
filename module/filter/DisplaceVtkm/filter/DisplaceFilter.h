@@ -1,9 +1,13 @@
 #ifndef VISTLE_DISPLACEVTKM_FILTER_DISPLACEFILTER_H
 #define VISTLE_DISPLACEVTKM_FILTER_DISPLACEFILTER_H
 
+#include <viskores/cont/ErrorBadValue.h>
 #include <viskores/filter/Filter.h>
 
 #include <vistle/util/enum.h>
+
+#include "DisplaceWorklet.h"
+
 
 /*
     This Viskores filter displaces the coordinates of a dataset according to a given field.
@@ -59,7 +63,36 @@ private:
         Creates a suitable mask using `m_component`, which needs to be passed to the displace worklets.
     */
     template<int CoordsDim>
-    viskores::Vec<viskores::FloatDefault, CoordsDim> createMask();
+    viskores::Vec<viskores::FloatDefault, CoordsDim> createMask()
+    {
+        viskores::Vec<viskores::FloatDefault, CoordsDim> mask(0.0f);
+
+        viskores::IdComponent c = 0; // must be declared outside switch-case
+        switch (m_component) {
+        case DisplaceComponent::X:
+        case DisplaceComponent::Y:
+        case DisplaceComponent::Z:
+            c = static_cast<viskores::IdComponent>(m_component);
+            if (c < CoordsDim) {
+                mask[c] = 1.0f;
+            } else {
+                throw viskores::cont::ErrorBadValue("Error in DisplaceFilter: DisplaceComponent value (" +
+                                                    std::to_string(c) + ") out of bounds for coordinate dimension (" +
+                                                    std::to_string(CoordsDim) + ")!");
+            }
+            break;
+        case DisplaceComponent::All:
+            for (auto c = 0; c < CoordsDim; c++) {
+                mask[c] = 1.0f;
+            }
+            break;
+        default:
+            throw viskores::cont::ErrorBadValue(
+                "Error in DisplaceFilter: Encountered unknown DisplaceComponent value!");
+        }
+
+        return mask;
+    }
 
     /*
         Calls the desired displace operation, defined by `m_operation`, using the provided data field `field`
@@ -70,9 +103,24 @@ private:
     */
     template<int CoordsDim, typename FieldArrayType, typename CoordsArrayType, typename ResultArrayType>
     void applyDisplaceOperation(const FieldArrayType &field, const CoordsArrayType &inputCoords,
-                                ResultArrayType &resultCoords);
+                                ResultArrayType &resultCoords)
+    {
+        auto mask = createMask<CoordsDim>();
+        switch (m_operation) {
+        case DisplaceOperation::Set:
+            this->Invoke(SetDisplaceWorklet<CoordsDim>{m_scale, mask}, field, inputCoords, resultCoords);
+            break;
+        case DisplaceOperation::Add:
+            this->Invoke(AddDisplaceWorklet<CoordsDim>{m_scale, mask}, field, inputCoords, resultCoords);
+            break;
+        case DisplaceOperation::Multiply:
+            this->Invoke(MultiplyDisplaceWorklet<CoordsDim>{m_scale, mask}, field, inputCoords, resultCoords);
+            break;
+        default:
+            throw viskores::cont::ErrorBadValue(
+                "Error in DisplaceFilter: Encountered unknown DisplaceOperation value!");
+        }
+    }
 };
-
-#include "DisplaceFilter.tpp"
 
 #endif
