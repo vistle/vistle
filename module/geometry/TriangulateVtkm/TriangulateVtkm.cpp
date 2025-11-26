@@ -1,11 +1,5 @@
 #include <viskores/filter/geometry_refinement/Triangulate.h>
 
-#include <vistle/core/polygons.h>
-#include <vistle/core/quads.h>
-#include <vistle/core/unstr.h>
-
-#include <vistle/vtkm/convert_worklets.h>
-
 #include "TriangulateVtkm.h"
 
 MODULE_MAIN(TriangulateVtkm)
