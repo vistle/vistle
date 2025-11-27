@@ -118,7 +118,7 @@ bool shm_obj_ref<T>::valid() const
 }
 
 template<class T>
-typename shm_obj_ref<T>::ObjType::const_ptr shm_obj_ref<T>::getObject() const
+typename T::const_ptr shm_obj_ref<T>::getObject() const
 {
     if (!valid())
         return nullptr;
@@ -128,7 +128,7 @@ typename shm_obj_ref<T>::ObjType::const_ptr shm_obj_ref<T>::getObject() const
 }
 
 template<class T>
-const typename shm_obj_ref<T>::ObjType::Data *shm_obj_ref<T>::getData() const
+const typename T::Data *shm_obj_ref<T>::getData() const
 {
     if (!valid())
         return nullptr;
