@@ -167,7 +167,7 @@ if(NOT VISTLE_GUI_ONLY)
         #set(Viskores_USE_DEFAULT_SYMBOL_VISIBILITY OFF)
         set(Viskores_SKIP_LIBRARY_VERSIONS ON)
 
-        set(Viskores_DEFAULT_TYPES_HEADER "../../../ViskoresDefaultTypesVistle.h.in")
+        set(Viskores_USE_DEFAULT_TYPES_FOR_VISTLE "YES")
 
         set(Viskores_MODULE_ENABLE_viskores_io "NO")
         set(Viskores_MODULE_ENABLE_viskores_source "NO")
