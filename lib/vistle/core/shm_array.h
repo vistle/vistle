@@ -79,12 +79,12 @@ public:
     typedef T *iterator;
     typedef const T *const_iterator;
 
-    const iterator begin() const
+    const_iterator begin() const
     {
         updateFromHandle();
         return &*m_data;
     }
-    const iterator end() const
+    const_iterator end() const
     {
         updateFromHandle();
         return (&*m_data) + m_size;

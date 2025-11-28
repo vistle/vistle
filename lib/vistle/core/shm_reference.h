@@ -341,7 +341,7 @@ public:
         updateFromHandle();
         return m_data;
     }
-    const size_t size() const
+    size_t size() const
     {
         return m_size;
     }
