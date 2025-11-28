@@ -382,7 +382,25 @@ if(NOT VISTLE_GUI_ONLY)
             enable_language(CUDA)
 
             if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
-                set(CMAKE_CUDA_ARCHITECTURES 60) # be compatible with P6000/GP100
+                if(CUDAToolkit_VERSION_MAJOR GREATER 12)
+                    set(CMAKE_CUDA_ARCHITECTURES 75) # Turing
+                else()
+                    set(CMAKE_CUDA_ARCHITECTURES 60) # be compatible with P6000/GP100
+                endif()
+            endif()
+
+            if(CMAKE_CUDA_ARCHITECTURES GREATER 85)
+                set(Viskores_CUDA_Architecture "ampere")
+            elseif(CMAKE_CUDA_ARCHITECTURES GREATER 79)
+                set(Viskores_CUDA_Architecture "ampere")
+            elseif(CMAKE_CUDA_ARCHITECTURES GREATER 74)
+                set(Viskores_CUDA_Architecture "turing")
+            elseif(CMAKE_CUDA_ARCHITECTURES GREATER 69)
+                set(Viskores_CUDA_Architecture "volta")
+            elseif(CMAKE_CUDA_ARCHITECTURES GREATER 59)
+                set(Viskores_CUDA_Architecture "pascal")
+            else()
+                set(Viskores_CUDA_Architecture "all")
             endif()
 
             add_definitions(-DVISTLE_USE_CUDA)
