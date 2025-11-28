@@ -5,6 +5,27 @@
 #include <viskores/TypeList.h>
 
 #include "DisplaceFilter.h"
+#include "DisplaceWorklet.h"
+
+template<int CoordsDim, typename FieldArrayType, typename CoordsArrayType, typename ResultArrayType>
+void DisplaceFilter::applyDisplaceOperation(const FieldArrayType &field, const CoordsArrayType &inputCoords,
+                                            ResultArrayType &resultCoords)
+{
+    auto mask = createMask<CoordsDim>();
+    switch (m_operation) {
+    case DisplaceOperation::Set:
+        this->Invoke(SetDisplaceWorklet<CoordsDim>{m_scale, mask}, field, inputCoords, resultCoords);
+        break;
+    case DisplaceOperation::Add:
+        this->Invoke(AddDisplaceWorklet<CoordsDim>{m_scale, mask}, field, inputCoords, resultCoords);
+        break;
+    case DisplaceOperation::Multiply:
+        this->Invoke(MultiplyDisplaceWorklet<CoordsDim>{m_scale, mask}, field, inputCoords, resultCoords);
+        break;
+    default:
+        throw viskores::cont::ErrorBadValue("Error in DisplaceFilter: Encountered unknown DisplaceOperation value!");
+    }
+}
 
 VISKORES_CONT DisplaceFilter::DisplaceFilter()
 : m_component(DisplaceComponent::X), m_operation(DisplaceOperation::Add), m_scale(1.0f)
