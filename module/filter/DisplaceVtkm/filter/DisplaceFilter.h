@@ -6,9 +6,6 @@
 
 #include <vistle/util/enum.h>
 
-#include "DisplaceWorklet.h"
-
-
 /*
     This Viskores filter displaces the coordinates of a dataset according to a given field.
     Different displacement operations are implemented (Set, Add, Multiply) and can be selected
@@ -103,24 +100,7 @@ private:
     */
     template<int CoordsDim, typename FieldArrayType, typename CoordsArrayType, typename ResultArrayType>
     void applyDisplaceOperation(const FieldArrayType &field, const CoordsArrayType &inputCoords,
-                                ResultArrayType &resultCoords)
-    {
-        auto mask = createMask<CoordsDim>();
-        switch (m_operation) {
-        case DisplaceOperation::Set:
-            this->Invoke(SetDisplaceWorklet<CoordsDim>{m_scale, mask}, field, inputCoords, resultCoords);
-            break;
-        case DisplaceOperation::Add:
-            this->Invoke(AddDisplaceWorklet<CoordsDim>{m_scale, mask}, field, inputCoords, resultCoords);
-            break;
-        case DisplaceOperation::Multiply:
-            this->Invoke(MultiplyDisplaceWorklet<CoordsDim>{m_scale, mask}, field, inputCoords, resultCoords);
-            break;
-        default:
-            throw viskores::cont::ErrorBadValue(
-                "Error in DisplaceFilter: Encountered unknown DisplaceOperation value!");
-        }
-    }
+                                ResultArrayType &resultCoords);
 };
 
 #endif
