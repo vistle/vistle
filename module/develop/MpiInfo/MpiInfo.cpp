@@ -20,6 +20,11 @@
 #include <omp.h>
 #endif
 
+#ifdef MPIINFOVTKM
+#include <viskores/cont/DeviceAdapterList.h>
+#include <viskores/cont/RuntimeDeviceTracker.h>
+#endif
+
 using namespace vistle;
 
 class MpiInfo: public vistle::Module {
@@ -60,20 +65,7 @@ bool MpiInfo::prepare()
         str << "Shared memory:    common for " << commShmGroup().size() << " ranks on same node, lead by "
             << shmLeader() << std::endl;
 #endif
-
-    if (rank() == 0) {
-        std::stringstream str;
-#ifdef _OPENMP
-        std::unordered_map<unsigned, std::string> map{
-            {199810, "1.0"}, {200203, "2.0"}, {200505, "2.5"}, {200805, "3.0"}, {201107, "3.1"}, {201307, "4.0"},
-            {201511, "4.5"}, {201811, "5.0"}, {202011, "5.1"}, {202111, "5.2"}, {202411, "6.0"}};
-        str << "OpenMP: version " << map.at(_OPENMP) << " enabled with up to " << omp_get_max_threads() << " threads"
-            << std::endl;
-#else
-        str << "OpenMP: not enabled" << std::endl;
-#endif
-        sendInfo(str.str());
-    }
+    sendInfo(str.str());
 
     if (rank() == 0) {
         int len = 0;
@@ -83,6 +75,40 @@ bool MpiInfo::prepare()
         str << "MPI version: " << std::string(version, len) << std::endl;
         sendInfo(str.str());
     }
+
+    if (rank() == 0) {
+        std::stringstream str;
+#ifdef _OPENMP
+        std::unordered_map<unsigned, std::string> map{
+            {199810, "1.0"}, {200203, "2.0"}, {200505, "2.5"}, {200805, "3.0"}, {201107, "3.1"}, {201307, "4.0"},
+            {201511, "4.5"}, {201811, "5.0"}, {202011, "5.1"}, {202111, "5.2"}, {202411, "6.0"}};
+        str << "OpenMP: version " << map.at(_OPENMP) << " enabled with up to " << omp_get_max_threads() << " threads";
+#else
+        str << "OpenMP: not enabled" << std::endl;
+#endif
+        sendInfo(str.str());
+    }
+
+#ifdef MPIINFOVTKM
+    if (rank() == 0) {
+        auto &tracker = viskores::cont::GetRuntimeDeviceTracker();
+        std::stringstream str;
+        str << "Viskores device adapters: ";
+        bool first = true;
+        viskores::ListForEach(
+            [&tracker, &str, &first](auto tag) {
+                if (tag.IsValueValid() && tracker.CanRunOn(tag)) {
+                    if (!first)
+                        str << ", ";
+                    str << tag.GetName();
+                    first = false;
+                }
+            },
+            VISKORES_DEFAULT_DEVICE_ADAPTER_LIST());
+        str << std::endl;
+        sendInfo(str.str());
+    }
+#endif
 
     return true;
 }
