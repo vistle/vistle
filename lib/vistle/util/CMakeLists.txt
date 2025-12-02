@@ -42,6 +42,7 @@ set(util_HEADERS
     ipaddress.h
     listenv4v6.h
     math.h
+    meta.h
     netpbmimage.h
     pybind.h
     sleep.h

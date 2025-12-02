@@ -3,6 +3,7 @@
 #include <vistle/core/unstr.h>
 #include <vistle/core/points.h>
 #include <vistle/util/filesystem.h>
+#include <vistle/util/meta.h>
 
 #include <fstream>
 
@@ -159,23 +160,6 @@ bool ReadCsv::examine(const Parameter *param)
     return true;
 }
 
-template<size_t N>
-struct num {
-    static const constexpr auto value = N;
-};
-
-template<class F, size_t... Is>
-void for_(F func, std::index_sequence<Is...>)
-{
-    (func(num<Is>{}), ...);
-}
-
-template<size_t N, typename F>
-void for_(F func)
-{
-    for_(func, std::make_index_sequence<N>());
-}
-
 template<size_t N, char Delimiter>
 using CSVReader =
     io::CSVReader<static_cast<unsigned int>(N), io::trim_chars<' ', '\t'>, io::no_quote_escape<Delimiter>>;
@@ -300,14 +284,15 @@ bool ReadCsv::read(Token &token, int timestep, int block)
         sendError("At Least x and y column must be selected");
         return false;
     }
-    bool retval = false;
-    for_<3>([&](auto i) {
-        if (!retval && m_delimiter == delimiters[i.value]) {
-            retval |= readFile<delimiters[i.value]>(token, timestep, block);
+
+    bool result = false;
+    vistle::meta::_for<0, delimiters.size()>([&](auto i) {
+        constexpr char delim = delimiters[i()];
+        if (delim == m_delimiter) {
+            result = readFile<delim>(token, timestep, block);
         }
-        return false;
     });
-    return retval;
+    return result;
 }
 
 vistle::Integer ReadCsv::getCoordSelection(size_t i)
