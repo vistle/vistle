@@ -132,6 +132,8 @@ bool Transform::compute()
     auto split = splitContainerObject(obj);
 
     Object::const_ptr geo = split.geometry;
+    if (!geo)
+        return true;
     auto data = split.mapped;
 
     Matrix4 mirrorMat(Matrix4::Identity());
