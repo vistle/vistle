@@ -3,6 +3,7 @@
 #include <cmath>
 #include <algorithm>
 #include <type_traits>
+#include <numbers>
 
 #include <osg/Geode>
 #include <osg/Geometry>
@@ -76,8 +77,8 @@ struct SphereGenerator {
     void addSphere(Scalar cx, Scalar cy, Scalar cz, Scalar r, Index idx, unsigned int *ti, osg::Vec3Array *vertices,
                    osg::Vec3Array *normals)
     {
-        const float psi = M_PI / (NumLat - 1);
-        const float phi = M_PI * 2 / NumLong;
+        const float psi = std::numbers::pi / (NumLat - 1);
+        const float phi = std::numbers::pi * 2 / NumLong;
 
         // create normals
         {
@@ -86,7 +87,7 @@ struct SphereGenerator {
             normals->at(ci).set(0, 0, -1);
             ++ci;
 
-            float Psi = -M_PI * 0.5 + psi;
+            float Psi = -std::numbers::pi * 0.5 + psi;
             for (Index j = 0; j < NumLat - 2; ++j) {
                 float Phi = j * 0.5f * phi;
                 for (Index k = 0; k < NumLong; ++k) {
@@ -1640,9 +1641,9 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
                             normal = (normal - dir.dot(normal) * dir).normalized();
                         }
 
-                        Quaternion qrot(AngleAxis(2. * M_PI / NumSect, dir));
+                        Quaternion qrot(AngleAxis(2. * std::numbers::pi / NumSect, dir));
                         const auto rot = qrot.toRotationMatrix();
-                        const auto rot2 = Quaternion(AngleAxis(M_PI / NumSect, dir)).toRotationMatrix();
+                        const auto rot2 = Quaternion(AngleAxis(std::numbers::pi / NumSect, dir)).toRotationMatrix();
 
                         // start cap
                         if (first && startStyle == Lines::Flat) {
