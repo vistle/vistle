@@ -22,6 +22,7 @@
 
 #include <vistle/core/shm_array_impl.h>
 #include <vistle/core/shm_obj_ref_impl.h>
+#include <vistle/util/meta.h>
 
 #include <boost/mpl/for_each.hpp>
 
@@ -422,26 +423,11 @@ struct GetArrayContents {
         ValueType dummy{};
         const viskores::IdComponent numComponents = VTraits::GetNumberOfComponents(dummy);
         assert(!result);
-        switch (numComponents) {
-        case 1: {
-            result = makeVec<V, 1>(array);
-            break;
-        }
-        case 2: {
-            result = makeVec<V, 2>(array);
-            break;
-        }
-        case 3: {
-            result = makeVec<V, 3>(array);
-            break;
-        }
-#if 0
-        case 4: {
-            result = makeVec<V, 4>(array);
-            break;
-        }
-#endif
-        }
+        vistle::meta::_for<1, 4>([&](auto i) {
+            if (i() == numComponents) {
+                result = makeVec<V, i()>(array);
+            }
+        });
     }
 };
 } // namespace

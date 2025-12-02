@@ -5,12 +5,6 @@
 
 namespace vistle {
 
-template<std::size_t N, typename F>
-void for_(F func)
-{
-    for_(func, std::make_index_sequence<N>());
-}
-
 typedef std::array<const Scalar *, 3> XYZArray;
 
 Vector3 getVecFromXYZArray(const XYZArray &XYZArray, Index i)
