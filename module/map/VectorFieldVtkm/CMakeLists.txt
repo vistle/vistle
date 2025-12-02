@@ -1,5 +1,3 @@
-cmake 
-
 set(HEADERS filter/VectorFieldWorklet.h filter/VectorFieldFilter.h VectorFieldVtkm.h)
 set(SOURCES filter/VectorFieldFilter.cpp VectorFieldVtkm.cpp)
 
