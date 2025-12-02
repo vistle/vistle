@@ -19,7 +19,7 @@ public:
     bool blendWithMaterial() const;
     void setBlendWithMaterial(bool enable = true);
 
-    struct Payload {
+    struct V_COREEXPORT Payload {
         std::vector<RGBA> rgba;
 
         Payload();

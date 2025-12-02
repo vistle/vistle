@@ -98,7 +98,7 @@ class V_COREEXPORT AddHub: public MessageBase<AddHub, ADDHUB> {
     DEFINE_ENUM_WITH_STRING_CONVERSIONS(AddressType, (Hostname)(IPv4)(IPv6)(Unspecified))
 
 public:
-    struct Payload {
+    struct V_COREEXPORT Payload {
         Payload();
         Payload(const std::vector<std::string> &hubAddresses,
                 const std::vector<std::vector<std::string>> &rankAddresses);
