@@ -2,9 +2,7 @@
 #define VISTLE_VECTORFIELDVTKM_VECTORFIELDVTKM_H
 
 #include <vistle/vtkm/vtkm_module.h>
-#include <vistle/util/enum.h>   // if not already pulled in indirectly
-
-
+#include <vistle/util/enum.h>   
 
 
 class VectorFieldVtkm : public vistle::VtkmModule {
@@ -14,7 +12,7 @@ public:
 private:
     std::unique_ptr<viskores::filter::Filter> setUpFilter() const override;
 
-    // NOTE: signatures must match VtkmModule exactly
+
     vistle::Object::const_ptr prepareOutputGrid(
         const viskores::cont::DataSet &dataset,
         const vistle::Object::const_ptr &inputGrid) const override;

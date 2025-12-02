@@ -5,7 +5,7 @@
 #include <vistle/core/lines.h>
 #include <vistle/core/vec.h>
 
-#include <vistle/vtkm/convert.h>  // vtkmGetField
+#include <vistle/vtkm/convert.h> 
 
 #include <limits>
 
@@ -19,7 +19,7 @@ VectorFieldVtkm::VectorFieldVtkm(const std::string &name,
                                  int moduleID,
                                  mpi::communicator comm)
 : VtkmModule(name, moduleID, comm,
-             /*numPorts*/ 2, MappedDataHandling::Use)
+             2, MappedDataHandling::Use)
 {
     const auto maxLen = std::numeric_limits<Scalar>::max();
 
@@ -133,7 +133,7 @@ VectorFieldVtkm::prepareOutputGrid(const viskores::cont::DataSet &dataset,
         lines->setTransform(inputGrid->getTransform());
     }
 
-    // Implicitly converted to const_ptr
+
     return lines;
 }
 
