@@ -2167,12 +2167,12 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             break;
         }
         case message::CONNECT: {
-            auto &mm = static_cast<const message::Connect &>(msg);
-            return handleConnectOrDisconnect(mm);
+            auto &connect = msg.as<message::Connect>();
+            return handleConnectOrDisconnect(connect);
         }
         case message::DISCONNECT: {
-            auto &mm = static_cast<const message::Disconnect &>(msg);
-            return handleConnectOrDisconnect(mm);
+            auto &disconnect = msg.as<message::Disconnect>();
+            return handleConnectOrDisconnect(disconnect);
         }
         case MODULEEXIT: {
             auto &exit = msg.as<ModuleExit>();
