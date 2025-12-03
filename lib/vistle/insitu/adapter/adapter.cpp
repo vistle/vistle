@@ -47,7 +47,8 @@ struct Internals {
 
     std::unique_ptr<message::InSituShmMessage> messageHandler;
     // options that can be set in the module
-    std::vector<message::IntParam> moduleParams{{"frequency", 1}, {"keep_timesteps", false}};
+    std::vector<message::IntParam> moduleParams{
+        {"frequency", 1}, {"keep_timesteps", false}, {"mostImportantIteration", -1}};
 };
 } // namespace detail
 } // namespace insitu
@@ -165,7 +166,8 @@ bool Adapter::waitedForModuleCommands()
 
 bool Adapter::haveToProcessTimestep(size_t timestep)
 {
-    return (timestep % message::getIntParamValue(m_internals->moduleParams, "frequency")) == 0;
+    return timestep == message::getIntParamValue(m_internals->moduleParams, "mostImportantIteration") ||
+           (timestep % message::getIntParamValue(m_internals->moduleParams, "frequency")) == 0;
 }
 
 void Adapter::processData()
