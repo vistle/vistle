@@ -19,7 +19,16 @@ Vector3 getVecFromXYZArray(const XYZArray &XYZArray, Index i)
 }
 
 template<UnstructuredGrid::Type T>
-Scalar edgeLength(Index numVerts, const Index *cl, const XYZArray &XYZArray)
+Scalar edgeLength(Index numVerts, const Index *cl, const XYZArray &XYZArray);
+
+template<>
+Scalar edgeLength<UnstructuredGrid::NONE>(Index numVerts, const Index *cl, const XYZArray &XYZArray)
+{
+    return 0;
+}
+
+template<>
+Scalar edgeLength<UnstructuredGrid::POINT>(Index numVerts, const Index *cl, const XYZArray &XYZArray)
 {
     return 0;
 }
@@ -63,6 +72,23 @@ template<>
 Scalar edgeLength<UnstructuredGrid::QUAD>(Index numVerts, const Index *cl, const XYZArray &XYZArray)
 {
     return edgeLength<UnstructuredGrid::POLYGON>(numVerts, cl, XYZArray);
+}
+
+template<>
+Scalar edgeLength<UnstructuredGrid::POLYHEDRON>(Index numVerts, const Index *cl, const XYZArray &XYZArray)
+{
+    Scalar len = 0;
+    Index start = InvalidIndex;
+    for (Index v = 0; v < numVerts; ++v) {
+        if (start == InvalidIndex) {
+            start = cl[v];
+        } else if (cl[v] == start) {
+            start = InvalidIndex;
+            continue;
+        }
+        len += edgeLength<UnstructuredGrid::BAR>(2, cl + v, XYZArray);
+    }
+    return len;
 }
 
 template<UnstructuredGrid::Type T>
@@ -111,7 +137,28 @@ Scalar edgeLength<UnstructuredGrid::PYRAMID>(Index numVerts, const Index *cl, co
 
 
 template<UnstructuredGrid::Type T>
-Scalar surface(Index numVerts, const Index *cl, const XYZArray &XYZArray)
+Scalar surface(Index numVerts, const Index *cl, const XYZArray &XYZArray);
+
+template<>
+Scalar surface<UnstructuredGrid::NONE>(Index numVerts, const Index *cl, const XYZArray &XYZArray)
+{
+    return 0;
+}
+
+template<>
+Scalar surface<UnstructuredGrid::POINT>(Index numVerts, const Index *cl, const XYZArray &XYZArray)
+{
+    return 0;
+}
+
+template<>
+Scalar surface<UnstructuredGrid::BAR>(Index numVerts, const Index *cl, const XYZArray &XYZArray)
+{
+    return 0;
+}
+
+template<>
+Scalar surface<UnstructuredGrid::POLYLINE>(Index numVerts, const Index *cl, const XYZArray &XYZArray)
 {
     return 0;
 }
@@ -197,7 +244,46 @@ Scalar surface<UnstructuredGrid::PYRAMID>(Index numVerts, const Index *cl, const
 }
 
 template<UnstructuredGrid::Type T>
-Scalar volume(Index numVerts, const Index *cl, const XYZArray &XYZArray)
+Scalar volume(Index numVerts, const Index *cl, const XYZArray &XYZArray);
+
+template<>
+Scalar volume<UnstructuredGrid::NONE>(Index numVerts, const Index *cl, const XYZArray &XYZArray)
+{
+    return 0;
+}
+
+template<>
+Scalar volume<UnstructuredGrid::POINT>(Index numVerts, const Index *cl, const XYZArray &XYZArray)
+{
+    return 0;
+}
+
+template<>
+Scalar volume<UnstructuredGrid::BAR>(Index numVerts, const Index *cl, const XYZArray &XYZArray)
+{
+    return 0;
+}
+
+template<>
+Scalar volume<UnstructuredGrid::POLYLINE>(Index numVerts, const Index *cl, const XYZArray &XYZArray)
+{
+    return 0;
+}
+
+template<>
+Scalar volume<UnstructuredGrid::TRIANGLE>(Index numVerts, const Index *cl, const XYZArray &XYZArray)
+{
+    return 0;
+}
+
+template<>
+Scalar volume<UnstructuredGrid::QUAD>(Index numVerts, const Index *cl, const XYZArray &XYZArray)
+{
+    return 0;
+}
+
+template<>
+Scalar volume<UnstructuredGrid::POLYGON>(Index numVerts, const Index *cl, const XYZArray &XYZArray)
 {
     return 0;
 }
