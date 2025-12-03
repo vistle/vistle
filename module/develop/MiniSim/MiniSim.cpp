@@ -30,7 +30,7 @@ MiniSimModule::MiniSimModule(const std::string &name, int moduleID, mpi::communi
 
     m_intOptions.push_back(addIntParameter("frequency", "the pipeline is processed for every nth simulation cycle", 1));
     m_intOptions.push_back(
-        addIntParameter("mostImportantIteration", "force the pipeline to process this iteration", -1));
+        addIntParameter("most_important_iteration", "force the pipeline to process this iteration", -1));
     m_intOptions.push_back(addIntParameter("keep_timesteps",
                                            "if true timesteps are cached and processed as time series", true,
                                            vistle::Parameter::Boolean));
