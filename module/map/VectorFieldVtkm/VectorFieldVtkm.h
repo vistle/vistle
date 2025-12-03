@@ -2,7 +2,8 @@
 #define VISTLE_VECTORFIELDVTKM_VECTORFIELDVTKM_H
 
 #include <vistle/vtkm/vtkm_module.h>
-#include <vistle/util/enum.h>   
+#include <vistle/util/enum.h>
+
 
 
 class VectorFieldVtkm : public vistle::VtkmModule {
@@ -11,7 +12,6 @@ public:
 
 private:
     std::unique_ptr<viskores::filter::Filter> setUpFilter() const override;
-
 
     vistle::Object::const_ptr prepareOutputGrid(
         const viskores::cont::DataSet &dataset,
@@ -28,6 +28,7 @@ private:
     vistle::VectorParameter *m_range      = nullptr;
     vistle::IntParameter    *m_attachment = nullptr;
     vistle::IntParameter    *m_allCoords  = nullptr;
+    mutable vistle::Index m_numLines = 0;
 };
 
 #endif // VISTLE_VECTORFIELDVTKM_VECTORFIELDVTKM_H

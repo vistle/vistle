@@ -69,7 +69,8 @@ VectorFieldFilter::DoExecute(const viskores::cont::DataSet &inDataSet)
 {
     using namespace viskores::cont;
 
-    Field inField = this->GetFieldFromDataSet(inDataSet);
+    Field inField = inDataSet.GetField(0);
+
 
     // Only point-associated 3D vector fields; otherwise just pass through.
     if (inField.GetAssociation() != Field::Association::Points) {
