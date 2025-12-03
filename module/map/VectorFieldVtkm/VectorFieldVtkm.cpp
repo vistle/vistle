@@ -64,6 +64,7 @@ std::unique_ptr<viskores::filter::Filter> VectorFieldVtkm::setUpFilter() const
     return filter;
 }
 
+
 // Build Lines geometry from p0/p1 fields
 vistle::Object::const_ptr
 VectorFieldVtkm::prepareOutputGrid(const viskores::cont::DataSet &dataset,
@@ -133,17 +134,44 @@ VectorFieldVtkm::prepareOutputGrid(const viskores::cont::DataSet &dataset,
         lines->setTransform(inputGrid->getTransform());
     }
 
-
+    m_numLines = n;
     return lines;
 }
 
-// No mapped data fields for now – only geometry
+
 vistle::DataBase::ptr
 VectorFieldVtkm::prepareOutputField(const viskores::cont::DataSet &,
-                                    const vistle::Object::const_ptr &,
-                                    const vistle::DataBase::const_ptr &,
+                                    const vistle::Object::const_ptr &inputGrid,
+                                    const vistle::DataBase::const_ptr &inputField,
                                     const std::string &,
-                                    const vistle::Object::const_ptr &) const
+                                    const vistle::Object::const_ptr &outputGrid) const
 {
-    return vistle::DataBase::ptr();
+    // No geometry or no input field: nothing to do
+    if (!outputGrid || !inputField || m_numLines == 0) {
+        return vistle::DataBase::ptr();
+    }
+
+    auto mapping = inputField->guessMapping(inputGrid);
+    if (mapping != vistle::DataBase::Vertex) {
+        
+        return vistle::DataBase::ptr();
+    }
+
+    const vistle::Index n       = m_numLines;  // number of original points / vectors
+    const vistle::Index outSize = 2 * n;       // one value per line endpoint
+
+    vistle::DataBase::ptr mapped = inputField->cloneType();
+    mapped->setSize(outSize);
+
+    for (vistle::Index i = 0; i < n; ++i) {
+        mapped->copyEntry(2 * i,     inputField, i);
+        mapped->copyEntry(2 * i + 1, inputField, i);
+    }
+
+    mapped->setMeta(inputField->meta());
+    mapped->copyAttributes(inputField);
+    mapped->setGrid(outputGrid);
+    updateMeta(mapped);
+
+    return mapped;
 }
