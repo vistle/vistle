@@ -17,6 +17,10 @@
 #include <vistle/core/vec.h>
 #include <vistle/alg/objalg.h>
 
+#ifdef ISOSURFACE
+#include <iomanip>
+#endif
+
 #ifdef CUTTINGSURFACE
 #define IsoSurface CuttingSurface
 #else
