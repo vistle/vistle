@@ -33,11 +33,11 @@ constexpr std::array<const char *, UnstructuredGrid::NUM_TYPES> TypeNames = {
 constexpr std::array<const char *, UnstructuredGrid::NUM_TYPES> TypeNameAbbreviations = {
     "NONE", "PT", "", "BAR", "LINE", "TRI", "", "PLG", "", "QUAD", "TETRA", "PLH", "HEXA", "PRISM", "PYR"};
 
-constexpr int NumSupportedTypes = 11;
+constexpr int NumSupportedTypes = 12;
 constexpr std::array<UnstructuredGrid::Type, NumSupportedTypes> SupportedTypes = {
-    UnstructuredGrid::POINT,      UnstructuredGrid::BAR,   UnstructuredGrid::POLYLINE,    UnstructuredGrid::TRIANGLE,
-    UnstructuredGrid::POLYGON,    UnstructuredGrid::QUAD,  UnstructuredGrid::TETRAHEDRON, UnstructuredGrid::POLYHEDRON,
-    UnstructuredGrid::HEXAHEDRON, UnstructuredGrid::PRISM, UnstructuredGrid::PYRAMID};
+    UnstructuredGrid::NONE,       UnstructuredGrid::POINT,      UnstructuredGrid::BAR,   UnstructuredGrid::POLYLINE,
+    UnstructuredGrid::TRIANGLE,   UnstructuredGrid::POLYGON,    UnstructuredGrid::QUAD,  UnstructuredGrid::TETRAHEDRON,
+    UnstructuredGrid::POLYHEDRON, UnstructuredGrid::HEXAHEDRON, UnstructuredGrid::PRISM, UnstructuredGrid::PYRAMID};
 
 const char *UnstructuredGrid::toString(Type t, bool abbreviation)
 {
