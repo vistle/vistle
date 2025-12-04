@@ -24,6 +24,7 @@
 #include <vtkImageData.h>
 #include <vtkInformation.h>
 #include <vtkLagrangeHexahedron.h>
+#include <vtkLagrangeQuadrilateral.h>
 #include <vtkPointData.h>
 #include <vtkPolyData.h>
 #include <vtkRectilinearGrid.h>
@@ -61,8 +62,10 @@ namespace vtk {
 
 namespace {
 
+// FIXME: deal with per-cell data on high-order cells - has to be replicated for sub-cells
+
 //Given an integer specifying an approximating linear hex, compute its IJK coordinate-position in this cell.
-bool subCellCoordinatesFromId(int &i, int &j, int &k, int subId, const int order[])
+bool subCellCoordinatesFromId3(int &i, int &j, int &k, int subId, const int order[])
 {
     if (subId < 0) {
         return false;
@@ -75,12 +78,24 @@ bool subCellCoordinatesFromId(int &i, int &j, int &k, int subId, const int order
     return true; // TODO: detect more invalid subId values
 }
 
+//Given an integer specifying an approximating linear quad, compute its IJ coordinate-position in this cell.
+bool subCellCoordinatesFromId2(int &i, int &j, int subId, const int order[])
+{
+    if (subId < 0) {
+        return false;
+    }
+
+    i = subId % order[0];
+    j = subId / order[0];
+    return true; // TODO: detect more invalid subId values
+}
+
 std::array<Index, UnstructuredGrid::NumVertices[UnstructuredGrid::HEXAHEDRON]> approximateSubHex(int subId,
                                                                                                  const int order[])
 {
     int i = 0, j = 0, k = 0;
-    if (!subCellCoordinatesFromId(i, j, k, subId, order)) {
-        std::cerr << "subCellCoordinatesFromId failed" << std::endl;
+    if (!subCellCoordinatesFromId3(i, j, k, subId, order)) {
+        std::cerr << "subCellCoordinatesFromId3 failed" << std::endl;
     }
 
     // Get the point coordinates (and optionally scalars) for each of the 8 corners
@@ -108,6 +123,39 @@ Index lagrangeConnectivityToLinearHexahedron(const int order[], const vtkIdType 
     return numElements;
 }
 
+std::array<Index, UnstructuredGrid::NumVertices[UnstructuredGrid::QUAD]> approximateSubQuad(int subId,
+                                                                                            const int order[])
+{
+    int i = 0, j = 0;
+    if (!subCellCoordinatesFromId2(i, j, subId, order)) {
+        std::cerr << "subCellCoordinatesFromId failed" << std::endl;
+    }
+
+    // Get the point coordinates (and optionally scalars) for each of the 4 corners
+    // in the approximating quad spanned by (i, i+1) x (j, j+1):
+    std::array<Index, UnstructuredGrid::NumVertices[UnstructuredGrid::QUAD]> linearSubQuad;
+    for (int ic = 0; ic < (int)linearSubQuad.size(); ++ic) {
+        int corner = vtkHigherOrderQuadrilateral::PointIndexFromIJK(i + ((((ic + 1) / 2) % 2) ? 1 : 0),
+                                                                    j + (((ic / 2) % 2) ? 1 : 0), order);
+        linearSubQuad[ic] = corner;
+    }
+    return linearSubQuad;
+}
+
+Index lagrangeConnectivityToLinearQuadrilateral(const int order[], const vtkIdType *conectivityLagrange,
+                                                shm<Index>::array &connlist)
+{
+    auto numElements = order[0] * order[1];
+    for (int subId = 0; subId < numElements; ++subId) {
+        auto subIndicees = approximateSubQuad(subId, order);
+        for (int j = 0; j < UnstructuredGrid::NumVertices[UnstructuredGrid::QUAD]; ++j) {
+            assert(conectivityLagrange[subIndicees[j]] >= 0);
+            connlist.emplace_back(conectivityLagrange[subIndicees[j]]);
+        }
+    }
+    return numElements;
+}
+
 struct GridSizes {
     vistle::Index numElements = 0;
     vistle::Index numConnectivities = 0;
@@ -124,12 +172,20 @@ GridSizes getGridSizesConsideringHighOrderCells(vtkUnstructuredGrid *vugrid)
     for (vistle::Index i = 0; i < nelem; i++) {
         if (vugrid->GetCellType(i) == VTK_LAGRANGE_HEXAHEDRON) {
             //replace one of the Lagrange hexahedrons with numSubHexes linear hexahedrons
-            auto lagrangeCell = dynamic_cast<vtkLagrangeHexahedron *>(vugrid->GetCell(i));
+            auto lagrangeCell = static_cast<vtkLagrangeHexahedron *>(vugrid->GetCell(i));
             // lagrangeCell->PrintSelf(std::cerr, vtkIndent());
             auto numSubHexes = lagrangeCell->GetOrder()[0] * lagrangeCell->GetOrder()[1] * lagrangeCell->GetOrder()[2];
             vtkIdType npts = lagrangeCell->GetOrder()[3];
             nconn = nconn - npts + numSubHexes * UnstructuredGrid::NumVertices[UnstructuredGrid::HEXAHEDRON];
             nelemLagrange += numSubHexes - 1;
+        } else if (vugrid->GetCellType(i) == VTK_LAGRANGE_QUADRILATERAL) {
+            //replace one of the Lagrange quads with numSubQuads linear quads
+            auto lagrangeCell = static_cast<vtkLagrangeQuadrilateral *>(vugrid->GetCell(i));
+            // lagrangeCell->PrintSelf(std::cerr, vtkIndent());
+            auto numSubQuads = lagrangeCell->GetOrder()[0] * lagrangeCell->GetOrder()[1];
+            vtkIdType npts = lagrangeCell->GetOrder()[2];
+            nconn = nconn - npts + numSubQuads * UnstructuredGrid::NumVertices[UnstructuredGrid::QUAD];
+            nelemLagrange += numSubQuads - 1;
         }
     }
     return GridSizes{nelemLagrange, nconn};
@@ -169,6 +225,7 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, std::string &diagnostic
     Index elemVistle = 0;
     bool haveDim[4] = {false, false, false, false};
     for (Index i = 0; i < nelemVtk; ++i) {
+        Index numElementsPerCell = 1;
         elems[elemVistle] = connlist.size();
 
         switch (vugrid->GetCellType(i)) {
@@ -191,7 +248,7 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, std::string &diagnostic
             break;
         case VTK_PIXEL:
             haveDim[2] = true;
-            // vistle does not support pixels, but they can be expressed as quads
+            // vistle does not support pixels, but they can be expressed as quads (by reordering the vertices)
             typelist[elemVistle] = UnstructuredGrid::QUAD;
             break;
         case VTK_POLYGON:
@@ -212,18 +269,30 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, std::string &diagnostic
             break;
         case VTK_VOXEL:
             haveDim[3] = true;
-            // vistle does not support voxels, but they can be expressed as hexahedra
+            // vistle does not support voxels, but they can be expressed as hexahedra (by reordering the vertices)
             typelist[elemVistle] = UnstructuredGrid::HEXAHEDRON;
             break;
         case VTK_LAGRANGE_HEXAHEDRON: {
             haveDim[3] = true;
-            auto lagrangeCell = dynamic_cast<vtkLagrangeHexahedron *>(vugrid->GetCell(i));
+            auto lagrangeCell = static_cast<vtkLagrangeHexahedron *>(vugrid->GetCell(i));
             for (int j = 0; j < lagrangeCell->GetOrder()[0] * lagrangeCell->GetOrder()[1] * lagrangeCell->GetOrder()[2];
                  j++) {
                 typelist[elemVistle] = UnstructuredGrid::HEXAHEDRON;
                 elems[elemVistle++] = connlist.size() + j * UnstructuredGrid::NumVertices[UnstructuredGrid::HEXAHEDRON];
             }
-            --elemVistle; //counter the generat +1
+            --elemVistle; //counter the general +1
+            numElementsPerCell =
+                lagrangeCell->GetOrder()[0] * lagrangeCell->GetOrder()[1] * lagrangeCell->GetOrder()[2];
+        } break;
+        case VTK_LAGRANGE_QUADRILATERAL: {
+            haveDim[2] = true;
+            auto lagrangeCell = static_cast<vtkLagrangeQuadrilateral *>(vugrid->GetCell(i));
+            for (int j = 0; j < lagrangeCell->GetOrder()[0] * lagrangeCell->GetOrder()[1]; j++) {
+                typelist[elemVistle] = UnstructuredGrid::QUAD;
+                elems[elemVistle++] = connlist.size() + j * UnstructuredGrid::NumVertices[UnstructuredGrid::QUAD];
+            }
+            --elemVistle; //counter the general +1
+            numElementsPerCell = lagrangeCell->GetOrder()[0] * lagrangeCell->GetOrder()[1];
         } break;
         case VTK_WEDGE:
             haveDim[3] = true;
@@ -251,9 +320,11 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, std::string &diagnostic
 #if VTK_MAJOR_VERSION >= 7
         if (ghostArray &&
             const_cast<vtkUnsignedCharArray *>(ghostArray)->GetValue(i) & vtkDataSetAttributes::DUPLICATECELL) {
-            cugrid->setGhost(elemVistle, true);
+            for (Index e = 0; e < numElementsPerCell; ++e)
+                cugrid->setGhost(elemVistle + 1 - numElementsPerCell + e, true);
         } else {
-            cugrid->setGhost(elemVistle, false);
+            for (Index e = 0; e < numElementsPerCell; ++e)
+                cugrid->setGhost(elemVistle + 1 - numElementsPerCell + e, false);
         }
 #endif
 
@@ -279,12 +350,15 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, std::string &diagnostic
                 connlist.emplace_back(first);
             }
         } else if (vugrid->GetCellType(i) == VTK_LAGRANGE_HEXAHEDRON) {
-            auto lagrangeCell = dynamic_cast<vtkLagrangeHexahedron *>(vugrid->GetCell(i));
+            auto lagrangeCell = static_cast<vtkLagrangeHexahedron *>(vugrid->GetCell(i));
             lagrangeConnectivityToLinearHexahedron(lagrangeCell->GetOrder(), pts, connlist);
-            assert(connlist.size() == 8 * (elemVistle + 1));
+        } else if (vugrid->GetCellType(i) == VTK_LAGRANGE_QUADRILATERAL) {
+            auto lagrangeCell = static_cast<vtkLagrangeQuadrilateral *>(vugrid->GetCell(i));
+            lagrangeConnectivityToLinearQuadrilateral(lagrangeCell->GetOrder(), pts, connlist);
         } else if (vugrid->GetCellType(i) == VTK_PIXEL || vugrid->GetCellType(i) == VTK_VOXEL) {
             // account for different order
             constexpr Index vtkOrder[] = {0, 1, 3, 2, 4, 5, 7, 6};
+            assert(npts <= sizeof(vtkOrder) / sizeof(vtkOrder[0]));
             for (vtkIdType j = 0; j < npts; ++j) {
                 assert(pts[j] >= 0);
                 connlist.emplace_back(pts[vtkOrder[j]]);
