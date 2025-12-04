@@ -1990,7 +1990,8 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
 
         switch (msg.type()) {
         case message::IDENTIFY: {
-            auto &id = static_cast<const Identify &>(msg);
+            const auto &id = msg.as<Identify>();
+
             if (m_verbose >= Verbosity::Manager) {
                 CERR << "ident msg: " << id.identity() << std::endl;
             }
@@ -2121,7 +2122,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             return true;
         }
         case message::ADDHUB: {
-            auto &mm = static_cast<const AddHub &>(msg);
+            const auto &mm = msg.as<AddHub>();
             auto addPl = getPayload<AddHub::Payload>(*payload);
             auto add = mm;
             CERR << "received AddHub: " << add << std::endl;
@@ -2293,19 +2294,19 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             }
 
             case message::SPAWN: {
-                auto &spawn = static_cast<const Spawn &>(msg);
+                auto &spawn = msg.as<Spawn>();
                 handlePriv(spawn);
                 break;
             }
 
             case message::SETNAME: {
-                auto &setname = static_cast<const SetName &>(msg);
+                auto &setname = msg.as<SetName>();
                 handlePriv(setname);
                 break;
             }
 
             case message::ADDHUB: {
-                auto &add = static_cast<const AddHub &>(msg);
+                const auto &add = msg.as<AddHub>();
                 if (m_isMaster && add.hasUserInterface()) {
                     std::map<int, std::string> toMirror;
                     std::map<int, int> blueprintIds;
@@ -2404,7 +2405,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                 break;
             }
             case message::SPAWNPREPARED: {
-                auto &spawn = static_cast<const SpawnPrepared &>(msg);
+                const auto &spawn = msg.as<SpawnPrepared>();
                 if (spawn.isNotification()) {
                     auto it = m_sendAfterSpawn.find(spawn.spawnId());
                     if (it != m_sendAfterSpawn.end()) {
@@ -2602,7 +2603,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
 
             case message::SETID: {
                 assert(!m_isMaster);
-                auto &set = static_cast<const SetId &>(msg);
+                const auto &set = msg.as<SetId>();
                 m_hubId = set.getId();
                 m_stateTracker.setId(m_hubId);
                 params.setId(m_hubId);
@@ -2624,49 +2625,49 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             }
 
             case message::QUIT: {
-                auto &quit = static_cast<const Quit &>(msg);
+                const auto &quit = msg.as<Quit>();
                 handlePriv(quit, senderType);
                 break;
             }
 
             case message::REMOVEHUB: {
-                auto &rm = static_cast<const RemoveHub &>(msg);
+                const auto &rm = msg.as<RemoveHub>();
                 handlePriv(rm);
                 break;
             }
 
             case message::EXECUTE: {
-                auto &exec = static_cast<const Execute &>(msg);
+                const auto &exec = msg.as<Execute>();
                 handlePriv(exec);
                 break;
             }
 
             case message::EXECUTIONDONE: {
-                auto &done = static_cast<const ExecutionDone &>(msg);
+                const auto &done = msg.as<ExecutionDone>();
                 handlePriv(done);
                 break;
             }
 
             case message::CANCELEXECUTE: {
-                auto &cancel = static_cast<const CancelExecute &>(msg);
+                const auto &cancel = msg.as<CancelExecute>();
                 handlePriv(cancel);
                 break;
             }
 
             case message::BARRIER: {
-                auto &barr = static_cast<const Barrier &>(msg);
+                const auto &barr = msg.as<Barrier>();
                 handlePriv(barr);
                 break;
             }
 
             case message::BARRIERREACHED: {
-                auto &reached = static_cast<const BarrierReached &>(msg);
+                const auto &reached = msg.as<BarrierReached>();
                 handlePriv(reached);
                 break;
             }
 
             case message::REQUESTTUNNEL: {
-                auto &tunnel = static_cast<const RequestTunnel &>(msg);
+                const auto &tunnel = msg.as<RequestTunnel>();
                 handlePriv(tunnel);
                 break;
             }
@@ -2676,27 +2677,27 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                 break;
             }
             case FILEQUERY: {
-                auto &query = msg.as<FileQuery>();
+                const auto &query = msg.as<FileQuery>();
                 handlePriv(query, payload);
                 break;
             }
             case FILEQUERYRESULT: {
-                auto &result = msg.as<FileQueryResult>();
+                const auto &result = msg.as<FileQueryResult>();
                 handlePriv(result, payload);
                 break;
             }
             case COVER: {
-                auto &cover = msg.as<Cover>();
+                const auto &cover = msg.as<Cover>();
                 handlePriv(cover, payload);
                 break;
             }
             case COLORMAP: {
-                auto &cmap = msg.as<Colormap>();
+                const auto &cmap = msg.as<Colormap>();
                 handlePriv(cmap, payload);
                 break;
             }
             case REMOVECOLORMAP: {
-                auto &rcm = msg.as<RemoveColormap>();
+                const auto &rcm = msg.as<RemoveColormap>();
                 handlePriv(rcm);
                 break;
             }
