@@ -108,14 +108,14 @@ FilterCells::FilterCells(const std::string &name, int moduleID, mpi::communicato
         "elements for which this expression is true are filtered out, for supported symbols see selection lists",
         "type == HEXA");
 
-    m_filterMode = addIntParameter("filterType", "filter type", 0, Parameter::Choice);
+    m_filterMode = addIntParameter("filter_type", "on what to filter", 0, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_filterMode, FilterMode);
 
     //the lists only serve as a reference for the user
-    addIntParameter("SupportedVariables", "Supported Variables", 0, Parameter::Choice);
-    setParameterChoices("SupportedVariables", m_symbols.getSupportedVariables());
-    addIntParameter("SupportedConstants", "Supported Constants", 0, Parameter::Choice);
-    setParameterChoices("SupportedConstants", m_symbols.getSupportedConstants());
+    addIntParameter("supported_variables", "variables available for use in filter expression", 0, Parameter::Choice);
+    setParameterChoices("supported_variables", m_symbols.getSupportedVariables());
+    addIntParameter("supported_constants", "constants available for use in filter expression", 0, Parameter::Choice);
+    setParameterChoices("supported_constants", m_symbols.getSupportedConstants());
 }
 
 vistle::UnstructuredGrid::ptr clone(const vistle::UnstructuredGrid::const_ptr &grid, FilterMode filterMode)
