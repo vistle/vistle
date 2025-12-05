@@ -357,12 +357,12 @@ void ReadVtk::setChoices(const VtkFile &fileinfo)
 {
     std::vector<std::string> cellFields({Invalid});
     std::copy(fileinfo.cellfields.begin(), fileinfo.cellfields.end(), std::back_inserter(cellFields));
-    for (int i = 0; i < NumPorts; ++i) {
+    for (int i = 0; i < NumCellPorts; ++i) {
         setParameterChoices(m_cellDataChoice[i], cellFields);
     }
     std::vector<std::string> pointFields({Invalid});
     std::copy(fileinfo.pointfields.begin(), fileinfo.pointfields.end(), std::back_inserter(pointFields));
-    for (int i = 0; i < NumPorts; ++i) {
+    for (int i = 0; i < NumPointPorts; ++i) {
         setParameterChoices(m_pointDataChoice[i], pointFields);
     }
 }
@@ -388,7 +388,7 @@ ReadVtk::ReadVtk(const std::string &name, int moduleID, mpi::communicator comm):
         "use_cache", "cache for improved performance for transient data on stationary grids (VTK HDF format only)",
         true, Parameter::Boolean);
 
-    for (int i = 0; i < NumPorts; ++i) {
+    for (int i = 0; i < NumPointPorts; ++i) {
         std::stringstream spara;
         spara << "point_field_" << i;
         m_pointDataChoice[i] = addStringParameter(spara.str(), "point data field", "", Parameter::Choice);
@@ -399,7 +399,7 @@ ReadVtk::ReadVtk(const std::string &name, int moduleID, mpi::communicator comm):
 
         linkPortAndParameter(m_pointPort[i], m_pointDataChoice[i]);
     }
-    for (int i = 0; i < NumPorts; ++i) {
+    for (int i = 0; i < NumCellPorts; ++i) {
         std::stringstream spara;
         spara << "cell_field_" << i;
         m_cellDataChoice[i] = addStringParameter(spara.str(), "cell data field", "", Parameter::Choice);
@@ -596,7 +596,7 @@ bool ReadVtk::load(Token &token, const std::string &filename, const ReadOptions 
         pointData = ds->GetPointData();
         cellData = ds->GetCellData();
     }
-    for (int i = 0; i < NumPorts; ++i) {
+    for (int i = 0; i < NumCellPorts; ++i) {
         if (cellData && m_cellDataChoice[i]->getValue() != Invalid) {
             std::string name = m_cellDataChoice[i]->getValue();
             auto field = vistle::vtk::getField(cellData, name, grid, &diagnostics);
@@ -614,7 +614,9 @@ bool ReadVtk::load(Token &token, const std::string &filename, const ReadOptions 
             token.applyMeta(field);
             token.addObject(m_cellPort[i], field);
         }
+    }
 
+    for (int i = 0; i < NumPointPorts; ++i) {
         if (pointData && m_pointDataChoice[i]->getValue() != Invalid) {
             std::string name = m_pointDataChoice[i]->getValue();
             auto field = vistle::vtk::getField(pointData, name, grid, &diagnostics);

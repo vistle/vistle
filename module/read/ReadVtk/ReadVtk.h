@@ -42,7 +42,8 @@ public:
     bool finishRead() override;
 
 private:
-    static const int NumPorts = 3;
+    static const int NumPointPorts = 6, NumCellPorts = 3;
+    ;
 
     bool load(Token &token, const std::string &filename, const ReadOptions &options,
               const vistle::Meta &meta = vistle::Meta(), int piece = -1, const std::string &part = std::string()) const;
@@ -53,8 +54,8 @@ private:
     std::map<double, std::vector<VtkFile>> readXmlCollection(const std::string &filename, bool piecesAsBlocks = false);
 
     vistle::StringParameter *m_filename;
-    vistle::StringParameter *m_cellDataChoice[NumPorts], *m_pointDataChoice[NumPorts];
-    vistle::Port *m_cellPort[NumPorts], *m_pointPort[NumPorts];
+    vistle::StringParameter *m_cellDataChoice[NumCellPorts], *m_pointDataChoice[NumPointPorts];
+    vistle::Port *m_cellPort[NumCellPorts], *m_pointPort[NumPointPorts];
     vistle::IntParameter *m_readPieces = nullptr, *m_ghostCells = nullptr, *m_useCache = nullptr;
 
     ReadVtkData *m_d = nullptr;
