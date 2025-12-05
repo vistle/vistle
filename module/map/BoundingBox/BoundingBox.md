@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The bounding box can be used as a rough guide to the interesting areas of the dat set. The box can
+The bounding box can be used as a rough guide to the interesting areas of the data set. The box can
 also provide visual clues that help with orientation in 3D space. Showing bounding boxes for
 individual blocks will allow you to assess the partitioning of your data. The numerical values can
 be used to craft input for modules requiring coordinates as parameter input.
