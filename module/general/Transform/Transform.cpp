@@ -11,13 +11,14 @@ using namespace vistle;
 class Transform: public vistle::Module {
 public:
     Transform(const std::string &name, int moduleID, mpi::communicator comm);
-    ~Transform();
 
 private:
+    static const int NumPorts = 5;
+
     bool compute() override;
     bool changeParameter(const Parameter *param) override;
 
-    Port *data_in, *data_out;
+    Port *data_in[NumPorts], *data_out[NumPorts];
 
     VectorParameter *p_rotation_axis_angle, *p_scale, *p_translate;
     IntParameter *p_keep_original, *p_repetitions, *p_animation, *p_mirror;
@@ -33,10 +34,17 @@ using namespace vistle;
 
 Transform::Transform(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
-    data_in = createInputPort("data_in", "input data");
-    data_out = createOutputPort("data_out", "output data");
-    linkPorts(data_in, data_out);
-
+    for (int i = 0; i < NumPorts; ++i) {
+        std::string in = "data_in" + std::to_string(i);
+        std::string out = "data_out" + std::to_string(i);
+        if (i == 0) {
+            in = "data_in";
+            out = "data_out";
+        }
+        data_in[i] = createInputPort(in, "input data");
+        data_out[i] = createOutputPort(out, "output data");
+        linkPorts(data_in[i], data_out[i]);
+    }
     p_translate = addVectorParameter("translate", "translation vector", ParamVector(0., 0., 0.));
     p_scale = addVectorParameter("scale", "scaling factors", ParamVector(1., 1., 1.));
     p_rotation_axis_angle =
@@ -52,9 +60,6 @@ Transform::Transform(const std::string &name, int moduleID, mpi::communicator co
 
     addResultCache(m_cache);
 }
-
-Transform::~Transform()
-{}
 
 bool Transform::changeParameter(const Parameter *param)
 {
@@ -124,17 +129,33 @@ M pow(const M &m, unsigned e)
 bool Transform::compute()
 {
     //std::cerr << "Transform: compute: generation=" << m_generation << std::endl;
+    Object::const_ptr obj[NumPorts];
+    DataBase::const_ptr data[NumPorts];
+    Object::const_ptr geo;
 
-    Object::const_ptr obj = expect<Object>(data_in);
-    if (!obj)
-        return true;
+    int timestep = -1;
+    for (int port = 0; port < NumPorts; ++port) {
+        obj[port] = accept<Object>(data_in[port]);
+        if (!obj[port])
+            continue;
 
-    auto split = splitContainerObject(obj);
+        auto split = splitContainerObject(obj[port]);
+        if (!geo) {
+            geo = split.geometry;
+        } else if (geo->getHandle() != split.geometry->getHandle()) {
+            sendError("differing geometry on multiple ports not supported");
+            return true;
+        }
 
-    Object::const_ptr geo = split.geometry;
-    if (!geo)
-        return true;
-    auto data = split.mapped;
+        Object::const_ptr geo = split.geometry;
+        if (!geo)
+            return true;
+        data[port] = split.mapped;
+
+        if (timestep == -1) {
+            timestep = split.timestep;
+        }
+    }
 
     Matrix4 mirrorMat(Matrix4::Identity());
     switch (p_mirror->getValue()) {
@@ -174,7 +195,6 @@ bool Transform::compute()
     transform *= scaleMat;
 
     int repetitions = p_repetitions->getValue();
-    int timestep = split.timestep;
     AnimationMode animation = (AnimationMode)p_animation->getValue();
     switch (animation) {
     case Animate:
@@ -209,22 +229,31 @@ bool Transform::compute()
                 updateMeta(outGeo);
                 m_cache.storeAndUnlock(entry, outGeo);
             }
-            if (data) {
-                auto dataOut = data->clone();
-                dataOut->setGrid(outGeo);
-                updateMeta(dataOut);
-                addObject(data_out, dataOut);
-            } else {
-                addObject(data_out, outGeo);
+
+            for (int port = 0; port < NumPorts; ++port) {
+                if (!obj[port])
+                    continue;
+                if (data) {
+                    auto dataOut = data[port]->clone();
+                    dataOut->setGrid(outGeo);
+                    updateMeta(dataOut);
+                    addObject(data_out[port], dataOut);
+                } else {
+                    addObject(data_out[port], outGeo);
+                }
             }
         } else {
-            Object::ptr nobj;
-            if (auto entry = m_cache.getOrLock(obj->getName(), nobj)) {
-                nobj = obj->clone();
-                updateMeta(nobj);
-                m_cache.storeAndUnlock(entry, nobj);
+            for (int port = 0; port < NumPorts; ++port) {
+                if (!obj[port])
+                    continue;
+                Object::ptr nobj;
+                if (auto entry = m_cache.getOrLock(obj[port]->getName(), nobj)) {
+                    nobj = obj[port]->clone();
+                    updateMeta(nobj);
+                    m_cache.storeAndUnlock(entry, nobj);
+                }
+                addObject(data_out[port], nobj);
             }
-            addObject(data_out, nobj);
         }
     }
 
@@ -250,14 +279,20 @@ bool Transform::compute()
             updateMeta(outGeo);
             m_cache.storeAndUnlock(entry, outGeo);
         }
-        if (data) {
-            auto dataOut = data->clone();
-            dataOut->setGrid(outGeo);
-            updateMeta(dataOut);
-            addObject(data_out, dataOut);
-        } else {
-            addObject(data_out, outGeo);
+
+        for (int port = 0; port < NumPorts; ++port) {
+            if (!obj[port])
+                continue;
+            if (data[port]) {
+                auto dataOut = data[port]->clone();
+                dataOut->setGrid(outGeo);
+                updateMeta(dataOut);
+                addObject(data_out[port], dataOut);
+            } else {
+                addObject(data_out[port], outGeo);
+            }
         }
+
         if (animation != Keep && animation != TimestepAsRepetitionCount) {
             if (animation != Deanimate)
                 ++timestep;
