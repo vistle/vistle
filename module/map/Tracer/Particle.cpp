@@ -181,10 +181,12 @@ bool Particle<S>::findCell(double time)
         }
     }
 
+    auto previousBlock = m_block;
+    UpdateBlock(nullptr);
+
     for (auto &block: m_global.blocks[m_timestep]) {
-        if (block.get() == m_block) {
+        if (block.get() == previousBlock) {
             // don't try previous block again
-            UpdateBlock(nullptr);
             continue;
         }
         auto grid = block->getGrid();
