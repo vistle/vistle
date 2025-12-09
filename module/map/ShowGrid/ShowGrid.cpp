@@ -86,6 +86,7 @@ bool ShowGrid::compute()
 
     std::vector<Index> remap;
     vistle::Lines::ptr lines;
+    bool haveOutput = false;
     if (auto *entry = m_cache.getOrLock(input->getName(), lines)) {
         lines.reset(new vistle::Lines(Object::Initialized));
         auto &ocl = lines->cl();
@@ -668,10 +669,12 @@ bool ShowGrid::compute()
         lines->copyAttributes(grid);
         updateMeta(lines);
         m_cache.storeAndUnlock(entry, lines);
+
+        haveOutput = !ocl.empty();
     }
 
     if (mapped) {
-        if (!remap.empty()) {
+        if (!remap.empty() || !haveOutput) {
             data = mapped->cloneType();
             data->setSize(remap.size());
             for (Index i = 0; i < remap.size(); ++i) {
