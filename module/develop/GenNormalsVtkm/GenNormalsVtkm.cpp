@@ -2,6 +2,7 @@
 
 #include "GenNormalsVtkm.h"
 #include <vistle/vtkm/convert.h>
+#include <vistle/core/normals.h>
 
 using namespace vistle;
 
@@ -58,6 +59,13 @@ DataBase::ptr GenNormalsVtkm::prepareOutputField(const viskores::cont::DataSet &
 {
     DataBase::Mapping mapping = m_perVertex->getValue() == 0 ? DataBase::Element : DataBase::Vertex;
     if (auto mapped = vtkmGetField(dataset, fieldName, mapping)) {
+        if (auto vec3 = Vec<Scalar, 3>::as(mapped)) {
+            // make Normals
+            auto norm = std::make_shared<Normals>(0, vec3->meta());
+            for (int i = 0; i < 3; ++i)
+                norm->d()->x[i] = vec3->d()->x[i];
+            mapped = norm;
+        }
         updateMeta(mapped);
         if (outputGrid)
             mapped->setGrid(outputGrid);
