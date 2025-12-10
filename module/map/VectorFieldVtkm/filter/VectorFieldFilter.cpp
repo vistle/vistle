@@ -11,17 +11,14 @@
 #include <limits>
 #include <type_traits>
 
-namespace viskores
-{
-namespace filter
-{
+namespace viskores {
+namespace filter {
 
 VISKORES_CONT VectorFieldFilter::VectorFieldFilter()
-    : MinLength(0.0f)
-    , MaxLength(static_cast<viskores::FloatDefault>(
-          std::numeric_limits<float>::max()))
-    , Scale(1.0f)
-    , Attachment(0)
+: MinLength(0.0f)
+, MaxLength(static_cast<viskores::FloatDefault>(std::numeric_limits<float>::max()))
+, Scale(1.0f)
+, Attachment(0)
 {
     this->SetOutputFieldName("");
 }
@@ -66,8 +63,7 @@ VISKORES_CONT viskores::IdComponent VectorFieldFilter::GetAttachmentPoint() cons
     return Attachment;
 }
 
-VISKORES_CONT viskores::cont::DataSet
-VectorFieldFilter::DoExecute(const viskores::cont::DataSet &inDataSet)
+VISKORES_CONT viskores::cont::DataSet VectorFieldFilter::DoExecute(const viskores::cont::DataSet &inDataSet)
 {
     using namespace viskores::cont;
 
@@ -85,10 +81,9 @@ VectorFieldFilter::DoExecute(const viskores::cont::DataSet &inDataSet)
     DataSet result;
     bool success = false;
 
-    auto resolveType = [&](const auto &inputArray)
-    {
+    auto resolveType = [&](const auto &inputArray) {
         using ArrayHandleType = std::decay_t<decltype(inputArray)>;
-        using VecType         = typename ArrayHandleType::ValueType;
+        using VecType = typename ArrayHandleType::ValueType;
 
         ArrayHandle<VecType> baseArray;
 
@@ -104,20 +99,19 @@ VectorFieldFilter::DoExecute(const viskores::cont::DataSet &inDataSet)
         ArrayHandle<VecType> p0Array;
         ArrayHandle<VecType> p1Array;
 
-        viskores::worklet::VectorFieldWorklet worklet(
-            MinLength, MaxLength, Scale, Attachment);
+        viskores::worklet::VectorFieldWorklet worklet(MinLength, MaxLength, Scale, Attachment);
 
         this->Invoke(worklet, inputArray, baseArray, p0Array, p1Array);
 
         auto outDataSet = this->CreateResult(inDataSet);
 
         // Fixed names; Vistle side will look for these.
-        const auto outAssoc = association == Field::Association::Points ? Field::Association::Points
-                                                                         : Field::Association::Cells;
+        const auto outAssoc =
+            association == Field::Association::Points ? Field::Association::Points : Field::Association::Cells;
         outDataSet.AddField(Field("p0", outAssoc, p0Array));
         outDataSet.AddField(Field("p1", outAssoc, p1Array));
 
-        result  = outDataSet;
+        result = outDataSet;
         success = true;
     };
 

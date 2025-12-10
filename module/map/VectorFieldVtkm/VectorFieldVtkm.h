@@ -5,29 +5,26 @@
 #include <vistle/util/enum.h>
 
 
-
-class VectorFieldVtkm : public vistle::VtkmModule {
+class VectorFieldVtkm: public vistle::VtkmModule {
 public:
     VectorFieldVtkm(const std::string &name, int moduleID, mpi::communicator comm);
 
 private:
     std::unique_ptr<viskores::filter::Filter> setUpFilter() const override;
 
-    vistle::Object::const_ptr prepareOutputGrid(
-        const viskores::cont::DataSet &dataset,
-        const vistle::Object::const_ptr &inputGrid) const override;
+    vistle::Object::const_ptr prepareOutputGrid(const viskores::cont::DataSet &dataset,
+                                                const vistle::Object::const_ptr &inputGrid) const override;
 
-    vistle::DataBase::ptr prepareOutputField(
-        const viskores::cont::DataSet &dataset,
-        const vistle::Object::const_ptr &inputGrid,
-        const vistle::DataBase::const_ptr &inputField,
-        const std::string &fieldName,
-        const vistle::Object::const_ptr &outputGrid) const override;
+    vistle::DataBase::ptr prepareOutputField(const viskores::cont::DataSet &dataset,
+                                             const vistle::Object::const_ptr &inputGrid,
+                                             const vistle::DataBase::const_ptr &inputField,
+                                             const std::string &fieldName,
+                                             const vistle::Object::const_ptr &outputGrid) const override;
 
-    vistle::FloatParameter  *m_scale      = nullptr;
-    vistle::VectorParameter *m_range      = nullptr;
-    vistle::IntParameter    *m_attachment = nullptr;
-    vistle::IntParameter    *m_allCoords  = nullptr;
+    vistle::FloatParameter *m_scale = nullptr;
+    vistle::VectorParameter *m_range = nullptr;
+    vistle::IntParameter *m_attachment = nullptr;
+    vistle::IntParameter *m_allCoords = nullptr;
     mutable vistle::Index m_numLines = 0;
     mutable vistle::DataBase::Mapping m_outputMapping = vistle::DataBase::Unspecified;
     mutable std::vector<vistle::Index> m_selectedVertices;
