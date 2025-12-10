@@ -2,9 +2,11 @@
 #include "VectorFieldFilter.h"
 #include "VectorFieldWorklet.h"
 
+#include <viskores/cont/ArrayHandle.h>
+#include <viskores/cont/CellSet.h>
 #include <viskores/cont/CoordinateSystem.h>
 #include <viskores/cont/Field.h>
-#include <viskores/cont/ArrayHandle.h>
+#include <viskores/worklet/WorkletMapTopology.h>
 
 #include <limits>
 #include <type_traits>
@@ -70,14 +72,15 @@ VectorFieldFilter::DoExecute(const viskores::cont::DataSet &inDataSet)
     using namespace viskores::cont;
 
     Field inField = inDataSet.GetField(0);
+    const auto association = inField.GetAssociation();
 
-
-    // Only point-associated 3D vector fields; otherwise just pass through.
-    if (inField.GetAssociation() != Field::Association::Points) {
+    // Only point- or cell-associated 3D vector fields; otherwise just pass through.
+    if (association != Field::Association::Points && association != Field::Association::Cells) {
         return this->CreateResult(inDataSet);
     }
 
     CoordinateSystem coords = inDataSet.GetCoordinateSystem(0);
+    auto cellSet = inDataSet.GetCellSet();
 
     DataSet result;
     bool success = false;
@@ -87,9 +90,16 @@ VectorFieldFilter::DoExecute(const viskores::cont::DataSet &inDataSet)
         using ArrayHandleType = std::decay_t<decltype(inputArray)>;
         using VecType         = typename ArrayHandleType::ValueType;
 
-        // Copy coordinates into a simple VecType array, independent of storage.
         ArrayHandle<VecType> baseArray;
-        ArrayCopy(coords.GetData(), baseArray);
+
+        if (association == Field::Association::Points) {
+            // Copy coordinates into a simple VecType array, independent of storage.
+            ArrayCopy(coords.GetData(), baseArray);
+        } else {
+            // Compute cell centers as base positions.
+            viskores::worklet::ComputeCellCenters centers;
+            this->Invoke(centers, cellSet, coords.GetData(), baseArray);
+        }
 
         ArrayHandle<VecType> p0Array;
         ArrayHandle<VecType> p1Array;
@@ -102,8 +112,10 @@ VectorFieldFilter::DoExecute(const viskores::cont::DataSet &inDataSet)
         auto outDataSet = this->CreateResult(inDataSet);
 
         // Fixed names; Vistle side will look for these.
-        outDataSet.AddField(Field("p0", Field::Association::Points, p0Array));
-        outDataSet.AddField(Field("p1", Field::Association::Points, p1Array));
+        const auto outAssoc = association == Field::Association::Points ? Field::Association::Points
+                                                                         : Field::Association::Cells;
+        outDataSet.AddField(Field("p0", outAssoc, p0Array));
+        outDataSet.AddField(Field("p1", outAssoc, p1Array));
 
         result  = outDataSet;
         success = true;

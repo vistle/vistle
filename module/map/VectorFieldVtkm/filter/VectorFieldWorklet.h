@@ -2,12 +2,35 @@
 #define VISTLE_VECTORFIELDVTKM_VECTORFIELDWORKLET_H
 
 #include <viskores/worklet/WorkletMapField.h>
+#include <viskores/worklet/WorkletMapTopology.h>
 #include <viskores/Math.h>
 
 namespace viskores
 {
 namespace worklet
 {
+
+struct ComputeCellCenters : public viskores::worklet::WorkletVisitCellsWithPoints
+{
+    using ControlSignature = void(CellSetIn, FieldInPoint coords, FieldOutCell center);
+    using ExecutionSignature = void(_2, PointCount, _3);
+
+    template<typename CoordVecType, typename OutType>
+    VISKORES_EXEC void operator()(const CoordVecType &coords,
+                                  viskores::IdComponent numPoints,
+                                  OutType &center) const
+    {
+        using ValueType = typename OutType::ComponentType;
+
+        OutType accum = coords[0];
+        for (viskores::IdComponent i = 1; i < numPoints; ++i) {
+            accum = accum + coords[i];
+        }
+
+        const ValueType denom = static_cast<ValueType>(numPoints > 0 ? numPoints : 1);
+        center = accum / denom;
+    }
+};
 
 struct VectorFieldWorklet : public viskores::worklet::WorkletMapField
 {
