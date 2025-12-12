@@ -3,6 +3,7 @@
     <file>../../README.md</file>
     <file>Vistle.md</file>
     <file>../../LICENSE.txt</file>
+    <file alias="3rd-party.txt">../../lib/3rdparty/3rd-party.txt</file>
     <file alias="icons.md">icons/README.md</file>
   </qresource>
 </RCC>

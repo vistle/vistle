@@ -40,6 +40,7 @@ public slots:
 
     void aboutVistle();
     void aboutLicense();
+    void about3rdParty();
     void aboutIcons();
     void aboutQt();
 
