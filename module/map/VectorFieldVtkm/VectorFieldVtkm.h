@@ -24,11 +24,8 @@ private:
     vistle::FloatParameter *m_scale = nullptr;
     vistle::VectorParameter *m_range = nullptr;
     vistle::IntParameter *m_attachment = nullptr;
-    vistle::IntParameter *m_allCoords = nullptr;
     mutable vistle::Index m_numLines = 0;
     mutable vistle::DataBase::Mapping m_outputMapping = vistle::DataBase::Unspecified;
-    mutable std::vector<vistle::Index> m_selectedVertices;
-    mutable bool m_useSelectedVertices = false;
 };
 
 #endif // VISTLE_VECTORFIELDVTKM_VECTORFIELDVTKM_H
