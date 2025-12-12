@@ -134,6 +134,7 @@
     </property>
     <addaction name="actionAbout"/>
     <addaction name="actionAbout_License"/>
+    <addaction name="actionAbout_3rdParty"/>
     <addaction name="actionAbout_Icons"/>
     <addaction name="actionAbout_Qt"/>
    </widget>
@@ -453,6 +454,17 @@
    </property>
    <property name="text">
     <string>License</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::ApplicationSpecificRole</enum>
+   </property>
+  </action>
+  <action name="actionAbout_3rdParty">
+   <property name="icon">
+    <iconset theme="QIcon::ThemeIcon::HelpAbout"/>
+   </property>
+   <property name="text">
+    <string>About 3rd Party Software</string>
    </property>
    <property name="menuRole">
     <enum>QAction::MenuRole::ApplicationSpecificRole</enum>

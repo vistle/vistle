@@ -164,6 +164,7 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
     connect(m_mainWindow, SIGNAL(aboutQt()), SLOT(aboutQt()));
     connect(m_mainWindow, SIGNAL(aboutVistle()), SLOT(aboutVistle()));
     connect(m_mainWindow, SIGNAL(aboutLicense()), SLOT(aboutLicense()));
+    connect(m_mainWindow, SIGNAL(about3rdParty()), SLOT(about3rdParty()));
     connect(m_mainWindow, SIGNAL(aboutIcons()), SLOT(aboutIcons()));
     connect(m_mainWindow, SIGNAL(snapToGridChanged(bool)), m_mainWindow->dataFlowView(), SLOT(snapToGridChanged(bool)));
 
@@ -738,6 +739,11 @@ void UiController::aboutLicense()
 void UiController::aboutIcons()
 {
     about("Font Awesome Icons", ":/aboutData/icons.md");
+}
+
+void UiController::about3rdParty()
+{
+    about("3rd Party Software", ":/aboutData/3rd-party.txt");
 }
 
 void UiController::aboutQt()
