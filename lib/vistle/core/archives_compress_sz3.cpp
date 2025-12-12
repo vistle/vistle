@@ -79,8 +79,6 @@ SZ3::Config getConfig(const CompressionSettings &cs, const Index dim[3])
     conf.relErrorBound = cs.szRelError;
     conf.psnrErrorBound = cs.szPsnrError;
     conf.l2normErrorBound = cs.szL2Error;
-    conf.encoder = 0;
-    conf.lossless = 0;
 
     return conf;
 }
