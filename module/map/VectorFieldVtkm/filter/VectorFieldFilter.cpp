@@ -166,8 +166,7 @@ VISKORES_CONT viskores::cont::DataSet VectorFieldFilter::DoExecute(const viskore
             continue;
         }
         const auto assoc = field.GetAssociation();
-        if (assoc != viskores::cont::Field::Association::Points &&
-            assoc != viskores::cont::Field::Association::Cells) {
+        if (assoc != viskores::cont::Field::Association::Points && assoc != viskores::cont::Field::Association::Cells) {
             continue;
         }
 
@@ -190,8 +189,8 @@ VISKORES_CONT viskores::cont::DataSet VectorFieldFilter::DoExecute(const viskore
             viskores::worklet::DuplicateFieldToEndpoints duplicate;
             this->Invoke(duplicate, array, expanded);
 
-            result.AddField(viskores::cont::Field(field.GetName(), viskores::cont::Field::Association::Points,
-                                                  expanded));
+            result.AddField(
+                viskores::cont::Field(field.GetName(), viskores::cont::Field::Association::Points, expanded));
         };
 
         // Normalize storage so SOA etc. are handled.
