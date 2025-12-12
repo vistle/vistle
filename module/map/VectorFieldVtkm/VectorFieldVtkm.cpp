@@ -3,9 +3,6 @@
 
 #include <vistle/core/scalar.h>
 #include <vistle/core/lines.h>
-#include <vistle/core/vec.h>
-
-#include <vistle/vtkm/convert.h>
 
 #include <limits>
 
@@ -49,120 +46,37 @@ std::unique_ptr<viskores::filter::Filter> VectorFieldVtkm::setUpFilter() const
     return filter;
 }
 
-
-// Build Lines geometry from p0/p1 fields
-vistle::Object::const_ptr VectorFieldVtkm::prepareOutputGrid(const viskores::cont::DataSet &dataset,
-                                                             const vistle::Object::const_ptr &inputGrid) const
-{
-    using vistle::DataBase;
-
-    m_outputMapping = DataBase::Unspecified;
-    m_numLines = 0;
-
-    // Pull p0 and p1 back from Viskores as Vistle Vec<Scalar,3>
-    auto p0db = vtkmGetField(dataset, "p0", DataBase::Vertex, false);
-    auto p1db = vtkmGetField(dataset, "p1", DataBase::Vertex, false);
-    if (p0db && p1db) {
-        m_outputMapping = DataBase::Vertex;
-    } else {
-        p0db = vtkmGetField(dataset, "p0", DataBase::Element, false);
-        p1db = vtkmGetField(dataset, "p1", DataBase::Element, false);
-        if (p0db && p1db) {
-            m_outputMapping = DataBase::Element;
-        }
-    }
-
-    if (!p0db || !p1db) {
-        // Fall back to default behavior (no custom grid)
-        return vistle::Object::const_ptr();
-    }
-
-    auto p0 = Vec<Scalar, 3>::as(p0db);
-    auto p1 = Vec<Scalar, 3>::as(p1db);
-    if (!p0 || !p1) {
-        return vistle::Object::const_ptr();
-    }
-
-    const Index n = p0->getSize();
-    if (n == 0 || p1->getSize() != n) {
-        return vistle::Object::const_ptr();
-    }
-
-    // One line per input point/cell -> 2 vertices per line
-    Lines::ptr lines(new Lines(n, 2 * n, 2 * n));
-
-    auto lx = lines->x().data();
-    auto ly = lines->y().data();
-    auto lz = lines->z().data();
-    auto el = lines->el().data();
-    auto cl = lines->cl().data();
-
-    const Scalar *p0x = p0->x().data();
-    const Scalar *p0y = p0->y().data();
-    const Scalar *p0z = p0->z().data();
-    const Scalar *p1x = p1->x().data();
-    const Scalar *p1y = p1->y().data();
-    const Scalar *p1z = p1->z().data();
-
-    el[0] = 0;
-
-    for (Index i = 0; i < n; ++i) {
-        const Index i0 = 2 * i;
-        const Index i1 = 2 * i + 1;
-
-        lx[i0] = p0x[i];
-        ly[i0] = p0y[i];
-        lz[i0] = p0z[i];
-
-        lx[i1] = p1x[i];
-        ly[i1] = p1y[i];
-        lz[i1] = p1z[i];
-
-        cl[i0] = i0;
-        cl[i1] = i1;
-        el[i + 1] = 2 * (i + 1);
-    }
-
-    // Copy basic meta from input grid if available
-    if (inputGrid) {
-        lines->setMeta(inputGrid->meta());
-        lines->copyAttributes(inputGrid);
-        lines->setTransform(inputGrid->getTransform());
-    }
-
-    updateMeta(lines);
-
-    m_numLines = n;
-    return lines;
-}
-
-
-vistle::DataBase::ptr VectorFieldVtkm::prepareOutputField(const viskores::cont::DataSet &,
+vistle::DataBase::ptr VectorFieldVtkm::prepareOutputField(const viskores::cont::DataSet &dataset,
                                                           const vistle::Object::const_ptr &inputGrid,
                                                           const vistle::DataBase::const_ptr &inputField,
-                                                          const std::string &,
+                                                          const std::string &fieldName,
                                                           const vistle::Object::const_ptr &outputGrid) const
 {
-    // No geometry or no input field: nothing to do
-    if (!outputGrid || !inputField || m_numLines == 0) {
+    if (!outputGrid || !inputField) {
         return vistle::DataBase::ptr();
     }
 
-    auto mapping = inputField->guessMapping(inputGrid);
-    if (m_outputMapping == vistle::DataBase::Unspecified || mapping != m_outputMapping) {
-        return vistle::DataBase::ptr();
+    // Prefer a field produced by the Viskores filter if present.
+    if (dataset.HasField(fieldName)) {
+        return VtkmModule::prepareOutputField(dataset, inputGrid, inputField, fieldName, outputGrid);
     }
-    if (inputField->getSize() < m_numLines) {
+
+    // Fall back to duplicating the incoming field onto each line endpoint.
+    auto lines = vistle::Lines::as(outputGrid);
+    if (!lines) {
         return vistle::DataBase::ptr();
     }
 
-    const vistle::Index n = m_numLines; // number of original points / vectors
-    const vistle::Index outSize = 2 * n; // one value per line endpoint
+    const auto numLines = lines->getNumElements();
+    if (numLines <= 0 || inputField->getSize() < numLines) {
+        return vistle::DataBase::ptr();
+    }
 
+    const vistle::Index outSize = 2 * numLines;
     vistle::DataBase::ptr mapped = inputField->cloneType();
     mapped->setSize(outSize);
 
-    for (vistle::Index i = 0; i < n; ++i) {
+    for (vistle::Index i = 0; i < numLines; ++i) {
         mapped->copyEntry(2 * i, inputField, i);
         mapped->copyEntry(2 * i + 1, inputField, i);
     }

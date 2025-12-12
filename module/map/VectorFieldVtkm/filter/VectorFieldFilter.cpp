@@ -3,9 +3,12 @@
 #include "VectorFieldWorklet.h"
 
 #include <viskores/cont/ArrayHandle.h>
+#include <viskores/cont/ArrayHandleCounting.h>
 #include <viskores/cont/CellSet.h>
+#include <viskores/cont/CellSetSingleType.h>
 #include <viskores/cont/CoordinateSystem.h>
 #include <viskores/cont/Field.h>
+#include <viskores/CellShape.h>
 #include <viskores/worklet/WorkletMapTopology.h>
 
 #include <limits>
@@ -103,13 +106,35 @@ VISKORES_CONT viskores::cont::DataSet VectorFieldFilter::DoExecute(const viskore
 
         this->Invoke(worklet, inputArray, baseArray, p0Array, p1Array);
 
-        auto outDataSet = this->CreateResult(inDataSet);
+        const viskores::Id numLines = p0Array.GetNumberOfValues();
+        if (numLines == 0) {
+            return;
+        }
 
-        // Fixed names; Vistle side will look for these.
-        const auto outAssoc =
-            association == Field::Association::Points ? Field::Association::Points : Field::Association::Cells;
-        outDataSet.AddField(Field("p0", outAssoc, p0Array));
-        outDataSet.AddField(Field("p1", outAssoc, p1Array));
+        using CoordType = viskores::Vec<vistle::Scalar, 3>;
+
+        ArrayHandle<CoordType> coords;
+        coords.Allocate(2 * numLines);
+
+        auto indices = viskores::cont::make_ArrayHandleCounting<viskores::Id>(0, 1, 2 * numLines);
+        viskores::worklet::ExpandCoordsWorklet<CoordType> expand;
+        this->Invoke(expand, indices, p0Array, p1Array, coords);
+
+        ArrayHandle<viskores::Id> connectivity;
+        connectivity.Allocate(2 * numLines);
+        auto connPortal = connectivity.WritePortal();
+        for (viskores::Id i = 0; i < numLines; ++i) {
+            connPortal.Set(2 * i, 2 * i);
+            connPortal.Set(2 * i + 1, 2 * i + 1);
+        }
+
+        viskores::cont::CellSetSingleType<> cellSet;
+        const viskores::Id numPoints = 2 * numLines;
+        cellSet.Fill(numPoints, viskores::CELL_SHAPE_LINE, 2, connectivity);
+
+        viskores::cont::DataSet outDataSet;
+        outDataSet.SetCellSet(cellSet);
+        outDataSet.AddCoordinateSystem(CoordinateSystem("coords", coords));
 
         result = outDataSet;
         success = true;

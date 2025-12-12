@@ -12,9 +12,6 @@ public:
 private:
     std::unique_ptr<viskores::filter::Filter> setUpFilter() const override;
 
-    vistle::Object::const_ptr prepareOutputGrid(const viskores::cont::DataSet &dataset,
-                                                const vistle::Object::const_ptr &inputGrid) const override;
-
     vistle::DataBase::ptr prepareOutputField(const viskores::cont::DataSet &dataset,
                                              const vistle::Object::const_ptr &inputGrid,
                                              const vistle::DataBase::const_ptr &inputField,
@@ -24,8 +21,6 @@ private:
     vistle::FloatParameter *m_scale = nullptr;
     vistle::VectorParameter *m_range = nullptr;
     vistle::IntParameter *m_attachment = nullptr;
-    mutable vistle::Index m_numLines = 0;
-    mutable vistle::DataBase::Mapping m_outputMapping = vistle::DataBase::Unspecified;
 };
 
 #endif // VISTLE_VECTORFIELDVTKM_VECTORFIELDVTKM_H
