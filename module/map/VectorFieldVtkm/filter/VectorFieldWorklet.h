@@ -88,6 +88,20 @@ private:
     viskores::IdComponent Attachment; // 0=Bottom, 1=Middle, 2=Top (match Vistle enum values)
 };
 
+struct DuplicateFieldToEndpoints: public viskores::worklet::WorkletMapField {
+    using ControlSignature = void(FieldIn value, WholeArrayOut expanded);
+    using ExecutionSignature = void(_1, _2, WorkIndex);
+    using InputDomain = _1;
+
+    template<typename T, typename PortalOut>
+    VISKORES_EXEC void operator()(const T &val, const PortalOut &portal, viskores::Id idx) const
+    {
+        const viskores::Id out0 = 2 * idx;
+        portal.Set(out0, val);
+        portal.Set(out0 + 1, val);
+    }
+};
+
 } // namespace worklet
 } // namespace viskores
 
