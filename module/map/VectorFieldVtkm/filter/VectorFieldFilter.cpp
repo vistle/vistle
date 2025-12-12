@@ -8,6 +8,7 @@
 #include <viskores/cont/CoordinateSystem.h>
 #include <viskores/cont/Field.h>
 #include <viskores/CellShape.h>
+#include <viskores/filter/field_conversion/worklet/CellAverage.h>
 #include <viskores/worklet/WorkletMapTopology.h>
 
 #include <limits>
@@ -94,7 +95,7 @@ VISKORES_CONT viskores::cont::DataSet VectorFieldFilter::DoExecute(const viskore
             ArrayCopy(coords.GetData(), baseArray);
         } else {
             // Compute cell centers as base positions.
-            viskores::worklet::ComputeCellCenters centers;
+            viskores::worklet::CellAverage centers;
             this->Invoke(centers, cellSet, coords.GetData(), baseArray);
         }
 
