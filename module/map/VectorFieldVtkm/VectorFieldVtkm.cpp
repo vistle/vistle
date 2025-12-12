@@ -2,7 +2,6 @@
 #include "filter/VectorFieldFilter.h"
 
 #include <vistle/core/scalar.h>
-#include <vistle/core/lines.h>
 
 #include <limits>
 
@@ -44,47 +43,4 @@ std::unique_ptr<viskores::filter::Filter> VectorFieldVtkm::setUpFilter() const
     filter->SetAttachmentPoint(static_cast<viskores::IdComponent>(m_attachment->getValue()));
 
     return filter;
-}
-
-vistle::DataBase::ptr VectorFieldVtkm::prepareOutputField(const viskores::cont::DataSet &dataset,
-                                                          const vistle::Object::const_ptr &inputGrid,
-                                                          const vistle::DataBase::const_ptr &inputField,
-                                                          const std::string &fieldName,
-                                                          const vistle::Object::const_ptr &outputGrid) const
-{
-    if (!outputGrid || !inputField) {
-        return vistle::DataBase::ptr();
-    }
-
-    // Prefer a field produced by the Viskores filter if present.
-    if (dataset.HasField(fieldName)) {
-        return VtkmModule::prepareOutputField(dataset, inputGrid, inputField, fieldName, outputGrid);
-    }
-
-    // Fall back to duplicating the incoming field onto each line endpoint.
-    auto lines = vistle::Lines::as(outputGrid);
-    if (!lines) {
-        return vistle::DataBase::ptr();
-    }
-
-    const auto numLines = lines->getNumElements();
-    if (numLines <= 0 || inputField->getSize() < numLines) {
-        return vistle::DataBase::ptr();
-    }
-
-    const vistle::Index outSize = 2 * numLines;
-    vistle::DataBase::ptr mapped = inputField->cloneType();
-    mapped->setSize(outSize);
-
-    for (vistle::Index i = 0; i < numLines; ++i) {
-        mapped->copyEntry(2 * i, inputField, i);
-        mapped->copyEntry(2 * i + 1, inputField, i);
-    }
-
-    mapped->setMeta(inputField->meta());
-    mapped->copyAttributes(inputField);
-    mapped->setGrid(outputGrid);
-    updateMeta(mapped);
-
-    return mapped;
 }

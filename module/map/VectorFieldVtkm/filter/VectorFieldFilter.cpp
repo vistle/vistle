@@ -10,7 +10,6 @@
 #include <viskores/cont/Field.h>
 #include <viskores/CellShape.h>
 #include <viskores/filter/field_conversion/worklet/CellAverage.h>
-#include <viskores/worklet/WorkletMapTopology.h>
 
 #include <limits>
 #include <type_traits>
@@ -155,9 +154,55 @@ VISKORES_CONT viskores::cont::DataSet VectorFieldFilter::DoExecute(const viskore
         return this->CreateResult(inDataSet);
     }
 
+    // Map remaining selected fields to endpoints on-device.
+    const auto &fieldsToPass = this->GetFieldsToPass();
+    const auto activeName = inField.GetName();
+    for (viskores::IdComponent fi = 0; fi < inDataSet.GetNumberOfFields(); ++fi) {
+        auto field = inDataSet.GetField(fi);
+        if (field.GetName() == activeName) {
+            continue; // already handled
+        }
+        if (!fieldsToPass.IsFieldSelected(field)) {
+            continue;
+        }
+        const auto assoc = field.GetAssociation();
+        if (assoc != viskores::cont::Field::Association::Points &&
+            assoc != viskores::cont::Field::Association::Cells) {
+            continue;
+        }
+
+        auto mapField = [&](const auto &array) {
+            using ArrayHandleType = std::decay_t<decltype(array)>;
+            using ValueType = typename ArrayHandleType::ValueType;
+
+            const viskores::Id numValues = array.GetNumberOfValues();
+            const viskores::Id outSize = numValues * 2;
+            if (outSize < 0 || outSize / 2 != numValues) {
+                return;
+            }
+
+            viskores::cont::ArrayHandle<ValueType> expanded;
+            expanded.Allocate(outSize);
+            if (expanded.GetNumberOfValues() != outSize) {
+                return;
+            }
+
+            viskores::worklet::DuplicateFieldToEndpoints duplicate;
+            this->Invoke(duplicate, array, expanded);
+
+            result.AddField(viskores::cont::Field(field.GetName(), viskores::cont::Field::Association::Points,
+                                                  expanded));
+        };
+
+        // Normalize storage so SOA etc. are handled.
+        viskores::cont::UnknownArrayHandle data = field.GetData();
+        viskores::cont::UnknownArrayHandle basic = data.NewInstanceBasic();
+        viskores::cont::ArrayCopy(data, basic);
+        basic.CastAndCallForTypesWithFloatFallback<viskores::TypeListField, VISKORES_DEFAULT_STORAGE_LIST>(mapField);
+    }
+
     return result;
 }
-
 
 } // namespace filter
 } // namespace viskores
