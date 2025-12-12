@@ -5,6 +5,8 @@
 #include <viskores/worklet/WorkletMapTopology.h>
 #include <viskores/Math.h>
 
+#include <vistle/core/scalar.h>
+
 namespace viskores {
 namespace worklet {
 
@@ -29,6 +31,24 @@ struct ComputeCellCenters: public viskores::worklet::WorkletVisitCellsWithPoints
 
         const ValueType denom = static_cast<ValueType>(numPoints > 0 ? numPoints : 1);
         center = accum / denom;
+    }
+};
+
+template<typename CoordType>
+struct ExpandCoordsWorklet: public viskores::worklet::WorkletMapField {
+    using ControlSignature = void(FieldIn idx, WholeArrayIn p0, WholeArrayIn p1, WholeArrayOut coords);
+    using ExecutionSignature = void(_1, _2, _3, _4);
+    using InputDomain = _1;
+
+    template<typename PortalIn0, typename PortalIn1, typename PortalOut>
+    VISKORES_EXEC void operator()(viskores::Id i, const PortalIn0 &p0Portal, const PortalIn1 &p1Portal,
+                                  const PortalOut &coordPortal) const
+    {
+        const viskores::Id src = i >> 1; // i/2
+        const bool useP1 = (i & 1) != 0;
+        const auto v = useP1 ? p1Portal.Get(src) : p0Portal.Get(src);
+        coordPortal.Set(i, CoordType(static_cast<vistle::Scalar>(v[0]), static_cast<vistle::Scalar>(v[1]),
+                                     static_cast<vistle::Scalar>(v[2])));
     }
 };
 
