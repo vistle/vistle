@@ -100,8 +100,8 @@ struct VectorFieldWorklet: public viskores::worklet::WorkletMapField {
         using OutScalar = typename OutVec::ComponentType;
 
         const viskores::Id out0 = 2 * idx;
-        coordsPortal.Set(out0, OutVec(static_cast<OutScalar>(p0[0]), static_cast<OutScalar>(p0[1]),
-                                      static_cast<OutScalar>(p0[2])));
+        coordsPortal.Set(
+            out0, OutVec(static_cast<OutScalar>(p0[0]), static_cast<OutScalar>(p0[1]), static_cast<OutScalar>(p0[2])));
         coordsPortal.Set(out0 + 1, OutVec(static_cast<OutScalar>(p1[0]), static_cast<OutScalar>(p1[1]),
                                           static_cast<OutScalar>(p1[2])));
     }
