@@ -138,6 +138,16 @@ VISKORES_CONT viskores::cont::DataSet VectorFieldFilter::DoExecute(const viskore
         outDataSet.SetCellSet(cellSet);
         outDataSet.AddCoordinateSystem(CoordinateSystem("coords", coords));
 
+        // Duplicate the input field values to each line endpoint on-device so the Vistle module
+        // can consume it without a host-side copy.
+        ArrayHandle<VecType> expandedField;
+        expandedField.Allocate(outCoords);
+        if (expandedField.GetNumberOfValues() == outCoords) {
+            viskores::worklet::DuplicateFieldToEndpoints expandField;
+            this->Invoke(expandField, inputArray, expandedField);
+            outDataSet.AddField(Field(inField.GetName(), Field::Association::Points, expandedField));
+        }
+
         result = outDataSet;
         success = true;
     };
