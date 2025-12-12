@@ -3,6 +3,7 @@
 #include "VectorFieldWorklet.h"
 
 #include <viskores/cont/ArrayHandle.h>
+#include <viskores/cont/ArrayHandleCounting.h>
 #include <viskores/cont/CellSet.h>
 #include <viskores/cont/CellSetSingleType.h>
 #include <viskores/cont/CoordinateSystem.h>
@@ -122,16 +123,11 @@ VISKORES_CONT viskores::cont::DataSet VectorFieldFilter::DoExecute(const viskore
         viskores::worklet::VectorFieldWorklet worklet(MinLength, MaxLength, Scale, Attachment);
         this->Invoke(worklet, inputArray, baseArray, coords);
 
-        ArrayHandle<viskores::Id> connectivity;
-        connectivity.Allocate(2 * numLines);
-        auto connPortal = connectivity.WritePortal();
-        for (viskores::Id i = 0; i < numLines; ++i) {
-            connPortal.Set(2 * i, 2 * i);
-            connPortal.Set(2 * i + 1, 2 * i + 1);
-        }
-
-        viskores::cont::CellSetSingleType<> cellSet;
         const viskores::Id numPoints = 2 * numLines;
+        viskores::cont::ArrayHandle<viskores::Id> connectivity;
+        viskores::cont::ArrayCopy(viskores::cont::make_ArrayHandleCounting<viskores::Id>(0, 1, numPoints),
+                                  connectivity);
+        viskores::cont::CellSetSingleType<> cellSet;
         cellSet.Fill(numPoints, viskores::CELL_SHAPE_LINE, 2, connectivity);
 
         viskores::cont::DataSet outDataSet;
