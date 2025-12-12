@@ -3,7 +3,6 @@
 #include "VectorFieldWorklet.h"
 
 #include <viskores/cont/ArrayHandle.h>
-#include <viskores/cont/ArrayHandleCounting.h>
 #include <viskores/cont/CellSet.h>
 #include <viskores/cont/CellSetSingleType.h>
 #include <viskores/cont/CoordinateSystem.h>
@@ -99,26 +98,28 @@ VISKORES_CONT viskores::cont::DataSet VectorFieldFilter::DoExecute(const viskore
             this->Invoke(centers, cellSet, coords.GetData(), baseArray);
         }
 
-        ArrayHandle<VecType> p0Array;
-        ArrayHandle<VecType> p1Array;
-
-        viskores::worklet::VectorFieldWorklet worklet(MinLength, MaxLength, Scale, Attachment);
-
-        this->Invoke(worklet, inputArray, baseArray, p0Array, p1Array);
-
-        const viskores::Id numLines = p0Array.GetNumberOfValues();
+        const viskores::Id numLines = inputArray.GetNumberOfValues();
         if (numLines == 0) {
             return;
         }
 
         using CoordType = viskores::Vec<vistle::Scalar, 3>;
 
-        ArrayHandle<CoordType> coords;
-        coords.Allocate(2 * numLines);
+        const viskores::Id outCoords = numLines * 2;
+        // Guard against overflow or unexpected allocation size.
+        if (outCoords < 0 || outCoords / 2 != numLines) {
+            return;
+        }
 
-        auto indices = viskores::cont::make_ArrayHandleCounting<viskores::Id>(0, 1, 2 * numLines);
-        viskores::worklet::ExpandCoordsWorklet<CoordType> expand;
-        this->Invoke(expand, indices, p0Array, p1Array, coords);
+        ArrayHandle<CoordType> coords;
+        coords.Allocate(outCoords);
+        if (coords.GetNumberOfValues() != outCoords) {
+            return;
+        }
+
+        // Write both endpoints directly into the output coordinate array to avoid intermediate p0/p1 storage.
+        viskores::worklet::VectorFieldWorklet worklet(MinLength, MaxLength, Scale, Attachment);
+        this->Invoke(worklet, inputArray, baseArray, coords);
 
         ArrayHandle<viskores::Id> connectivity;
         connectivity.Allocate(2 * numLines);
