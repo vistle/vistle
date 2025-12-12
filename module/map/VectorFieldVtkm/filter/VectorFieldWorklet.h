@@ -34,32 +34,13 @@ struct ComputeCellCenters: public viskores::worklet::WorkletVisitCellsWithPoints
     }
 };
 
-template<typename CoordType>
-struct ExpandCoordsWorklet: public viskores::worklet::WorkletMapField {
-    using ControlSignature = void(FieldIn idx, WholeArrayIn p0, WholeArrayIn p1, WholeArrayOut coords);
-    using ExecutionSignature = void(_1, _2, _3, _4);
-    using InputDomain = _1;
-
-    template<typename PortalIn0, typename PortalIn1, typename PortalOut>
-    VISKORES_EXEC void operator()(viskores::Id i, const PortalIn0 &p0Portal, const PortalIn1 &p1Portal,
-                                  const PortalOut &coordPortal) const
-    {
-        const viskores::Id src = i >> 1; // i/2
-        const bool useP1 = (i & 1) != 0;
-        const auto v = useP1 ? p1Portal.Get(src) : p0Portal.Get(src);
-        coordPortal.Set(i, CoordType(static_cast<vistle::Scalar>(v[0]), static_cast<vistle::Scalar>(v[1]),
-                                     static_cast<vistle::Scalar>(v[2])));
-    }
-};
-
 struct VectorFieldWorklet: public viskores::worklet::WorkletMapField {
     using ControlSignature = void(FieldIn vec, // input vectors
                                   FieldIn basePos, // input base positions (points or cell centers)
-                                  FieldOut p0, // output start points
-                                  FieldOut p1 // output end points
+                                  WholeArrayOut coords // output line endpoints interleaved: [p0, p1] per input
     );
 
-    using ExecutionSignature = void(_1, _2, _3, _4);
+    using ExecutionSignature = void(_1, _2, _3, WorkIndex);
     using InputDomain = _1;
 
     VISKORES_CONT
@@ -68,8 +49,9 @@ struct VectorFieldWorklet: public viskores::worklet::WorkletMapField {
     : MinLength(minLen), MaxLength(maxLen), Scale(scale), Attachment(attachmentPoint)
     {}
 
-    template<typename VecType>
-    VISKORES_EXEC void operator()(const VecType &vec, const VecType &base, VecType &outP0, VecType &outP1) const
+    template<typename VecType, typename PortalOut>
+    VISKORES_EXEC void operator()(const VecType &vec, const VecType &base, const PortalOut &coordsPortal,
+                                  viskores::Id idx) const
     {
         VecType v = vec;
 
@@ -93,24 +75,35 @@ struct VectorFieldWorklet: public viskores::worklet::WorkletMapField {
 
         v = v * scale;
 
+        VecType p0;
+        VecType p1;
         switch (Attachment) {
         case 0: // Bottom
-            outP0 = base;
-            outP1 = base + v;
+            p0 = base;
+            p1 = base + v;
             break;
         case 1: // Middle
-            outP0 = base - v * ScalarType(0.5);
-            outP1 = base + v * ScalarType(0.5);
+            p0 = base - v * ScalarType(0.5);
+            p1 = base + v * ScalarType(0.5);
             break;
         case 2: // Top
-            outP0 = base - v;
-            outP1 = base;
+            p0 = base - v;
+            p1 = base;
             break;
         default:
-            outP0 = base;
-            outP1 = base + v;
+            p0 = base;
+            p1 = base + v;
             break;
         }
+
+        using OutVec = typename PortalOut::ValueType;
+        using OutScalar = typename OutVec::ComponentType;
+
+        const viskores::Id out0 = 2 * idx;
+        coordsPortal.Set(out0, OutVec(static_cast<OutScalar>(p0[0]), static_cast<OutScalar>(p0[1]),
+                                      static_cast<OutScalar>(p0[2])));
+        coordsPortal.Set(out0 + 1, OutVec(static_cast<OutScalar>(p1[0]), static_cast<OutScalar>(p1[1]),
+                                          static_cast<OutScalar>(p1[2])));
     }
 
 private:
