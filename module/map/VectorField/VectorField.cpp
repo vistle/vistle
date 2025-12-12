@@ -107,8 +107,7 @@ bool VectorField::compute()
                           (unsigned long)numCoords, (unsigned long)data->getSize());
                 return true;
             }
-
-            mapped = data->cloneType();
+            mapped = data->clone();
         }
     }
 
@@ -210,16 +209,8 @@ bool VectorField::compute()
     if (isConnected(*m_gridOut)) {
         addObject(m_gridOut, lines);
     }
-    if (isConnected(*m_dataOut) && mapped) {
-        mapped->setSize(numPoints * 2);
-        for (Index i = 0; i < numPoints; ++i) {
-            Index ii = indexed ? verts[i] : i;
-            mapped->copyEntry(i * 2, data, ii);
-            mapped->copyEntry(i * 2 + 1, data, ii);
-        }
-        mapped->setMeta(data->meta());
-        mapped->copyAttributes(data);
-
+    if (mapped) {
+        mapped->setMapping(DataBase::Element);
         mapped->setGrid(lines);
         updateMeta(mapped);
         addObject(m_dataOut, mapped);
