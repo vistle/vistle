@@ -4,6 +4,7 @@
 #include "scalar.h"
 #include <cmath>
 #include <vistle/util/math.h>
+#include <vistle/util/enum.h>
 #include "vectortypes.h"
 
 #include <eigen3/Eigen/Core>

@@ -5,6 +5,7 @@
 #include "shm.h"
 #include "indexed.h"
 #include "export.h"
+#include <vistle/util/enum.h>
 
 namespace vistle {
 
