@@ -11,13 +11,13 @@ namespace vistle {
 
 NetpbmImage::NetpbmImage(const std::string &name)
 {
-    FILE *m_fp = fopen(name.c_str(), "r");
-    if (!m_fp) {
+    FILE *fp = fopen(name.c_str(), "r");
+    if (!fp) {
         throw vistle::exception("could not open file for reading");
     }
 
     int level = 0;
-    CHECK(1, fscanf(m_fp, "P%d", &level));
+    CHECK(1, fscanf(fp, "P%d", &level));
     switch (level) {
     case 1:
         m_format = PBM;
@@ -30,13 +30,13 @@ NetpbmImage::NetpbmImage(const std::string &name)
         m_format = PPM;
         break;
     default:
-        fclose(m_fp);
+        fclose(fp);
         throw vistle::exception("unsupported format");
     }
 
-    CHECK(2, fscanf(m_fp, "%u %u", &m_width, &m_height));
+    CHECK(2, fscanf(fp, "%u %u", &m_width, &m_height));
     if (m_format != PBM) {
-        CHECK(1, fscanf(m_fp, "%u", &m_highest));
+        CHECK(1, fscanf(fp, "%u", &m_highest));
     }
 
     size_t numpix = m_width * m_height;
@@ -46,7 +46,7 @@ NetpbmImage::NetpbmImage(const std::string &name)
     for (size_t i = 0; i < numpix; ++i) {
         if (m_format == PPM) {
             unsigned r = 0, g = 0, b = 0;
-            CHECK(3, fscanf(m_fp, "%u %u %u", &r, &g, &b));
+            CHECK(3, fscanf(fp, "%u %u %u", &r, &g, &b));
             increaseRange(r);
             increaseRange(g);
             increaseRange(b);
@@ -59,7 +59,7 @@ NetpbmImage::NetpbmImage(const std::string &name)
             m_rgba[i * 4 + 2] = int(bb * 255.99f);
         } else {
             unsigned gray = 0;
-            CHECK(1, fscanf(m_fp, "%u", &gray));
+            CHECK(1, fscanf(fp, "%u", &gray));
             increaseRange(gray);
             m_gray[i] = float(gray) / float(m_highest);
             unsigned g = m_gray[i] * 255.99f;
@@ -72,7 +72,7 @@ NetpbmImage::NetpbmImage(const std::string &name)
 
     m_numwritten = m_width * m_height; // make it complete
 
-    close();
+    fclose(fp);
 }
 
 NetpbmImage::NetpbmImage(const std::string &name, unsigned width, unsigned height, NetpbmImage::Format format,
