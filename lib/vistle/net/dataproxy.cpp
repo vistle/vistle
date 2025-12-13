@@ -7,6 +7,7 @@
 #include <boost/asio/deadline_timer.hpp>
 #include <vistle/util/listenv4v6.h>
 #include <vistle/util/threadname.h>
+#include <vistle/util/enum.h>
 
 #define CERR std::cerr << "DataProxy: "
 

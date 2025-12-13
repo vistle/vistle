@@ -4,6 +4,7 @@
 #include "export.h"
 #include <vistle/core/scalar.h>
 #include <vistle/core/archives_config.h>
+#include <vistle/util/enum.h>
 #include <string>
 #include <vector>
 
