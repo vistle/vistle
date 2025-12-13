@@ -39,9 +39,6 @@ public slots:
     void quitRequested(bool &allowed);
 
     void aboutVistle();
-    void aboutLicense();
-    void about3rdParty();
-    void aboutIcons();
     void aboutQt();
 
 private slots:
@@ -71,8 +68,6 @@ private slots:
     void lockUi(bool locked);
 
 private:
-    void about(const char *title, const char *file);
-
     std::unique_ptr<vistle::VistleConnection> m_vistleConnection;
     std::unique_ptr<vistle::UserInterface> m_ui;
 #ifdef HAVE_PYTHON

@@ -5,6 +5,7 @@ Vistle is an extensible software environment that integrates simulations on supe
 It is developed at [HLRS](https://hlrs.de) since 2012.
 Funding has been provided by the projects [CRESTA](http://www.cresta-project.eu), [bwVisu](https://www.hlrs.de/projects/detail/bwvisu), [EXCELLERAT](https://www.hlrs.de/projects/detail/excellerat), [KoLabBW](https://www.kolabbw.hlrs.de/), and [CEEC](https://ceec-coe.eu).
 
-Source code is available on [GitHub](https://github.com/vistle/vistle) and licensed under [LGPL-2.1](LICENSE.txt),
-except for code provided by [3rd parties](3rd-party.txt).
+Source code is available on [GitHub](https://github.com/vistle/vistle) and licensed under [LGPL-2.1](vistle://about/license) or later,
+except for code provided by [3rd parties](vistle://about/3rdparty).
+
 You can find more information on Vistle on its website [vistle.io](https://vistle.io).
