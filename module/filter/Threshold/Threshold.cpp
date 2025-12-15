@@ -315,17 +315,29 @@ bool Threshold::compute(const std::shared_ptr<BlockTask> &task) const
                 *el = cidx;
                 ++el;
 
-                const Index begin = iel[e], end = iel[e + 1];
-                for (Index i = begin; i < end; ++i) {
-                    cl[cidx] = icl[i];
-                    ++cidx;
-                }
-                if (tl) {
-                    if (itl)
-                        *tl = itl[e];
-                    else
+                if (iel) {
+                    const Index begin = iel[e], end = iel[e + 1];
+                    for (Index i = begin; i < end; ++i) {
+                        cl[cidx] = icl[i];
+                        ++cidx;
+                    }
+                    if (tl) {
+                        if (itl)
+                            *tl = itl[e];
+                        else
+                            *tl = UnstructuredGrid::HEXAHEDRON;
+                        ++tl;
+                    }
+                } else {
+                    const auto vert = grid_in->cellVertices(e);
+                    for (const auto v: vert) {
+                        cl[cidx] = v;
+                        ++cidx;
+                    }
+                    if (tl) {
                         *tl = UnstructuredGrid::HEXAHEDRON;
-                    ++tl;
+                        ++tl;
+                    }
                 }
 
                 *el = cidx;
