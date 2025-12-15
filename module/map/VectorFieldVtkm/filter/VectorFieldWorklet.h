@@ -30,30 +30,46 @@ struct VectorFieldWorklet: public viskores::worklet::WorkletMapField {
     {
         VecType v = vec;
 
-        const auto length = viskores::Magnitude(v);
+        auto length = viskores::Magnitude(v);
         using ScalarType = decltype(length);
         const ScalarType zero(0);
-        const ScalarType one(1);
 
         const ScalarType minLen = static_cast<ScalarType>(MinLength);
         const ScalarType maxLen = static_cast<ScalarType>(MaxLength);
         const ScalarType scale = static_cast<ScalarType>(Scale);
 
-        // Clamp length and avoid divide-by-zero without branching.
-        const ScalarType clampedLength = viskores::Max(minLen, viskores::Min(length, maxLen));
-        const ScalarType hasLength = static_cast<ScalarType>(length > zero);
-        const ScalarType safeLength = hasLength * length + (one - hasLength);
-        const ScalarType scaleFactor = scale * (hasLength * clampedLength) / safeLength;
+        if (length > zero) {
+            if (length < minLen) {
+                const ScalarType factor = minLen / length;
+                v = v * factor;
+            } else if (length > maxLen) {
+                const ScalarType factor = maxLen / length;
+                v = v * factor;
+            }
+        }
 
-        v = v * scaleFactor;
+        v = v * scale;
 
-        const ScalarType attachment =
-            viskores::Max(ScalarType(0), viskores::Min(static_cast<ScalarType>(Attachment), ScalarType(2)));
-        // attachment: 0=Bottom, 1=Middle, 2=Top -> offset: 0, 0.5, 1
-        const ScalarType offset = attachment * ScalarType(0.5);
-
-        const VecType p0 = base - v * offset;
-        const VecType p1 = base + v * (one - offset);
+        VecType p0;
+        VecType p1;
+        switch (Attachment) {
+        case 0: // Bottom
+            p0 = base;
+            p1 = base + v;
+            break;
+        case 1: // Middle
+            p0 = base - v * ScalarType(0.5);
+            p1 = base + v * ScalarType(0.5);
+            break;
+        case 2: // Top
+            p0 = base - v;
+            p1 = base;
+            break;
+        default:
+            p0 = base;
+            p1 = base + v;
+            break;
+        }
 
         using OutVec = typename PortalOut::ValueType;
         using OutScalar = typename OutVec::ComponentType;
