@@ -169,6 +169,10 @@ VISKORES_CONT viskores::cont::DataSet VectorFieldFilter::DoExecute(const viskore
         if (assoc != viskores::cont::Field::Association::Points && assoc != viskores::cont::Field::Association::Cells) {
             continue;
         }
+        if (assoc != association) {
+            // FIXME try to convert?
+            continue; // different association than active field
+        }
 
         auto mapField = [&](const auto &array) {
             using ArrayHandleType = std::decay_t<decltype(array)>;
