@@ -2,6 +2,7 @@
 #include "filter/VectorFieldFilter.h"
 
 #include <vistle/core/scalar.h>
+#include <vistle/util/enum.h>
 
 #include <limits>
 
@@ -23,7 +24,6 @@ VectorFieldVtkm::VectorFieldVtkm(const std::string &name, int moduleID, mpi::com
     m_attachment = addIntParameter("attachment_point", "where to attach line to carrying point",
                                    static_cast<Integer>(Bottom), Parameter::Choice);
     V_ENUM_SET_CHOICES_SCOPE(m_attachment, AttachmentPoint, );
-
 
     m_range = addVectorParameter("range", "allowed length range (before scaling)", ParamVector(0.0, maxLen));
     setParameterMinimum(m_range, ParamVector(0.0, 0.0));

@@ -2,7 +2,6 @@
 #define VISTLE_VECTORFIELDVTKM_VECTORFIELDVTKM_H
 
 #include <vistle/vtkm/vtkm_module.h>
-#include <vistle/util/enum.h>
 
 
 class VectorFieldVtkm: public vistle::VtkmModule {
