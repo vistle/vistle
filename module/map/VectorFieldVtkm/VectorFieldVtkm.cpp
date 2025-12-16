@@ -4,15 +4,10 @@
 #include <vistle/core/scalar.h>
 #include <vistle/core/lines.h>
 #include <vistle/core/vec.h>
-#include <vistle/core/triangles.h>
-#include <vistle/core/quads.h>
-#include <vistle/core/indexed.h>
 
 #include <vistle/vtkm/convert.h>
 
-#include <algorithm>
 #include <limits>
-#include <vector>
 
 MODULE_MAIN(VectorFieldVtkm)
 
@@ -36,9 +31,6 @@ VectorFieldVtkm::VectorFieldVtkm(const std::string &name, int moduleID, mpi::com
 
     m_range = addVectorParameter("range", "allowed length range (before scaling)", ParamVector(0.0, maxLen));
     setParameterMinimum(m_range, ParamVector(0.0, 0.0));
-
-    m_allCoords =
-        addIntParameter("all_coordinates", "include all or only referenced coordinates", 0, Parameter::Boolean);
 }
 
 std::unique_ptr<viskores::filter::Filter> VectorFieldVtkm::setUpFilter() const
@@ -96,44 +88,8 @@ vistle::Object::const_ptr VectorFieldVtkm::prepareOutputGrid(const viskores::con
         return vistle::Object::const_ptr();
     }
 
-    m_selectedVertices.clear();
-    m_useSelectedVertices = false;
-
-    auto collectReferencedVertices = [&](const Object::const_ptr &grid) -> Index {
-        Index nconn = 0;
-        const Index *cl = nullptr;
-        if (auto tri = Triangles::as(grid)) {
-            cl = tri->cl().data();
-            nconn = tri->cl().size();
-        } else if (auto quads = Quads::as(grid)) {
-            cl = quads->cl().data();
-            nconn = quads->cl().size();
-        } else if (auto indexed = Indexed::as(grid)) {
-            cl = indexed->cl().data();
-            nconn = indexed->cl().size();
-        }
-
-        if (!cl || nconn == 0)
-            return 0;
-
-        m_selectedVertices.reserve(nconn);
-        std::copy(cl, cl + nconn, std::back_inserter(m_selectedVertices));
-        std::sort(m_selectedVertices.begin(), m_selectedVertices.end());
-        auto end = std::unique(m_selectedVertices.begin(), m_selectedVertices.end());
-        m_selectedVertices.resize(end - m_selectedVertices.begin());
-        return m_selectedVertices.size();
-    };
-
-    Index numPoints = n;
-    if (m_outputMapping == DataBase::Vertex && !m_allCoords->getValue() && inputGrid) {
-        if (auto referenced = collectReferencedVertices(inputGrid)) {
-            numPoints = referenced;
-            m_useSelectedVertices = true;
-        }
-    }
-
     // One line per input point/cell -> 2 vertices per line
-    Lines::ptr lines(new Lines(numPoints, 2 * numPoints, 2 * numPoints));
+    Lines::ptr lines(new Lines(n, 2 * n, 2 * n));
 
     auto lx = lines->x().data();
     auto ly = lines->y().data();
@@ -150,18 +106,17 @@ vistle::Object::const_ptr VectorFieldVtkm::prepareOutputGrid(const viskores::con
 
     el[0] = 0;
 
-    for (Index i = 0; i < numPoints; ++i) {
-        const Index sourceIdx = m_useSelectedVertices ? m_selectedVertices[i] : i;
+    for (Index i = 0; i < n; ++i) {
         const Index i0 = 2 * i;
         const Index i1 = 2 * i + 1;
 
-        lx[i0] = p0x[sourceIdx];
-        ly[i0] = p0y[sourceIdx];
-        lz[i0] = p0z[sourceIdx];
+        lx[i0] = p0x[i];
+        ly[i0] = p0y[i];
+        lz[i0] = p0z[i];
 
-        lx[i1] = p1x[sourceIdx];
-        ly[i1] = p1y[sourceIdx];
-        lz[i1] = p1z[sourceIdx];
+        lx[i1] = p1x[i];
+        ly[i1] = p1y[i];
+        lz[i1] = p1z[i];
 
         cl[i0] = i0;
         cl[i1] = i1;
@@ -177,7 +132,7 @@ vistle::Object::const_ptr VectorFieldVtkm::prepareOutputGrid(const viskores::con
 
     updateMeta(lines);
 
-    m_numLines = numPoints;
+    m_numLines = n;
     return lines;
 }
 
@@ -200,9 +155,6 @@ vistle::DataBase::ptr VectorFieldVtkm::prepareOutputField(const viskores::cont::
     if (inputField->getSize() < m_numLines) {
         return vistle::DataBase::ptr();
     }
-    if (m_useSelectedVertices && !m_selectedVertices.empty() && m_selectedVertices.back() >= inputField->getSize()) {
-        return vistle::DataBase::ptr();
-    }
 
     const vistle::Index n = m_numLines; // number of original points / vectors
     const vistle::Index outSize = 2 * n; // one value per line endpoint
@@ -211,11 +163,8 @@ vistle::DataBase::ptr VectorFieldVtkm::prepareOutputField(const viskores::cont::
     mapped->setSize(outSize);
 
     for (vistle::Index i = 0; i < n; ++i) {
-        const vistle::Index sourceIdx =
-            (m_outputMapping == vistle::DataBase::Vertex && m_useSelectedVertices) ? m_selectedVertices[i] : i;
-
-        mapped->copyEntry(2 * i, inputField, sourceIdx);
-        mapped->copyEntry(2 * i + 1, inputField, sourceIdx);
+        mapped->copyEntry(2 * i, inputField, i);
+        mapped->copyEntry(2 * i + 1, inputField, i);
     }
 
     mapped->setMeta(inputField->meta());
