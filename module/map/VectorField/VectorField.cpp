@@ -38,8 +38,6 @@ VectorField::VectorField(const std::string &name, int moduleID, mpi::communicato
     V_ENUM_SET_CHOICES(m_attachmentPoint, AttachmentPoint);
     m_range = addVectorParameter("range", "allowed length range (before scaling)", ParamVector(0., MaxLength));
     setParameterMinimum(m_range, ParamVector(0., 0.));
-    m_allCoordinates =
-        addIntParameter("all_coordinates", "include all or only referenced coordinates", false, Parameter::Boolean);
 }
 
 bool VectorField::compute()
@@ -114,7 +112,7 @@ bool VectorField::compute()
     bool indexed = false;
     Index numPoints = numCoords;
     std::vector<Index> verts;
-    if (!perElement && !m_allCoordinates->getValue()) {
+    if (!perElement) {
         Index nconn = 0;
         const Index *cl = nullptr;
         if (auto tri = Triangles::as(split.geometry)) {

@@ -97,8 +97,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(ui->actionAbout, SIGNAL(triggered()), SIGNAL(aboutVistle()));
     ui->actionAbout->setMenuRole(QAction::AboutRole);
-    connect(ui->actionAbout_License, SIGNAL(triggered()), SIGNAL(aboutLicense()));
-    connect(ui->actionAbout_Icons, SIGNAL(triggered()), SIGNAL(aboutIcons()));
     connect(ui->actionAbout_Qt, SIGNAL(triggered()), SIGNAL(aboutQt()));
     ui->actionAbout_Qt->setMenuRole(QAction::AboutQtRole);
 

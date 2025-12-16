@@ -133,8 +133,6 @@
      <string>Help</string>
     </property>
     <addaction name="actionAbout"/>
-    <addaction name="actionAbout_License"/>
-    <addaction name="actionAbout_Icons"/>
     <addaction name="actionAbout_Qt"/>
    </widget>
    <widget class="QMenu" name="menuModules">
@@ -445,28 +443,6 @@
    </property>
    <property name="menuRole">
     <enum>QAction::MenuRole::AboutRole</enum>
-   </property>
-  </action>
-  <action name="actionAbout_License">
-   <property name="icon">
-    <iconset theme="QIcon::ThemeIcon::HelpAbout"/>
-   </property>
-   <property name="text">
-    <string>License</string>
-   </property>
-   <property name="menuRole">
-    <enum>QAction::MenuRole::ApplicationSpecificRole</enum>
-   </property>
-  </action>
-  <action name="actionAbout_Icons">
-   <property name="icon">
-    <iconset theme="QIcon::ThemeIcon::HelpAbout"/>
-   </property>
-   <property name="text">
-    <string>About Icons</string>
-   </property>
-   <property name="menuRole">
-    <enum>QAction::MenuRole::ApplicationSpecificRole</enum>
    </property>
   </action>
   <action name="actionAbout_Qt">

@@ -77,8 +77,6 @@ signals:
     void zoomAll();
     void aboutQt();
     void aboutVistle();
-    void aboutLicense();
-    void aboutIcons();
     void snapToGridChanged(bool snap);
 
 protected:

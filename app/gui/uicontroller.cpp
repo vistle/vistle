@@ -163,8 +163,6 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
     connect(m_mainWindow, SIGNAL(zoomAll()), m_mainWindow->dataFlowView(), SLOT(zoomAll()));
     connect(m_mainWindow, SIGNAL(aboutQt()), SLOT(aboutQt()));
     connect(m_mainWindow, SIGNAL(aboutVistle()), SLOT(aboutVistle()));
-    connect(m_mainWindow, SIGNAL(aboutLicense()), SLOT(aboutLicense()));
-    connect(m_mainWindow, SIGNAL(aboutIcons()), SLOT(aboutIcons()));
     connect(m_mainWindow, SIGNAL(snapToGridChanged(bool)), m_mainWindow->dataFlowView(), SLOT(snapToGridChanged(bool)));
 
     connect(m_scene, SIGNAL(selectionChanged()), SLOT(moduleSelectionChanged()));
@@ -684,34 +682,12 @@ void UiController::setModified(bool modified)
     m_modified = modified;
 }
 
-void UiController::about(const char *title, const char *filename)
+void UiController::aboutVistle()
 {
     QDialog *aboutDialog = new QDialog;
     ::Ui::AboutDialog *ui = new ::Ui::AboutDialog;
     ui->setupUi(aboutDialog);
-    aboutDialog->setWindowTitle(title);
-
-    QFile file(filename);
-    if (file.open(QIODevice::ReadOnly)) {
-        QString data(file.readAll());
-        if (QString(filename).endsWith(".md")) {
-#if QT_VERSION >= 0x051400
-            ui->textEdit->setMarkdown(data);
-#else
-            ui->textEdit->setPlainText(data);
-#endif
-        } else {
-            ui->textEdit->setPlainText(data);
-        }
-    }
-    ui->textEdit->setSearchPaths(QStringList{":/aboutData"});
-    ui->textEdit->setWordWrapMode(QTextOption::WordWrap);
-#if 0
-    connect(ui->textEdit, &QTextBrowser::sourceChanged, [&ui](const QUrl &url) {
-        bool isText = url.path().endsWith(".txt");
-        ui->textEdit->setWordWrapMode(isText ? QTextOption::NoWrap : QTextOption::WordWrap);
-    });
-#endif
+    aboutDialog->setWindowTitle("About Vistle");
 
     QString text =
         QString("Welcome to scientific visualization with <a href='https://vistle.io/'>Vistle</a> version %1!")
@@ -722,22 +698,55 @@ void UiController::about(const char *title, const char *filename)
     ui->label->setTextInteractionFlags(Qt::TextBrowserInteraction | Qt::LinksAccessibleByMouse);
     ui->label->setOpenExternalLinks(true);
 
+    std::vector<std::pair<QTextBrowser *, const char *>> edits;
+    edits.emplace_back(ui->vistleEdit, ":/aboutData/Vistle.md");
+    edits.emplace_back(ui->licenseEdit, ":/aboutData/LICENSE.txt");
+    edits.emplace_back(ui->iconsEdit, ":/aboutData/icons.md");
+    edits.emplace_back(ui->thirdEdit, ":/aboutData/3rd-party.txt");
+
+    for (auto [edit, source]: edits) {
+        edit->setSearchPaths(QStringList{":/aboutData"});
+        edit->setWordWrapMode(QTextOption::WordWrap);
+        edit->setTextInteractionFlags(Qt::TextBrowserInteraction | Qt::LinksAccessibleByMouse);
+        edit->setOpenLinks(false);
+
+        QFile file(source);
+        if (file.open(QIODevice::ReadOnly)) {
+            QString data(file.readAll());
+            if (QString(source).endsWith(".md")) {
+#if QT_VERSION >= 0x051400
+                edit->setMarkdown(data);
+#else
+                edit->setPlainText(data);
+#endif
+            } else {
+                edit->setPlainText(data);
+            }
+        }
+
+        connect(edit, &QTextBrowser::anchorClicked, [ui](const QUrl &url) {
+            QString link = url.toString();
+            if (url.scheme() == "vistle" && url.host() == "about") {
+                int idx = -1;
+                if (url.path() == "/license") {
+                    idx = ui->tabWidget->indexOf(ui->license);
+                } else if (url.path() == "/3rdparty") {
+                    idx = ui->tabWidget->indexOf(ui->third);
+                } else if (url.path() == "/icons") {
+                    idx = ui->tabWidget->indexOf(ui->icons);
+                } else {
+                    idx = ui->tabWidget->indexOf(ui->vistle);
+                }
+                if (idx >= 0) {
+                    ui->tabWidget->setCurrentIndex(idx);
+                }
+            } else {
+                QDesktopServices::openUrl(url);
+            }
+        });
+    }
+
     aboutDialog->exec();
-}
-
-void UiController::aboutVistle()
-{
-    about("About Vistle", ":/aboutData/Vistle.md");
-}
-
-void UiController::aboutLicense()
-{
-    about("License", ":/aboutData/LICENSE.txt");
-}
-
-void UiController::aboutIcons()
-{
-    about("Font Awesome Icons", ":/aboutData/icons.md");
 }
 
 void UiController::aboutQt()
