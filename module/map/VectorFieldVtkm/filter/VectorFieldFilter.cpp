@@ -87,40 +87,40 @@ VISKORES_CONT viskores::cont::DataSet VectorFieldFilter::DoExecute(const viskore
     auto resolveType = [&](const auto &inputArray) {
         using ArrayHandleType = std::decay_t<decltype(inputArray)>;
         using VecType = typename ArrayHandleType::ValueType;
-
-        ArrayHandle<VecType> baseArray;
-
-        if (association == Field::Association::Points) {
-            // Copy coordinates into a simple VecType array, independent of storage.
-            ArrayCopy(coords.GetData(), baseArray);
-        } else {
-            // Compute cell centers as base positions.
-            viskores::worklet::CellAverage centers;
-            this->Invoke(centers, cellSet, coords.GetData(), baseArray);
-        }
+        using CoordType = viskores::Vec<vistle::Scalar, 3>;
 
         const viskores::Id numLines = inputArray.GetNumberOfValues();
         if (numLines == 0) {
             return;
         }
 
-        using CoordType = viskores::Vec<vistle::Scalar, 3>;
-
-        const viskores::Id outCoords = numLines * 2;
+        const viskores::Id numOutCoords = numLines * 2;
         // Guard against overflow or unexpected allocation size.
-        if (outCoords < 0 || outCoords / 2 != numLines) {
+        if (numOutCoords < 0 || numOutCoords / 2 != numLines) {
             return;
         }
 
-        ArrayHandle<CoordType> coords;
-        coords.Allocate(outCoords);
-        if (coords.GetNumberOfValues() != outCoords) {
+        ArrayHandle<CoordType> outCoords;
+        outCoords.Allocate(numOutCoords);
+        if (outCoords.GetNumberOfValues() != numOutCoords) {
+            return;
+        }
+
+        ArrayHandle<VecType> baseArray;
+        if (association == Field::Association::Points) {
+            // Copy coordinates into a simple VecType array, independent of storage.
+            ArrayCopy(coords.GetData(), baseArray);
+        } else if (association == Field::Association::Cells) {
+            // Compute cell centers as base positions.
+            viskores::worklet::CellAverage centers;
+            this->Invoke(centers, cellSet, coords.GetData(), baseArray);
+        } else {
             return;
         }
 
         // Write both endpoints directly into the output coordinate array to avoid intermediate p0/p1 storage.
         viskores::worklet::VectorFieldWorklet worklet(MinLength, MaxLength, Scale, Attachment);
-        this->Invoke(worklet, inputArray, baseArray, coords);
+        this->Invoke(worklet, inputArray, baseArray, outCoords);
 
         const viskores::Id numPoints = 2 * numLines;
         viskores::cont::ArrayHandle<viskores::Id> connectivity;
@@ -131,13 +131,13 @@ VISKORES_CONT viskores::cont::DataSet VectorFieldFilter::DoExecute(const viskore
 
         viskores::cont::DataSet outDataSet;
         outDataSet.SetCellSet(cellSet);
-        outDataSet.AddCoordinateSystem(CoordinateSystem("coords", coords));
+        outDataSet.AddCoordinateSystem(CoordinateSystem("coords", outCoords));
 
         // Duplicate the input field values to each line endpoint on-device so the Vistle module
         // can consume it without a host-side copy.
         ArrayHandle<VecType> expandedField;
-        expandedField.Allocate(outCoords);
-        if (expandedField.GetNumberOfValues() == outCoords) {
+        expandedField.Allocate(numOutCoords);
+        if (expandedField.GetNumberOfValues() == numOutCoords) {
             viskores::worklet::DuplicateFieldToEndpoints expandField;
             this->Invoke(expandField, inputArray, expandedField);
             outDataSet.AddField(Field(inField.GetName(), Field::Association::Points, expandedField));
