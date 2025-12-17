@@ -283,6 +283,8 @@ set(EIGEN_DEFINITIONS "-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=int" "-DEIGEN_DONT_PARAL
 target_compile_definitions(vistle_eigen INTERFACE ${EIGEN_DEFINITIONS})
 #set(EIGEN3_INCLUDE_PATH "${PROJECT_SOURCE_DIR}/lib/3rdparty")
 target_include_directories(vistle_eigen SYSTEM BEFORE INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> $<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}>)
+target_include_directories(vistle_eigen SYSTEM BEFORE INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>/eigen3
+                                                                $<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}>/eigen3)
 # Export as title case Eigen
 set_target_properties(vistle_eigen PROPERTIES EXPORT_NAME VistleEigen)
 vistle_export_library(vistle_eigen)
