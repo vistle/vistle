@@ -77,7 +77,7 @@
 	url = https://github.com/ben-strasser/fast-cpp-csv-parser.git
 [submodule "lib/3rdparty/BigWhoop"]
 	path = lib/3rdparty/BigWhoop
-	url = https://github.com/ptvogler/BigWhoop.git
+	url = https://github.com/aumuell/BigWhoop.git
 [submodule "module/map/IsoSurface/cccl"]
 	path = module/map/IsoSurface/cccl
 	url = https://github.com/NVIDIA/cccl
