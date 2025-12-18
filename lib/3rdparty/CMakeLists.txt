@@ -79,19 +79,11 @@ endif()
 #
 # BigWhoop
 #
-include_directories(${BIGWHOOP_INCLUDE_DIRS})
 add_subdirectory(BigWhoop)
 
 # enable POSIX features required by BigWhoop
 target_compile_definitions(bwclib PRIVATE _POSIX_C_SOURCE=200809L)
 set_target_properties(bwclib PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
-# we must call this command (taken from BigWhoop/src/library/CMakeLists.txt)
-# to generate the public header file for BigWhoop
-execute_process(
-    COMMAND python3 public_header.py ${PYTHON_ARGUMENT}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/BigWhoop
-    RESULT_VARIABLE result
-    ERROR_VARIABLE error_output)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     vistle_find_package(OpenMP)
