@@ -15,4 +15,3 @@ target_include_directories(LibSimController PRIVATE $<BUILD_INTERFACE:${PROJECT_
 if(NOT VISTLE_MULTI_PROCESS)
     target_link_libraries(LibSimController PRIVATE vistle_libsim_engine_interface)
 endif()
-vistle_install_docs(README.md)
