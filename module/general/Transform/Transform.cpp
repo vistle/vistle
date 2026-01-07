@@ -44,6 +44,8 @@ Transform::Transform(const std::string &name, int moduleID, mpi::communicator co
         data_in[i] = createInputPort(in, "input data");
         data_out[i] = createOutputPort(out, "output data");
         linkPorts(data_in[i], data_out[i]);
+        if (i > 0)
+            setPortOptional(data_in[i], true);
     }
     p_translate = addVectorParameter("translate", "translation vector", ParamVector(0., 0., 0.));
     p_scale = addVectorParameter("scale", "scaling factors", ParamVector(1., 1., 1.));
