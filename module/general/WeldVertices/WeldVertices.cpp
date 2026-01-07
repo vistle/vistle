@@ -13,7 +13,6 @@ class WeldVertices: public vistle::Module {
 
 public:
     WeldVertices(const std::string &name, int moduleID, mpi::communicator comm);
-    ~WeldVertices();
 
 private:
     bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
@@ -33,9 +32,6 @@ WeldVertices::WeldVertices(const std::string &name, int moduleID, mpi::communica
             setPortOptional(m_in[i], true);
     }
 }
-
-WeldVertices::~WeldVertices()
-{}
 
 struct Point {
     Point(Scalar x, Scalar y, Scalar z, Index v, const std::vector<const Scalar *> &floats)
