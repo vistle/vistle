@@ -672,7 +672,8 @@ bool Hub::init(int argc, char *argv[])
                             break;
                         }
                     }
-                    dir = dir.parent_path();
+                    if (!file.empty())
+                        break;
                 }
                 if (file.empty()) {
                     CERR << "could not locate workflow file " << wf << " in " << m_dir->prefix() << " and its parents"
