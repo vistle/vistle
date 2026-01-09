@@ -183,7 +183,7 @@ Source Code Organization
     - `module/develop`: various debugging aids
     - `module/render`: renderer modules transforming geometry into pixels
         - `module/render/DisCOVERay`: a parallel remote hybrid rendering server based on [Embree](https://www.embree.org) (CPU ray-casting)
-        - `module/render/OsgRenderer`: a parallel remote hybrid rendering server based on OpenSceneGraph (OpenGL)
+        - `module/render/ANARemote`: a parallel remote hybrid rendering server based on ANARI (various backends)
         - `module/render/COVER`: wrap OpenCOVER as a render module
             - `module/render/COVER/plugin`: plug-ins for OpenCOVER, e.g. for connecting to Vistle
                 - `module/render/COVER/plugin/RhrClient`: OpenCOVER remote hybrid rendering client plugin

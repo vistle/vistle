@@ -8,7 +8,7 @@ PrintAttributes = "PrintObjects"
 CellSelect = "SelectCells"
 
 ["replace"]
-renderer = [ "COVER", "BlenderRenderer", "ANARemote", "DisCOVERay", "OsgRenderer" ]
+renderer = [ "COVER", "BlenderRenderer", "ANARemote", "DisCOVERay" ]
 select = [ "Threshold", "CellSelect" ]
 color = [ "Color", "ColorRandom" ]
 clip = [ "CutGeometry", "ClipVtkm" ]
