@@ -21,7 +21,7 @@ SplitDimensions::SplitDimensions(const std::string &name, int moduleID, mpi::com
     p_out[3] = createOutputPort("data_out_3d", "3-dimensional elements of input");
     p_out[2] = createOutputPort("data_out_2d", "2-dimensional elements of input (triangles and quads)");
     p_out[1] = createOutputPort("data_out_1d", "1-dimensional elements of input (bars)");
-    p_out[0] = createOutputPort("data_out_0d", "3-dimensional elements of input (points)");
+    p_out[0] = createOutputPort("data_out_0d", "0-dimensional elements of input (points)");
     for (int i = 0; i < 4; ++i) {
         linkPorts(p_in, p_out[i]);
     }
@@ -69,7 +69,7 @@ bool SplitDimensions::compute(const std::shared_ptr<BlockTask> &task) const
     }
 
     vistle::Indexed::ptr out[4];
-    vistle::Lines::ptr out1d(new vistle::Lines(0, 0, 0));
+    vistle::Lines::ptr out1d;
     shm<Index>::array *ocl1 = nullptr, *oel1 = nullptr;
     if (isConnected(*p_out[1])) {
         out1d.reset(new vistle::Lines(0, 0, 0));
@@ -78,7 +78,7 @@ bool SplitDimensions::compute(const std::shared_ptr<BlockTask> &task) const
         oel1 = &out1d->el();
     }
 
-    vistle::Polygons::ptr out2d(new vistle::Polygons(0, 0, 0));
+    vistle::Polygons::ptr out2d;
     shm<Index>::array *ocl2 = nullptr, *oel2 = nullptr;
     if (isConnected(*p_out[2])) {
         out2d.reset(new vistle::Polygons(0, 0, 0));
@@ -87,7 +87,7 @@ bool SplitDimensions::compute(const std::shared_ptr<BlockTask> &task) const
         oel2 = &out2d->el();
     }
 
-    vistle::UnstructuredGrid::ptr out3d(new vistle::UnstructuredGrid(0, 0, 0));
+    vistle::UnstructuredGrid::ptr out3d;
     shm<Index>::array *ocl3 = nullptr, *oel3 = nullptr;
     shm<unsigned char>::array *otl3 = nullptr;
     if (isConnected(*p_out[3])) {
@@ -116,6 +116,9 @@ bool SplitDimensions::compute(const std::shared_ptr<BlockTask> &task) const
                 if (out0d) {
                     Index v = icl[begin];
                     vm[0][v] = npoint++;
+                    out0d->d()->x[0]->push_back(ugrid->x()[v]);
+                    out0d->d()->x[1]->push_back(ugrid->y()[v]);
+                    out0d->d()->x[2]->push_back(ugrid->y()[v]);
                 }
                 break;
             case cell::BAR:
@@ -155,6 +158,13 @@ bool SplitDimensions::compute(const std::shared_ptr<BlockTask> &task) const
     }
 
     if (ugrid) {
+        if (out0d) {
+            renumberVertices(ugrid, out0d, vm[0]);
+            std::cerr << "remapped from " << ugrid->getNumCorners() << " to " << vm[0].size() << " vertices"
+                      << std::endl;
+            out0d->setMeta(grid_in->meta());
+            out0d->copyAttributes(grid_in);
+        }
         for (int d = 1; d <= 3; ++d) {
             if (out[d]) {
                 renumberVertices(ugrid, out[d], vm[d]);
@@ -178,12 +188,17 @@ bool SplitDimensions::compute(const std::shared_ptr<BlockTask> &task) const
 #endif
     }
 
-    for (int d = 1; d <= 3; ++d) {
-        if (!out[d])
+    Object::ptr obj;
+    for (int d = 0; d <= 3; ++d) {
+        if (d == 0)
+            obj = out0d;
+        else
+            obj = out[d];
+        if (!obj)
             continue;
         if (!data) {
-            updateMeta(out[d]);
-            task->addObject(p_out[d], out[d]);
+            updateMeta(obj);
+            task->addObject(p_out[d], obj);
         } else if (vm[d].empty()) {
             DataBase::ptr dout = data->clone();
             dout->setGrid(out[d]);
@@ -193,7 +208,7 @@ bool SplitDimensions::compute(const std::shared_ptr<BlockTask> &task) const
             DataBase::ptr data_obj_out = remapData(data, vm[d]);
 
             if (data_obj_out) {
-                data_obj_out->setGrid(out[d]);
+                data_obj_out->setGrid(obj);
                 data_obj_out->setMeta(data->meta());
                 data_obj_out->copyAttributes(data);
                 updateMeta(data_obj_out);
@@ -269,6 +284,28 @@ Quads::ptr SplitDimensions::createSurface(vistle::StructuredGridBase::const_ptr 
     }
 
     return m_grid_out;
+}
+
+void SplitDimensions::renumberVertices(Coords::const_ptr coords, Points::ptr points, VerticesMapping &vm) const
+{
+    const Scalar *xcoord = coords->x().data();
+    const Scalar *ycoord = coords->y().data();
+    const Scalar *zcoord = coords->z().data();
+    auto &px = points->x();
+    auto &py = points->y();
+    auto &pz = points->z();
+    auto c = vm.size();
+    px.resize(c);
+    py.resize(c);
+    pz.resize(c);
+
+    for (const auto &v: vm) {
+        Index f = v.first;
+        Index s = v.second;
+        px[s] = xcoord[f];
+        py[s] = ycoord[f];
+        pz[s] = zcoord[f];
+    }
 }
 
 void SplitDimensions::renumberVertices(Coords::const_ptr coords, Indexed::ptr poly, VerticesMapping &vm) const
