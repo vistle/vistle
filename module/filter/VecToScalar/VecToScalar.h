@@ -12,9 +12,6 @@ public:
 private:
     bool compute() override;
     vistle::IntParameter *m_caseParam;
-    vistle::Vec<vistle::Scalar>::ptr extract(vistle::Vec<vistle::Scalar, 3>::const_ptr &data,
-                                             const vistle::Index &coord);
-    vistle::Vec<vistle::Scalar>::ptr calculateAbsolute(vistle::Vec<vistle::Scalar, 3>::const_ptr &data);
 };
 
 #endif
