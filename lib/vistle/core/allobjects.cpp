@@ -32,7 +32,7 @@ namespace vistle {
 
 #define REGISTER_VEC_TYPE(t) \
     ObjectTypeRegistry::registerType<Vec<t, 1>>(Vec<t, 1>::type()); \
-    ObjectTypeRegistry::registerType<Vec<t, 1>>(Vec<t, 2>::type()); \
+    ObjectTypeRegistry::registerType<Vec<t, 2>>(Vec<t, 2>::type()); \
     ObjectTypeRegistry::registerType<Vec<t, 3>>(Vec<t, 3>::type());
 
 #define REGISTER_CELLTREE_TYPE(ct) ObjectTypeRegistry::registerType<ct>(ct::type());
