@@ -63,7 +63,7 @@ bool SplitDimensions::compute(const std::shared_ptr<BlockTask> &task) const
         return true;
     }
 
-    vistle::Points::ptr out0d(new vistle::Points(size_t(0)));
+    vistle::Points::ptr out0d;
     if (isConnected(*p_out[0])) {
         out0d.reset(new vistle::Points(size_t(0)));
     }
@@ -113,12 +113,12 @@ bool SplitDimensions::compute(const std::shared_ptr<BlockTask> &task) const
 
             switch (type) {
             case cell::POINT:
-                if (out0d) {
+                if (out0d && !ugrid->isGhost(e)) {
                     Index v = icl[begin];
                     vm[0][v] = npoint++;
                     out0d->d()->x[0]->push_back(ugrid->x()[v]);
                     out0d->d()->x[1]->push_back(ugrid->y()[v]);
-                    out0d->d()->x[2]->push_back(ugrid->y()[v]);
+                    out0d->d()->x[2]->push_back(ugrid->z()[v]);
                 }
                 break;
             case cell::BAR:
@@ -188,6 +188,7 @@ bool SplitDimensions::compute(const std::shared_ptr<BlockTask> &task) const
 #endif
     }
 
+    const bool reuseCoord = p_reuse->getValue();
     Object::ptr obj;
     for (int d = 0; d <= 3; ++d) {
         if (d == 0)
@@ -196,10 +197,10 @@ bool SplitDimensions::compute(const std::shared_ptr<BlockTask> &task) const
             obj = out[d];
         if (!obj)
             continue;
+        updateMeta(obj);
         if (!data) {
-            updateMeta(obj);
             task->addObject(p_out[d], obj);
-        } else if (vm[d].empty()) {
+        } else if (reuseCoord && vm[d].empty()) {
             DataBase::ptr dout = data->clone();
             dout->setGrid(out[d]);
             updateMeta(dout);

@@ -237,13 +237,17 @@ struct AddField {
     void operator()(S)
     {
         typedef Vec<S, 1> V1;
-        //typedef Vec<S, 2> V2;
+        typedef Vec<S, 2> V2;
         typedef Vec<S, 3> V3;
         //typedef Vec<S, 4> V4;
 
         viskores::cont::UnknownArrayHandle ah;
         if (auto in = V1::as(object)) {
             ah = in->x().handle();
+        } else if (auto in = V2::as(object)) {
+            auto ax = in->x().handle();
+            auto ay = in->y().handle();
+            ah = viskores::cont::make_ArrayHandleSOA(ax, ay);
         } else if (auto in = V3::as(object)) {
             auto ax = in->x().handle();
             auto ay = in->y().handle();
