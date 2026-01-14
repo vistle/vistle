@@ -389,6 +389,7 @@ bool Extrema::compute()
         handled = true;
     } else {
         boost::mpl::for_each<Scalars>(Compute<1>(obj, this));
+        boost::mpl::for_each<Scalars>(Compute<2>(obj, this));
         boost::mpl::for_each<Scalars>(Compute<3>(obj, this));
     }
 

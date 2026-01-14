@@ -131,6 +131,12 @@ public:
                 out = remapDataTempl<T, 1, Mapping>(in1, mapping, inverse);
             }
             break;
+        case 2:
+            if (auto in2 = Vec<T, 2>::as(in)) {
+                found = true;
+                out = remapDataTempl<T, 2, Mapping>(in2, mapping, inverse);
+            }
+            break;
         case 3:
             if (auto in3 = Vec<T, 3>::as(in)) {
                 found = true;
