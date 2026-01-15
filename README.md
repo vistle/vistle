@@ -52,17 +52,20 @@ Installation
 - **CMake**:
   at least 3.10, on Windows 3.15
 
-- **MPI**:
-  Microsoft MPI, Open MPI, MPICH and MVAPICH2 has been used successfully.
-
 - **Boost**:
   At least 1.66.00 is required.
      Note:
      - in order to switch MPI implementations without requiring a recompilation of Boost, we compile Boost.MPI together with Vistle
 
-- Botan:
+- **Botan**:
   [Crypto and TLS for Modern C++](https://botan.randombit.net/) is used for verifying HMACs during connection establishment,
   version 2 or 3 should work
+
+- **MPI**:
+  Microsoft MPI, Open MPI, MPICH and MVAPICH2 has been used successfully.
+  Multi-process installations strictly running on a single PC might get away with the patched copy of [mpi-serial](https://github.com/ESMCI/mpi-serial) in `lib/3rdparty/mpi-serial`.
+
+Server installations that are only used for performing I/O or computation (e.g. on HPC clusters) do not require the following components. Instead, they will need to connect to another instance of Vistle which handles all user interaction.
 
 - **Python**:
   for interpreting Vistle workflow scripts (.vsl), Python 3 should work.
