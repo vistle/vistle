@@ -15,6 +15,7 @@ private:
     vistle::IntParameter *m_CellNrMin = nullptr;
     vistle::IntParameter *m_CellNrMax = nullptr;
     vistle::StringParameter *m_cells = nullptr;
+    vistle::IntParameter *m_makeBars = nullptr;
 
     vistle::ResultCache<vistle::Lines::ptr> m_cache;
 };

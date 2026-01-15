@@ -27,6 +27,8 @@ ShowGrid::ShowGrid(const std::string &name, int moduleID, mpi::communicator comm
 
     m_cells = addStringParameter("cells", "show cells with these indices", "all", Parameter::Restraint);
     m_cellScale = addFloatParameter("cell_scale", "factor for scaling cells around their center", 1.);
+    m_makeBars =
+        addIntParameter("make_bars", "create sequences of bars instead of line strips", true, Parameter::Boolean);
 
     addIntParameter("normalcells", "Show normal (non ghost) cells", 1, Parameter::Boolean);
     addIntParameter("ghostcells", "Show ghost cells", 0, Parameter::Boolean);
@@ -64,6 +66,7 @@ bool ShowGrid::compute()
     showTypes[UnstructuredGrid::POINT] = showTypes[UnstructuredGrid::POLYHEDRON] = getIntParameter("polyhedron");
     const bool shownor = getIntParameter("normalcells");
     const bool showgho = getIntParameter("ghostcells");
+    const bool bars = getIntParameter("make_bars");
 
     const Integer cellnrmin = m_CellNrMin->getValue();
     const Integer cellnrmax = m_CellNrMax->getValue();
@@ -151,14 +154,29 @@ bool ShowGrid::compute()
                         const auto numFaces = UnstructuredGrid::NumFaces[type];
                         for (int f = 0; f < numFaces; ++f) {
                             const int nCorners = UnstructuredGrid::FaceSizes[type][f];
-                            for (int i = 0; i <= nCorners; ++i) {
-                                const Index nv = baseidx + UnstructuredGrid::FaceVertices[type][f][i % nCorners];
-                                assert(nv < ox.size());
-                                ocl.push_back(nv);
+                            if (bars) {
+                                for (int i = 0; i < nCorners; ++i) {
+                                    const Index nv = baseidx + UnstructuredGrid::FaceVertices[type][f][i];
+                                    assert(nv < ox.size());
+                                    ocl.push_back(nv);
+                                    const Index nv1 =
+                                        baseidx + UnstructuredGrid::FaceVertices[type][f][(i + 1) % nCorners];
+                                    assert(nv1 < ox.size());
+                                    ocl.push_back(nv1);
+                                    oel.push_back(ocl.size());
+                                    if (perElement)
+                                        remap.push_back(index);
+                                }
+                            } else {
+                                for (int i = 0; i <= nCorners; ++i) {
+                                    const Index nv = baseidx + UnstructuredGrid::FaceVertices[type][f][i % nCorners];
+                                    assert(nv < ox.size());
+                                    ocl.push_back(nv);
+                                }
+                                oel.push_back(ocl.size());
+                                if (perElement)
+                                    remap.push_back(index);
                             }
-                            oel.push_back(ocl.size());
-                            if (perElement)
-                                remap.push_back(index);
                         }
                         break;
                     }
@@ -166,17 +184,37 @@ bool ShowGrid::compute()
                         Index facestart = InvalidIndex;
                         Index term = 0;
                         for (Index i = begin; i < end; ++i) {
-                            auto idx = icl[i];
-                            auto relidx = std::find(verts.begin(), verts.end(), idx) - verts.begin();
-                            ocl.push_back(baseidx + relidx);
-                            if (facestart == InvalidIndex) {
-                                facestart = i;
-                                term = idx;
-                            } else if (term == idx) {
-                                facestart = InvalidIndex;
-                                oel.push_back(ocl.size());
-                                if (perElement)
-                                    remap.push_back(index);
+                            if (bars) {
+                                auto idx = icl[i];
+                                if (facestart == InvalidIndex) {
+                                    facestart = i;
+                                    term = idx;
+                                } else if (term == idx) {
+                                    facestart = InvalidIndex;
+                                }
+                                if (facestart != InvalidIndex) {
+                                    auto relidx = std::find(verts.begin(), verts.end(), idx) - verts.begin();
+                                    ocl.push_back(baseidx + relidx);
+                                    auto idx1 = icl[i + 1];
+                                    auto relidx1 = std::find(verts.begin(), verts.end(), idx1) - verts.begin();
+                                    ocl.push_back(baseidx + relidx1);
+                                    oel.push_back(ocl.size());
+                                    if (perElement)
+                                        remap.push_back(index);
+                                }
+                            } else {
+                                auto idx = icl[i];
+                                auto relidx = std::find(verts.begin(), verts.end(), idx) - verts.begin();
+                                ocl.push_back(baseidx + relidx);
+                                if (facestart == InvalidIndex) {
+                                    facestart = i;
+                                    term = idx;
+                                } else if (term == idx) {
+                                    facestart = InvalidIndex;
+                                    oel.push_back(ocl.size());
+                                    if (perElement)
+                                        remap.push_back(index);
+                                }
                             }
                         }
                         break;
@@ -190,12 +228,22 @@ bool ShowGrid::compute()
                         break;
                     }
                     case UnstructuredGrid::POLYLINE: {
-                        for (Index i = 0; i < verts.size(); ++i) {
-                            ocl.push_back(baseidx + i);
+                        if (bars) {
+                            for (Index i = 0; i + 1 < verts.size(); ++i) {
+                                ocl.push_back(baseidx + i);
+                                ocl.push_back(baseidx + i + 1);
+                                oel.push_back(ocl.size());
+                                if (perElement)
+                                    remap.push_back(index);
+                            }
+                        } else {
+                            for (Index i = 0; i < verts.size(); ++i) {
+                                ocl.push_back(baseidx + i);
+                            }
+                            oel.push_back(ocl.size());
+                            if (perElement)
+                                remap.push_back(index);
                         }
-                        oel.push_back(ocl.size());
-                        if (perElement)
-                            remap.push_back(index);
                         break;
                     }
                     }
@@ -239,13 +287,27 @@ bool ShowGrid::compute()
                     const auto numFaces = UnstructuredGrid::NumFaces[type];
                     for (int f = 0; f < numFaces; ++f) {
                         const int nCorners = UnstructuredGrid::FaceSizes[type][f];
-                        for (int i = 0; i <= nCorners; ++i) {
-                            const Index v = baseidx + UnstructuredGrid::FaceVertices[type][f][i % nCorners];
-                            ocl.push_back(v);
+                        if (bars) {
+                            for (int i = 0; i < nCorners; ++i) {
+                                const Index nv = baseidx + UnstructuredGrid::FaceVertices[type][f][i];
+                                assert(nv < ox.size());
+                                ocl.push_back(nv);
+                                const Index nv1 = baseidx + UnstructuredGrid::FaceVertices[type][f][(i + 1) % nCorners];
+                                assert(nv1 < ox.size());
+                                ocl.push_back(nv1);
+                                oel.push_back(ocl.size());
+                                if (perElement)
+                                    remap.push_back(index);
+                            }
+                        } else {
+                            for (int i = 0; i <= nCorners; ++i) {
+                                const Index v = baseidx + UnstructuredGrid::FaceVertices[type][f][i % nCorners];
+                                ocl.push_back(v);
+                            }
+                            oel.push_back(ocl.size());
+                            if (perElement)
+                                remap.push_back(index);
                         }
-                        oel.push_back(ocl.size());
-                        if (perElement)
-                            remap.push_back(index);
                     }
                 }
             } else if (auto poly = Polygons::as(grid)) {
@@ -291,13 +353,23 @@ bool ShowGrid::compute()
                             oz.push_back(p[2]);
                         }
 
-                        for (Index i = begin; i < end; ++i) {
-                            ocl.push_back(baseidx + i - begin);
+                        if (bars) {
+                            for (Index i = begin; i < end; ++i) {
+                                ocl.push_back(baseidx + i - begin);
+                                ocl.push_back(baseidx + (i - begin + 1) % (end - begin));
+                                oel.push_back(ocl.size());
+                                if (perElement)
+                                    remap.push_back(index);
+                            }
+                        } else {
+                            for (Index i = begin; i < end; ++i) {
+                                ocl.push_back(baseidx + i - begin);
+                            }
+                            ocl.push_back(baseidx);
+                            oel.push_back(ocl.size());
+                            if (perElement)
+                                remap.push_back(index);
                         }
-                        ocl.push_back(baseidx);
-                        oel.push_back(ocl.size());
-                        if (perElement)
-                            remap.push_back(index);
                     }
                 }
             } else if (auto quad = Quads::as(grid)) {
@@ -344,13 +416,23 @@ bool ShowGrid::compute()
                         auto emitVertex = [&ocl, baseidx](Index idx) {
                             ocl.push_back(baseidx + idx);
                         };
-                        for (int j = 0; j < 4; ++j) {
-                            emitVertex(j);
+                        if (bars) {
+                            for (int j = 0; j < 4; ++j) {
+                                emitVertex(j);
+                                emitVertex((j + 1) % 4);
+                                oel.push_back(ocl.size());
+                                if (perElement)
+                                    remap.push_back(i);
+                            }
+                        } else {
+                            for (int j = 0; j < 4; ++j) {
+                                emitVertex(j);
+                            }
+                            emitVertex(0);
+                            oel.push_back(ocl.size());
+                            if (perElement)
+                                remap.push_back(i);
                         }
-                        emitVertex(0);
-                        oel.push_back(ocl.size());
-                        if (perElement)
-                            remap.push_back(i);
                     }
                 }
             } else if (auto tri = Triangles::as(grid)) {
@@ -396,13 +478,23 @@ bool ShowGrid::compute()
                         auto emitVertex = [&ocl, baseidx](Index idx) {
                             ocl.push_back(baseidx + idx);
                         };
-                        for (int j = 0; j < 3; ++j) {
-                            emitVertex(j);
+                        if (bars) {
+                            for (int j = 0; j < 3; ++j) {
+                                emitVertex(j);
+                                emitVertex((j + 1) % 3);
+                                oel.push_back(ocl.size());
+                                if (perElement)
+                                    remap.push_back(i);
+                            }
+                        } else {
+                            for (int j = 0; j < 3; ++j) {
+                                emitVertex(j);
+                            }
+                            emitVertex(0);
+                            oel.push_back(ocl.size());
+                            if (perElement)
+                                remap.push_back(i);
                         }
-                        emitVertex(0);
-                        oel.push_back(ocl.size());
-                        if (perElement)
-                            remap.push_back(i);
                     }
                 }
             }
@@ -442,13 +534,28 @@ bool ShowGrid::compute()
                         const auto numFaces = UnstructuredGrid::NumFaces[type];
                         for (int f = 0; f < numFaces; ++f) {
                             const int nCorners = UnstructuredGrid::FaceSizes[type][f];
-                            for (int i = 0; i <= nCorners; ++i) {
-                                const Index v = icl[begin + UnstructuredGrid::FaceVertices[type][f][i % nCorners]];
-                                ocl.push_back(v);
+                            if (bars) {
+                                for (int i = 0; i < nCorners; ++i) {
+                                    const Index nv = icl[begin + UnstructuredGrid::FaceVertices[type][f][i]];
+                                    assert(nv < unstr->getNumVertices());
+                                    ocl.push_back(nv);
+                                    const Index nv1 =
+                                        icl[begin + UnstructuredGrid::FaceVertices[type][f][(i + 1) % nCorners]];
+                                    assert(nv1 < unstr->getNumVertices());
+                                    ocl.push_back(nv1);
+                                    oel.push_back(ocl.size());
+                                    if (perElement)
+                                        remap.push_back(index);
+                                }
+                            } else {
+                                for (int i = 0; i <= nCorners; ++i) {
+                                    const Index v = icl[begin + UnstructuredGrid::FaceVertices[type][f][i % nCorners]];
+                                    ocl.push_back(v);
+                                }
+                                oel.push_back(ocl.size());
+                                if (perElement)
+                                    remap.push_back(index);
                             }
-                            oel.push_back(ocl.size());
-                            if (perElement)
-                                remap.push_back(index);
                         }
                         break;
                     }
@@ -456,15 +563,33 @@ bool ShowGrid::compute()
                         Index facestart = InvalidIndex;
                         Index term = 0;
                         for (Index i = begin; i < end; ++i) {
-                            ocl.push_back(icl[i]);
-                            if (facestart == InvalidIndex) {
-                                facestart = i;
-                                term = icl[i];
-                            } else if (term == icl[i]) {
-                                facestart = InvalidIndex;
-                                oel.push_back(ocl.size());
-                                if (perElement)
-                                    remap.push_back(index);
+                            if (bars) {
+                                auto idx = icl[i];
+                                if (facestart == InvalidIndex) {
+                                    facestart = i;
+                                    term = idx;
+                                } else if (term == idx) {
+                                    facestart = InvalidIndex;
+                                }
+                                if (facestart != InvalidIndex) {
+                                    ocl.push_back(icl[i]);
+                                    auto idx1 = icl[i + 1];
+                                    ocl.push_back(idx1);
+                                    oel.push_back(ocl.size());
+                                    if (perElement)
+                                        remap.push_back(index);
+                                }
+                            } else {
+                                ocl.push_back(icl[i]);
+                                if (facestart == InvalidIndex) {
+                                    facestart = i;
+                                    term = icl[i];
+                                } else if (term == icl[i]) {
+                                    facestart = InvalidIndex;
+                                    oel.push_back(ocl.size());
+                                    if (perElement)
+                                        remap.push_back(index);
+                                }
                             }
                         }
                         break;
@@ -478,10 +603,20 @@ bool ShowGrid::compute()
                         break;
                     }
                     case UnstructuredGrid::POLYLINE: {
-                        std::copy(icl + begin, icl + end, std::back_inserter(ocl));
-                        oel.push_back(ocl.size());
-                        if (perElement)
-                            remap.push_back(index);
+                        if (bars) {
+                            for (Index i = begin; i + 1 < end; ++i) {
+                                ocl.push_back(icl[i]);
+                                ocl.push_back(icl[i + 1]);
+                                oel.push_back(ocl.size());
+                                if (perElement)
+                                    remap.push_back(index);
+                            }
+                        } else {
+                            std::copy(icl + begin, icl + end, std::back_inserter(ocl));
+                            oel.push_back(ocl.size());
+                            if (perElement)
+                                remap.push_back(index);
+                        }
                         break;
                     }
                     }
@@ -518,13 +653,27 @@ bool ShowGrid::compute()
                     const auto numFaces = UnstructuredGrid::NumFaces[type];
                     for (int f = 0; f < numFaces; ++f) {
                         const int nCorners = UnstructuredGrid::FaceSizes[type][f];
-                        for (int i = 0; i <= nCorners; ++i) {
-                            const Index v = verts[UnstructuredGrid::FaceVertices[type][f][i % nCorners]];
-                            ocl.push_back(v);
+                        if (bars) {
+                            for (int i = 0; i < nCorners; ++i) {
+                                const Index nv = verts[UnstructuredGrid::FaceVertices[type][f][i]];
+                                assert(nv < str->getNumVertices());
+                                ocl.push_back(nv);
+                                const Index nv1 = verts[UnstructuredGrid::FaceVertices[type][f][(i + 1) % nCorners]];
+                                assert(nv1 < str->getNumVertices());
+                                ocl.push_back(nv1);
+                                oel.push_back(ocl.size());
+                                if (perElement)
+                                    remap.push_back(index);
+                            }
+                        } else {
+                            for (int i = 0; i <= nCorners; ++i) {
+                                const Index v = verts[UnstructuredGrid::FaceVertices[type][f][i % nCorners]];
+                                ocl.push_back(v);
+                            }
+                            oel.push_back(ocl.size());
+                            if (perElement)
+                                remap.push_back(index);
                         }
-                        oel.push_back(ocl.size());
-                        if (perElement)
-                            remap.push_back(index);
                     }
                 }
 
@@ -565,13 +714,23 @@ bool ShowGrid::compute()
                             continue;
 
                         const Index begin = poly->el()[index], end = poly->el()[index + 1];
-                        for (Index i = begin; i < end; ++i) {
-                            ocl.push_back(icl[i]);
+                        if (bars) {
+                            for (Index i = begin; i < end; ++i) {
+                                ocl.push_back(icl[i]);
+                                ocl.push_back(icl[(i + 1 == end) ? begin : i + 1]);
+                                oel.push_back(ocl.size());
+                                if (perElement)
+                                    remap.push_back(index);
+                            }
+                        } else {
+                            for (Index i = begin; i < end; ++i) {
+                                ocl.push_back(icl[i]);
+                            }
+                            ocl.push_back(icl[begin]);
+                            oel.push_back(ocl.size());
+                            if (perElement)
+                                remap.push_back(index);
                         }
-                        ocl.push_back(icl[begin]);
-                        oel.push_back(ocl.size());
-                        if (perElement)
-                            remap.push_back(index);
                     }
                 }
                 lines->d()->x[0] = poly->d()->x[0];
@@ -589,14 +748,24 @@ bool ShowGrid::compute()
                             const bool show = ((showgho && ghost) || (shownor && !ghost));
                             if (!show)
                                 continue;
-                            ocl.push_back(icl[i * 4]);
-                            ocl.push_back(icl[i * 4 + 1]);
-                            ocl.push_back(icl[i * 4 + 2]);
-                            ocl.push_back(icl[i * 4 + 3]);
-                            ocl.push_back(icl[i * 4]);
-                            oel.push_back(ocl.size());
-                            if (perElement)
-                                remap.push_back(i);
+                            if (bars) {
+                                for (int j = 0; j < 4; ++j) {
+                                    ocl.push_back(icl[i * 4 + j]);
+                                    ocl.push_back(icl[i * 4 + (j + 1) % 4]);
+                                    oel.push_back(ocl.size());
+                                    if (perElement)
+                                        remap.push_back(i);
+                                }
+                            } else {
+                                ocl.push_back(icl[i * 4]);
+                                ocl.push_back(icl[i * 4 + 1]);
+                                ocl.push_back(icl[i * 4 + 2]);
+                                ocl.push_back(icl[i * 4 + 3]);
+                                ocl.push_back(icl[i * 4]);
+                                oel.push_back(ocl.size());
+                                if (perElement)
+                                    remap.push_back(i);
+                            }
                         }
                     } else {
                         nelem = quad->getNumVertices() / 4;
@@ -607,14 +776,24 @@ bool ShowGrid::compute()
                             const bool show = ((showgho && ghost) || (shownor && !ghost));
                             if (!show)
                                 continue;
-                            ocl.push_back(i * 4);
-                            ocl.push_back(i * 4 + 1);
-                            ocl.push_back(i * 4 + 2);
-                            ocl.push_back(i * 4 + 3);
-                            ocl.push_back(i * 4);
-                            oel.push_back(ocl.size());
-                            if (perElement)
-                                remap.push_back(i);
+                            if (bars) {
+                                for (int j = 0; j < 4; ++j) {
+                                    ocl.push_back(i * 4 + j);
+                                    ocl.push_back(i * 4 + (j + 1) % 4);
+                                    oel.push_back(ocl.size());
+                                    if (perElement)
+                                        remap.push_back(i);
+                                }
+                            } else {
+                                ocl.push_back(i * 4);
+                                ocl.push_back(i * 4 + 1);
+                                ocl.push_back(i * 4 + 2);
+                                ocl.push_back(i * 4 + 3);
+                                ocl.push_back(i * 4);
+                                oel.push_back(ocl.size());
+                                if (perElement)
+                                    remap.push_back(i);
+                            }
                         }
                     }
                 }
@@ -633,13 +812,23 @@ bool ShowGrid::compute()
                             const bool show = ((showgho && ghost) || (shownor && !ghost));
                             if (!show)
                                 continue;
-                            ocl.push_back(icl[i * 3]);
-                            ocl.push_back(icl[i * 3 + 1]);
-                            ocl.push_back(icl[i * 3 + 2]);
-                            ocl.push_back(icl[i * 3]);
-                            oel.push_back(ocl.size());
-                            if (perElement)
-                                remap.push_back(i);
+                            if (bars) {
+                                for (int j = 0; j < 3; ++j) {
+                                    ocl.push_back(icl[i * 3 + j]);
+                                    ocl.push_back(icl[i * 3 + (j + 1) % 3]);
+                                    oel.push_back(ocl.size());
+                                    if (perElement)
+                                        remap.push_back(i);
+                                }
+                            } else {
+                                ocl.push_back(icl[i * 3]);
+                                ocl.push_back(icl[i * 3 + 1]);
+                                ocl.push_back(icl[i * 3 + 2]);
+                                ocl.push_back(icl[i * 3]);
+                                oel.push_back(ocl.size());
+                                if (perElement)
+                                    remap.push_back(i);
+                            }
                         }
                     } else {
                         nelem = tri->getNumVertices() / 3;
@@ -650,13 +839,23 @@ bool ShowGrid::compute()
                             const bool show = ((showgho && ghost) || (shownor && !ghost));
                             if (!show)
                                 continue;
-                            ocl.push_back(i * 3);
-                            ocl.push_back(i * 3 + 1);
-                            ocl.push_back(i * 3 + 2);
-                            ocl.push_back(i * 3);
-                            oel.push_back(ocl.size());
-                            if (perElement)
-                                remap.push_back(i);
+                            if (bars) {
+                                for (int j = 0; j < 3; ++j) {
+                                    ocl.push_back(i * 3 + j);
+                                    ocl.push_back(i * 3 + (j + 1) % 3);
+                                    oel.push_back(ocl.size());
+                                    if (perElement)
+                                        remap.push_back(i);
+                                }
+                            } else {
+                                ocl.push_back(i * 3);
+                                ocl.push_back(i * 3 + 1);
+                                ocl.push_back(i * 3 + 2);
+                                ocl.push_back(i * 3);
+                                oel.push_back(ocl.size());
+                                if (perElement)
+                                    remap.push_back(i);
+                            }
                         }
                     }
                 }
