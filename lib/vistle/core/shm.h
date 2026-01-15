@@ -191,6 +191,7 @@ public:
 
     static std::string shmIdFilename();
     static bool cleanAll(int rank);
+    static bool record(const std::string &segname);
 
     void markAsRemoved(const std::string &name);
     void addObject(const std::string &name, const shm_handle_t &handle);

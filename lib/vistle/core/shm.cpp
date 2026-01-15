@@ -223,35 +223,54 @@ bool Shm::cleanAll(int rank)
 {
     std::fstream shmlist;
     shmlist.open(shmIdFilename().c_str(), std::ios::in);
+    if (shmlist.is_open()) {
+        std::cerr << "removing shared memory segments listed in " << shmIdFilename() << std::endl;
+    } else {
+        std::cerr << "Could not open " << shmIdFilename() << ": nothing to clean" << std::endl;
+        return true;
+    }
 
     bool ret = true;
+    if (shmlist.is_open() && ::remove(shmIdFilename().c_str()) != 0) {
+        if (errno != ENOENT) {
+            ret = false;
+            std::cerr << "Could not remove " << shmIdFilename() << ": " << strerror(errno) << std::endl;
+        }
+    }
 
+    std::set<std::string> removed;
     while (!shmlist.eof() && !shmlist.fail()) {
         std::string shmid;
         shmlist >> shmid;
-        if (!shmid.empty()) {
-            bool ok = true;
-            bool log = true;
+        if (shmid.empty()) {
+            continue;
+        }
 
-            if (shmid.find("_send_") != std::string::npos || shmid.find("_recv_") != std::string::npos) {
-                //std::cerr << "removing message queue: id " << shmid << std::flush;
-                ok = message::MessageQueue::message_queue::remove(shmid.c_str());
-                log = false;
-            } else {
-                std::cerr << "removing shared memory: id " << shmid << std::flush;
-                ok = interprocess::shared_memory_object::remove(shmSegName(shmid.c_str(), rank, false).c_str()) ||
-                     interprocess::shared_memory_object::remove(shmSegName(shmid.c_str(), rank, true).c_str());
+        bool ok = true;
+        bool log = true;
+
+        if (shmid.find("_send_") != std::string::npos || shmid.find("_recv_") != std::string::npos) {
+            //std::cerr << "removing message queue: id " << shmid << std::flush;
+            ok = message::MessageQueue::message_queue::remove(shmid.c_str());
+            log = false;
+        } else {
+            std::cerr << "removing shared memory: id " << shmid << std::flush;
+            ok = interprocess::shared_memory_object::remove(shmSegName(shmid.c_str(), rank, false).c_str()) ||
+                 interprocess::shared_memory_object::remove(shmSegName(shmid.c_str(), rank, true).c_str());
+        }
+        if (log) {
+            std::cerr << ": " << (ok ? "ok" : "failure") << std::endl;
+        }
+
+        if (!ok) {
+            ret = false;
+            if (removed.find(shmid) == removed.end()) {
+                removed.insert(shmid);
+                record(shmid);
             }
-            if (log)
-                std::cerr << ": " << (ok ? "ok" : "failure") << std::endl;
-
-            if (!ok)
-                ret = false;
         }
     }
     shmlist.close();
-
-    ::remove(shmIdFilename().c_str());
 
     return ret;
 }
@@ -307,19 +326,26 @@ bool Shm::remove(const std::string &name, const int id, const int rank, bool per
     return interprocess::shared_memory_object::remove(n.c_str());
 }
 
+bool Shm::record(const std::string &segname)
+{
+    // store name of shared memory segment for possible clean up
+    std::ofstream shmlist;
+    shmlist.open(shmIdFilename().c_str(), std::ios::out | std::ios::app);
+    if (shmlist.is_open()) {
+        shmlist << segname << std::endl;
+        shmlist.close();
+        return true;
+    }
+    return false;
+}
+
 Shm &Shm::create(const std::string &name, const int id, const int rank, bool perRank)
 {
 #ifndef NO_SHMEM
     Shm::s_perRank = perRank;
 #endif
     if (!s_singleton) {
-        {
-            // store name of shared memory segment for possible clean up
-            std::ofstream shmlist;
-            shmlist.open(shmIdFilename().c_str(), std::ios::out | std::ios::app);
-            shmlist << name << std::endl;
-        }
-
+        record(name);
         size_t memsize = memorySize<sizeof(void *)>();
         if (const char *shmsize = getenv("VISTLE_SHM_SIZE")) {
             memsize = atol(shmsize);
