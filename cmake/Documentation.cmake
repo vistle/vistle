@@ -289,7 +289,9 @@ macro(generate_snapshot_base modulename network_file output_dir workflow result)
         string(APPEND custom_target _workflow)
     endif()
 
-    if(${result} OR ${workflow})
+    if(${result}
+       OR ${workflow}
+       AND (NOT "${output_files}x" STREQUAL "x"))
         set(coconfig ${PROJECT_SOURCE_DIR}/doc/build/config.vistle.doc.xml)
         set(script ${TOOLDIR}/snapShot.py)
         add_custom_command(
