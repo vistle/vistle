@@ -1478,6 +1478,7 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
             osg::ref_ptr<osg::PrimitiveSet> primitives;
             osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array();
             if (radius) {
+                m_options.indexedGeometry = true;
                 auto r = radius->x().data();
                 bool radiusPerElement = radius->guessMapping(m_geo) == DataBase::Element;
 
@@ -1556,11 +1557,7 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
                 vertices->resize(numCoord);
                 if (database) {
                     multiplicity = std::make_unique<std::vector<Index>>();
-                    if (mapping == DataBase::Element) {
-                        multiplicity->reserve(numEl);
-                    } else {
-                        multiplicity->reserve(numConn);
-                    }
+                    multiplicity->reserve(numConn);
                 }
                 auto ti = &(*corners)[0];
 
@@ -1568,16 +1565,6 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
                 Index ii = 0; // index index
                 for (Index i = 0; i < numEl; ++i) {
                     const Index begin = el[i], end = el[i + 1];
-                    if (multiplicity && mapping == DataBase::Element) {
-                        Index ntri = numIndStart / 3 + (end - begin - 1) * TriPerSection + numIndEnd / 3;
-                        if (begin == end) {
-                            ntri = 0;
-                        } else if (begin + 1 == end) {
-                            ntri = gen.TriPerSphere;
-                        }
-                        multiplicity->push_back(ntri * 3);
-                    }
-
                     Vector3 normal, dir;
                     for (Index k = begin; k < end; ++k) {
                         Index idx = cl ? cl[k] : k;
@@ -1592,7 +1579,7 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
                             ci += gen.CoordPerSphere;
                             ii += 3 * gen.TriPerSphere;
 
-                            if (multiplicity && mapping != DataBase::Element) {
+                            if (multiplicity) {
                                 multiplicity->push_back(gen.CoordPerSphere);
                             }
                             break;
@@ -1620,7 +1607,7 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
                             }
                         }
 
-                        if (multiplicity && mapping != DataBase::Element) {
+                        if (multiplicity) {
                             Index ncoord = NumSect;
                             if (first) {
                                 ncoord += numCoordStart;
@@ -1757,7 +1744,7 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
                 }
                 assert(ci == numCoord);
                 assert(ii == numVert);
-                assert(!multiplicity || mapping != DataBase::Vertex || multiplicity->size() == numConn);
+                assert(!multiplicity || multiplicity->size() == numConn);
 
                 geom->setNormalArray(gnormals);
                 geom->setNormalBinding(osg::Geometry::BIND_PER_VERTEX);
