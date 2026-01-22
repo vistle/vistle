@@ -59,7 +59,10 @@ else
 fi
 
 if [ -z ${COVISEDIR+x} ]; then
-    if [ -d "../covise" ]; then
+    if [ -f .covise ]; then
+        COVISEDIR="$(cat .covise)"
+        export COVISEDIR="$(cd $COVISEDIR; pwd -P)"
+    elif [ -d "../covise" ]; then
         export COVISEDIR="$(cd ../covise; pwd -P)"
     fi
 fi
@@ -159,4 +162,4 @@ path_add PYTHONPATH "${COVISEDIR}/${ARCHSUFFIX}/lib"
 PATH_add "${builddir}/bin"
 PATH_add "${builddir}/bin/$VISTLE_BUILD_TYPE"
 
-watch_file .debug .flavor .buildtype .release
+watch_file .debug .flavor .buildtype .release .covise
