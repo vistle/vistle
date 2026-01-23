@@ -35,8 +35,8 @@ public:
 private:
     bool changeParameter(const vistle::Parameter *p) override;
     bool compute() override;
-    vistle::StringParameter *m_expression;
-    vistle::IntParameter *m_filterMode;
+    vistle::StringParameter *m_expression = nullptr;
+    vistle::IntParameter *m_filterMode = nullptr;
     Symbols m_symbols;
 };
 
