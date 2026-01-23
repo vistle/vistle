@@ -93,10 +93,10 @@ bool Symbols::filterCell(const vistle::UnstructuredGrid::const_ptr grid, const v
     return m_expression.value() == 0.0;
 }
 
-// Ghost : set the filtered elements to ghost
-// Elements : remove the filtered elements
-// Vertices : remove the filtered elements and the vertices that are not used by any element
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(FilterMode, (Ghost)(Elements)(Vertices))
+// MarkAsGhost : set the filtered elements to ghost
+// RemoveElement : remove the filtered elements
+// RemoveElementAndVertices : remove the filtered elements and the vertices that are not used by any element
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(FilterMode, (MarkAsGhost)(RemoveElement)(RemoveElementAndVertices))
 
 FilterCells::FilterCells(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
@@ -108,7 +108,7 @@ FilterCells::FilterCells(const std::string &name, int moduleID, mpi::communicato
         "elements for which this expression is true are filtered out, for supported symbols see selection lists",
         "type == HEXA");
 
-    m_filterMode = addIntParameter("filter_type", "on what to filter", 0, Parameter::Choice);
+    m_filterMode = addIntParameter("filter_type", "how to remove filtered cells", 0, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_filterMode, FilterMode);
 
     //the lists only serve as a reference for the user
@@ -122,21 +122,20 @@ vistle::UnstructuredGrid::ptr clone(const vistle::UnstructuredGrid::const_ptr &g
 {
     auto out = grid->clone();
     switch (filterMode) {
-    case FilterMode::Vertices:
+    case FilterMode::RemoveElementAndVertices:
         out->resetCoords();
         //fall through
-    case FilterMode::Elements: {
+    case FilterMode::RemoveElement: {
         out->resetCorners();
         out->resetElements();
     } break;
-    case FilterMode::Ghost: {
+    case FilterMode::MarkAsGhost: {
         out->d()->ghost = ShmVector<Byte>();
         out->d()->ghost.construct();
         out->d()->ghost->resize(grid->getNumElements(), 0);
         std::copy(grid->d()->ghost->begin(), grid->d()->ghost->end(), out->d()->ghost->begin());
     } break;
     }
-    out->copyAttributes(grid);
     return out;
 }
 
@@ -159,73 +158,76 @@ bool FilterCells::compute()
         return true;
     }
 
+    auto grid = UnstructuredGrid::as(split.geometry);
+    if (!grid) {
+        sendError("cannot get underlying unstructured grid");
+        return true;
+    }
+
     if (auto data = split.mapped) {
         if (data->guessMapping() != DataBase::Vertex) {
             sendError("data has to be mapped per vertex");
             return true;
         }
     }
-    auto grid = UnstructuredGrid::as(split.geometry);
-    if (!grid) {
-        sendError("cannot get underlying unstructured grid");
-        return true;
-    }
-    grid->check(std::cerr);
-    auto numVertices = grid->getNumVertices();
 
-
-    auto out = clone(grid, (FilterMode)m_filterMode->getValue());
+    auto mode = (FilterMode)m_filterMode->getValue();
+    auto out = clone(grid, mode);
+    updateMeta(out);
 
     std::vector<Index> vertexKept;
-    if (m_filterMode->getValue() == FilterMode::Vertices)
+    if (mode == FilterMode::RemoveElementAndVertices) {
+        auto numVertices = grid->getNumVertices();
         vertexKept.resize(numVertices, 0);
-    for (size_t i = 0; i < grid->getNumElements(); i++) {
+    }
+
+    for (Index i = 0; i < grid->getNumElements(); i++) {
         bool filterCell = m_symbols.filterCell(grid, split.mapped, i);
-        if (filterCell && m_filterMode->getValue() == FilterMode::Ghost) {
-            out->setGhost(i, true);
-        } else if (!filterCell && (m_filterMode->getValue() == FilterMode::Elements ||
-                                   m_filterMode->getValue() == FilterMode::Vertices)) {
-            for (size_t j = grid->el()[i]; j < grid->el()[i + 1]; j++) {
-                // per vertex
-                out->cl().push_back(grid->cl()[j]);
-                if (m_filterMode->getValue() == FilterMode::Vertices) {
-                    vertexKept[grid->cl()[j]] = 1;
+        if (mode == FilterMode::MarkAsGhost) {
+            if (filterCell)
+                out->setGhost(i, true);
+        } else {
+            if (!filterCell) {
+                for (Index j = grid->el()[i]; j < grid->el()[i + 1]; j++) {
+                    // per vertex
+                    out->cl().push_back(grid->cl()[j]);
+                    if (mode == FilterMode::RemoveElementAndVertices) {
+                        vertexKept[grid->cl()[j]] = 1;
+                    }
                 }
+                //per element
+                out->d()->ghost->push_back(grid->isGhost(i));
+                out->el().push_back(out->cl().size());
+                out->tl().push_back(grid->tl()[i]);
             }
-            //per element
-            out->d()->ghost->push_back(grid->isGhost(i));
-            out->el().push_back(out->cl().size());
-            out->tl().push_back(grid->tl()[i]);
         }
     }
+
     DataBase::ptr data;
     if (split.mapped) {
         data = split.mapped->clone();
         updateMeta(data);
-        data->copyAttributes(split.mapped);
     }
-    if (m_filterMode->getValue() == FilterMode::Vertices) {
+    if (mode == FilterMode::RemoveElementAndVertices) {
         vistle::Index totalNumVertsRemaining = std::count(vertexKept.begin(), vertexKept.end(), 1);
 
+        out->setSize(totalNumVertsRemaining);
         if (data) {
             data->resetArrays();
             data->setSize(totalNumVertsRemaining);
         }
-        out->setSize(totalNumVertsRemaining);
         Index numVertsFiltered = 0;
         //add kept vertices to new grid
         for (size_t i = 0; i < vertexKept.size(); i++) {
             if (vertexKept[i]) {
                 auto end = i - numVertsFiltered;
                 out->copyEntry(end, grid, i);
-                // out->x()[end] = (grid->x()[i]);
-                // out->y()[end] = (grid->y()[i]);
-                // out->z()[end] = (grid->z()[i]);
                 if (data) {
                     data->copyEntry(end, split.mapped, i);
                 }
-            } else
+            } else {
                 ++numVertsFiltered;
+            }
             vertexKept[i] = numVertsFiltered;
         }
         //adjust connectivity indices
@@ -235,15 +237,16 @@ bool FilterCells::compute()
         }
     }
 
-    if (out->el().size() == 0) {
-        sendError("No elements left after filtering");
-        return true;
+    if (out->el().size() == 1) {
+        //sendInfo("No elements left after filtering");
     }
 
-    if (data)
+    if (data) {
         data->setGrid(out);
-    updateMeta(out);
-    addObject("grid_out", data ? data : out);
+        addObject("grid_out", data);
+    } else {
+        addObject("grid_out", out);
+    }
 
     return true;
 }
