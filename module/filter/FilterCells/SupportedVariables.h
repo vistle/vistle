@@ -44,6 +44,8 @@ constexpr std::array<Variable, 19> SUPPORTED_VARIABLES = {
                      const vistle::Index begin = args.grid->el()[args.elementIndex],
                                          end = args.grid->el()[args.elementIndex + 1];
 
+                     if (begin == end)
+                         return 0.0;
                      double avg = 0;
                      for (size_t i = begin; i < end; ++i) {
                          avg += args.data->value(args.grid->cl()[i]);
