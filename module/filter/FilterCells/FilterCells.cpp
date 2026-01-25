@@ -70,10 +70,15 @@ bool Symbols::update(const std::string &expression, std::string &error)
 
     std::vector<std::string> usedSymbols;
     exprtk::collect_variables(expression, usedSymbols);
+    // all symbol names are case-insensitive
+    for (auto &name: usedSymbols) {
+        std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+    }
 
     for (size_t i = 0; i < SUPPORTED_VARIABLES.size(); i++) {
-        m_symbolUsed[i] =
-            std::find(usedSymbols.begin(), usedSymbols.end(), SUPPORTED_VARIABLES[i].name) != usedSymbols.end();
+        std::string sym(SUPPORTED_VARIABLES[i].name);
+        std::transform(sym.begin(), sym.end(), sym.begin(), ::tolower);
+        m_symbolUsed[i] = std::find(usedSymbols.begin(), usedSymbols.end(), sym) != usedSymbols.end();
     }
 
     return true;
