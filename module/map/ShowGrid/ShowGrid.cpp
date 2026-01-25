@@ -870,6 +870,9 @@ bool ShowGrid::compute()
         m_cache.storeAndUnlock(entry, lines);
 
         haveOutput = !ocl.empty();
+        if (!haveOutput) {
+            lines->resetArrays();
+        }
     }
 
     if (mapped) {
