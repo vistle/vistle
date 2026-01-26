@@ -9,6 +9,11 @@
 #include "ToUnstructured.h"
 #include <vistle/alg/objalg.h>
 #include <vistle/module/resultcache.h>
+#include <vistle/core/points.h>
+#include <vistle/core/lines.h>
+#include <vistle/core/quads.h>
+#include <vistle/core/triangles.h>
+#include <vistle/core/polygons.h>
 
 using namespace vistle;
 
@@ -62,17 +67,21 @@ bool ToUnstructured::compute()
 
     UnstructuredGrid::ptr unstrGridOut;
     if (auto entry = m_cache.getOrLock(gridObj->getName(), unstrGridOut)) {
-        StructuredGridBase::const_ptr grid = StructuredGridBase::as(gridObj);
+        auto coord = Coords::as(gridObj);
+        auto point = Points::as(gridObj);
+        auto line = Lines::as(gridObj);
+        auto poly = Polygons::as(gridObj);
+        auto tri = Triangles::as(gridObj);
+        auto quad = Quads::as(gridObj);
+        auto str = StructuredGridBase::as(gridObj);
         if (auto unstr = UnstructuredGrid::as(gridObj)) {
             unstrGridOut = unstr->clone();
-        } else if (!grid) {
-            sendError("unusable input data: neither structured nor unstructured grid");
-        } else {
+        } else if (str) {
             // BEGIN CONVERSION BETWEEN STRUCTURED AND UNSTRUCTURED:
             // * all Structured grids share the same algorithms for generating their tl, cl and el.
             // * x, y, z members are unique, however
 
-            const Index dim[3] = {grid->getNumDivisions(0), grid->getNumDivisions(1), grid->getNumDivisions(2)};
+            const Index dim[3] = {str->getNumDivisions(0), str->getNumDivisions(1), str->getNumDivisions(2)};
             const Index nx = dim[0] - 1;
             const Index ny = dim[1] - 1;
             const Index nz = dim[2] - 1;
@@ -89,12 +98,11 @@ bool ToUnstructured::compute()
             int NumCellCorners = UnstructuredGrid::NumVertices[CellType];
 
             // instantiate output unstructured grid data object
-            const Index numElements = grid->getNumElements();
-            const Index numCorners = grid->getNumElements() * NumCellCorners;
-            const Index numVerticesTotal =
-                grid->getNumDivisions(0) * grid->getNumDivisions(1) * grid->getNumDivisions(2);
+            const Index numElements = str->getNumElements();
+            const Index numCorners = str->getNumElements() * NumCellCorners;
+            const Index numVerticesTotal = str->getNumDivisions(0) * str->getNumDivisions(1) * str->getNumDivisions(2);
             const Cartesian3<Index> numVertices =
-                Cartesian3<Index>(grid->getNumDivisions(0), grid->getNumDivisions(1), grid->getNumDivisions(2));
+                Cartesian3<Index>(str->getNumDivisions(0), str->getNumDivisions(1), str->getNumDivisions(2));
 
             auto structuredGrid = StructuredGrid::as(gridObj);
             unstrGridOut.reset(new UnstructuredGrid(numElements, numCorners, structuredGrid ? 0 : numVerticesTotal));
@@ -102,7 +110,7 @@ bool ToUnstructured::compute()
             // construct type list and element list
             for (Index i = 0; i < numElements; i++) {
                 unstrGridOut->tl()[i] = CellType;
-                unstrGridOut->setGhost(i, grid->isGhostCell(i));
+                unstrGridOut->setGhost(i, str->isGhostCell(i));
                 unstrGridOut->el()[i] = i * NumCellCorners;
             }
 
@@ -180,6 +188,66 @@ bool ToUnstructured::compute()
             }
 
             unstrGridOut->copyAttributes(gridObj);
+        } else if (coord) {
+            unstrGridOut = std::make_shared<UnstructuredGrid>(0, 0, 0);
+            unstrGridOut->d()->x[0] = coord->d()->x[0];
+            unstrGridOut->d()->x[1] = coord->d()->x[1];
+            unstrGridOut->d()->x[2] = coord->d()->x[2];
+            Index numEl = 0;
+            Index vertPerEl = InvalidIndex;
+            Byte type = UnstructuredGrid::NONE;
+            bool trivialCorners = false;
+            if (point) {
+                type = UnstructuredGrid::POINT;
+                numEl = point->getNumPoints();
+                vertPerEl = 1;
+                trivialCorners = true;
+            } else if (line) {
+                type = UnstructuredGrid::POLYLINE;
+                numEl = line->getNumElements();
+                unstrGridOut->d()->el = line->d()->el;
+                unstrGridOut->d()->cl = line->d()->cl;
+            } else if (poly) {
+                type = UnstructuredGrid::POLYGON;
+                numEl = poly->getNumElements();
+                unstrGridOut->d()->el = poly->d()->el;
+                unstrGridOut->d()->cl = poly->d()->cl;
+            } else if (tri) {
+                type = UnstructuredGrid::TRIANGLE;
+                numEl = tri->getNumElements();
+                vertPerEl = 3;
+                if (tri->getNumCorners() > 0)
+                    unstrGridOut->d()->cl = tri->d()->cl;
+                else
+                    trivialCorners = true;
+            } else if (quad) {
+                type = UnstructuredGrid::QUAD;
+                numEl = quad->getNumElements();
+                vertPerEl = 4;
+                if (quad->getNumCorners() > 0)
+                    unstrGridOut->d()->cl = quad->d()->cl;
+                else
+                    trivialCorners = true;
+            }
+            unstrGridOut->tl().resize(numEl, type);
+            if (vertPerEl != InvalidIndex) {
+                unstrGridOut->el().reserve(numEl + 1);
+                for (Index i = 0; i < numEl; ++i) {
+                    unstrGridOut->el().push_back((i + 1) * vertPerEl);
+                }
+            }
+            if (trivialCorners) {
+                unstrGridOut->cl().reserve(numEl * vertPerEl);
+                Index v = 0;
+                for (Index i = 0; i < numEl; ++i) {
+                    for (Index j = 0; j < vertPerEl; ++j) {
+                        unstrGridOut->cl().push_back(v);
+                        ++v;
+                    }
+                }
+            }
+        } else {
+            sendError("unusable input data");
         }
 
         updateMeta(unstrGridOut);
