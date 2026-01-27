@@ -438,7 +438,9 @@ struct DataAdapter<Geometry, osg::FloatArray, Mapped, normalize> {
 template<class Geometry, bool normalize>
 struct DataAdapter<Geometry, osg::Vec3Array, osg::Vec3Array, normalize> {
     DataAdapter(typename Geometry::const_ptr tri, osg::Vec3Array *mapped)
-    : size(mapped->size()), mapped(size > 0 ? mapped : nullptr)
+    : size(mapped->size())
+    , mapping(size == tri->getNumElements() ? vistle::DataBase::Element : vistle::DataBase::Vertex)
+    , mapped(size > 0 ? mapped : nullptr)
     {}
     osg::Vec3 getValue(Index idx)
     {
@@ -447,8 +449,8 @@ struct DataAdapter<Geometry, osg::Vec3Array, osg::Vec3Array, normalize> {
             val.normalize();
         return val;
     }
-    vistle::DataBase::Mapping mapping = vistle::DataBase::Vertex;
     vistle::Index size = 0;
+    vistle::DataBase::Mapping mapping = vistle::DataBase::Vertex;
     osg::Vec3Array *mapped = nullptr;
 };
 
@@ -569,7 +571,8 @@ osg::Vec3Array *computeNormals(typename Geometry::const_ptr geometry, const Opti
 
     osg::Vec3Array *normals = new osg::Vec3Array;
     if (numCorners > 0) {
-        normals->resize(options.indexedGeometry ? numCoords : numCorners);
+        bool useVertexNormals = options.indexedGeometry;
+        normals->resize(useVertexNormals ? numCoords : numPrim);
         for (Index prim = 0; prim < numPrim; ++prim) {
             const Index begin = geo.getPrimitiveBegin(prim), end = geo.getPrimitiveBegin(prim + 1);
             Index v0 = cl[begin + 0], v1 = cl[begin + 1], v2 = cl[begin + 2];
@@ -579,18 +582,16 @@ osg::Vec3Array *computeNormals(typename Geometry::const_ptr geometry, const Opti
             osg::Vec3 normal = (w - u) ^ (v - u) * -1;
             normal.normalize();
 
-            if (options.indexedGeometry) {
+            if (useVertexNormals) {
                 for (Index c = begin; c < end; ++c) {
                     const Index v = cl[c];
                     (*normals)[v] += normal;
                 }
             } else {
-                for (Index c = begin; c < end; ++c) {
-                    (*normals)[c] = normal;
-                }
+                (*normals)[prim] = normal;
             }
         }
-        if (options.indexedGeometry) {
+        if (useVertexNormals) {
             for (Index v = 0; v < numCoords; ++v)
                 (*normals)[v].normalize();
         }
