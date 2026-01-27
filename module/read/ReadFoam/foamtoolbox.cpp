@@ -1513,13 +1513,15 @@ bool isPointingInwards(index_t face,
         return false;
     }
     index_t owner = owners[face];
+#ifndef NDEBUG
     index_t neighbor = neighbors[face];
     assert(owner == cell || neighbor == cell);
-    index_t other = owner==cell ? neighbor : owner;
+    assert(owner < neighbor);
+#endif
     // cell is the index of current cell and other is index of other cell sharing the same face
     // if index of cell is higher than index of the "next door" cell
     // then normal vector points inwards else outwards
-    return (cell > other);
+    return cell != owner;
 }
 
 vertex_set getVerticesForCell(
