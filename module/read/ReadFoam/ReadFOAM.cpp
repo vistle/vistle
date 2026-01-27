@@ -549,7 +549,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
                 }
                 num_conn += num_verts;
             }
-            //save data cell by cell to element, connectivity and type list
+            //save data cell by cell to element, connectivity, and type list
             auto el = grid->el().data();
             auto &connectivities = grid->cl();
             auto inserter = std::back_inserter(connectivities);
