@@ -869,7 +869,7 @@ public:
     DEFINE_ENUM_WITH_STRING_CONVERSIONS(
         Reduce,
         (Never) //< module's prepare()/reduce() methods will never be called - only for modules with COMBINE port (renderers)
-        (Locally) //< module's prepare()/reduce() methods will be called once unsynchronized on each rank
+        (Locally) //< module's prepare()/reduce() methods will be called once asynchronously on each rank
         (PerTimestep) //< module's reduce() method will be called on all ranks together once per timestep
         (PerTimestepOrdered) //< module's reduce() method will be called on all ranks together once per timestep in ascending order
         (PerTimestepZeroFirst) //< module's reduce() method will be called on all ranks together once per timestep in arbitrary order, but zero first
