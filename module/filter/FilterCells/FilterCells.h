@@ -3,6 +3,11 @@
 
 #include "SupportedVariables.h"
 #include <vistle/module/module.h>
+
+#define exprtk_enable_debugging
+#define exprtk_disable_caseinsensitivity
+#define exprtk_disable_string_capabilities
+#define exprtk_disable_rtl_io_file
 #include "../../general/Calc/exprtk/exprtk.hpp"
 
 
