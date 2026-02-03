@@ -51,6 +51,7 @@ private:
 
     bool m_haveData = false;
     void updateHaveData();
+    void updateRangeParameters();
 
 #ifndef COLOR_RANDOM
     std::map<int, ColorMap::TF> transferFunctions;
