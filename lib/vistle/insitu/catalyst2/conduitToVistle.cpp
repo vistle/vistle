@@ -1,5 +1,5 @@
 #include "conduitToVistle.h"
-
+#include "conduitTopology.h"
 #include <catalyst_api.h>
 #include <catalyst_conduit.hpp>
 #include <catalyst_conduit_blueprint.hpp>
@@ -25,13 +25,25 @@ std::array<vistle::Index, 3> getDims(const conduit_cpp::Node &dims)
     return {dims["i"].to_uint32(), dims["j"].to_uint32(), twoD ? 1 : dims["k"].to_uint32()};
 }
 
+template<typename ScalarA, typename ScalarB>
+void copy(const ScalarA *in, ScalarB *out, conduit_index_t numElements, conduit_index_t offset, conduit_index_t stride)
+{
+    for (conduit_index_t i = 0; i < numElements; i++) {
+        out[i] = static_cast<ScalarB>(in[offset / sizeof(ScalarA) + i * stride / sizeof(ScalarA)]);
+    }
+}
+
 void getCoord(const conduit_cpp::Node &coord, Scalar *out)
 {
-    assert(coord.dtype().is_float());
-    const float *data = static_cast<const float *>(coord.data_ptr());
     auto dt = coord.dtype();
-    for (conduit_index_t i = 0; i < coord.number_of_elements(); i++) {
-        out[i] = data[(dt.offset() + i * dt.stride()) / dt.element_bytes()];
+    if (dt.is_float()) {
+        const float *data = static_cast<const float *>(coord.data_ptr());
+        copy(data, out, coord.number_of_elements(), dt.offset(), dt.stride());
+    } else if (dt.is_double()) {
+        const double *data = static_cast<const double *>(coord.data_ptr());
+        copy(data, out, coord.number_of_elements(), dt.offset(), dt.stride());
+    } else {
+        std::cerr << "unsupported coordinate data type " << dt.type_id() << ", " << dt.name() << std::endl;
     }
 }
 
@@ -54,69 +66,81 @@ StructuredGrid::ptr toStructured(const conduit_cpp::Node &coords, const conduit_
     return grid;
 }
 
-constexpr int numElementTypes = 7;
-constexpr int elementTypesVistle[numElementTypes] = {
-    UnstructuredGrid::Type::POINT,       UnstructuredGrid::Type::TRIANGLE,   UnstructuredGrid::Type::QUAD,
-    UnstructuredGrid::Type::TETRAHEDRON, UnstructuredGrid::Type::HEXAHEDRON, UnstructuredGrid::Type::PYRAMID,
-    UnstructuredGrid::Type::PRISM};
-const char *elementTypeStrings[numElementTypes] = {"point", "tri", "quad", "tet", "hex", "pyramid", "wedge"};
-constexpr int elementCorners[numElementTypes] = {1, 3, 4, 4, 8, 5, 6};
-
-Index getNumCorners(const std::string &elementType)
+size_t calcPolyhedronCorners(conduit_int32 numFaces, const conduit_int32 *cl, UnstructuredGrid::Type subShape,
+                             const std::map<int, UnstructuredGrid::Type> &subShapeMap, const conduit_int32 *subShapes,
+                             const conduit_int32 *subSizes)
 {
-    for (size_t i = 0; i < numElementTypes; i++) {
-        if (elementType == elementTypeStrings[i]) {
-            return elementCorners[i];
+    size_t numCorners = 0;
+    for (auto f = 0; f < numFaces; f++) {
+        auto facePos = cl[f];
+        auto faceType =
+            subShape == UnstructuredGrid::Type::NONE ? subShapeMap.find(subShapes[facePos])->second : subShape;
+        if (faceType == UnstructuredGrid::Type::POLYGON) {
+            numCorners += subSizes[facePos];
+        } else {
+            numCorners += UnstructuredGrid::NumVertices[faceType];
         }
+        // each polyhedron face is terminated with its starting index
+        ++numCorners;
     }
-    std::cerr << elementType << " is not a supported" << std::endl;
-    return 0;
-}
-
-std::map<int, UnstructuredGrid::Type> getShapeMap(const conduit_cpp::Node &shapeMap)
-{
-    std::map<int, UnstructuredGrid::Type> vistleShapeMap;
-    for (conduit_index_t i = 0; i < shapeMap.number_of_children(); i++) {
-        auto shape = shapeMap.child(i);
-        auto shapeName = shape.name();
-        auto shapeCode = shape.as_int();
-        for (int i = 0; i < numElementTypes; i++) {
-            if (shapeName == elementTypeStrings[i]) {
-                vistleShapeMap[shapeCode] = static_cast<UnstructuredGrid::Type>(elementTypesVistle[i]);
-                break;
-            }
-        }
-    }
-    return vistleShapeMap;
-}
-
-UnstructuredGrid::Type toVistleType(const std::string &elementType)
-{
-    for (size_t i = 0; i < numElementTypes; i++) {
-        if (elementType == elementTypeStrings[i]) {
-            return static_cast<UnstructuredGrid::Type>(elementTypesVistle[i]);
-        }
-    }
-    return UnstructuredGrid::Type::NONE;
+    return numCorners;
 }
 
 UnstructuredGrid::ptr toUnstructured(const conduit_cpp::Node &coords, const conduit_cpp::Node &topology)
 {
+    ConduitTopology topo(topology);
+
     size_t numElements = 0;
-    const size_t numCorners = topology["elements/connectivity"].number_of_elements();
-    auto elementType = topology["elements/shape"].as_string();
-    size_t numCornersPerElement = getNumCorners(elementType);
-    if (elementType == "mixed") {
-        auto shapes = topology["elements/shapes"];
-        numElements = shapes.number_of_elements();
-    } else {
-        if (!numCornersPerElement) {
-            return nullptr;
+    size_t numCorners = 0;
+    size_t numCornersPerElement = 0;
+
+    bool containsPolyhedra = false;
+
+    if (topo.isMixed) {
+        numElements = topo.shapes.size;
+        for (size_t i = 0; i < numElements; i++) {
+            if (topo.shapeMap.find(topo.shapes[i])->second == UnstructuredGrid::Type::POLYHEDRON) {
+                containsPolyhedra = true;
+                auto pos = topo.offsets[i];
+                auto numFaces = topo.sizes[i];
+                numCorners += calcPolyhedronCorners(numFaces, topo.connectivity.data + pos, topo.sub->shape,
+                                                    topo.sub->shapeMap, topo.sub->shapes.data, topo.sub->sizes.data);
+
+            } else
+                numCorners += topo.sizes[i];
         }
-        numElements = numCorners / numCornersPerElement;
+
+    } else {
+        if (topo.shape == UnstructuredGrid::Type::POLYHEDRON) {
+            // warning: this case is not tested
+            containsPolyhedra = true;
+            for (size_t i = 0; i < numElements; i++) {
+                auto pos = topo.offsets[i];
+                auto numFaces = topo.sizes[i];
+                numCorners += calcPolyhedronCorners(numFaces, topo.connectivity.data + pos, topo.sub->shape,
+                                                    topo.sub->shapeMap, topo.sub->shapes.data, topo.sub->sizes.data);
+            }
+
+        } else if (topo.shape == UnstructuredGrid::Type::POLYGON) {
+            numElements = topo.offsets.size;
+            numCorners = topo.offsets[numElements - 1] + topo.sizes[numElements - 1];
+        } else {
+            numCornersPerElement = UnstructuredGrid::NumVertices[topo.shape];
+            if (!numCornersPerElement) {
+                std::cerr << "conduitToVistle: unsupported element type " << UnstructuredGrid::toString(topo.shape)
+                          << std::endl;
+                return nullptr;
+            }
+            numElements = numCorners / numCornersPerElement;
+        }
     }
 
-    const size_t numVertices = coords["values/x"].number_of_elements(); //assume x/y/z have the same number of elements
+    const auto numVertices = coords["values/x"].number_of_elements();
+    if (numVertices != coords["values/y"].number_of_elements() ||
+        numVertices != coords["values/z"].number_of_elements()) {
+        std::cerr << "inconsistent number of coordinate values" << std::endl;
+        return nullptr;
+    }
     auto grid = std::make_shared<UnstructuredGrid>(numElements, numCorners, numVertices);
     auto cl = grid->cl().data();
     auto tl = grid->tl().data();
@@ -125,28 +149,71 @@ UnstructuredGrid::ptr toUnstructured(const conduit_cpp::Node &coords, const cond
     auto y = grid->y().data();
     auto z = grid->z().data();
     getCoords(coords, x, y, z);
-    for (size_t i = 0; i < numCorners; i++) {
-        cl[i] = static_cast<const int *>(topology["elements/connectivity"].data_ptr())[i];
-    }
-    if (elementType == "mixed") {
-        std::map<int, UnstructuredGrid::Type> shapeMap = getShapeMap(topology["elements/shape/shape_map"]);
-        auto shapes = static_cast<const int *>(topology["elements/shapes"].data_ptr());
-        Index pos = 0;
-        for (size_t i = 0; i < numElements; i++) {
-            el[i] = pos;
-            pos += UnstructuredGrid::NumVertices[shapeMap[shapes[i]]];
-            tl[i] = shapeMap[shapes[i]];
+    if (!containsPolyhedra) {
+        for (size_t i = 0; i < numCorners; i++) {
+            cl[i] = topo.connectivity[i];
         }
-        el[numElements] = pos;
+        if (topo.isMixed) {
+            Index pos = 0;
+            for (size_t i = 0; i < numElements; i++) {
+                el[i] = pos;
+                tl[i] = topo.shapeMap.find(topo.shapes[i])->second;
+                pos += UnstructuredGrid::NumVertices[tl[i]];
+            }
+            el[numElements] = pos;
 
-    } else {
-        auto type = toVistleType(elementType);
-        for (size_t i = 0; i < numElements; i++) {
-            el[i] = i * numCornersPerElement;
-            tl[i] = type;
+        } else {
+            for (size_t i = 0; i < numElements; i++) {
+                el[i] = i * numCornersPerElement;
+                tl[i] = topo.shape;
+            }
+            el[numElements] = numElements * numCornersPerElement;
         }
-        el[numElements] = numElements * numCornersPerElement;
+    } else {
+        size_t cornerPos = 0;
+        size_t totalNumPolyhedronFaces = 0;
+        const conduit_int32 *subOffsets = nullptr;
+        if (topology.has_child("subelements/offsets"))
+            subOffsets = topology["subelements/offsets"].as_int32_ptr();
+        size_t subOffset = 0;
+        for (size_t i = 0; i < numElements; i++) {
+            auto elemType = topo.isMixed ? topo.shapeMap.find(topo.shapes[i])->second : topo.shape;
+            tl[i] = elemType;
+            el[i] = cornerPos;
+            auto pos = topo.offsets[i];
+            if (elemType == UnstructuredGrid::Type::POLYHEDRON) {
+                auto numFaces = topo.sizes[i];
+                for (auto f = 0; f < numFaces; f++) {
+                    auto facePos = topo.connectivity[pos + f];
+                    auto faceType = topo.sub->shape;
+                    if (topo.sub->shapes.data) {
+                        faceType = topo.sub->shapeMap.find(topo.sub->shapes[facePos])->second;
+                    }
+                    size_t numFaceCorners = UnstructuredGrid::NumVertices[faceType];
+                    if (faceType == UnstructuredGrid::Type::POLYGON) {
+                        numFaceCorners = topo.sub->sizes[facePos];
+                        subOffset = subOffsets[facePos];
+                    }
+                    for (size_t v = 0; v < numFaceCorners; v++) {
+                        cl[cornerPos] = topo.sub->connectivity[subOffset + v];
+                        ++cornerPos;
+                    }
+                    cl[cornerPos] = cl[cornerPos - numFaceCorners]; // terminate face with starting index
+                    ++cornerPos;
+                    ++totalNumPolyhedronFaces;
+                    subOffset += numFaceCorners;
+                }
+            } else {
+                auto numCornersElem = topo.sizes[i];
+                for (auto c = 0; c < numCornersElem; c++) {
+                    cl[cornerPos] = topo.connectivity[pos + c];
+                    ++cornerPos;
+                }
+            }
+        }
+        el[numElements] = cornerPos;
     }
+
     return grid;
 }
 
@@ -181,15 +248,6 @@ Object::ptr conduitMeshToVistle(const conduit_cpp::Node &mesh, int sourceId)
     return nullptr;
 }
 
-// Material-Independent Fields:
-// fields/field/association: “vertex” | “element”
-// not supported: fields/field/grid_function: (mfem-style finite element collection name) (replaces “association”)
-// not considered: fields/field/volume_dependent: “true” | “false”
-// fields/field/topology: “topo”
-// fields/field/values: (mcarray)
-// fields/field/offsets: (integer array) (optional - for strided structured topology)
-// fields/field/strides: (integer array) (optional - for strided structured topology)
-
 vistle::DataBase::ptr conduitDataToVistle(const conduit_cpp::Node &field, int sourceId)
 {
     std::string mappingName = field["association"].as_string();
@@ -197,28 +255,30 @@ vistle::DataBase::ptr conduitDataToVistle(const conduit_cpp::Node &field, int so
     DataBase::Mapping mapping = mappingName == "vertex" ? DataBase::Mapping::Vertex : DataBase::Mapping::Element;
     auto values = field["values"];
     conduit_cpp::Node info;
-    auto ok = conduit_cpp::Blueprint::verify("mcarray", values, info);
-    if (!ok) {
-        std::cerr << "conduitToVistle: field is not a valid mcarray" << std::endl;
+    auto isVectorField = conduit_cpp::Blueprint::verify("mcarray", values, info);
+    auto isScalarField = values.dtype().is_number() && values.dtype().number_of_elements() > 1;
+    if (!isVectorField && !isScalarField) {
+        std::cerr << "conduitToVistle: field is not a valid array" << std::endl;
         std::cerr << info.to_yaml() << std::endl;
         return nullptr;
     }
-    if (!values.has_child("x")) {
-        std::cerr << "conduitToVistle: field does not have x values" << std::endl;
-        return nullptr;
+    if (isScalarField) {
+        auto vec = std::make_shared<vistle::Vec<vistle::Scalar, 1>>((size_t)values.dtype().number_of_elements());
+        getCoord(values, vec->x().data());
+        vec->setMapping(mapping);
+        vec->describe(field.name(), sourceId);
+        return vec;
     }
     if (values.has_child("y")) {
-        if (values.has_child("z")) {
-            auto vec =
-                std::make_shared<vistle::Vec<vistle::Scalar, 3>>((size_t)values["x"].dtype().number_of_elements());
-            getCoords(field, vec->x().data(), vec->y().data(), vec->z().data());
-            vec->setMapping(mapping);
-            vec->describe(field.name(), sourceId);
-            return vec;
-        } else {
-            std::cerr << "conduitToVistle: 2D fieldss are not supported" << std::endl;
+        if (!values.has_child("z")) {
+            std::cerr << "conduitToVistle: 2D fields are not supported" << std::endl;
             return nullptr;
         }
+        auto vec = std::make_shared<vistle::Vec<vistle::Scalar, 3>>((size_t)values["x"].dtype().number_of_elements());
+        getCoords(field, vec->x().data(), vec->y().data(), vec->z().data());
+        vec->setMapping(mapping);
+        vec->describe(field.name(), sourceId);
+        return vec;
     } else {
         auto vec = std::make_shared<vistle::Vec<vistle::Scalar, 1>>((size_t)values["x"].dtype().number_of_elements());
         getCoord(values, vec->x().data());
