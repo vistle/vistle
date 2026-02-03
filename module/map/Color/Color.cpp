@@ -736,7 +736,7 @@ bool Color::prepare()
         if (!m_autoRange) {
             m_min = m_minPara->getValue();
             m_max = m_maxPara->getValue();
-            if (m_min == m_max)
+            if (std::abs(m_min - m_max) < std::numeric_limits<Scalar>::epsilon()) {}
                 m_max = m_min + 1.;
         }
     }
