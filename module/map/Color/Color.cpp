@@ -66,6 +66,17 @@ static const vistle::Float TopographyMin(-8000), TopographyMax(8000);
 
 static const vistle::Integer MaxSteps(0x4000);
 
+static void extendRange(vistle::Scalar &min, vistle::Scalar &max)
+{
+    auto absmax = std::max(std::abs(min), std::abs(max));
+    auto minrange = std::numeric_limits<Scalar>::epsilon() * absmax * MaxSteps;
+    if (max - min < minrange) {
+        min -= minrange;
+        max += minrange;
+    }
+}
+
+
 ColorMap::ColorMap(const size_t steps): width(steps)
 {
     auto rand = std::minstd_rand0();
@@ -570,18 +581,7 @@ bool Color::changeParameter(const Parameter *p)
     } else
 #endif
         if (p == m_constrain) {
-        if (m_constrain->getValue()) {
-            if (m_dataRangeValid) {
-                auto diff = m_dataMax - m_dataMin;
-                setParameterRange<Float>(m_minPara, m_dataMin - diff * 0.5, m_dataMax);
-                setParameterRange<Float>(m_maxPara, m_dataMin, m_dataMax + diff * 0.5);
-            }
-        } else {
-            setParameterRange<Float>(m_minPara, std::numeric_limits<Scalar>::lowest(),
-                                     std::numeric_limits<Scalar>::max());
-            setParameterRange<Float>(m_maxPara, std::numeric_limits<Scalar>::lowest(),
-                                     std::numeric_limits<Scalar>::max());
-        }
+        updateRangeParameters();
     } else if (p == m_autoRangePara) {
         m_autoRange = m_autoRangePara->getValue();
         newMap = true;
@@ -731,13 +731,12 @@ bool Color::prepare()
         if (!m_autoRange) {
             m_min = m_minPara->getValue();
             m_max = m_maxPara->getValue();
-            if (m_min == m_max)
-                m_max = m_min + 1.;
         }
     }
     m_reverse = m_min > m_max;
     if (m_reverse)
         std::swap(m_min, m_max);
+    extendRange(m_min, m_max);
     m_inputQueue.clear();
 
     computeMap();
@@ -797,6 +796,20 @@ bool Color::compute()
     return true;
 }
 
+void Color::updateRangeParameters()
+{
+    if (m_constrain->getValue()) {
+        if (m_dataRangeValid) {
+            auto diff = m_dataMax - m_dataMin;
+            setParameterRange<Float>(m_minPara, m_dataMin - diff * 0.5, m_dataMax);
+            setParameterRange<Float>(m_maxPara, m_dataMin, m_dataMax + diff * 0.5);
+        }
+    } else {
+        setParameterRange<Float>(m_minPara, std::numeric_limits<Scalar>::lowest(), std::numeric_limits<Scalar>::max());
+        setParameterRange<Float>(m_maxPara, std::numeric_limits<Scalar>::lowest(), std::numeric_limits<Scalar>::max());
+    }
+}
+
 bool Color::reduce(int timestep)
 {
     assert(timestep == -1);
@@ -809,14 +822,7 @@ bool Color::reduce(int timestep)
     m_dataMin = boost::mpi::all_reduce(comm(), m_dataMin, boost::mpi::minimum<Scalar>());
     m_dataMax = boost::mpi::all_reduce(comm(), m_dataMax, boost::mpi::maximum<Scalar>());
     m_dataRangeValid = true;
-    if (m_constrain->getValue()) {
-        auto diff = m_dataMax - m_dataMin;
-        setParameterRange<Float>(m_minPara, m_dataMin - diff * 0.5, m_dataMax);
-        setParameterRange<Float>(m_maxPara, m_dataMin, m_dataMax + diff * 0.5);
-    } else {
-        setParameterRange<Float>(m_minPara, std::numeric_limits<Scalar>::lowest(), std::numeric_limits<Scalar>::max());
-        setParameterRange<Float>(m_maxPara, std::numeric_limits<Scalar>::lowest(), std::numeric_limits<Scalar>::max());
-    }
+    updateRangeParameters();
 
     if (m_autoRange) {
         setParameter<Float>(m_minPara, m_dataMin);
@@ -825,11 +831,10 @@ bool Color::reduce(int timestep)
 
     m_min = m_minPara->getValue();
     m_max = m_maxPara->getValue();
-    if (m_min == m_max)
-        m_max = m_min + 1.;
     m_reverse = m_min > m_max;
     if (m_reverse)
         std::swap(m_min, m_max);
+    extendRange(m_min, m_max);
 
     if (m_nest && m_autoInsetCenter) {
         std::vector<unsigned long> bins(getIntParameter("resolution"));
@@ -953,6 +958,7 @@ void Color::sendColorMap()
 
     message::Colormap cm(m_species, m_sourceId);
     cm.setDestId(message::Id::ForBroadcast);
+    extendRange(m_min, m_max);
     cm.setRange(m_min, m_max);
     if (m_blendWithMaterialPara->getValue())
         cm.setBlendWithMaterial(true);
