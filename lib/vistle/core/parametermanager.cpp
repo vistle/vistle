@@ -345,24 +345,36 @@ void ParameterManager::setParameterFilters(StringParameter *param, const std::st
 }
 
 template<class V>
-V getParameterDefault(config::Access *config, const std::string &module, const std::string &name, const V &value)
+V getParameterDefault(config::Access *config, const std::string &module, const std::string &name, V value)
 {
-    if (!config)
+    if (!config) {
         return value;
-    if (name.find("_config:") == 0) // avoid recursive default look-up for config parameters
+    }
+    if (name.find("_config:") == 0) {
+        // avoid recursive default look-up for config parameters
         return value;
+    }
 
     auto def = config->value<V>("modules/parameters", module, name, value);
     if (!name.empty() && name[0] == '_') {
         if (!def->exists()) {
+            if (def->hasDefaultValue()) {
+                value = def->defaultValue();
+            }
             // look up defaults for system parameters
             def = config->value<V>("modules/default", module, name, value);
         }
         if (!def->exists()) {
+            if (def->hasDefaultValue()) {
+                value = def->defaultValue();
+            }
             // global user overrides for system parameters
             def = config->value<V>("modules/parameters", "ALL", name, value);
         }
         if (!def->exists()) {
+            if (def->hasDefaultValue()) {
+                value = def->defaultValue();
+            }
             // look up common default for system parameters
             def = config->value<V>("modules/default", "ALL", name, value);
         }

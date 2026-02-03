@@ -2369,7 +2369,9 @@ void Module::setPortOptional(const Port *port, bool optional)
         return;
 
     if (optional) {
-        m_portState[port] = message::ItemInfo::PortState::Optional;
+        auto state = message::ItemInfo::PortState::Optional;
+        m_portState[port] = state;
+        setPortState(port, state);
     } else {
         m_portState.erase(port);
     }

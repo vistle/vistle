@@ -32,25 +32,30 @@ int main(int argc, char *argv[])
         ndef = def;
     }
 
+
     if (type == "b" || type == "bool" || type == "boolean") {
-        auto val = config.value<bool>(file, section, entry, std::stoi(ndef) ? true : false);
-        if (val->exists() || haveDefault)
+        auto val = haveDefault ? config.value<bool>(file, section, entry, std::stoi(ndef) ? true : false)
+                               : config.value<bool>(file, section, entry);
+        if (val->exists() || val->hasDefaultValue())
             std::cout << val->value() << std::endl;
     } else if (type == "i" || type == "int" || type == "integer") {
-        auto val = config.value<int64_t>(file, section, entry, std::stoi(ndef));
-        if (val->exists() || haveDefault)
+        auto val = haveDefault ? config.value<int64_t>(file, section, entry, std::stoi(ndef))
+                               : config.value<int64_t>(file, section, entry);
+        if (val->exists() || val->hasDefaultValue())
             std::cout << val->value() << std::endl;
     } else if (type == "f" || type == "float" || type == "d" || type == "double") {
-        auto val = config.value<double>(file, section, entry, std::stod(ndef));
-        if (val->exists() || haveDefault)
+        auto val = haveDefault ? config.value<double>(file, section, entry, std::stod(ndef))
+                               : config.value<double>(file, section, entry);
+        if (val->exists() || val->hasDefaultValue())
             std::cout << val->value() << std::endl;
     } else if (type == "s" || type == "string") {
-        auto val = config.value<std::string>(file, section, entry, def);
-        if (val->exists() || haveDefault)
+        auto val = haveDefault ? config.value<std::string>(file, section, entry, def)
+                               : config.value<std::string>(file, section, entry);
+        if (val->exists() || val->hasDefaultValue())
             std::cout << val->value() << std::endl;
     } else if (type == "ba" || type == "bool_array") {
         auto arr = config.array<bool>(file, section, entry);
-        if (arr->exists()) {
+        if (arr->exists() || arr->hasDefaultValue()) {
             auto vec = arr->value();
             for (auto v: vec) {
                 std::cout << v << std::endl;
@@ -58,7 +63,7 @@ int main(int argc, char *argv[])
         }
     } else if (type == "ia" || type == "int_array") {
         auto arr = config.array<int64_t>(file, section, entry);
-        if (arr->exists()) {
+        if (arr->exists() || arr->hasDefaultValue()) {
             auto vec = arr->value();
             for (auto v: vec) {
                 std::cout << v << std::endl;
@@ -66,7 +71,7 @@ int main(int argc, char *argv[])
         }
     } else if (type == "fa" || type == "float_array" || type == "da" || type == "double_array") {
         auto arr = config.array<int64_t>(file, section, entry);
-        if (arr->exists()) {
+        if (arr->exists() || arr->hasDefaultValue()) {
             auto vec = arr->value();
             for (auto v: vec) {
                 std::cout << v << std::endl;
@@ -74,7 +79,7 @@ int main(int argc, char *argv[])
         }
     } else if (type == "sa" || type == "string_array") {
         auto arr = config.array<std::string>(file, section, entry);
-        if (arr->exists()) {
+        if (arr->exists() || arr->hasDefaultValue()) {
             auto vec = arr->value();
             for (auto v: vec) {
                 std::cout << v << std::endl;

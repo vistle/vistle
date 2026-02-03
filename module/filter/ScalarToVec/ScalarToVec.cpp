@@ -16,8 +16,10 @@ ScalarToVec::ScalarToVec(const std::string &name, int moduleID, mpi::communicato
     m_vecOut = createOutputPort("data_out", "combined vector output");
     for (int i = 0; i < NumScalars; ++i) {
         m_scalarIn[i] = createInputPort("data_in" + std::to_string(i), "scalar input to be combined");
-        linkPorts(m_scalarIn[i], m_vecOut);
+        if (i > 0)
+            setPortOptional(m_scalarIn[i], true);
     }
+    linkPorts(m_scalarIn[0], m_vecOut);
     m_species = addStringParameter("species", "Species for output", "");
 }
 
@@ -75,7 +77,6 @@ bool ScalarToVec::compute()
     }
 
     Vec<Scalar, NumScalars>::ptr out(new Vec<Scalar, NumScalars>(size_t(0)));
-
     for (int i = NumScalars - 1; i >= 0; --i) {
         if (data_in[i]) {
             out->d()->x[i] = data_in[i]->d()->x[0];

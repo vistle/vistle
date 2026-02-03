@@ -15,6 +15,7 @@
 /*.vsl
 **/*.autosave
 /.flavor
+/.covise
 /.vs
 /.vscode
 /.idea
