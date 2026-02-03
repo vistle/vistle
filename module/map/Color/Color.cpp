@@ -188,7 +188,7 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm): Mod
 
     m_center = addFloatParameter("center", "center of colormap range", 0.5);
     setParameterRange(m_center, 0., 1.);
-    m_centerAbsolute = addIntParameter("center_absolute", "absolute value for center", false, Parameter::Boolean);
+    m_centerAbsolute = addIntParameter("absolute_center", "absolute value for center", false, Parameter::Boolean);
     m_compress = addFloatParameter("range_compression", "compression of range towards center", 0.);
     setParameterRange(m_compress, -1., 1.);
 #endif
@@ -438,6 +438,11 @@ std::pair<vistle::Scalar, vistle::Scalar> Color::getMinMax(vistle::DataBase::con
             max = std::sqrt(max);
         }
 #endif
+    }
+
+    //make sure that min and max are different to be sure that useful colormap is shown and the same value is not mapped to different values
+    if (std::abs(min - max) < std::numeric_limits<Scalar>::epsilon() * std::abs(max)) {
+        max = min + 1;
     }
 
     return {min, max};
