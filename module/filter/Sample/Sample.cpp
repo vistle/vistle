@@ -5,12 +5,6 @@ using namespace vistle;
 
 MODULE_MAIN(Sample)
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(InterpolationMode,
-                                    (First) // value of first vertex
-                                    (Mean) // mean value of all vertices
-                                    (Nearest) // value of nearest vertex
-                                    (Linear) // barycentric/multilinear interpolation
-)
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(ValueOutside, (NaN)(Zero)(userDefined))
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(MultiHits, (Any)(Average))
 
@@ -24,15 +18,17 @@ Sample::Sample(const std::string &name, int moduleID, mpi::communicator comm): M
 
     m_out = createOutputPort("data_out", "data sampled to target grid");
 
-    m_mode = addIntParameter("mode", "interpolation mode", Linear, Parameter::Choice);
+    m_mode = addIntParameter("mode", "interpolation mode", vistle::GridInterface::Linear, Parameter::Choice);
+    V_ENUM_SET_CHOICES_SCOPE(m_mode, InterpolationMode, vistle::GridInterface);
     m_createCelltree = addIntParameter("create_celltree", "create celltree", 0, Parameter::Boolean);
-    m_valOutside = addIntParameter("value_outside", "value to be used if target is outside source domain", Linear,
-                                   Parameter::Choice);
-    m_userDef = addFloatParameter("user_defined_value", "user defined value if target outside source domain", 1.0);
-    m_hits = addIntParameter("mulit_hits", "handling if multiple interpolatied values found for one target point ",
-                             Linear, Parameter::Choice);
-    V_ENUM_SET_CHOICES(m_mode, InterpolationMode);
+
+    m_valOutside =
+        addIntParameter("value_outside", "value to be used if target is outside source domain", NaN, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_valOutside, ValueOutside);
+    m_userDef = addFloatParameter("user_defined_value", "user defined value if target outside source domain", 1.0);
+
+    m_hits = addIntParameter("multi_hits", "handling if multiple interpolatied values found for one target point ",
+                             Average, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_hits, MultiHits);
 }
 
@@ -63,7 +59,7 @@ int Sample::SampleToGrid(const vistle::GeometryInterface *target, vistle::DataBa
         Index cellIdxIn =
             inGrid->findCell(v, InvalidIndex, m_useCelltree ? GridInterface::NoFlags : GridInterface::NoCelltree);
         if (cellIdxIn != InvalidIndex) {
-            GridInterface::Interpolator interp = inGrid->getInterpolator(cellIdxIn, v, DataBase::Vertex, mode);
+            GridInterface::Interpolator interp = inGrid->getInterpolator(cellIdxIn, v, DataBase::Vertex, m_modeVal);
             Scalar p = interp(data);
             ptrOnData[i] = p;
             found = 1;
@@ -76,16 +72,19 @@ int Sample::SampleToGrid(const vistle::GeometryInterface *target, vistle::DataBa
     return found;
 }
 
+bool Sample::prepare()
+{
+    m_modeVal = (GridInterface::InterpolationMode)m_mode->getValue();
+    return true;
+}
+
 bool Sample::reduce(int timestep)
 {
-    mode = (GridInterface::InterpolationMode)m_mode->getValue();
-
     float valOut = 0.0;
     if (m_valOutside->getValue() == NaN) {
         valOut = NAN;
     } else if (m_valOutside->getValue() == userDefined) {
-        if (m_userDef->getValue())
-            valOut = m_userDef->getValue();
+        valOut = m_userDef->getValue();
     }
     if (m_createCelltree->getValue())
         m_useCelltree = true;
