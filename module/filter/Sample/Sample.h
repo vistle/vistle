@@ -36,9 +36,9 @@ private:
     std::vector<vistle::DataBase::const_ptr> dataList;
     std::vector<int> blockIdx;
 
-    bool m_useCelltree = false;
 
     float NO_VALUE = 0.0;
+    bool m_useCelltree = true;
 };
 
 #endif

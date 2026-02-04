@@ -20,7 +20,7 @@ Sample::Sample(const std::string &name, int moduleID, mpi::communicator comm): M
 
     m_mode = addIntParameter("mode", "interpolation mode", vistle::GridInterface::Linear, Parameter::Choice);
     V_ENUM_SET_CHOICES_SCOPE(m_mode, InterpolationMode, vistle::GridInterface);
-    m_createCelltree = addIntParameter("create_celltree", "create celltree", 0, Parameter::Boolean);
+    m_createCelltree = addIntParameter("create_celltree", "create celltree", m_useCelltree, Parameter::Boolean);
 
     m_valOutside =
         addIntParameter("value_outside", "value to be used if target is outside source domain", NaN, Parameter::Choice);
@@ -74,6 +74,7 @@ int Sample::SampleToGrid(const vistle::GeometryInterface *target, vistle::DataBa
 
 bool Sample::prepare()
 {
+    m_useCelltree = m_createCelltree->getValue() != 0;
     m_modeVal = (GridInterface::InterpolationMode)m_mode->getValue();
     return true;
 }
@@ -86,8 +87,6 @@ bool Sample::reduce(int timestep)
     } else if (m_valOutside->getValue() == userDefined) {
         valOut = m_userDef->getValue();
     }
-    if (m_createCelltree->getValue())
-        m_useCelltree = true;
     int nProcs = 1;
     if (comm().size() > 0)
         nProcs = comm().size();
@@ -227,7 +226,7 @@ bool Sample::reduce(int timestep)
 
 bool Sample::compute(const std::shared_ptr<vistle::BlockTask> &task) const
 {
-    if (m_createCelltree->getValue()) {
+    if (m_useCelltree) {
         Object::const_ptr obj = task->expect<Object>("data_in");
         if (!obj)
             return true;
