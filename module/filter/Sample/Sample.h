@@ -18,6 +18,7 @@ public:
 private:
     bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
 
+    bool prepare() override;
     bool reduce(int timestep) override;
     bool objectAdded(int sender, const std::string &senderPort, const vistle::Port *port) override;
     bool changeParameter(const vistle::Parameter *p) override;
@@ -26,7 +27,7 @@ private:
                      vistle::DataBase::ptr &sampled);
 
     vistle::IntParameter *m_mode, *m_valOutside, *m_hits;
-    vistle::GridInterface::InterpolationMode mode;
+    vistle::GridInterface::InterpolationMode m_modeVal;
     vistle::Port *m_out = nullptr;
     vistle::IntParameter *m_createCelltree;
     vistle::FloatParameter *m_userDef;
