@@ -642,6 +642,7 @@ struct ComputeOutput {
 
 template<class Data>
 struct SelectCells {
+    // determine cells that contain the isovalue, but skip cells with NaN values
     Data &m_data;
     SelectCells(Data &data): m_data(data) {}
 
@@ -656,6 +657,9 @@ struct SelectCells {
         // also for POLYHEDRON
         for (Index i = Cell; i < nextCell; i++) {
             Scalar val = m_data.m_isoFunc(m_data.m_cl[i]);
+            if (std::isnan(val)) {
+                return 0;
+            }
             if (val > m_data.m_isovalue) {
                 havelower = 1;
                 if (havehigher)
@@ -677,6 +681,9 @@ struct SelectCells {
         int havehigher = 0;
         for (int i = 0; i < 8; ++i) {
             Scalar val = m_data.m_isoFunc(verts[i]);
+            if (std::isnan(val)) {
+                return 0;
+            }
             if (val > m_data.m_isovalue) {
                 havelower = 1;
                 if (havehigher)
@@ -705,6 +712,9 @@ struct SelectCells2D {
         Index nextCell = thrust::get<1>(iCell);
         for (Index i = Cell; i < nextCell; i++) {
             Scalar val = m_data.m_isoFunc(m_data.m_cl[i]);
+            if (std::isnan(val)) {
+                return 0;
+            }
             if (val > m_data.m_isovalue) {
                 havelower = 1;
                 if (havehigher)
@@ -727,6 +737,9 @@ struct SelectCells2D {
         if (m_data.m_cl) {
             for (Index i = begin; i < end; ++i) {
                 Scalar val = m_data.m_isoFunc(m_data.m_cl[i]);
+                if (std::isnan(val)) {
+                    return 0;
+                }
                 if (val > m_data.m_isovalue) {
                     havelower = 1;
                     if (havehigher)
@@ -740,6 +753,9 @@ struct SelectCells2D {
         } else {
             for (Index i = begin; i < end; ++i) {
                 Scalar val = m_data.m_isoFunc(i);
+                if (std::isnan(val)) {
+                    return 0;
+                }
                 if (val > m_data.m_isovalue) {
                     havelower = 1;
                     if (havehigher)
