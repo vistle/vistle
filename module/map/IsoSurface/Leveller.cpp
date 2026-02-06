@@ -1,5 +1,5 @@
 //
-//This code is used for both IsoCut and IsoSurface!
+//This code is used for both CuttingSurface and IsoSurface!
 //
 
 #ifdef __APPLE__
