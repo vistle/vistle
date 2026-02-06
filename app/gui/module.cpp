@@ -1281,7 +1281,6 @@ void Module::moduleMessage(int type, QString message)
     if (type == vistle::message::SendText::Error) {
         if (!m_errorState) {
             m_errorState = true;
-            setStatus(m_Status);
             emit callshowErrorInMainThread();
         }
     }
