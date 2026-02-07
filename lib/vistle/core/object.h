@@ -114,6 +114,7 @@ public:
     };
 
     static const char *toString(Type v);
+    static int toNativeVecType(int type);
 
     virtual ~Object();
 

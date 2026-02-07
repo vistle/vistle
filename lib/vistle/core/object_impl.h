@@ -86,6 +86,8 @@ Object *Object::loadObject(Archive &ar)
         std::string name = ar.translateObjectName(arname);
         int type;
         ar &V_NAME(ar, "object_type", type);
+        // translate e.g. Vec<double> to Vec<float>, if local Scalars are float
+        type = toNativeVecType(type);
         if (!name.empty())
             objData = Shm::the().getObjectDataFromName(name);
         if (!ar.currentObject())
