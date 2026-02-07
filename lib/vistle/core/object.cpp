@@ -153,6 +153,38 @@ const char *Object::toString(Type v)
     return buf;
 }
 
+int Object::toNativeVecType(int type)
+{
+    if (type < Object::VEC) {
+        return type;
+    }
+
+    int dim = (type - Object::VEC) % (MaxDimension + 1);
+    size_t scalidx = (type - Object::VEC) / (MaxDimension + 1);
+    if (scalidx == scalarTypeId<float>() || scalidx == scalarTypeId<double>()) {
+#ifdef VISTLE_SCALAR_DOUBLE
+        scalidx = scalarTypeId<double>();
+#else
+        scalidx = scalarTypeId<float>();
+#endif
+    }
+    if (scalidx == scalarTypeId<int32_t>() || scalidx == scalarTypeId<int64_t>()) {
+#ifdef VISTLE_INDEX_64BIT
+        scalidx = scalarTypeId<int64_t>();
+#else
+        scalidx = scalarTypeId<int32_t>();
+#endif
+    }
+    if (scalidx == scalarTypeId<uint32_t>() || scalidx == scalarTypeId<uint64_t>()) {
+#ifdef VISTLE_INDEX_64BIT
+        scalidx = scalarTypeId<uint64_t>();
+#else
+        scalidx = scalarTypeId<uint32_t>();
+#endif
+    }
+    return Object::VEC + (MaxDimension + 1) * scalidx + dim;
+}
+
 std::ostream &operator<<(std::ostream &os, const Object &obj)
 {
     obj.print(os);
