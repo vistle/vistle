@@ -618,7 +618,6 @@ private: \
             ar.setCurrentObject(Object::m_data); \
         ar.registerObjectNameTranslation(name, getName()); \
         d()->template serialize<Archive>(ar); \
-        assert(type == Object::getType()); \
     }
 
 #define V_OBJECT_IMPL_SAVE(ObjType) \
