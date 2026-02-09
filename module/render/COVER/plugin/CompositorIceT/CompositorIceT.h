@@ -16,9 +16,7 @@
 #include <cover/coVRPlugin.h>
 #include <PluginUtil/MultiChannelDrawer.h>
 
-namespace vistle {
 class ReadBackCuda;
-}
 
 struct CompositeCallback;
 
@@ -73,7 +71,7 @@ private:
 
         IceTContext icetCtx; //!< compositing context
         IceTImage image;
-        vistle::ReadBackCuda *cudaColor, *cudaDepth; //!< helpers for CUDA read-back
+        ReadBackCuda *cudaColor, *cudaDepth; //!< helpers for CUDA read-back
         GLenum buffer;
         osg::ref_ptr<osg::Camera> camera;
         int width, height;
@@ -108,7 +106,7 @@ private:
     //! check whether the window with index 'win' has been resized since last frame
     void checkResize(int win);
     //! wrapper for pixel read-back (either pure OpenGL or CUDA)
-    static bool readpixels(vistle::ReadBackCuda *cuda, GLint x, GLint y, GLint w, GLint pitch, GLint h, GLenum format,
-                           int ps, GLubyte *bits, GLenum buf, GLenum type);
+    static bool readpixels(ReadBackCuda *cuda, GLint x, GLint y, GLint w, GLint pitch, GLint h, GLenum format, int ps,
+                           GLubyte *bits, GLenum buf, GLenum type);
 };
 #endif

@@ -1,25 +1,14 @@
-vistle_find_package(OpenGL)
-vistle_find_package(GLEW)
 vistle_find_package(ZLIB)
 vistle_find_package(JPEGTURBO)
 
 set(RHR_SOURCES compdecomp.cpp depthquant.cpp predict.cpp rfbext.cpp)
 
-set(RHR_HEADERS compdecomp.h depthquant.h predict.h rfbext.h ReadBackCuda.h)
+set(RHR_HEADERS compdecomp.h depthquant.h predict.h rfbext.h)
 
 set(RHR_SOURCES ${RHR_SOURCES} rhrserver.cpp)
 set(RHR_HEADERS ${RHR_HEADERS} rhrserver.h)
 
-if(GLEW_FOUND AND OPENGL_FOUND)
-    if(VISTLE_CUDA_ENABLED)
-        set(USE_CUDA TRUE)
-        set(RHR_CUDA_SOURCES ReadBackCuda.cu)
-    else()
-        set(RHR_CUDA_SOURCES ReadBackCuda.cpp)
-    endif()
-endif()
-
-vistle_add_library(vistle_rhr EXPORT ${VISTLE_LIB_TYPE} ${RHR_SOURCES} ${RHR_HEADERS} ${RHR_CUDA_SOURCES})
+vistle_add_library(vistle_rhr EXPORT ${VISTLE_LIB_TYPE} ${RHR_SOURCES} ${RHR_HEADERS})
 
 target_link_libraries(
     vistle_rhr
@@ -28,19 +17,6 @@ target_link_libraries(
     PRIVATE Boost::boost
     PRIVATE Boost::serialization
     PRIVATE ${JPEG_LIBRARIES})
-
-if(USE_CUDA)
-    target_link_libraries(
-        vistle_rhr
-        PRIVATE ${CUDA_LIBRARIES}
-        PRIVATE ${GLEW_LIBRARIES}
-        PRIVATE ${OPENGL_LIBRARIES})
-    target_compile_definitions(vistle_rhr PRIVATE HAVE_CUDA)
-    target_include_directories(vistle_rhr PRIVATE SYSTEM ${CUDA_INCLUDE_DIRS} ${GLEW_INCLUDES} ${OPENGL_INCLUDES})
-    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        target_compile_options(vistle_rhr PRIVATE "-Wno-pedantic")
-    endif()
-endif()
 
 if(JPEGTURBO_FOUND)
     if(NOT TURBOJPEG_HAVE_TJMCUWIDTH)

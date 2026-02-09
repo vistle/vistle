@@ -1,5 +1,5 @@
-#ifndef VISTLE_RHR_READBACKCUDA_H
-#define VISTLE_RHR_READBACKCUDA_H
+#ifndef VISTLE_COVER_PLUGIN_COMPOSITORICET_READBACKCUDA_H
+#define VISTLE_COVER_PLUGIN_COMPOSITORICET_READBACKCUDA_H
 
 /**\file
  * \brief class ReadBackCuda
@@ -18,17 +18,13 @@
 #include <GL/gl.h>
 #endif
 
-#include "export.h"
-
 #include <cstdlib>
 
 struct cudaGraphicsResource;
 typedef unsigned char uchar;
 
-namespace vistle {
-
 //! fast framebuffer read-back using CUDA
-class V_RHREXPORT ReadBackCuda {
+class ReadBackCuda {
 public:
     ReadBackCuda();
     ~ReadBackCuda();
@@ -56,5 +52,4 @@ private:
     bool m_initialized; //!< whether class is initialized
 };
 
-} // namespace vistle
 #endif

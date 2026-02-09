@@ -1,8 +1,5 @@
 #include "ReadBackCuda.h"
 
-namespace vistle {
-
-
 ReadBackCuda::ReadBackCuda()
 {}
 ReadBackCuda::~ReadBackCuda()
@@ -30,5 +27,3 @@ bool ReadBackCuda::readdepthquant(GLint x, GLint y, GLint w, GLint pitch, GLint 
 {
     return false;
 }
-
-} // namespace vistle
