@@ -21,7 +21,7 @@ set(HEADERS CompositorIceT.h)
 set(SOURCES CompositorIceT.cpp ${RHR_CUDA_SOURCES})
 
 cover_add_plugin(CompositorIceT ${HEADER} ${SOURCES})
-target_link_libraries(CompositorIceT vistle_rhr VistlePluginUtil ${ICET_CORE_LIBS} ${ICET_MPI_LIBS} MPI::MPI_CXX)
+target_link_libraries(CompositorIceT PRIVATE vistle_rhr VistlePluginUtil ${ICET_CORE_LIBS} ${ICET_MPI_LIBS} MPI::MPI_CXX)
 
 if(USE_CUDA)
     target_link_libraries(
