@@ -24,8 +24,6 @@
 //! use BGRA for pixel transfer
 #define USE_BGRA
 
-namespace vistle {
-
 static const int TileSizeX = 16;
 static const int TileSizeY = 16;
 
@@ -529,5 +527,3 @@ bool ReadBackCuda::readdepthquant(GLint x, GLint y, GLint w, GLint pitch, GLint 
 
     return true;
 }
-
-} // namespace vistle
