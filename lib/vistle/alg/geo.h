@@ -3,8 +3,8 @@
 
 #include <array>
 #include <numeric>
-#include <eigen3/Eigen/Core>
-#include <eigen3/Eigen/src/Core/Matrix.h>
+#include <Eigen/Core>
+#include <Eigen/src/Core/Matrix.h>
 
 namespace vistle {
 

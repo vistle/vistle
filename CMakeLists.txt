@@ -91,6 +91,7 @@ else()
 endif()
 
 option(VISTLE_INTERNAL_BOOST_MPI "Use internal copy of Boost.MPI" ON)
+option(VISTLE_INTERNAL_EIGEN "Use internal copy of Eigen" ON)
 
 # configure process model
 option(VISTLE_MULTI_PROCESS "use multiple processes communicating via shared memory" ON)
@@ -146,6 +147,10 @@ macro(vistle_find_package package)
         endif()
 
         if(APPLE)
+            if(pack STREQUAL "Eigen3")
+                set(hbpack "eigen")
+            endif()
+
             if(pack MATCHES "^OpenMP")
                 set(hbpack "libomp")
             endif()
@@ -539,6 +544,10 @@ vistle_find_package(
     ${BOOST_OPT})
 if(NOT TARGET Boost::system)
     add_library(Boost::system ALIAS Boost::boost)
+endif()
+
+if(NOT VISTLE_INTERNAL_EIGEN)
+    vistle_find_package(Eigen3 CONFIG REQUIRED)
 endif()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")

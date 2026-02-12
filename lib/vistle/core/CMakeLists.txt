@@ -177,7 +177,7 @@ endif()
 
 vistle_add_library(vistle_core EXPORT ${VISTLE_LIB_TYPE} ${core_SOURCES} ${core_HEADERS})
 
-target_link_libraries(vistle_core PUBLIC vistle_eigen)
+target_link_libraries(vistle_core PUBLIC Eigen3::Eigen)
 target_link_libraries(vistle_core PUBLIC vistle_yas)
 if(UNIX AND NOT APPLE)
     target_link_libraries(vistle_core PUBLIC -lrt)
