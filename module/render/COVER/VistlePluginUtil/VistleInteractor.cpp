@@ -1,5 +1,6 @@
 #include "VistleInteractor.h"
 #include "VistleRenderObject.h"
+#include "vistle/core/message.h"
 #include <cover/coVRAnimationManager.h>
 #include <vistle/core/parameter.h>
 #include <vistle/module/module.h>
@@ -115,7 +116,10 @@ void VistleInteractor::executeModule()
 
     message::Execute exec(m_moduleId, t, dt);
     exec.setDestId(message::Id::MasterHub);
-    sendMessage(exec);
+    auto pl = message::addPayload(exec, message::Execute::Payload(m_changedParameters));
+    m_changedParameters.clear();
+
+    sendMessage(exec, &pl);
 }
 
 /// copy the Module to same host
@@ -365,13 +369,15 @@ int VistleInteractor::getFileBrowserParam(const std::string &paraName, char *&va
 
 // --- set-Functions:
 
-void VistleInteractor::sendMessage(const message::Message &msg) const
+void VistleInteractor::sendMessage(const message::Message &msg, const buffer *pl) const
 {
-    m_sender->sendMessage(msg);
+    m_sender->sendMessage(msg, pl);
 }
 
 void VistleInteractor::sendParamMessage(const std::shared_ptr<Parameter> param) const
 {
+    m_changedParameters.push_back(param->getName());
+
     message::SetParameter m(m_moduleId, param->getName(), param);
     m.setDestId(m_moduleId);
     if (param->isImmediate()) {

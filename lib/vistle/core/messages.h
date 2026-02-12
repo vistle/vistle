@@ -393,6 +393,20 @@ public:
     double animationRealTime() const;
     double animationStepDuration() const;
 
+    struct Payload {
+        Payload();
+        Payload(const std::vector<std::string> &parameters);
+
+        std::vector<std::string> parameters;
+
+        ARCHIVE_ACCESS
+        template<class Archive>
+        void serialize(Archive &ar)
+        {
+            ar &parameters;
+        }
+    };
+
 private:
     bool m_allRanks; //!< whether execute should be broadcasted across all MPI ranks
     int module; //!< destination module, -1: all sources
@@ -1112,11 +1126,13 @@ extern template V_COREEXPORT buffer addPayload<SendText::Payload>(Message &messa
 extern template V_COREEXPORT buffer
 addPayload<SetParameterChoices::Payload>(Message &message, const SetParameterChoices::Payload &payload);
 extern template V_COREEXPORT buffer addPayload<AddHub::Payload>(Message &message, const AddHub::Payload &payload);
+extern template V_COREEXPORT buffer addPayload<Execute::Payload>(Message &message, const Execute::Payload &payload);
 
 extern template V_COREEXPORT std::string getPayload(const buffer &data);
 extern template V_COREEXPORT SendText::Payload getPayload(const buffer &data);
 extern template V_COREEXPORT SetParameterChoices::Payload getPayload(const buffer &data);
 extern template V_COREEXPORT AddHub::Payload getPayload(const buffer &data);
+extern template V_COREEXPORT Execute::Payload getPayload(const buffer &data);
 
 V_COREEXPORT std::ostream &operator<<(std::ostream &s, const Message &msg);
 

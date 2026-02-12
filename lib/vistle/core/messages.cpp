@@ -41,12 +41,14 @@ template V_COREEXPORT buffer addPayload<ItemInfo::Payload>(Message &message, con
 template V_COREEXPORT buffer addPayload<SetParameterChoices::Payload>(Message &message,
                                                                       const SetParameterChoices::Payload &payload);
 template V_COREEXPORT buffer addPayload<AddHub::Payload>(Message &message, const AddHub::Payload &payload);
+template V_COREEXPORT buffer addPayload<Execute::Payload>(Message &message, const Execute::Payload &payload);
 
 template V_COREEXPORT std::string getPayload(const buffer &data);
 template V_COREEXPORT SendText::Payload getPayload(const buffer &data);
 template V_COREEXPORT ItemInfo::Payload getPayload(const buffer &data);
 template V_COREEXPORT SetParameterChoices::Payload getPayload(const buffer &data);
 template V_COREEXPORT AddHub::Payload getPayload(const buffer &data);
+template V_COREEXPORT Execute::Payload getPayload(const buffer &data);
 
 Identify::Identify(const std::string &name)
 : m_identity(Identity::REQUEST)
@@ -2289,6 +2291,11 @@ std::ostream &operator<<(std::ostream &s, const Message &m)
 SetParameterChoices::Payload::Payload() = default;
 
 SetParameterChoices::Payload::Payload(const std::vector<std::string> &choices): choices(choices)
+{}
+
+Execute::Payload::Payload() = default;
+
+Execute::Payload::Payload(const std::vector<std::string> &parameters): parameters(parameters)
 {}
 
 Cover::Cover(int subType)

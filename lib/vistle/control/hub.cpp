@@ -2639,7 +2639,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
 
             case message::EXECUTE: {
                 const auto &exec = msg.as<Execute>();
-                handlePriv(exec);
+                handlePriv(exec, payload);
                 break;
             }
 
@@ -3328,12 +3328,12 @@ void Hub::sendError(const std::string &s, int senderId)
 }
 
 
-std::vector<int> Hub::getSubmoduleIds(int modId, const AvailableModule &av)
+std::set<int> Hub::getSubmoduleIds(int modId, const AvailableModule &av)
 {
-    std::vector<int> retval;
+    std::set<int> retval;
     if (av.isCompound()) {
         for (size_t i = 0; i < av.submodules().size(); i++) {
-            retval.push_back(modId + i + 1);
+            retval.insert(modId + i + 1);
         }
     }
     return retval;
@@ -3899,16 +3899,24 @@ bool Hub::processStartupScripts()
     return true;
 }
 
-bool Hub::handlePriv(const message::Execute &exec)
+bool Hub::handlePriv(const message::Execute &exec, const buffer *payload)
 {
+    using namespace message;
+
     if (!m_isMaster)
         return true;
 
-    auto toSend = make.message<message::Execute>(exec);
+    auto toSend = make.message<Execute>(exec);
+    toSend.clearPayload();
+    std::vector<std::string> triggerParams;
+    if (payload && !payload->empty()) {
+        auto execPl = message::getPayload<Execute::Payload>(*payload);
+        triggerParams = execPl.parameters;
+    }
 
     bool onlySources = false;
     bool isCompound = false;
-    std::vector<int> modules{exec.getModule()}; // execute specified module
+    std::set<int> modules{exec.getModule()}; // execute specified module
     if (!Id::isModule(exec.getModule())) {
         // or all modules that are a source in the dataflow graph
         onlySources = true;
@@ -3917,7 +3925,7 @@ bool Hub::handlePriv(const message::Execute &exec)
             int id = mod.first;
             if (!Id::isModule(id))
                 continue;
-            modules.push_back(id);
+            modules.insert(id);
         }
     } else {
         const auto &av = getStaticModuleInfo(exec.getModule(), m_stateTracker);
@@ -3926,7 +3934,32 @@ bool Hub::handlePriv(const message::Execute &exec)
             modules = getSubmoduleIds(exec.getModule(), av);
         }
     }
-    auto downstream = m_stateTracker.getDownstreamModules(exec);
+    for (const auto &p: triggerParams) {
+        if (auto trigger = m_stateTracker.getParameter(exec.getModule(), p)) {
+            ParameterSet conn = m_stateTracker.getConnectedParameters(*trigger);
+
+            for (ParameterSet::iterator it = conn.begin(); it != conn.end(); ++it) {
+                const auto p = *it;
+                modules.insert(p->module());
+            }
+        }
+    }
+    std::set<int> downstream;
+    if (Id::isModule(exec.getModule())) {
+        for (auto m: modules) {
+            // remove all downstream modules from the list of modules to execute, they will be triggered by the upstream modules
+            auto ds = m_stateTracker.getDownstreamModules(m, "", true, true);
+            for (auto d: ds)
+                modules.erase(d);
+        }
+        for (auto m: modules) {
+            auto ds = m_stateTracker.getDownstreamModules(m, "", true, true);
+            for (auto d: ds)
+                downstream.insert(d);
+        }
+    } else {
+        downstream = m_stateTracker.getDownstreamModules(exec);
+    }
     for (auto id: downstream) {
         auto blockDownstream = make.message<message::Execute>(exec);
         blockDownstream.setWhat(message::Execute::Upstream);
