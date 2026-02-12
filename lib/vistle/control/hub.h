@@ -164,7 +164,7 @@ private:
     void killOldModule(int migratedId);
     void sendInfo(const std::string &s, int senderId = message::Id::Invalid);
     void sendError(const std::string &s, int senderId = message::Id::Invalid);
-    std::vector<int> getSubmoduleIds(int modId, const AvailableModule &av);
+    std::set<int> getSubmoduleIds(int modId, const AvailableModule &av);
     bool m_inManager = false;
     bool m_coverIsManager = false;
     bool m_proxyOnly = false;
@@ -287,7 +287,7 @@ private:
 
     bool handlePriv(const message::Quit &quit, message::Identify::Identity senderType);
     bool handlePriv(const message::RemoveHub &rm);
-    bool handlePriv(const message::Execute &exec);
+    bool handlePriv(const message::Execute &exec, const buffer *payload);
     bool handlePriv(const message::ExecutionDone &done);
     bool handlePriv(const message::CancelExecute &cancel);
     bool handlePriv(const message::Barrier &barrier);

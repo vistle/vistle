@@ -138,13 +138,14 @@ private:
     ParameterMap m_parameterMap;
 
     std::shared_ptr<vistle::Parameter> findParam(const std::string &name) const;
-    void sendMessage(const vistle::message::Message &msg) const;
+    void sendMessage(const vistle::message::Message &msg, const vistle::buffer *pl = nullptr) const;
     void sendParamMessage(const std::shared_ptr<vistle::Parameter> param) const;
 
     // clean up arrays allocated for getVectorParam/getStringParam
     mutable std::map<std::string, std::vector<int>> m_intVecParams;
     mutable std::map<std::string, std::vector<float>> m_floatVecParams;
     mutable std::map<std::string, std::string> m_stringParams;
+    mutable std::vector<std::string> m_changedParameters;
 };
 
 #endif
