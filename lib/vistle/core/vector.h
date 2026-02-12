@@ -7,9 +7,9 @@
 #include <vistle/util/enum.h>
 #include "vectortypes.h"
 
-#include <eigen3/Eigen/Core>
-#include <eigen3/Eigen/Geometry>
-#include <eigen3/Eigen/StdVector>
+#include <Eigen/Core>
+#include <Eigen/Geometry>
+#include <Eigen/StdVector>
 
 namespace vistle {
 
