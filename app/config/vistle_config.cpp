@@ -2,6 +2,7 @@
 #include <vistle/util/directory.h>
 #include <vistle/config/access.h>
 #include <vistle/config/file.h>
+#include <vistle/config/section.h>
 #include <vistle/config/value.h>
 #include <vistle/config/array.h>
 
@@ -53,6 +54,14 @@ int main(int argc, char *argv[])
                                : config.value<std::string>(file, section, entry);
         if (val->exists() || val->hasDefaultValue())
             std::cout << val->value() << std::endl;
+    } else if (type == "sec" || type == "section") {
+        if (haveDefault) {
+            std::cerr << "default value not supported for section type" << std::endl;
+            return 1;
+        }
+        auto val = config.value<vistle::config::Section>(file, section, entry);
+        if (val->exists() || val->hasDefaultValue())
+            std::cout << val->value() << std::endl;
     } else if (type == "ba" || type == "bool_array") {
         auto arr = config.array<bool>(file, section, entry);
         if (arr->exists() || arr->hasDefaultValue()) {
@@ -85,9 +94,18 @@ int main(int argc, char *argv[])
                 std::cout << v << std::endl;
             }
         }
+    } else if (type == "seca" || type == "section_array") {
+        auto arr = config.array<vistle::config::Section>(file, section, entry);
+        if (arr->exists() || arr->hasDefaultValue()) {
+            auto vec = arr->value();
+            for (auto v: vec) {
+                std::cout << v << std::endl;
+            }
+        }
     } else {
         std::cerr << "unknown type \"" << type
-                  << "\", supported are b[ool], i[nt], d[ouble], and s[tring] and arrays thereof (e.g. ia or int_array)"
+                  << "\", supported are b[ool], i[nt], d[ouble], s[tring], and sec[tion] and arrays thereof (e.g. ia "
+                     "or int_array)"
                   << std::endl;
         return 1;
     }
