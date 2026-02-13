@@ -100,9 +100,13 @@ public:
 private:
     //Parameter
     vistle::StringParameter *m_casedir, *m_patchSelection;
+    vistle::IntParameter *m_foamRunDir = nullptr;
     vistle::FloatParameter *m_starttime, *m_stoptime;
     vistle::IntParameter *m_boundaryPatchesAsVariants;
     vistle::IntParameter *m_buildGhostcellsParam;
+
+    std::vector<std::string> m_foamCaseChoices;
+    std::string m_foamRunBase;
     bool m_buildGhost;
     bool m_readGrid = false, m_readBoundary = false;
     vistle::IntParameter *m_onlyPolyhedraParam = nullptr;
@@ -122,6 +126,8 @@ private:
     bool read(vistle::Reader::Token &token, int time, int part) override;
     bool prepareRead() override;
     bool finishRead() override;
+
+    void setFoamRunDir(const std::string &dir);
 
     //! return MPI rank on which a block should be processed, takes OpenFOAM case, especially no. of blocks, into account
     int rankForBlock(int processor) const;
