@@ -123,6 +123,7 @@ private:
 
     // Reader interface
     bool examine(const vistle::Parameter *p) override;
+    bool changeParameter(const vistle::Parameter *param) override;
     bool read(vistle::Reader::Token &token, int time, int part) override;
     bool prepareRead() override;
     bool finishRead() override;
