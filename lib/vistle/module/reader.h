@@ -80,7 +80,7 @@ public:
     *  After constructing the class, the method is called after all parameters have been set to their initial value with param==nullptr.
     *  Otherwise, the changed parameter is passed.
     *  Call @ref setTimesteps and @ref setPartitions according to the data to be read.
-    *  @return return true iff the module is ready to read.
+    *  @return return true if and only if the module is ready to read.
     */
     virtual bool examine(const Parameter *param = nullptr) = 0;
 
