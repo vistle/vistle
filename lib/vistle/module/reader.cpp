@@ -354,11 +354,6 @@ bool Reader::compute()
     return true;
 }
 
-bool Reader::examine(const Parameter *param)
-{
-    return false;
-}
-
 bool Reader::prepareRead()
 {
     return true;
