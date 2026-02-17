@@ -228,7 +228,6 @@ bool ReadFOAM::changeParameter(const Parameter *param)
         int caseNum = m_foamRunDir->getValue();
         if (caseNum == 0)
             return Reader::changeParameter(param);
-        auto sep = vistle::filesystem::path::preferred_separator;
         vistle::filesystem::path foam_run_path(m_foamRunBase);
         auto foamRunDir = foam_run_path / m_foamCaseChoices[caseNum];
         setParameter(m_casedir, foamRunDir.string());
