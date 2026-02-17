@@ -1,8 +1,8 @@
 set(HEADERS filter/VectorFieldWorklet.h filter/VectorFieldFilter.h VectorFieldVtkm.h)
 set(SOURCES filter/VectorFieldFilter.cpp VectorFieldVtkm.cpp)
 
-add_vtkm_module(VectorFieldVtkm "create lines from mapped vector data" ${HEADERS} ${SOURCES})
-
-if(VISTLE_USE_CUDA AND VISTLE_USE_SEPARABLE_COMPILATION)
-    viskores_add_target_information(vistle_viskores MODIFY_CUDA_FLAGS DEVICE_SOURCES ${SOURCES})
+if(VISTLE_CUDA_ENABLED)
+    add_vtkm_module(VectorFieldVtkm "create lines from mapped vector data" ${HEADERS} DEVICE_SOURCES ${SOURCES})
+else()
+    add_vtkm_module(VectorFieldVtkm "create lines from mapped vector data" ${HEADERS} ${SOURCES})
 endif()
