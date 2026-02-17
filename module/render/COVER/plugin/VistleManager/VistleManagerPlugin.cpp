@@ -179,7 +179,7 @@ bool VistleManagerPlugin::init()
         setThreadName("vistle:manager");
 
         try {
-            vistle::registerTypes();
+            vistle::initializeTypes();
             std::vector<char *> argv;
             for (auto &a: args) {
                 argv.push_back(const_cast<char *>(a.data()));

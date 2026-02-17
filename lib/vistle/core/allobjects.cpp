@@ -39,7 +39,7 @@ namespace vistle {
 
 #define REGISTER_CELLTREE_TYPE(ct) ObjectTypeRegistry::registerType<ct>(ct::type());
 
-void registerTypes()
+void initializeTypes()
 {
     static bool registered = false;
     if (registered)

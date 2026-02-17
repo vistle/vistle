@@ -18,7 +18,7 @@ using namespace vistle;
 
 int main(int argc, char **argv)
 {
-    vistle::registerTypes();
+    vistle::initializeTypes();
 
     MPI_Init(&argc, &argv);
     int rank = -1, size = -1;

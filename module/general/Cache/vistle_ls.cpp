@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
 #endif
         vistle::Shm::remove("vistle_ls", id, 0, false);
         vistle::Shm::create("vistle_ls", id, 0, false);
-        vistle::registerTypes();
+        vistle::initializeTypes();
     }
 
     size_t totalRawSize = 0, totalCompressedSize = 0;
