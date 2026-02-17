@@ -39,7 +39,6 @@
 #include <vistle/core/messagesender.h>
 #include <vistle/core/messagepayload.h>
 #include <vistle/config/config.h>
-#include <viskores/cont/Initialize.h>
 
 #include "objectcache.h"
 #define RESULTCACHE_SKIP_DEFINITION
@@ -487,7 +486,6 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
             int moduleID = atoi(argv[4]); \
             mpi::environment mpi_environment(argc, argv, THREAD_MODE, true); \
             vistle::registerTypes(); \
-            viskores::cont::Initialize(argc, argv); \
             mpi::communicator comm_world; \
             rank = comm_world.rank(); \
             size = comm_world.size(); \

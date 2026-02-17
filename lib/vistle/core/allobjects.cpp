@@ -1,3 +1,5 @@
+#include <viskores/cont/Initialize.h>
+
 // fewer files compile faster
 #include "object.h"
 #include "empty.h"
@@ -43,6 +45,9 @@ void registerTypes()
     if (registered)
         return;
     registered = true;
+
+    viskores::cont::Initialize();
+
     using namespace vistle;
     REGISTER_TYPE(Empty, Object::EMPTY);
     REGISTER_TYPE(PlaceHolder, Object::PLACEHOLDER);
