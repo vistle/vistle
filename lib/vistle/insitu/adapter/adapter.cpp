@@ -366,7 +366,7 @@ bool Adapter::initializeVistleEnv()
 #ifndef MODULE_THREAD
         static bool typesRegistered = false;
         if (!typesRegistered) {
-            vistle::registerTypes(); //must not be called more than once per process
+            vistle::initializeTypes(); //must not be called more than once per process
             typesRegistered = true;
         }
 #endif

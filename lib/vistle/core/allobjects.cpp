@@ -1,3 +1,5 @@
+#include <viskores/cont/Initialize.h>
+
 // fewer files compile faster
 #include "object.h"
 #include "empty.h"
@@ -37,12 +39,15 @@ namespace vistle {
 
 #define REGISTER_CELLTREE_TYPE(ct) ObjectTypeRegistry::registerType<ct>(ct::type());
 
-void registerTypes()
+void initializeTypes()
 {
     static bool registered = false;
     if (registered)
         return;
     registered = true;
+
+    viskores::cont::Initialize();
+
     using namespace vistle;
     REGISTER_TYPE(Empty, Object::EMPTY);
     REGISTER_TYPE(PlaceHolder, Object::PLACEHOLDER);
