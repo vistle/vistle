@@ -251,39 +251,41 @@ if(NOT VISTLE_GUI_ONLY)
     add_subdirectory(pybind11)
 endif()
 
+#yas
 add_library(vistle_yas INTERFACE)
 target_include_directories(vistle_yas SYSTEM INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/yas/include>)
 vistle_export_library(vistle_yas)
-
 if(VISTLE_INSTALL_3RDPARTY)
-    #yas
     install(
         DIRECTORY yas/include/yas
         DESTINATION include/vistle/3rdparty
         COMPONENT Devel)
-
-    #eigen3
-    install(
-        DIRECTORY eigen3
-        DESTINATION include/vistle/3rdparty
-        COMPONENT Devel)
 endif()
 
-# vistle_find_package(Eigen3 REQUIRED)
-add_library(vistle_eigen INTERFACE)
-set(EIGEN_DEFINITIONS "-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=int" "-DEIGEN_DONT_PARALLELIZE") # also disable OpenMP for eigen
-target_compile_definitions(vistle_eigen INTERFACE ${EIGEN_DEFINITIONS})
-#set(EIGEN3_INCLUDE_PATH "${PROJECT_SOURCE_DIR}/lib/3rdparty")
-target_include_directories(vistle_eigen SYSTEM BEFORE INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> $<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}>)
-target_include_directories(vistle_eigen SYSTEM BEFORE INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>/eigen3
-                                                                $<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}>/eigen3)
-# Export as title case Eigen
-set_target_properties(vistle_eigen PROPERTIES EXPORT_NAME VistleEigen)
-vistle_export_library(vistle_eigen)
+#eigen3
+if(VISTLE_INTERNAL_EIGEN)
+    if(VISTLE_INSTALL_3RDPARTY)
+        install(
+            DIRECTORY eigen3
+            DESTINATION include/vistle/3rdparty
+            COMPONENT Devel)
+        #install (TARGETS eigen EXPORT Eigen3Targets)
+    endif()
 
-#install (TARGETS eigen EXPORT Eigen3Targets)
-
-# add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=short)
+    # vistle_find_package(Eigen3 REQUIRED)
+    add_library(vistle_eigen INTERFACE)
+    set(EIGEN_DEFINITIONS "-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=int" "-DEIGEN_DONT_PARALLELIZE") # also disable OpenMP for eigen
+    target_compile_definitions(vistle_eigen INTERFACE ${EIGEN_DEFINITIONS})
+    # add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=short)
+    #set(EIGEN3_INCLUDE_PATH "${PROJECT_SOURCE_DIR}/lib/3rdparty")
+    target_include_directories(vistle_eigen SYSTEM BEFORE INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> $<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}>)
+    target_include_directories(vistle_eigen SYSTEM BEFORE INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>/eigen3
+                                                                    $<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}>/eigen3)
+    # Export as title case Eigen
+    set_target_properties(vistle_eigen PROPERTIES EXPORT_NAME VistleEigen)
+    add_library(Eigen3::Eigen ALIAS vistle_eigen)
+    vistle_export_library(vistle_eigen)
+endif()
 
 include(cmrc/CMakeRC.cmake)
 vistle_export_library(cmrc-base)

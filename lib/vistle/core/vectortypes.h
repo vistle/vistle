@@ -8,7 +8,7 @@
 #ifndef NDEBUG
 #define EIGEN_INITIALIZE_MATRICES_BY_NAN
 #endif
-#include <eigen3/Eigen/Core>
+#include <Eigen/Core>
 
 namespace vistle {
 

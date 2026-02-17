@@ -37,6 +37,7 @@
 
 #include "foamtoolbox.h"
 #include <vistle/util/coRestraint.h>
+#include <vistle/util/filesystem.h>
 #include <boost/serialization/vector.hpp>
 #include <boost/mpi.hpp>
 #include <unordered_set>
@@ -56,6 +57,11 @@ ReadFOAM::ReadFOAM(const std::string &name, int moduleId, mpi::communicator comm
     // file browser parameter
     m_casedir =
         addStringParameter("casedir", "OpenFOAM case directory", "/data/OpenFOAM", Parameter::ExistingDirectory);
+    m_foamRunDir = addIntParameter("foam_case", "select a case to set it's directory as casedir", 0, Parameter::Choice);
+    auto foamRunDir = getenv("FOAM_RUN");
+
+    if (foamRunDir)
+        setFoamRunDir(foamRunDir);
     //Time Parameters
     m_starttime = addFloatParameter("starttime", "start reading at the first step after this time", 0.);
     setParameterMinimum<Float>(m_starttime, 0.);
@@ -115,6 +121,27 @@ ReadFOAM::ReadFOAM(const std::string &name, int moduleId, mpi::communicator comm
     //observeParameter(m_patchSelection);
 }
 
+void ReadFOAM::setFoamRunDir(const std::string &dir)
+{
+    if (dir == m_foamRunBase)
+        return;
+    m_foamRunBase = dir;
+    m_foamCaseChoices.clear();
+    m_foamCaseChoices.push_back("(Select case)");
+    for (auto &p: vistle::filesystem::directory_iterator(dir)) {
+        try {
+            if (vistle::filesystem::is_directory(p)) {
+                m_foamCaseChoices.push_back(p.path().filename().string());
+            }
+        } catch (const vistle::filesystem::filesystem_error &e) {
+            if (e.code() == std::errc::permission_denied)
+                continue;
+            std::cerr << e.what() << '\n';
+        }
+    }
+    setParameterChoices(m_foamRunDir, m_foamCaseChoices);
+}
+
 
 std::vector<std::string> ReadFOAM::getFieldList() const
 {
@@ -144,8 +171,10 @@ int ReadFOAM::rankForBlock(int processor) const
 
 bool ReadFOAM::examine(const Parameter *p)
 {
-    if (!p || p == m_casedir) {
-        std::string casedir = m_casedir->getValue();
+    if (!p || p == m_casedir || p == m_foamRunDir) {
+        const std::string casedir = m_casedir->getValue();
+        setFoamRunDir(m_casedir->isDefault() ? casedir : vistle::filesystem::path(casedir).parent_path().string());
+
         if (m_case.valid && m_case.casedir == casedir)
             return true;
 
@@ -154,7 +183,6 @@ bool ReadFOAM::examine(const Parameter *p)
             std::cerr << casedir << " is not a valid OpenFOAM case" << std::endl;
             return false;
         }
-
         if (rank() == 0) {
             std::cerr << "OpenFOAM case: " << m_case.casedir << std::endl;
             std::cerr << "# processors: " << m_case.numblocks << std::endl;
@@ -192,6 +220,21 @@ bool ReadFOAM::examine(const Parameter *p)
     }
 
     return true;
+}
+
+bool ReadFOAM::changeParameter(const Parameter *param)
+{
+    if (param == m_foamRunDir) {
+        int caseNum = m_foamRunDir->getValue();
+        if (caseNum == 0)
+            return Reader::changeParameter(param);
+        auto sep = vistle::filesystem::path::preferred_separator;
+        vistle::filesystem::path foam_run_path(m_foamRunBase);
+        auto foamRunDir = foam_run_path / m_foamCaseChoices[caseNum];
+        setParameter(m_casedir, foamRunDir.string());
+        setParameter(m_foamRunDir, vistle::Integer{0});
+    }
+    return Reader::changeParameter(param);
 }
 
 bool ReadFOAM::read(Reader::Token &token, int time, int part)

@@ -34,9 +34,11 @@ catalyst_implementation(
     NAME
     vistle
     SOURCES
-    vistleCatalystImpl.cpp
+    conduitTopology.cpp
+    conduitTopology.h
     conduitToVistle.cpp
-    conduitToVistle.h)
+    conduitToVistle.h
+    vistleCatalystImpl.cpp)
 
 target_link_libraries(catalyst-vistle PRIVATE vistle_insitu_adapter)
 if(EXTERNAL_CONDUIT)

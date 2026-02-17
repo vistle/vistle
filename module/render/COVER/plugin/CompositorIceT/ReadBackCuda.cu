@@ -19,7 +19,10 @@
 #include <cstdio>
 #include <cassert>
 
-#include "rfbext.h"
+#include <vistle/rhr/depthquant.h>
+#include <vistle/rhr/rfbext.h>
+
+using namespace vistle;
 
 //! use BGRA for pixel transfer
 #define USE_BGRA
