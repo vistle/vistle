@@ -627,7 +627,9 @@ if(NOT VISTLE_GUI_ONLY)
         endif()
         if(NOT VISTLE_MULTI_PROCESS)
             message(WARNING "Using dummy MPI implementation that is not thread-safe, thus resorting to multi-process configuration")
-            set(VISTLE_MULTI_PROCESS TRUE)
+            set(VISTLE_MULTI_PROCESS
+                TRUE
+                CACHE STRING "" FORCE)
         endif()
     endif()
 
