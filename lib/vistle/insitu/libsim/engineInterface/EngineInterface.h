@@ -20,9 +20,6 @@ public:
     static void initialize(boost::mpi::communicator comm);
     static insitu::message::InSituTcp *getHandler();
     static std::unique_ptr<insitu::message::InSituTcp> extractHandler();
-
-private:
-    static std::unique_ptr<insitu::message::InSituTcp> m_messageHandler;
 };
 } // namespace libsim
 } // namespace insitu
