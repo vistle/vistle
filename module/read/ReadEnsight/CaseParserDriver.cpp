@@ -7,10 +7,11 @@
 #include <fstream>
 #include <sstream>
 
-void ensight::parser::error(const ensight::location &location, const std::string &msg)
+void ensight::parser::error(const std::string &msg)
 {
     std::stringstream str;
-    str << "parse error at " << location << ": " << msg;
+    str << "parse error at line " << driver.lineno_ << ", text=\"" << driver.text_ << "\", state=" << driver.state_
+        << ": " << msg;
     driver.lastError_ = str.str();
     std::cerr << driver.lastError_ << std::endl;
 }
@@ -18,8 +19,6 @@ void ensight::parser::error(const ensight::location &location, const std::string
 CaseParserDriver::CaseParserDriver(const std::string &sFileName)
 {
     isOpen_ = false;
-
-    location.initialize(&sFileName);
 
     inputFile_ = new std::ifstream(sFileName.c_str());
     if (!inputFile_->is_open()) {
@@ -77,9 +76,32 @@ bool CaseParserDriver::parse()
     return parse() == 0;
 }
 
-int ensightlex(ensight::parser::value_type *yylval, ensight::location *, CaseParserDriver &driver)
+int CaseParserDriver::lineNumber() const
 {
-    return (driver.lexer_->scan(yylval));
+    return lineno_;
+}
+
+void CaseParserDriver::setLineNumber(int l)
+{
+    lineno_ = l;
+}
+
+void CaseParserDriver::setText(const std::string &text)
+{
+    text_ = text;
+}
+
+void CaseParserDriver::setState(int state)
+{
+    state_ = state;
+}
+
+int ensightlex(ensight::parser::value_type *yylval, CaseParserDriver &driver)
+{
+    //std::cerr << "lexing at driver " << driver.location << " / ptr " << *loc << std::endl;
+    //ensightlineno   = driver.lexer_->yylineno;
+
+    return driver.lexer_->scan(yylval, driver);
 }
 
 CaseFile CaseParserDriver::getCaseObj()

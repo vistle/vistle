@@ -11,11 +11,11 @@ class DataItem;
 class TimeSet;
 class CaseParserDriver;
 
-int ensightlex(ensight::parser::value_type *, ensight::location *, CaseParserDriver &drv);
+int ensightlex(ensight::parser::value_type *, CaseParserDriver &drv);
 
 class CaseParserDriver {
     friend class ensight::parser;
-    friend int ensightlex(ensight::parser::value_type *, ensight::location *, CaseParserDriver &drv);
+    friend int ensightlex(ensight::parser::value_type *, CaseParserDriver &drv);
 
 public:
     CaseParserDriver(const std::string &sFileName);
@@ -26,6 +26,10 @@ public:
     void setVerbose(bool enable);
     bool parse();
     std::string lastError() const;
+    int lineNumber() const;
+    void setLineNumber(int l);
+    void setText(const std::string &text); // as controlled by lexer, for error reporting
+    void setState(int state); // as controlled by lexer start conditions, for error reporting
 
 private:
     std::ifstream *inputFile_ = nullptr;
@@ -37,7 +41,9 @@ private:
     bool verbose_ = false;
     int tsStart_ = 0;
     std::string lastError_;
+    std::string text_;
+    int state_ = 0;
 
-    ensight::location location;
+    int lineno_ = 0;
 };
 #endif

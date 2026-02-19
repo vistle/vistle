@@ -30,6 +30,6 @@ public:
     CaseLexer(std::istream *pDesc);
     virtual ~CaseLexer();
     // new scanner method
-    int scan(CaseTokenType *token);
+    int scan(CaseTokenType *token, CaseParserDriver &driver);
 };
 #endif

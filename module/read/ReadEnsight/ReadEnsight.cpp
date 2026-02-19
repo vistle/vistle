@@ -23,6 +23,8 @@ ReadEnsight::ReadEnsight(const std::string &name, int moduleID, mpi::communicato
     m_casefile = addStringParameter("casefile", "EnSight case file", "", Parameter::ExistingFilename);
     setParameterFilters(m_casefile, "Case Files (*.case *.CASE *.encas)");
 
+    m_caseVerbose = addIntParameter("verbose_parser", "enable parser debug output", false, Parameter::Boolean);
+
     m_partSelection = addStringParameter("parts", "select parts", "all", Parameter::Restraint);
 
     m_grid = createOutputPort("grid_out", "geometry");
@@ -82,7 +84,7 @@ bool ReadEnsight::examine(const vistle::Parameter *param)
             m_case = CaseFile();
             CaseParserDriver parser(file);
             // uncomment this line to see more debug output
-            //parser.setVerbose(true);
+            parser.setVerbose(m_caseVerbose->getValue() != 0);
             if (!parser.isOpen() || !parser.parse()) {
                 std::string err = parser.lastError();
                 sendWarning("Cannot parse case file %s: %s", file.c_str(), err.c_str());
