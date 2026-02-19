@@ -41,9 +41,15 @@ namespace vistle {
 
 void initializeTypes()
 {
-    static bool registered = false;
+    static std::atomic<bool> registered(false);
+    static std::mutex mutex;
     if (registered)
         return;
+
+    std::lock_guard<std::mutex> guard(mutex);
+    if (registered)
+        return;
+
     registered = true;
 
     viskores::cont::Initialize();
