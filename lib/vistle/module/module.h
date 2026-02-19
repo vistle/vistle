@@ -123,7 +123,8 @@ class V_MODULEEXPORT Module: public ParameterManager, public MessageSender {
     friend class BlockTask;
 
 public:
-    static bool setup(const std::string &shmname, int moduleID, const std::string &cluster, int rank);
+    static bool setup(const std::string &shmname, const std::string &classname, const std::string &modulename,
+                      int moduleID, const std::string &cluster, int rank);
     static bool cleanup(bool dedicated_process);
 
     Module(const std::string &name, const int moduleID, mpi::communicator comm);
@@ -447,13 +448,15 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
 
 } // namespace vistle
 
+#endif
+
 #ifdef MODULE_THREAD
 #ifdef MODULE_STATIC
 #define MODULE_MAIN_THREAD(X, THREAD_MODE) \
     static std::shared_ptr<vistle::Module> newModuleInstance(const std::string &name, int moduleId, \
                                                              mpi::communicator comm) \
     { \
-        vistle::Module::setup("dummy shm", moduleId, "dummy cluster", comm.rank()); \
+        vistle::Module::setup("dummy shm", #X, name, moduleId, "dummy cluster", comm.rank()); \
         return std::shared_ptr<X>(new X(name, moduleId, comm)); \
     } \
     static vistle::ModuleRegistry::RegisterClass registerModule##X(VISTLE_MODULE_NAME, newModuleInstance);
@@ -462,13 +465,11 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
     static std::shared_ptr<vistle::Module> newModuleInstance(const std::string &name, int moduleId, \
                                                              mpi::communicator comm) \
     { \
-        vistle::Module::setup("dummy shm", moduleId, "dummy cluster", comm.rank()); \
+        vistle::Module::setup("dummy shm", #X, name, moduleId, "dummy cluster", comm.rank()); \
         return std::shared_ptr<X>(new X(name, moduleId, comm)); \
     } \
     BOOST_DLL_ALIAS(newModuleInstance, newModule)
 #endif
-
-#define MODULE_DEBUG(X)
 #else
 // MPI_THREAD_FUNNELED is sufficient, but apparently not provided by the CentOS build of MVAPICH2
 #define MODULE_MAIN_THREAD(X, THREAD_MODE) \
@@ -489,7 +490,7 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
             mpi::communicator comm_world; \
             rank = comm_world.rank(); \
             size = comm_world.size(); \
-            vistle::Module::setup(shmname, moduleID, cluster, rank); \
+            vistle::Module::setup(shmname, #X, argv[0], moduleID, cluster, rank); \
             { \
                 X module(name, moduleID, comm_world); \
                 module.eventLoop(); \
@@ -507,19 +508,8 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
         } \
         return 0; \
     }
-
-#ifdef NDEBUG
-#define MODULE_DEBUG(X)
-#else
-#define MODULE_DEBUG(X) \
-    std::cerr << #X << ": PID " << get_process_handle() << std::endl; \
-    std::cerr << "   attach debugger within 10 s" << std::endl; \
-    sleep(10); \
-    std::cerr << "   continuing..." << std::endl;
-#endif
 #endif
 
 #define MODULE_MAIN(X) MODULE_MAIN_THREAD(X, boost::mpi::threading::funneled)
 
 #include "module_impl.h"
-#endif
