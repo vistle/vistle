@@ -635,7 +635,7 @@ private: \
     V_OBJECT_IMPL_LOAD(ObjType) \
     V_OBJECT_IMPL_SAVE(ObjType)
 
-void V_COREEXPORT registerTypes();
+void V_COREEXPORT initializeTypes();
 
 V_ENUM_OUTPUT_OP(Type, Object)
 

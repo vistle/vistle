@@ -258,7 +258,7 @@ Engine::Engine()
     static bool typesREgistered = false;
     if (!typesREgistered) {
         typesREgistered = true;
-        vistle::registerTypes();
+        vistle::initializeTypes();
     }
 #endif
 }

@@ -149,7 +149,7 @@ using namespace vistle;
 
 int main(int argc, char *argv[])
 {
-    vistle::registerTypes();
+    vistle::initializeTypes();
 
     std::string shmname = "vistle_vectortest";
 

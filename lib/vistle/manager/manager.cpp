@@ -267,7 +267,7 @@ bool VistleManager::run(int argc, char *argv[])
         setThreadName("vistle:main2");
 #endif
         try {
-            vistle::registerTypes();
+            vistle::initializeTypes();
             std::vector<char *> argv;
             for (auto &a: args) {
                 argv.push_back(const_cast<char *>(a.data()));

@@ -485,7 +485,7 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
             const std::string name = argv[3]; \
             int moduleID = atoi(argv[4]); \
             mpi::environment mpi_environment(argc, argv, THREAD_MODE, true); \
-            vistle::registerTypes(); \
+            vistle::initializeTypes(); \
             mpi::communicator comm_world; \
             rank = comm_world.rank(); \
             size = comm_world.size(); \
