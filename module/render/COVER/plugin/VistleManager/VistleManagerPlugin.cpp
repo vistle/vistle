@@ -1,3 +1,4 @@
+#include <memory>
 #include <vistle/util/boost_interprocess_config.h>
 #include <boost/interprocess/exceptions.hpp>
 
@@ -24,7 +25,9 @@
 #include <vistle/manager/communicator.h>
 #include <vistle/manager/clustermanager.h>
 #include <vistle/manager/run_on_main_thread.h>
-
+#include <vistle/config/access.h>
+#include <vistle/util/hostname.h>
+#include <vistle/util/directory.h>
 
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
@@ -78,6 +81,7 @@ private:
 
     std::thread m_thread;
     std::atomic<bool> m_done = false;
+    std::unique_ptr<vistle::config::Access> m_configAccess;
 };
 
 template<>
@@ -145,6 +149,9 @@ bool VistleManagerPlugin::init()
         std::cerr << "did not find VISTLE_CONNECTION environment variable" << std::endl;
         return false;
     }
+
+    m_configAccess = std::make_unique<vistle::config::Access>(vistle::hostname(), vistle::clustername(), m_comm.rank());
+    m_configAccess->setPrefix(Directory().prefix());
 
     if (!cover->visMenu) {
         cover->visMenu = new ui::Menu("Vistle", this);
