@@ -186,8 +186,26 @@ double getRealTime(Object::const_ptr obj)
     return ret;
 }
 
-bool Module::setup(const std::string &shmname, int moduleID, const std::string &cluster, int rank)
+bool Module::setup(const std::string &shmname, const std::string &classname, const std::string &modulename,
+                   int moduleID, const std::string &cluster, int rank)
 {
+    const char *env = getenv("VISTLE_STARTUP_DELAY");
+    if (env && env[0]) {
+        const std::string delay = env;
+        int delaySec = atoi(delay.c_str());
+        if (delaySec > 0 || delay == classname || delay == modulename) {
+            if (delaySec <= 0)
+                delaySec = 20;
+            std::cerr << classname << " / " << modulename << " (id " << moduleID << "): sleeping for " << delaySec
+                      << "s" << std::endl;
+#ifndef _WIN32
+            std::cerr << "   attach debugger to PID " << getpid() << std::endl;
+#endif
+            sleep(delaySec);
+            std::cerr << "   continuing..." << std::endl;
+        }
+    }
+
 #ifndef MODULE_THREAD
     if (!Shm::isAttached()) {
         bool perRank = shmPerRank();
