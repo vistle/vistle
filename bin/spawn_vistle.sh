@@ -102,7 +102,7 @@ export MV2_ENABLE_AFFINITY=0 # necessary for MPI_THREAD_MULTIPLE support
 export MV2_HOMOGENEOUS_CLUSTER=1 # faster start-up
 
 MPI_IMPL="mpich"
- 
+
 if mpirun -version 2>&1| grep -q open-mpi\.org; then
    MPI_IMPL="ompi"
    #echo "OpenMPI spawn: $@"
@@ -118,7 +118,7 @@ fi
 
 if [ -n "$PBS_ENVIRONMENT" ]; then
    if [ "$MPI_IMPL" = "mpich" ]; then
-    
+
       #echo "PBS: mpiexec $@"
       mpiexec -genvall hostname
       mpiexec -genvall printenv
@@ -222,7 +222,7 @@ case "$MPI_IMPL" in
           doexec mpirun -np ${MPISIZE} $LAUNCH $WRAPPER "$@"
       ;;
     *)
-        if [ -n "$MPIHOSTFILE" ]; then	
+        if [ -n "$MPIHOSTFILE" ]; then
             doexec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -f ${MPIHOSTFILE} $LAUNCH $WRAPPER "$@"
         elif [ -n "$MPIHOSTS" ]; then
             doexec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -hosts ${MPIHOSTS} $LAUNCH $WRAPPER "$@"
