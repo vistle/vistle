@@ -40,6 +40,7 @@ private:
     std::vector<std::pair<vistle::Port *, std::string>> getActiveFields(EnFile::ReadType what);
 
     vistle::StringParameter *m_casefile = nullptr;
+    vistle::IntParameter *m_caseVerbose = nullptr;
     vistle::StringParameter *m_partSelection = nullptr;
     vistle::IntParameter *m_earlyPartList = nullptr;
     vistle::IntParameter *m_dataBigEndianParam = nullptr;

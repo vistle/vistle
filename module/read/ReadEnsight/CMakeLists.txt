@@ -52,7 +52,7 @@ bison_target(
     CaseParser CaseParser.y ${CMAKE_CURRENT_BINARY_DIR}/CaseParser.cpp
     COMPILE_FLAGS --header=${CMAKE_CURRENT_BINARY_DIR}/CaseParser.h
     DEFINES_FILE ${CMAKE_CURRENT_BINARY_DIR}/CaseParser.h)
-flex_target(CaseScanner CaseLexer.l ${CMAKE_CURRENT_BINARY_DIR}/CaseLexer.cpp COMPILE_FLAGS "-c++")
+flex_target(CaseScanner CaseLexer.l ${CMAKE_CURRENT_BINARY_DIR}/CaseLexer.cpp)
 add_flex_bison_dependency(CaseScanner CaseParser)
 
 add_module(
