@@ -26,7 +26,7 @@ public:
 
 private:
     std::string m_name;
-    std::unique_ptr<pybind11::object> m_namespace;
+    pybind11::object *m_namespace = nullptr;
     static PythonInterface *s_singleton;
 };
 

@@ -25,8 +25,9 @@ PythonInterface::~PythonInterface()
     assert(s_singleton == this);
     s_singleton = nullptr;
 
-    m_namespace.reset();
-    py::finalize_interpreter();
+    // just leak this, as suggested by pybind11 docs: https://pybind11.readthedocs.io/en/stable/advanced/misc.html#common-sources-of-global-interpreter-lock-errors
+    //delete m_namespace;
+    //py::finalize_interpreter();
 }
 
 PythonInterface &PythonInterface::the()
@@ -37,17 +38,18 @@ PythonInterface &PythonInterface::the()
 
 py::object &PythonInterface::nameSpace()
 {
-    if (!m_namespace)
-        m_namespace.reset(new py::object);
+    if (!m_namespace) {
+        m_namespace = new py::object;
+        auto mainmod = py::module::import("__main__");
+        *m_namespace = mainmod.attr("__dict__");
+    }
     return *m_namespace;
 }
 
 bool PythonInterface::init()
 {
     py::initialize_interpreter();
-    py::object mainmod = py::module::import("__main__");
-    m_namespace.reset(new py::object);
-    *m_namespace = mainmod.attr("__dict__");
+    (void)nameSpace();
 
 #ifdef PY_MAJOR_VERSION
 #if PY_MAJOR_VERSION > 2
