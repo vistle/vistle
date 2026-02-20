@@ -63,8 +63,9 @@ bool PythonInterpreter::executeCommand(const std::string &cmd)
 PythonInterpreter::~PythonInterpreter()
 {
     m_py_release.reset();
-    m_interpreter.reset();
     m_module.reset();
+    m_access.reset();
+    m_interpreter.reset();
 }
 
 bool PythonInterpreter::error() const
