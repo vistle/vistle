@@ -207,7 +207,6 @@ void DisCOVERay::connectionRemoved(const Port *from, const Port *to)
 bool DisCOVERay::addColorMap(const vistle::message::Colormap &cm, std::vector<vistle::RGBA> &rgba)
 {
     std::string species = cm.species();
-    int modId = cm.senderId();
     auto &cmap = m_colormaps[species];
     cmap.rgba = rgba;
     if (!cmap.cmap)
