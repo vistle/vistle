@@ -19,6 +19,9 @@
 #include <codecvt>
 #include <iostream>
 #endif
+
+#include "profile.h"
+
 namespace vistle {
 
 std::string getThreadName()
@@ -43,6 +46,7 @@ std::string getThreadName()
 
 bool setThreadName(std::string name)
 {
+    PROF_MARK((std::string("setThreadName ") + name).c_str());
 #ifdef __linux
 #if __GLIBC__ >= 2 && __GLIBC_MINOR__ >= 12
     const size_t maxlen = 15;
