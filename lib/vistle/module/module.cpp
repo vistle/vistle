@@ -66,6 +66,8 @@
 
 #define CERR std::cerr << m_name << "_" << id() << " [" << rank() << "/" << size() << "] "
 
+#define PROF_CTX(s) (std::to_string(m_id) + ":" + m_name + ": " + s).c_str()
+
 namespace interprocess = ::boost::interprocess;
 
 namespace bigmpi {
@@ -2250,7 +2252,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
                     }
                     computeOk = true;
                 } else {
-                    PROF_SCOPE("Module::compute");
+                    PROF_SCOPE(PROF_CTX("Module::compute"));
                     computeOk = compute();
                 }
 
@@ -2699,7 +2701,7 @@ bool Module::prepareWrapper(const message::Execute *exec)
     if (reducePolicy() == message::ReducePolicy::Never)
         return true;
 
-    PROF_SCOPE("Module::prepare");
+    PROF_SCOPE(PROF_CTX("Module::prepare"));
     return prepare();
 }
 
@@ -2735,8 +2737,8 @@ bool Module::compute()
     std::unique_lock<std::mutex> guard(task->m_mutex);
     auto tname = std::to_string(id()) + "b" + std::to_string(m_tasks.size()) + ":" + name();
     task->m_future = std::async(std::launch::async, [this, tname, task] {
-        PROF_FUNC();
         setThreadName(tname);
+        PROF_FUNC();
         return compute(task);
     });
     return true;
@@ -2785,7 +2787,7 @@ bool Module::reduceWrapper(const message::Execute *exec, bool reordered)
             if (!reordered) {
                 for (int t = 0; t < m_numTimesteps; ++t) {
                     if (!cancelRequested(sync)) {
-                        PROF_SCOPE("Module::reduce(timestep)");
+                        PROF_SCOPE(PROF_CTX("Module::reduce(timestep)"));
                         //CERR << "run reduce(t=" << t << "): generation = " << m_generation << std::endl;
                         ret &= reduce(t);
                     }
@@ -2796,7 +2798,7 @@ bool Module::reduceWrapper(const message::Execute *exec, bool reordered)
         case message::ReducePolicy::Locally:
         case message::ReducePolicy::OverAll: {
             if (!cancelRequested(sync)) {
-                PROF_SCOPE("Module::reduce:overall");
+                PROF_SCOPE(PROF_CTX("Module::reduce:overall"));
                 //CERR << "run reduce(t=" << -1 << "): generation = " << m_generation << std::endl;
                 ret = reduce(-1);
             }
