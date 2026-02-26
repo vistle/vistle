@@ -5,7 +5,6 @@
 
 #include <sstream>
 #include <iostream>
-#include <iomanip>
 #include <algorithm>
 #include <deque>
 #include <mutex>
@@ -67,8 +66,6 @@
 #define CERR std::cerr << m_name << "_" << id() << " [" << rank() << "/" << size() << "] "
 
 #define PROF_CTX(s) (std::to_string(m_id) + ":" + m_name + ": " + s).c_str()
-
-namespace interprocess = ::boost::interprocess;
 
 namespace bigmpi {
 

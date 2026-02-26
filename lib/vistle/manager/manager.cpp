@@ -3,17 +3,14 @@
 #include <mpi.h>
 
 #include <iostream>
-#include <fstream>
 #include <exception>
 #include <cstdlib>
-#include <sstream>
 #include "run_on_main_thread.h"
 #include <vistle/util/directory.h>
 #include <vistle/core/objectmeta.h>
 #include <vistle/core/object.h>
 #include <vistle/config/access.h>
 #include "executor.h"
-#include "communicator.h"
 #include <vistle/util/hostname.h>
 #include <vistle/util/threadname.h>
 #include <vistle/util/version.h>
@@ -108,7 +105,6 @@ void iceIOErrorHandler(IceConn conn)
 
 
 using namespace vistle;
-namespace dir = vistle::directory;
 
 class Vistle: public Executor {
 public:
