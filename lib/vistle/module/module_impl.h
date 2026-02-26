@@ -1,12 +1,13 @@
 #ifndef VISTLE_MODULE_MODULE_IMPL_H
 #define VISTLE_MODULE_MODULE_IMPL_H
 
+#include "module.h"
+
 #include <vistle/core/message.h>
 #include <vistle/core/messages.h>
 #include <cassert>
 
 namespace vistle {
-
 template<class Type>
 typename Type::const_ptr BlockTask::accept(const Port *port)
 {
