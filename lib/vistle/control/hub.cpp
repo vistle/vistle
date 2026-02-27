@@ -214,7 +214,7 @@ void Hub::ObservedChild::setOutputStreaming(bool enable)
               << ": "
 
 static Hub *hub_instance = nullptr;
-volatile std::atomic<bool> Hub::m_interrupt(false);
+volatile std::atomic<bool> Hub::s_interrupt(false);
 
 void Hub::signalHandler(const boost::system::error_code &error, int signal_number)
 {
@@ -230,7 +230,7 @@ void Hub::signalHandler(const boost::system::error_code &error, int signal_numbe
     case SIGINT:
     case SIGTERM:
         //std::cerr << "Hub: interruting because of signal" << std::endl;
-        m_interrupt = true;
+        s_interrupt = true;
         break;
     }
 }
@@ -324,7 +324,7 @@ Hub::Hub(bool inManager)
         startIoThread();
 
     // install a signal handler for e.g. Ctrl-c
-    m_interrupt = false;
+    s_interrupt = false;
     m_signals.add(SIGINT);
     m_signals.add(SIGTERM);
     m_signals.async_wait(signalHandler);
@@ -821,7 +821,7 @@ bool Hub::init(int argc, char *argv[])
         m_barrierAfterLoad = true;
     }
 
-    if (!m_inManager && !m_interrupt && !m_quitting) {
+    if (!m_inManager && !s_interrupt && !m_quitting) {
         // start UI
         if (!uiCmd.empty()) {
             m_hasUi = true;
@@ -842,13 +842,13 @@ bool Hub::init(int argc, char *argv[])
         }
     }
 
-    if (!m_interrupt && !m_quitting) {
+    if (!s_interrupt && !m_quitting) {
 #ifdef HAVE_PYTHON
         m_python.reset(new PythonInterpreter(m_dir->share()));
 #endif
     }
 
-    if (m_isMaster && !m_inManager && !m_interrupt && !m_quitting) {
+    if (m_isMaster && !m_inManager && !s_interrupt && !m_quitting) {
         m_hasVrb = startVrb();
     }
 
@@ -1435,9 +1435,9 @@ bool Hub::dispatch()
                 break;
             }
         }
-    } while (!m_interrupt && !m_quitting && avail >= sizeof(uint32_t));
+    } while (!s_interrupt && !m_quitting && avail >= sizeof(uint32_t));
 
-    if (m_interrupt) {
+    if (s_interrupt) {
         if (m_isMaster) {
             auto quit = make.message<message::Quit>();
             sendSlaves(quit);
@@ -3398,7 +3398,7 @@ bool Hub::connectToMaster(const std::string &host, unsigned short port)
             break;
         }
         asio::connect(*m_masterSocket, endpoints, ec);
-        if (m_interrupt) {
+        if (s_interrupt) {
             break;
         }
         if (!ec) {
@@ -3481,7 +3481,7 @@ Hub::socket_ptr Hub::connectToVrb(unsigned short port)
     assert(m_isMaster);
 
     socket_ptr sock;
-    if (m_quitting || m_interrupt) {
+    if (m_quitting || s_interrupt) {
         CERR << "refusing to connect to local VRB at port " << port << ": shutting down" << std::endl;
         return sock;
     }
@@ -3495,7 +3495,7 @@ Hub::socket_ptr Hub::connectToVrb(unsigned short port)
         boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::make_address_v4("127.0.0.1"), port);
         sock = std::make_shared<socket>(m_ioContext);
         sock->connect(endpoint, ec);
-        if (m_interrupt) {
+        if (s_interrupt) {
             sock.reset();
             return sock;
         }
@@ -4571,8 +4571,8 @@ bool Hub::checkChildProcesses(bool emergency, bool onMainThread)
 
 void Hub::emergencyQuit()
 {
-    if (m_interrupt) {
-        m_interrupt = false;
+    if (s_interrupt) {
+        s_interrupt = false;
     } else if (m_emergency) {
         return;
     }
