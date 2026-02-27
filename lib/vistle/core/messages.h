@@ -384,6 +384,9 @@ public:
     void setModule(int);
     int getModule() const;
 
+    void setOnlyWithChangedParameters(bool only);
+    bool onlyWithChangedParameters() const;
+
     bool allRanks() const;
     void setAllRanks(bool allRanks);
 
@@ -410,6 +413,7 @@ public:
 private:
     bool m_allRanks; //!< whether execute should be broadcasted across all MPI ranks
     int module; //!< destination module, -1: all sources
+    bool m_onlyWithChangedParameters; //!< whether to execute only if parameters have changed
     What m_what; //!< reason why this message was generated
     double m_realtime; //!< realtime/timestep currently displayed
     double m_animationStepDuration; //!< duration of a single timestep

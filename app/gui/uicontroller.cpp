@@ -134,6 +134,7 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
     m_mainWindow->dataFlowView()->setScene(m_scene);
     m_mainWindow->dataFlowView()->addToToolBar(m_mainWindow->toolBar(), m_mainWindow->layerWidgetPosition());
     connect(m_mainWindow->dataFlowView(), SIGNAL(executeDataFlow()), SLOT(executeDataFlowNetwork()));
+    connect(m_mainWindow->dataFlowView(), SIGNAL(updateDataFlow()), SLOT(updateDataFlowNetwork()));
     connect(m_mainWindow->dataFlowView(), SIGNAL(visibleLayerChanged(int)), m_scene, SLOT(visibleLayerChanged(int)));
     connect(m_mainWindow->parameters(), &Parameters::highlightModule, m_scene, &DataFlowNetwork::highlightModule);
     connect(m_mainWindow->parameters(), &Parameters::disconnectParameters, this,
@@ -150,6 +151,7 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
     connect(m_mainWindow, SIGNAL(saveDataFlowOnGui()), SLOT(saveDataFlowNetworkOnGui()));
     connect(m_mainWindow, SIGNAL(saveDataFlowOnHub()), SLOT(saveDataFlowNetworkOnHub()));
     connect(m_mainWindow, SIGNAL(executeDataFlow()), SLOT(executeDataFlowNetwork()));
+    connect(m_mainWindow, SIGNAL(updateDataFlow()), SLOT(updateDataFlowNetwork()));
     connect(m_mainWindow, SIGNAL(connectVistle()), SLOT(connectVistle()));
     connect(m_mainWindow, SIGNAL(showSessionUrl()), SLOT(showConnectionInfo()));
     connect(m_mainWindow, SIGNAL(copySessionUrl()), SLOT(copyConnectionInfo()));
@@ -539,7 +541,12 @@ void UiController::saveDataFlowNetworkOnHub(const QString &pathname)
 
 void UiController::executeDataFlowNetwork()
 {
-    m_vistleConnection->executeSources();
+    m_vistleConnection->executeSources(false);
+}
+
+void UiController::updateDataFlowNetwork()
+{
+    m_vistleConnection->executeSources(true);
 }
 
 void UiController::connectVistle()

@@ -64,6 +64,7 @@ signals:
     void saveDataFlowOnGui();
     void saveDataFlowOnHub();
     void executeDataFlow();
+    void updateDataFlow();
     void connectVistle();
     void showSessionUrl();
     void copySessionUrl();

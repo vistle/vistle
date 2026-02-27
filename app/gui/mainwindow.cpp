@@ -69,7 +69,8 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionSaveOnHub, SIGNAL(triggered()), SIGNAL(saveDataFlowOnHub()));
     ui->actionSaveOnHub->setShortcut(QKeySequence::StandardKey::SaveAs);
     connect(ui->actionExecute, SIGNAL(triggered()), SIGNAL(executeDataFlow()));
-    ui->actionExecute->setShortcut(QKeySequence::StandardKey::Refresh);
+    connect(ui->actionExecuteChanged, SIGNAL(triggered()), SIGNAL(updateDataFlow()));
+    ui->actionExecuteChanged->setShortcut(QKeySequence::StandardKey::Refresh);
     connect(ui->actionConnect, SIGNAL(triggered()), SIGNAL(connectVistle()));
     connect(ui->actionShow_Session_URL, SIGNAL(triggered()), SIGNAL(showSessionUrl()));
     connect(ui->actionCopy_Session_URL, SIGNAL(triggered()), SIGNAL(copySessionUrl()));

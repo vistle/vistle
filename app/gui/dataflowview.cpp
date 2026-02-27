@@ -368,7 +368,7 @@ void DataFlowView::execModules()
 {
     auto selection = selectedModules();
     if (selection.empty()) {
-        emit executeDataFlow();
+        emit updateDataFlow();
     } else {
         for (auto m: selection)
             m->execModule();

@@ -343,6 +343,7 @@ private:
     SessionParameters session;
     ConfigParameters settings;
     HubParameters params;
+    std::set<int> m_executePending; // modules with changed parameters that need to be executed
 
     std::mutex m_outstandingDataConnectionMutex;
     struct OutstandingDataConnection {
