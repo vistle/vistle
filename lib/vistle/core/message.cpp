@@ -323,6 +323,14 @@ void Message::setPayloadRawSize(size_t size)
     m_payloadRawSize = size;
 }
 
+void Message::clearPayload()
+{
+    m_payloadSize = 0;
+    m_payloadRawSize = 0;
+    m_payloadCompression = CompressionMode::CompressionNone;
+    m_payloadName[0] = '\0';
+}
+
 bool Message::isForBroadcast() const
 {
     return m_forBroadcast;

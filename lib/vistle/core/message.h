@@ -241,6 +241,8 @@ public:
     size_t payloadRawSize() const;
     //! set number of uncompressed payload bytes
     void setPayloadRawSize(size_t size);
+    //! remove all references to a payload
+    void clearPayload();
     //! set priority of this message in shm message queues
     void setPriority(unsigned int prio);
     //! get priority of this message in shm message queues
