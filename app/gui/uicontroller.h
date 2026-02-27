@@ -50,6 +50,7 @@ private slots:
     void saveDataFlowNetwork(const QString &filename = QString(), int hubId = vistle::message::Id::Invalid);
     void saveDataFlowNetworkOnGui(const QString &filename = QString());
     void saveDataFlowNetworkOnHub(const QString &filename = QString());
+    void updateDataFlowNetwork();
     void executeDataFlowNetwork();
     void connectVistle();
 

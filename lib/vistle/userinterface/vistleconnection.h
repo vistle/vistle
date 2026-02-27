@@ -37,7 +37,7 @@ public:
 
     bool barrier(const std::string &info) const;
     bool resetDataFlowNetwork() const;
-    bool executeSources() const;
+    bool executeSources(bool onlyChanged = true) const;
 
     vistle::UserInterface &ui() const;
 

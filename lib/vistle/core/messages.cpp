@@ -737,11 +737,21 @@ bool Screenshot::quit() const
 }
 
 Execute::Execute(Execute::What what, const int module)
-: m_allRanks(false), module(module), m_what(what), m_realtime(0.), m_animationStepDuration(0.)
+: m_allRanks(false)
+, module(module)
+, m_onlyWithChangedParameters(false)
+, m_what(what)
+, m_realtime(0.)
+, m_animationStepDuration(0.)
 {}
 
 Execute::Execute(const int module, double realtime, double stepsize)
-: m_allRanks(false), module(module), m_what(ComputeExecute), m_realtime(realtime), m_animationStepDuration(stepsize)
+: m_allRanks(false)
+, module(module)
+, m_onlyWithChangedParameters(false)
+, m_what(ComputeExecute)
+, m_realtime(realtime)
+, m_animationStepDuration(stepsize)
 {}
 
 void Execute::setModule(int m)
@@ -752,6 +762,16 @@ void Execute::setModule(int m)
 int Execute::getModule() const
 {
     return module;
+}
+
+void Execute::setOnlyWithChangedParameters(bool only)
+{
+    m_onlyWithChangedParameters = only;
+}
+
+bool Execute::onlyWithChangedParameters() const
+{
+    return m_onlyWithChangedParameters;
 }
 
 bool Execute::allRanks() const

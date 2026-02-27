@@ -96,7 +96,7 @@
      <x>0</x>
      <y>0</y>
      <width>857</width>
-     <height>24</height>
+     <height>33</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuHello_World">
@@ -146,6 +146,7 @@
     <addaction name="actionSelectSources"/>
     <addaction name="actionSelectSinks"/>
     <addaction name="separator"/>
+    <addaction name="actionExecuteChanged"/>
     <addaction name="actionExecute"/>
    </widget>
    <addaction name="menuHello_World"/>
@@ -214,7 +215,7 @@
    <addaction name="actionOpen"/>
    <addaction name="actionSave"/>
    <addaction name="separator"/>
-   <addaction name="actionExecute"/>
+   <addaction name="actionExecuteChanged"/>
    <addaction name="separator"/>
    <addaction name="actionSelectInvert"/>
    <addaction name="actionSelect_All"/>
@@ -406,10 +407,6 @@
    </property>
   </action>
   <action name="actionExecute">
-   <property name="icon">
-    <iconset resource="gui.qrc">
-     <normaloff>:/icons/execute.svg</normaloff>:/icons/execute.svg</iconset>
-   </property>
    <property name="text">
     <string>&amp;Execute Workflow</string>
    </property>
@@ -576,6 +573,21 @@
    </property>
    <property name="toolTip">
     <string>Open existing workflow on GUI</string>
+   </property>
+  </action>
+  <action name="actionExecuteChanged">
+   <property name="icon">
+    <iconset resource="gui.qrc">
+     <normaloff>:/icons/execute.svg</normaloff>:/icons/execute.svg</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Execute Modules</string>
+   </property>
+   <property name="toolTip">
+    <string>Execute all modules with pending parameter changes</string>
+   </property>
+   <property name="shortcutVisibleInContextMenu">
+    <bool>true</bool>
    </property>
   </action>
  </widget>

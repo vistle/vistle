@@ -287,7 +287,7 @@ Hub::Hub(bool inManager)
 , m_isMaster(true)
 , m_slaveCount(0)
 , m_hubId(Id::Invalid)
-, m_moduleCount(0)
+, m_moduleCount(Id::ModuleBase)
 , m_traceMessages(message::INVALID)
 , m_barrierActive(false)
 , m_workGuard(asio::make_work_guard(m_ioContext))
@@ -2400,6 +2400,8 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                         nparam.setDestId(Id::Vistle);
                         session.handleMessage(nparam);
                     }
+
+                    m_executePending.insert(setParam.destId());
                 }
 
                 updateLinkedParameters(setParam);
@@ -2726,7 +2728,8 @@ bool Hub::spawnMirror(int hubId, const std::string &name, int mirroredId, int bl
     message::Spawn mirror(hubId, name);
     //mirror.setReferrer(spawn.uuid());
     //mirror.setSenderId(m_hubId);
-    mirror.setSpawnId(Id::ModuleBase + m_moduleCount);
+    mirror.setSpawnId(m_moduleCount);
+    m_executePending.insert(m_moduleCount);
     ++m_moduleCount;
     mirror.setMirroringId(mirroredId);
     mirror.setDestId(Id::Broadcast);
@@ -2864,7 +2867,8 @@ bool Hub::handlePriv(const message::Spawn &spawn)
     int newId = spawn.spawnId();
     int mirroringId = Id::Invalid;
     if (spawn.spawnId() == Id::Invalid) {
-        newId = Id::ModuleBase + m_moduleCount;
+        newId = m_moduleCount;
+        m_executePending.insert(newId);
         ++m_moduleCount;
         notify.setSpawnId(newId);
         if (shouldMirror)
@@ -2965,6 +2969,9 @@ bool Hub::handlePriv(const message::SetName &setname)
 template<typename ConnMsg>
 bool Hub::handleConnectOrDisconnect(const ConnMsg &mm)
 {
+    m_executePending.insert(mm.getModuleA());
+    m_executePending.insert(mm.getModuleB());
+
     if (m_isMaster) {
 #if 0
              if (mm.isNotification()) {
@@ -3918,14 +3925,18 @@ bool Hub::handlePriv(const message::Execute &exec, const buffer *payload)
     bool isCompound = false;
     std::set<int> modules{exec.getModule()}; // execute specified module
     if (!Id::isModule(exec.getModule())) {
-        // or all modules that are a source in the dataflow graph
-        onlySources = true;
         modules.clear();
-        for (auto &mod: m_stateTracker.runningMap) {
-            int id = mod.first;
-            if (!Id::isModule(id))
-                continue;
-            modules.insert(id);
+        if (exec.onlyWithChangedParameters()) {
+            modules = m_executePending;
+        } else {
+            // or all modules that are a source in the dataflow graph
+            onlySources = true;
+            for (auto &mod: m_stateTracker.runningMap) {
+                int id = mod.first;
+                if (!Id::isModule(id))
+                    continue;
+                modules.insert(id);
+            }
         }
     } else {
         const auto &av = getStaticModuleInfo(exec.getModule(), m_stateTracker);
@@ -3945,7 +3956,7 @@ bool Hub::handlePriv(const message::Execute &exec, const buffer *payload)
         }
     }
     std::set<int> downstream;
-    if (Id::isModule(exec.getModule())) {
+    if (Id::isModule(exec.getModule()) || exec.onlyWithChangedParameters()) {
         for (auto m: modules) {
             // remove all downstream modules from the list of modules to execute, they will be triggered by the upstream modules
             auto ds = m_stateTracker.getDownstreamModules(m, "", true, true);
@@ -3961,6 +3972,7 @@ bool Hub::handlePriv(const message::Execute &exec, const buffer *payload)
         downstream = m_stateTracker.getDownstreamModules(exec);
     }
     for (auto id: downstream) {
+        m_executePending.erase(id);
         auto blockDownstream = make.message<message::Execute>(exec);
         blockDownstream.setWhat(message::Execute::Upstream);
         blockDownstream.setDestId(id);
@@ -3968,6 +3980,7 @@ bool Hub::handlePriv(const message::Execute &exec, const buffer *payload)
         sendModule(blockDownstream, id);
     }
     for (auto id: modules) {
+        m_executePending.erase(id);
         bool canExec = true;
         auto inputs = m_stateTracker.portTracker()->getInputPorts(id);
         for (auto &input: inputs) {
@@ -4297,6 +4310,7 @@ bool Hub::handlePriv(const message::ModuleExit &exit)
     }
 
     cleanQueue(id);
+    m_executePending.erase(id);
 
     checkLastModuleQuit();
 
@@ -4721,6 +4735,7 @@ void Hub::updateLinkedParameters(const message::SetParameter &setParam)
                 set.setDestId(p->module());
                 set.setUuid(setParam.uuid());
                 sendAll(set);
+                m_executePending.insert(p->module());
             }
         }
     }

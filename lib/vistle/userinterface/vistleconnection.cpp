@@ -212,11 +212,12 @@ bool vistle::VistleConnection::resetDataFlowNetwork() const
 #endif
 }
 
-bool VistleConnection::executeSources() const
+bool VistleConnection::executeSources(bool onlyChanged) const
 {
     mutex_lock lock(m_mutex);
     message::Execute exec;
     exec.setDestId(message::Id::MasterHub);
+    exec.setOnlyWithChangedParameters(onlyChanged);
     return sendMessage(exec);
 }
 

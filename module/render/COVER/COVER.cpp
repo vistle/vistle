@@ -398,6 +398,7 @@ bool COVER::executeAll() const
 {
     message::Execute exec; // execute all sources in dataflow graph
     exec.setDestId(message::Id::MasterHub);
+    exec.setOnlyWithChangedParameters(true);
     sendMessage(exec);
     return true;
 }
