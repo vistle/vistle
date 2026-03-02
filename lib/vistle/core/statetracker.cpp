@@ -311,6 +311,16 @@ bool StateTracker::isCompound(int id)
     return av != m_availableModules.end() && av->second.isCompound();
 }
 
+bool StateTracker::isCachingInput(int id) const
+{
+    mutex_locker guard(m_stateMutex);
+    RunningMap::const_iterator it = runningMap.find(id);
+    if (it == runningMap.end()) {
+        return false;
+    }
+    return it->second.cachingInput;
+}
+
 
 int StateTracker::getModuleState(int id) const
 {
@@ -1580,6 +1590,13 @@ bool StateTracker::handlePriv(const message::SetParameter &setParam)
             if (param) {
                 setParam.apply(param);
                 handled = true;
+
+                if (message::Id::isModule(id) && name == "cache_mode") {
+                    if (auto cm = dynamic_pointer_cast<const IntParameter>(param)) {
+                        auto &mod = runningMap.find(id)->second;
+                        mod.cachingInput = cm->getValue() == 1 || cm->getValue() == 2;
+                    }
+                }
             }
         }
     } else {
