@@ -2,7 +2,6 @@
 #define VISTLE_CORE_PARAMETER_H
 
 #include <string>
-#include <sstream>
 #include <iostream>
 #include <algorithm>
 #include <limits>
