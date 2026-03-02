@@ -18,8 +18,6 @@
 
 //#define DEBUG
 
-namespace bi = boost::interprocess;
-
 namespace vistle {
 
 namespace {

@@ -3,7 +3,6 @@
  */
 
 #include <iostream>
-#include <fstream>
 #include <exception>
 #include <cstdlib>
 #include <numbers>
@@ -68,7 +67,6 @@
 
 namespace asio = boost::asio;
 using std::shared_ptr;
-namespace dir = vistle::directory;
 
 namespace vistle {
 
