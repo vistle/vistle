@@ -154,6 +154,7 @@ public:
     std::string getModuleCategory(int id) const;
     std::string getModuleDescription(int id) const;
     bool isCompound(int id);
+    bool isCachingInput(int id) const;
 
     int getModuleState(int id) const;
     int getMirrorId(int id) const;
@@ -277,6 +278,7 @@ protected:
         message::ObjectReceivePolicy::Policy objectPolicy;
         message::SchedulingPolicy::Schedule schedulingPolicy;
         message::ReducePolicy::Reduce reducePolicy;
+        bool cachingInput = false;
 
         struct InfoKey {
             InfoKey(const std::string &port, message::ItemInfo::InfoType type = message::ItemInfo::Unspecified)
