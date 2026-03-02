@@ -17,6 +17,7 @@
 
 #include <QString>
 #include <QSettings>
+#include <QToolButton>
 
 namespace gui {
 
@@ -32,6 +33,15 @@ MainWindow::MainWindow(QWidget *parent)
 {
     // declare list of names of modules, pass to the scene
     ui->setupUi(this);
+
+    if (auto exec = dynamic_cast<QToolButton *>(ui->toolBar->widgetForAction(ui->actionExecute))) {
+        exec->setPopupMode(QToolButton::MenuButtonPopup);
+        auto menu = new QMenu(exec);
+        menu->addAction(ui->actionExecuteChanged);
+        menu->addAction(ui->actionExecuteWorkflow);
+        exec->setMenu(menu);
+        connect(ui->actionExecute, &QAction::triggered, [this]() { emit updateDataFlow(); });
+    }
 
     setCorner(Qt::TopLeftCorner, Qt::LeftDockWidgetArea);
     setCorner(Qt::BottomLeftCorner, Qt::LeftDockWidgetArea);
@@ -68,7 +78,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionSaveOnGui, SIGNAL(triggered()), SIGNAL(saveDataFlowOnGui()));
     connect(ui->actionSaveOnHub, SIGNAL(triggered()), SIGNAL(saveDataFlowOnHub()));
     ui->actionSaveOnHub->setShortcut(QKeySequence::StandardKey::SaveAs);
-    connect(ui->actionExecute, SIGNAL(triggered()), SIGNAL(executeDataFlow()));
+    connect(ui->actionExecuteWorkflow, SIGNAL(triggered()), SIGNAL(executeDataFlow()));
     connect(ui->actionExecuteChanged, SIGNAL(triggered()), SIGNAL(updateDataFlow()));
     ui->actionExecuteChanged->setShortcut(QKeySequence::StandardKey::Refresh);
     connect(ui->actionConnect, SIGNAL(triggered()), SIGNAL(connectVistle()));

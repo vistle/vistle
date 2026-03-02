@@ -96,7 +96,7 @@
      <x>0</x>
      <y>0</y>
      <width>857</width>
-     <height>33</height>
+     <height>30</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuHello_World">
@@ -147,7 +147,7 @@
     <addaction name="actionSelectSinks"/>
     <addaction name="separator"/>
     <addaction name="actionExecuteChanged"/>
-    <addaction name="actionExecute"/>
+    <addaction name="actionExecuteWorkflow"/>
    </widget>
    <addaction name="menuHello_World"/>
    <addaction name="menuEdit"/>
@@ -215,7 +215,7 @@
    <addaction name="actionOpen"/>
    <addaction name="actionSave"/>
    <addaction name="separator"/>
-   <addaction name="actionExecuteChanged"/>
+   <addaction name="actionExecute"/>
    <addaction name="separator"/>
    <addaction name="actionSelectInvert"/>
    <addaction name="actionSelect_All"/>
@@ -406,7 +406,7 @@
     <string>Connect to Vistle</string>
    </property>
   </action>
-  <action name="actionExecute">
+  <action name="actionExecuteWorkflow">
    <property name="text">
     <string>&amp;Execute Workflow</string>
    </property>
@@ -581,7 +581,22 @@
      <normaloff>:/icons/execute.svg</normaloff>:/icons/execute.svg</iconset>
    </property>
    <property name="text">
-    <string>&amp;Execute Modules</string>
+    <string>&amp;Execute Changed</string>
+   </property>
+   <property name="toolTip">
+    <string>Execute all modules with pending parameter changes</string>
+   </property>
+   <property name="shortcutVisibleInContextMenu">
+    <bool>true</bool>
+   </property>
+  </action>
+  <action name="actionExecute">
+   <property name="icon">
+    <iconset resource="gui.qrc">
+     <normaloff>:/icons/execute.svg</normaloff>:/icons/execute.svg</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Execute</string>
    </property>
    <property name="toolTip">
     <string>Execute all modules with pending parameter changes</string>
