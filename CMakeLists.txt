@@ -65,6 +65,7 @@ option(VISTLE_TIME_BUILD "Gather build times (Clang/ISPC)" OFF)
 
 option(VISTLE_PROFILE_NVTX "Annotate for Nsight profiler" OFF)
 option(VISTLE_PROFILE_CHROME "Annotate for showing timings in Chrome browser" OFF)
+option(VISTLE_PROFILE_ROCTX "Annotate for rocprof profiler" OFF)
 
 option(VISTLE_USE_CUDA "Build with CUDA support" OFF)
 option(VISTLE_USE_KOKKOS "Build with Kokkos support" OFF)

@@ -16,6 +16,22 @@
         PROFILE_SCOPE(name); \
     }
 
+#elif defined(VISTLE_PROFILE_ROCTX)
+#include <rocprofiler-sdk-roctx/roctx.h>
+class roctxScopedRange {
+private:
+    int id;
+
+public:
+    explicit roctxScopedRange(const char *name) { id = roctxRangeStart(name); }
+
+    ~roctxScopedRange() { roctxRangeStop(id); }
+};
+
+#define PROF_FUNC() roctxScopedRange vistle_profile_function(__FUNCTION__)
+#define PROF_SCOPE(name) roctxScopedRange vistle_profile_range(name)
+#define PROF_MARK(name) roctxMark(name)
+
 #else
 #define PROF_FUNC()
 #define PROF_SCOPE(name)
