@@ -6,6 +6,7 @@
 #include <fstream>
 #include <exception>
 #include <cstdlib>
+#include <numbers>
 #include <sstream>
 #include <cassert>
 #include <future>
@@ -3913,6 +3914,8 @@ bool Hub::handlePriv(const message::Execute &exec, const buffer *payload)
     if (!m_isMaster)
         return true;
 
+    bool extendUpstream = exec.onlyWithChangedParameters();
+
     auto toSend = make.message<Execute>(exec);
     toSend.clearPayload();
     std::vector<std::string> triggerParams;
@@ -3946,6 +3949,8 @@ bool Hub::handlePriv(const message::Execute &exec, const buffer *payload)
         }
     }
     for (const auto &p: triggerParams) {
+        extendUpstream = true;
+        modules.clear();
         if (auto trigger = m_stateTracker.getParameter(exec.getModule(), p)) {
             ParameterSet conn = m_stateTracker.getConnectedParameters(*trigger);
 
@@ -3954,6 +3959,34 @@ bool Hub::handlePriv(const message::Execute &exec, const buffer *payload)
                 modules.insert(p->module());
             }
         }
+    }
+    if (extendUpstream) {
+        // do not try to execute modules that do not cache input - extend upstream
+        for (std::set<int> checkNow = modules; !checkNow.empty();) {
+            std::set<int> checkNext;
+            for (auto m: checkNow) {
+                if (!Id::isModule(m)) {
+                    continue;
+                }
+                if (m_stateTracker.isCachingInput(m)) {
+                    modules.insert(m);
+                    continue;
+                }
+                // get direct upstream modules, if there are none, execute this module, otherwise add them to the list of modules to check
+                auto us = m_stateTracker.getUpstreamModules(m, "", false);
+                if (us.empty()) {
+                    modules.insert(m);
+                    continue;
+                }
+                for (auto u: us) {
+                    checkNext.insert(u);
+                }
+            }
+            checkNow = checkNext;
+        }
+    }
+    if (Id::isModule(exec.getModule())) {
+        modules.insert(exec.getModule());
     }
     std::set<int> downstream;
     if (Id::isModule(exec.getModule()) || exec.onlyWithChangedParameters()) {
@@ -3974,33 +4007,11 @@ bool Hub::handlePriv(const message::Execute &exec, const buffer *payload)
     for (auto id: downstream) {
         m_executePending.erase(id);
         auto blockDownstream = make.message<message::Execute>(exec);
+        blockDownstream.clearPayload();
         blockDownstream.setWhat(message::Execute::Upstream);
         blockDownstream.setDestId(id);
         blockDownstream.setModule(id);
         sendModule(blockDownstream, id);
-    }
-    // do not try to execute modules that do not cache input - extend upstream
-    for (std::set<int> checkNow = m_executePending; !checkNow.empty();) {
-        std::set<int> checkNext;
-        for (auto m: checkNow) {
-            if (!Id::isModule(m)) {
-                continue;
-            }
-            if (m_stateTracker.isCachingInput(m)) {
-                modules.insert(m);
-                continue;
-            }
-            // get direct upstream modules, if there are none, execute this module, otherwise add them to the list of modules to check
-            auto us = m_stateTracker.getUpstreamModules(m, "", false);
-            if (us.empty()) {
-                modules.insert(m);
-                continue;
-            }
-            for (auto u: us) {
-                checkNext.insert(u);
-            }
-        }
-        checkNow = checkNext;
     }
     for (auto id: modules) {
         m_executePending.erase(id);
