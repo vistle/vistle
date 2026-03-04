@@ -470,15 +470,30 @@ void shm_array<T, allocator>::load(Archive &ar)
     }
 }
 
+namespace {
+template<typename T>
+struct Printable {
+    static T value(const T &v) { return v; }
+};
+
+template<>
+struct Printable<unsigned char> {
+    static unsigned value(const unsigned char v) { return static_cast<unsigned>(v); }
+};
+} // namespace
+
 template<typename T, class allocator>
 void shm_array<T, allocator>::print(std::ostream &os, bool verbose) const
 {
     //os << name << " ";
     os << scalarTypeName(typeId()) << "[" << size();
+    if (bounds_valid()) {
+        os << " range " << Printable<T>::value(m_min) << " - " << Printable<T>::value(m_max);
+    }
     if (verbose) {
         os << ":";
         for (size_t i = 0; i < size(); ++i) {
-            os << " " << m_data[i];
+            os << " " << Printable<T>::value(m_data[i]);
         }
     }
     os << "]";
