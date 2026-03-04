@@ -1,5 +1,8 @@
 #include "reader.h"
+#include <vistle/util/profile.h>
 #include <vistle/util/threadname.h>
+
+#define PROF_CTX(s) (std::to_string(m_id) + ":" + m_name + ": " + s).c_str()
 
 namespace vistle {
 
@@ -201,6 +204,7 @@ bool Reader::readTimestep(std::shared_ptr<Token> &prev, const ReaderProperties &
                 auto tname = std::to_string(id()) + "r" + std::to_string(m_tokenCount) + ":" + name();
                 token->m_future = std::async(std::launch::async, [this, tname, token, timestep, p]() {
                     setThreadName(tname);
+                    PROF_SCOPE(PROF_CTX("read t=" + std::to_string(timestep) + " b=" + std::to_string(p)));
                     if (!read(*token, timestep, p)) {
                         sendInfo("error reading time data %d on partition %d", timestep, p);
                         return false;
@@ -273,9 +277,12 @@ bool Reader::prepare()
         return true;
     }
 
-    if (!prepareRead()) {
-        sendInfo("initiating read failed");
-        return true;
+    {
+        PROF_SCOPE(PROF_CTX("prepareRead"));
+        if (!prepareRead()) {
+            sendInfo("initiating read failed");
+            return true;
+        }
     }
 
     auto first = m_first->getValue();
@@ -340,9 +347,12 @@ bool Reader::prepare()
         }
     }
 
-    //finish read
-    if (!finishRead()) {
-        sendError("error finishing read");
+    {
+        PROF_SCOPE(PROF_CTX("finishRead"));
+        //finish read
+        if (!finishRead()) {
+            sendError("error finishing read");
+        }
     }
 
     return true;
@@ -470,6 +480,7 @@ bool Reader::changeParameters(std::map<std::string, const Parameter *> params)
     for (auto &p: params) {
         auto it = m_observedParameters.find(p.second);
         if (it != m_observedParameters.end()) {
+            PROF_SCOPE(PROF_CTX("examine, all parameters"));
             m_readyForRead = examine();
             ret &= m_readyForRead;
             break;
@@ -501,6 +512,7 @@ bool Reader::changeParameter(const Parameter *param)
     if (!m_inhibitExamine) {
         auto it = m_observedParameters.find(param);
         if (it != m_observedParameters.end()) {
+            PROF_SCOPE(PROF_CTX("examine, param=" + param->getName()));
             m_readyForRead = examine(param);
             ret &= m_readyForRead;
         }
