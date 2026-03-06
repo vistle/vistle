@@ -46,7 +46,6 @@ std::string getThreadName()
 
 bool setThreadName(std::string name)
 {
-    PROF_MARK((std::string("setThreadName ") + name).c_str());
 #ifdef __linux
 #if __GLIBC__ >= 2 && __GLIBC_MINOR__ >= 12
     const size_t maxlen = 15;
@@ -56,6 +55,7 @@ bool setThreadName(std::string name)
     }
     int err = pthread_setname_np(pthread_self(), name.c_str());
     if (err == 0) {
+        PROF_MARK((std::string("setThreadName ") + name).c_str());
         return true;
     }
     std::cerr << "setThreadName failed: " << strerror(err) << std::endl;
@@ -64,6 +64,7 @@ bool setThreadName(std::string name)
 
 #ifdef __APPLE__
     pthread_setname_np(name.c_str());
+    PROF_MARK((std::string("setThreadName ") + name).c_str());
     return true;
 #endif
 #ifdef _WIN32
@@ -71,6 +72,9 @@ bool setThreadName(std::string name)
     HRESULT hr = SetThreadDescription(GetCurrentThread(), converter.from_bytes(name).c_str());
     if (FAILED(hr)) {
         std::cerr << "Failed to set thread name: " << hr << std::endl;
+    } else {
+        PROF_MARK((std::string("setThreadName ") + name).c_str());
+        return true;
     }
 #endif // _WIN32
     return false;
