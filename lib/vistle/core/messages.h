@@ -396,7 +396,7 @@ public:
     double animationRealTime() const;
     double animationStepDuration() const;
 
-    struct Payload {
+    struct V_COREEXPORT Payload {
         Payload();
         Payload(const std::vector<std::string> &parameters);
 
@@ -676,7 +676,7 @@ private:
 //! set list of choice descriptions for a choice parameter
 class V_COREEXPORT SetParameterChoices: public MessageBase<SetParameterChoices, SETPARAMETERCHOICES> {
 public:
-    struct Payload {
+    struct V_COREEXPORT Payload {
         Payload();
         Payload(const std::vector<std::string> &choices);
 
@@ -820,7 +820,7 @@ public:
     DEFINE_ENUM_WITH_STRING_CONVERSIONS(Importance, (Bulk)(Low)(Medium)(High))
     DEFINE_ENUM_WITH_STRING_CONVERSIONS(Type, (Text)(LoadedFile)(SessionUrl))
 
-    struct Payload {
+    struct V_COREEXPORT Payload {
         Payload();
         Payload(const std::string &status);
 
