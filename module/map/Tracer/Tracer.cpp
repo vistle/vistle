@@ -1032,6 +1032,10 @@ bool Tracer::reduce(int timestep)
         updateMeta(geo);
 
         for (int p = 0; p < NumAddPorts; ++p) {
+            if (!isConnected(*m_addPort[p])) {
+                continue;
+            }
+
             DataBase::ptr field;
             if (m_addField[p]->getValue() == ParticleId) {
                 field = global.idField[i];
@@ -1051,26 +1055,24 @@ bool Tracer::reduce(int timestep)
                 field = global.blockField[i];
             }
 
-            if (isConnected(*m_addPort[p])) {
-                if (field) {
-                    bool initField = true;
-                    for (unsigned j = 0; j < i; ++j) {
-                        if (m_addField[j]->getValue() == m_addField[i]->getValue()) {
-                            initField = false;
-                            break;
-                        }
+            if (field) {
+                bool initField = true;
+                for (unsigned j = 0; j < i; ++j) {
+                    if (m_addField[j]->getValue() == m_addField[i]->getValue()) {
+                        initField = false;
+                        break;
                     }
-                    if (initField) {
-                        field->setGrid(geo);
-                        field->setMeta(meta);
-                        auto kind = m_addField[i]->getValue();
-                        field->describe(getFieldName(kind), this->id());
-                        updateMeta(field);
-                    }
-                    addObject(m_addPort[p], field);
-                } else {
-                    addObject(m_addPort[p], geo);
                 }
+                if (initField) {
+                    field->setGrid(geo);
+                    field->setMeta(meta);
+                    auto kind = m_addField[p]->getValue();
+                    field->describe(getFieldName(kind), this->id());
+                    updateMeta(field);
+                }
+                addObject(m_addPort[p], field);
+            } else {
+                addObject(m_addPort[p], geo);
             }
         }
 
