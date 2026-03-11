@@ -9,6 +9,7 @@
 #include <vistle/core/lines.h>
 #include <vistle/core/points.h>
 #include <vistle/alg/fields.h>
+#include <vistle/alg/objalg.h>
 
 #include "SplitDimensions.h"
 
@@ -32,11 +33,14 @@ SplitDimensions::SplitDimensions(const std::string &name, int moduleID, mpi::com
 
 bool SplitDimensions::compute(const std::shared_ptr<BlockTask> &task) const
 {
-    DataBase::const_ptr data;
-    StructuredGridBase::const_ptr sgrid;
-    UnstructuredGrid::const_ptr ugrid;
-    ugrid = task->accept<UnstructuredGrid>("data_in");
-    sgrid = task->accept<StructuredGridBase>("data_in");
+    auto container = task->expect<Object>("data_in");
+    if (container->isEmpty()) {
+        return true;
+    }
+    auto split = splitContainerObject(container);
+    DataBase::const_ptr data = split.mapped;
+    auto sgrid = StructuredGridBase::as(split.geometry);
+    auto ugrid = UnstructuredGrid::as(split.geometry);
     if (!ugrid && !sgrid) {
         data = task->expect<DataBase>("data_in");
         if (!data) {
