@@ -8,8 +8,10 @@ case $(uname -m) in
    *) arch=$(uname -m) ;;
 esac
 
-if [ "$CMAKE_GENERATOR" = "Ninja" ]; then
-    export CMAKE_GENERATOR="Ninja Multi-Config"
+if [ ! -z ${CMAKE_GENERATOR+x} ]; then
+    if [ "$CMAKE_GENERATOR" = "Ninja" ]; then
+        export CMAKE_GENERATOR="Ninja Multi-Config"
+    fi
 fi
 
 mpi=""
