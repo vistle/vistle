@@ -12,6 +12,7 @@
 #include <vistle/alg/objalg.h>
 
 #include "SplitDimensions.h"
+#include "vistle/core/database.h"
 
 using namespace vistle;
 
@@ -62,9 +63,9 @@ bool SplitDimensions::compute(const std::shared_ptr<BlockTask> &task) const
         ugrid ? Object::as(ugrid) : std::dynamic_pointer_cast<const Object, const StructuredGridBase>(sgrid);
     assert(grid_in);
 
-    if (data && data->guessMapping(grid_in) != DataBase::Vertex) {
-        sendError("data mapping not per vertex");
-        return true;
+    bool perElement = false;
+    if (data) {
+        perElement = data->guessMapping(grid_in) == DataBase::Element;
     }
 
     vistle::Points::ptr out0d;
@@ -103,6 +104,8 @@ bool SplitDimensions::compute(const std::shared_ptr<BlockTask> &task) const
     }
 
     VerticesMapping vm[4];
+    ElementMapping em[4];
+    std::vector<Byte> ghost[4];
 
     if (ugrid) {
         const Index *icl = ugrid->cl().data();
@@ -123,6 +126,9 @@ bool SplitDimensions::compute(const std::shared_ptr<BlockTask> &task) const
                     out0d->d()->x[0]->push_back(ugrid->x()[v]);
                     out0d->d()->x[1]->push_back(ugrid->y()[v]);
                     out0d->d()->x[2]->push_back(ugrid->z()[v]);
+                    if (perElement) {
+                        em[0].push_back(e);
+                    }
                 }
                 break;
             case cell::BAR:
@@ -132,6 +138,9 @@ bool SplitDimensions::compute(const std::shared_ptr<BlockTask> &task) const
                         ocl1->push_back(icl[i]);
                     }
                     oel1->push_back(ocl1->size());
+                    if (perElement) {
+                        em[1].push_back(e);
+                    }
                 }
                 break;
             case cell::TRIANGLE:
@@ -142,6 +151,9 @@ bool SplitDimensions::compute(const std::shared_ptr<BlockTask> &task) const
                         ocl2->push_back(icl[i]);
                     }
                     oel2->push_back(ocl2->size());
+                    if (perElement) {
+                        em[2].push_back(e);
+                    }
                 }
                 break;
             case cell::TETRAHEDRON:
@@ -155,6 +167,9 @@ bool SplitDimensions::compute(const std::shared_ptr<BlockTask> &task) const
                         ocl3->push_back(icl[i]);
                     }
                     oel3->push_back(ocl3->size());
+                    if (perElement) {
+                        em[3].push_back(e);
+                    }
                 }
                 break;
             }
@@ -204,21 +219,33 @@ bool SplitDimensions::compute(const std::shared_ptr<BlockTask> &task) const
         updateMeta(obj);
         if (!data) {
             task->addObject(p_out[d], obj);
+            continue;
+        }
+
+        DataBase::ptr dout;
+        if (perElement) {
+            dout = remapData(data, em[d]);
+
+            if (dout) {
+                dout->setGrid(obj);
+                dout->setMeta(data->meta());
+                dout->copyAttributes(data);
+            }
         } else if (reuseCoord && vm[d].empty()) {
-            DataBase::ptr dout = data->clone();
-            dout->setGrid(out[d]);
+            dout = data->clone();
+            dout->setGrid(obj);
+        } else {
+            dout = remapData(data, vm[d]);
+
+            if (dout) {
+                dout->setGrid(obj);
+                dout->setMeta(data->meta());
+                dout->copyAttributes(data);
+            }
+        }
+        if (dout) {
             updateMeta(dout);
             task->addObject(p_out[d], dout);
-        } else {
-            DataBase::ptr data_obj_out = remapData(data, vm[d]);
-
-            if (data_obj_out) {
-                data_obj_out->setGrid(obj);
-                data_obj_out->setMeta(data->meta());
-                data_obj_out->copyAttributes(data);
-                updateMeta(data_obj_out);
-                task->addObject(p_out[d], data_obj_out);
-            }
         }
     }
 
