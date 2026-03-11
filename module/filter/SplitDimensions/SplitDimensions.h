@@ -11,6 +11,7 @@ public:
     SplitDimensions(const std::string &name, int moduleID, mpi::communicator comm);
 
     typedef std::map<vistle::Index, vistle::Index> VerticesMapping;
+    typedef std::vector<vistle::Index> ElementMapping;
 
 private:
     bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
