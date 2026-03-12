@@ -21,7 +21,7 @@ public:
     typedef vistle::Vector4 RGBA;
     typedef std::map<vistle::Scalar, RGBA> TF;
 
-    ColorMap(const size_t steps);
+    ColorMap(const size_t steps, const std::string &seed = std::string());
     ColorMap(TF &pins, const size_t steps, const size_t width, vistle::Scalar center = 0.5f,
              vistle::Scalar compress = 1.f);
     ~ColorMap();
@@ -53,7 +53,9 @@ private:
     void updateHaveData();
     void updateRangeParameters();
 
-#ifndef COLOR_RANDOM
+#ifdef COLOR_RANDOM
+    vistle::StringParameter *m_randomSeed = nullptr;
+#else
     std::map<int, ColorMap::TF> transferFunctions;
     vistle::StringParameter *m_rgbFile = nullptr;
 #endif

@@ -77,9 +77,13 @@ static void extendRange(vistle::Scalar &min, vistle::Scalar &max)
 }
 
 
-ColorMap::ColorMap(const size_t steps): width(steps)
+ColorMap::ColorMap(const size_t steps, const std::string &seed): width(steps)
 {
     auto rand = std::minstd_rand0();
+    if (!seed.empty()) {
+        std::seed_seq seedseq(seed.begin(), seed.end());
+        rand.seed(seedseq);
+    }
     auto dist = std::uniform_int_distribution<unsigned short>(0, 0xff);
 
     data.resize(steps * 4);
@@ -189,7 +193,9 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm): Mod
     m_autoRangePara = addIntParameter("auto_range", "compute range automatically", m_autoRange, Parameter::Boolean);
     m_constrain = addIntParameter("constrain_range", "constrain range for min/max to data", true, Parameter::Boolean);
 
-#ifndef COLOR_RANDOM
+#ifdef COLOR_RANDOM
+    m_randomSeed = addStringParameter("random_seed", "data for seeding pseudo-random number generator", "");
+#else
     m_stepsPara = addIntParameter("steps", "number of color map steps", 32);
     m_mapPara = addIntParameter("map", "transfer function name", CoolWarmBrewer, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_mapPara, TransferFunction);
@@ -633,7 +639,7 @@ void Color::computeMap()
     Scalar op = m_opacity->getValue();
 #ifdef COLOR_RANDOM
     auto steps = std::min(Float(MaxSteps), 1 + std::abs(m_maxPara->getValue() - m_minPara->getValue()));
-    m_colors.reset(new ColorMap(steps));
+    m_colors.reset(new ColorMap(steps, m_randomSeed->getValue()));
     for (size_t i = 0; i < m_colors->width; ++i) {
         m_colors->data[i * 4 + 3] *= op;
     }
