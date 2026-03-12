@@ -198,7 +198,6 @@ bool Particle<S>::findCell(double time)
                 m_currentSegment->m_id = id();
                 m_currentSegment->m_startStep = m_stp;
                 m_currentSegment->m_num = m_segment;
-                m_currentSegment->m_blockIndex = block->m_grid->getBlock();
                 m_currentSegment->m_scalars.resize(m_global.numScalars);
                 if (m_forward)
                     ++m_segment;
@@ -240,6 +239,9 @@ void Particle<S>::EmitData()
         } else {
             m_currentSegment->m_cellIndex.push_back(m_el);
         }
+    }
+    if (m_global.computeBlockIndex) {
+        m_currentSegment->m_blockIndex.push_back(m_block->m_grid->getBlock());
     }
 }
 
@@ -530,7 +532,7 @@ void Particle<S>::addToOutput()
                     if (m_global.computeCellIndex)
                         addToScalar(m_global.cellField[timestep], seg.m_cellIndex[i]);
                     if (m_global.computeBlockIndex)
-                        addToScalar(m_global.blockField[timestep], seg.m_blockIndex);
+                        addToScalar(m_global.blockField[timestep], seg.m_blockIndex[i]);
 
                     time += m_global.dt_step;
                     ++timestep;
@@ -681,7 +683,7 @@ void Particle<S>::addToOutput()
             if (cellIndex)
                 cellIndex->push_back(seg.m_cellIndex[i]);
             if (blockIndex)
-                blockIndex->push_back(seg.m_blockIndex);
+                blockIndex->push_back(seg.m_blockIndex[i]);
         };
 
         for (auto &ent: m_segments) {
@@ -938,6 +940,7 @@ void Segment::simplify(double relerr)
         skipVector(m_times, use);
         skipVector(m_dists, use);
         skipVector(m_cellIndex, use);
+        skipVector(m_blockIndex, use);
     }
 }
 
