@@ -1,6 +1,7 @@
 #include "Tracer.h"
 #include "BlockData.h"
 #include "Particle.h"
+#include <memory>
 #include <sstream>
 #include <iostream>
 #include <algorithm>
@@ -112,6 +113,8 @@ Tracer::Tracer(const std::string &name, int moduleID, mpi::communicator comm): M
     addDescription(CellIndex, "cell_index", "stream lines or points with cell index");
     addDescription(BlockIndex, "block_index", "stream lines or points with block index");
     m_verbose = addIntParameter("verbose", "verbose output", false, Parameter::Boolean);
+
+    m_termPort = createOutputPort("terminal_location", "location where particles stopped");
 
     setCurrentParameterGroup("Seed Points");
     const Integer max_no_startp = 300;
@@ -620,6 +623,10 @@ bool Tracer::reduce(int timestep)
         }
     }
 
+    if (m_termPort->isConnected()) {
+        global.computeTerminals = true;
+    }
+
     std::vector<Index> stopReasonCount(NumStopReasons, 0);
     std::vector<std::shared_ptr<ParticleT>> allParticles;
     std::set<std::shared_ptr<ParticleT>> localParticles, activeParticles;
@@ -893,6 +900,15 @@ bool Tracer::reduce(int timestep)
         } else {
             global.lines.emplace_back(new Lines(0, 0, 0));
             applyAttributes(global.lines.back(), m_gridAttr[timestep + 1]);
+            if (global.computeTerminals) {
+                global.termPoints.emplace_back(new Points(size_t(0)));
+                global.termPoints.back()->x().reserve(allParticles.size());
+                global.termPoints.back()->y().reserve(allParticles.size());
+                global.termPoints.back()->z().reserve(allParticles.size());
+                applyAttributes(global.termPoints.back(), m_gridAttr[timestep + 1]);
+                global.termReason.emplace_back(new Vec<Index>(size_t(0)));
+                global.termReason.back()->x().reserve(allParticles.size());
+            }
         }
 
         for (int i = 0; i < NumPorts; ++i) {
@@ -1086,6 +1102,16 @@ bool Tracer::reduce(int timestep)
             global.fields[p][i]->setMeta(meta);
             updateMeta(global.fields[p][i]);
             addObject(m_outPort[p], global.fields[p][i]);
+        }
+
+        if (global.computeTerminals) {
+            global.termPoints.back()->setMeta(meta);
+            global.termReason.back()->setMeta(meta);
+            global.termReason.back()->setGrid(global.termPoints.back());
+            global.termReason.back()->describe(getFieldName(TerminationReason), this->id());
+            updateMeta(global.termPoints.back());
+            updateMeta(global.termReason.back());
+            addObject(m_termPort, global.termReason.back());
         }
     }
 

@@ -705,6 +705,16 @@ void Particle<S>::addToOutput()
         lines->el().push_back(cl.size());
     }
 
+    if (m_global.computeTerminals) {
+        auto &p = m_global.termPoints.back();
+        auto &x = p->x(), &y = p->y(), &z = p->z();
+        x.push_back(m_x[0]);
+        y.push_back(m_x[1]);
+        z.push_back(m_x[2]);
+        auto &r = m_global.termReason.back();
+        r->x().push_back(m_stopReason);
+    }
+
     //std::cerr << "Tracer: line for particle " << m_id << " of length " << numPoints << std::endl;
 
     m_segments.clear();

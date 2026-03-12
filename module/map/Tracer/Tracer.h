@@ -54,10 +54,11 @@ private:
     vistle::Port *m_inPort[NumPorts];
     vistle::Port *m_outPort[NumPorts];
     vistle::Port *m_addPort[NumAddPorts];
+    vistle::Port *m_termPort = nullptr;
     vistle::IntParameter *m_addField[NumAddPorts];
-    vistle::IntParameter *m_taskType;
-    vistle::IntParameter *m_maxStartpoints, *m_numStartpoints;
-    vistle::IntParameter *m_useCelltree;
+    vistle::IntParameter *m_taskType = nullptr;
+    vistle::IntParameter *m_maxStartpoints = nullptr, *m_numStartpoints = nullptr;
+    vistle::IntParameter *m_useCelltree = nullptr;
     vistle::IntParameter *m_particlePlacement = nullptr;
     vistle::FloatParameter *m_simplificationError = nullptr;
     vistle::FloatParameter *m_dtStep = nullptr;
@@ -117,6 +118,7 @@ private:
     bool computeStepWidth = false;
     bool computeCellIndex = false;
     bool computeBlockIndex = false;
+    bool computeTerminals = false;
 
     std::vector<vistle::Points::ptr> points; // points objects for each timestep (MovingPoints)
     std::vector<vistle::Lines::ptr> lines; // lines objects for each timestep (other modes)
@@ -126,6 +128,8 @@ private:
     std::vector<vistle::Vec<vistle::Index>::ptr> idField, stepField, stopReasonField;
     std::vector<vistle::Vec<vistle::Index>::ptr> blockField, cellField;
     std::vector<vistle::Vec<vistle::Scalar>::ptr> timeField, distField, stepWidthField;
+    std::vector<vistle::Points::ptr> termPoints; // points where particles terminate
+    std::vector<vistle::Vec<vistle::Index>::ptr> termReason; // reasons why particles terminate
     int numScalars = 0;
     std::mutex mutex;
 
