@@ -4739,36 +4739,43 @@ void Hub::updateLinkedParameters(const message::SetParameter &setParam)
         return;
 
     // the msg should have a referrer if it is in reaction to a connected parameter change
-    if (setParam.referrer()
-            .is_nil()) { //prevents msgs running in circles if e.g.: parameter bounds prevent them from being equal
+    if (!setParam.referrer().is_nil()) {
+        //prevents msgs running in circles if e.g.: parameter bounds prevent them from being equal
+        return;
+    }
 
-        //depends on whether the ui or the module request the parameter change
-        //auto moduleID = message::Id::isModule(setParam.destId()) ? setParam.destId() : setParam.senderId();
-        auto moduleID = setParam.getModule();
-        std::string name = setParam.getName();
-        const auto port = m_stateTracker.portTracker()->findPort(moduleID, name);
-        const auto param = m_stateTracker.getParameter(moduleID, name);
-        std::shared_ptr<Parameter> appliedParam;
-        if (param) {
-            appliedParam.reset(param->clone());
-            setParam.apply(appliedParam);
-        }
+    if (setParam.rangeType() != Parameter::Value) {
+        // don't force update when parameter becomes e.g. read-only
+        return;
+    }
 
-        if (port && appliedParam) {
-            ParameterSet conn = m_stateTracker.getConnectedParameters(*appliedParam);
 
-            for (ParameterSet::iterator it = conn.begin(); it != conn.end(); ++it) {
-                const auto p = *it;
-                if (p->module() == moduleID && p->getName() == name) {
-                    // don't update parameter which was set originally again
-                    continue;
-                }
-                auto set = make.message<message::SetParameter>(p->module(), p->getName(), appliedParam);
-                set.setDestId(p->module());
-                set.setUuid(setParam.uuid());
-                sendAll(set);
-                m_executePending.insert(p->module());
+    //depends on whether the ui or the module request the parameter change
+    //auto moduleID = message::Id::isModule(setParam.destId()) ? setParam.destId() : setParam.senderId();
+    auto moduleID = setParam.getModule();
+    std::string name = setParam.getName();
+    const auto port = m_stateTracker.portTracker()->findPort(moduleID, name);
+    const auto param = m_stateTracker.getParameter(moduleID, name);
+    std::shared_ptr<Parameter> appliedParam;
+    if (param) {
+        appliedParam.reset(param->clone());
+        setParam.apply(appliedParam);
+    }
+
+    if (port && appliedParam) {
+        ParameterSet conn = m_stateTracker.getConnectedParameters(*appliedParam);
+
+        for (ParameterSet::iterator it = conn.begin(); it != conn.end(); ++it) {
+            const auto p = *it;
+            if (p->module() == moduleID && p->getName() == name) {
+                // don't update parameter which was set originally again
+                continue;
             }
+            auto set = make.message<message::SetParameter>(p->module(), p->getName(), appliedParam);
+            set.setDestId(p->module());
+            set.setUuid(setParam.uuid());
+            sendAll(set);
+            m_executePending.insert(p->module());
         }
     }
 }
