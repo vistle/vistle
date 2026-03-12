@@ -282,7 +282,8 @@ std::vector<std::pair<vistle::Port *, std::string>> ReadEnsight::getActiveFields
             choices.push_back(choice);
             fields.emplace_back(m_vol_elem[i], choice);
         }
-    } else if (what == EnFile::SURFACE || what == EnFile::VOLUME_AND_SURFACE) {
+    }
+    if (what == EnFile::SURFACE || what == EnFile::VOLUME_AND_SURFACE) {
         for (int i = 0; i < NumSurfVert; ++i) {
             auto field = m_surf_vert_choice[i];
             auto choice = field->getValue();
