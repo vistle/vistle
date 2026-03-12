@@ -603,14 +603,13 @@ void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
 
         static std::vector<std::vector<QString>> replaceables;
         if (replaceables.empty()) {
-            // module aliases
-            vistle::config::File modules("modules");
-            for (auto &group: modules.entries("replace")) {
-                if (auto list = modules.array<std::string>("replace", group)) {
-                    replaceables.emplace_back();
-                    for (auto e: list->value()) {
-                        replaceables.back().emplace_back(QString::fromStdString(e));
-                    }
+            auto config = vistle::config::Access();
+            auto groups = config.array<std::string>("modules", "replace", "groups");
+            for (auto g: groups->value()) {
+                replaceables.emplace_back();
+                auto group = config.array<std::string>("modules", "replace", g)->value();
+                for (auto e: group) {
+                    replaceables.back().emplace_back(QString::fromStdString(e));
                 }
             }
         }
