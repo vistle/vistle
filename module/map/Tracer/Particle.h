@@ -30,7 +30,6 @@ struct Segment {
     vistle::Index m_id = vistle::InvalidIndex; //! id of particle that was traced
     int m_rank;
     int m_num; // >= 0: forward, < 0: backward
-    vistle::Index m_blockIndex; //!< index of current block
     vistle::Index m_startStep;
     std::vector<vistle::Vector3> m_xhist; //!< trajectory
     std::vector<vistle::Vector3> m_vhist; //!< previous velocities
@@ -39,10 +38,10 @@ struct Segment {
     std::vector<vistle::Scalar> m_times; //!< previous times
     std::vector<vistle::Scalar> m_dists; //!< previous times
     std::vector<vistle::Index> m_cellIndex; //!< previous cell/element indices
+    std::vector<vistle::Index> m_blockIndex; //!< index of current block
     std::vector<std::vector<vistle::Scalar>> m_scalars; //!< previous scalars
 
-    Segment(int num = 0): m_rank(-1), m_num(num), m_blockIndex(vistle::InvalidIndex), m_startStep(vistle::InvalidIndex)
-    {}
+    Segment(int num = 0): m_rank(-1), m_num(num), m_startStep(vistle::InvalidIndex) {}
 
     void simplify(double relerr);
     //! compute relative error when interpolating for index i from i0 and i1
