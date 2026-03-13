@@ -78,6 +78,7 @@ public:
 
     virtual operator std::string() const = 0;
     virtual bool isDefault() const = 0;
+    bool hasValue() const;
     virtual bool checkChoice(const std::vector<std::string> &choices) const { return true; }
     int module() const;
     const std::string &getName() const;
@@ -89,6 +90,7 @@ public:
     bool isImmediate() const;
 
 protected:
+    bool m_hasValue = false;
     std::vector<std::string> m_choices;
 
 private:
@@ -141,6 +143,7 @@ class ParameterBase: public Parameter {
 
     virtual bool setValue(T value, bool init = false, bool delayed = false)
     {
+        m_hasValue = true;
         if (init)
             m_defaultValue = value;
         else if (!delayed && !checkValue(value))
@@ -154,13 +157,22 @@ class ParameterBase: public Parameter {
 public:
     typedef T ValueType;
 
-    ParameterBase(int moduleId, const std::string &name, T value = T())
+    ParameterBase(int moduleId, const std::string &name)
+    : Parameter(moduleId, name, ParameterType<T>::type)
+    , m_value(T())
+    , m_defaultValue(T())
+    , m_minimum(ParameterType<T>::min())
+    , m_maximum(ParameterType<T>::max())
+    {}
+    ParameterBase(int moduleId, const std::string &name, T value)
     : Parameter(moduleId, name, ParameterType<T>::type)
     , m_value(value)
     , m_defaultValue(value)
     , m_minimum(ParameterType<T>::min())
     , m_maximum(ParameterType<T>::max())
-    {}
+    {
+        m_hasValue = true;
+    }
     ParameterBase(const ParameterBase<T> &other)
     : Parameter(other)
     , m_value(other.m_value)

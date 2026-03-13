@@ -20,7 +20,8 @@ Parameter::Parameter(int moduleId, const std::string &n, Parameter::Type type, P
 {}
 
 Parameter::Parameter(const Parameter &other)
-: m_choices(other.m_choices)
+: m_hasValue(other.m_hasValue)
+, m_choices(other.m_choices)
 , m_module(other.m_module)
 , m_name(other.m_name)
 , m_description(other.m_description)
@@ -30,6 +31,11 @@ Parameter::Parameter(const Parameter &other)
 
 Parameter::~Parameter()
 {}
+
+bool Parameter::hasValue() const
+{
+    return m_hasValue;
+}
 
 void Parameter::setDescription(const std::string &d)
 {
