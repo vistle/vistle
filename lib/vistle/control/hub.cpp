@@ -4163,8 +4163,10 @@ void Hub::handleMirrorConnect(const ConnMsg &conn, std::function<bool(const mess
         return;
     if (portA->getType() == Port::PARAMETER || portB->getType() == Port::PARAMETER) {
         if (const auto param = state.getParameter(modA, portA->getName())) {
-            message::SetParameter setParam(modA, portA->getName(), param);
-            updateLinkedParameters(setParam);
+            if (param->hasValue()) {
+                message::SetParameter setParam(modA, portA->getName(), param);
+                updateLinkedParameters(setParam);
+            }
         }
         return;
     }
