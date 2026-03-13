@@ -1,5 +1,6 @@
 #include "vtkm_module.h"
 
+#include <boost/fusion/sequence/io/out.hpp>
 #include <sstream>
 
 #include <viskores/cont/Error.h>
@@ -230,9 +231,9 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
                 filter->SetActiveField(activeField);
                 /*
                 By default, Viskores names output fields the same as input fields which causes problems
-                if the input mapping is different from the output mapping, i.e., when converting 
-                a point field to a cell field or vice versa. To avoid having a point and a 
-                cell field of the same name in the resulting dataset, which leads to conflicts, e.g., 
+                if the input mapping is different from the output mapping, i.e., when converting
+                a point field to a cell field or vice versa. To avoid having a point and a
+                cell field of the same name in the resulting dataset, which leads to conflicts, e.g.,
                 when calling Viskores's GetField() method, we rename the output field here.
             */
             }
@@ -277,6 +278,10 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
 
     // ... transform filter output, i.e., grid and data fields, to Vistle objects ...
     auto outputGrid = prepareOutputGrid(outputDataset, inputGrid);
+    if (!outputGrid) {
+        return true;
+    }
+
     for (std::size_t i = 0; i < inputFields.size(); ++i) {
         DataBase::ptr outputField;
         if (!m_outputPorts[i]->isConnected())
