@@ -2731,6 +2731,11 @@ bool Module::compute()
     }
     m_tasks.push_back(task);
 
+    if (concurrency == 1) {
+        // don't spawn useless thread
+        return compute(task);
+    }
+
     std::unique_lock<std::mutex> guard(task->m_mutex);
     auto tname = std::to_string(id()) + "b" + std::to_string(m_tasks.size()) + ":" + name();
     task->m_future = std::async(std::launch::async, [this, tname, task] {
@@ -3044,7 +3049,10 @@ void BlockTask::addAllObjects()
 bool BlockTask::wait()
 {
     waitDependencies();
-    bool result = m_future.get();
+    bool result = true;
+    if (m_future.valid()) {
+        result = m_future.get();
+    }
     addAllObjects();
     return result;
 }
