@@ -12,17 +12,17 @@ add_module(ReadSeisSol "Read SeisSol data files (XDMF/HDF5)" ${SOURCES} ${HEADER
 if(MSVC)
     target_link_libraries(
         ReadSeisSol
-        vistle_xdmf
-        debug
-        XdmfCored
-        optimized
-        XdmfCore
-        optimized
-        ${XDMF_LIBNAME}
-        debug
-        ${XDMF_LIBNAME}d
-        ${HDF5_LIBRARIES}
-        ${Iconv_LIBRARIES})
+        PRIVATE vistle_xdmf
+                debug
+                XdmfCored
+                optimized
+                XdmfCore
+                optimized
+                ${XDMF_LIBNAME}
+                debug
+                ${XDMF_LIBNAME}d
+                ${HDF5_LIBRARIES}
+                ${Iconv_LIBRARIES})
 else()
     target_link_libraries(ReadSeisSol PRIVATE vistle_xdmf XdmfCore ${XDMF_LIBNAME} ${HDF5_LIBRARIES})
 endif()
