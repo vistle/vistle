@@ -54,7 +54,7 @@
 
 #include <vistle/manager/run_on_main_thread.h>
 
-#if defined(WIN32)
+#if defined(_WIN32)
 const char libcover[] = "mpicover.dll";
 #elif defined(__APPLE__)
 const char libcover[] = "libmpicover.dylib";

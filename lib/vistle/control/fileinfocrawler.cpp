@@ -5,7 +5,7 @@
 
 #include <future>
 
-#ifdef WIN32
+#ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -31,7 +31,7 @@ FileQueryResult::Status readEntry(const fs::path &path, FileInfo &info)
     try {
         info.name = path.filename().string();
 
-#ifdef WIN32
+#ifdef _WIN32
         info.casesensitive = false;
         info.hidden = false;
 #else
@@ -112,7 +112,7 @@ std::vector<std::string> readDirectory(const std::string &path, message::FileQue
     std::vector<std::string> results;
     if (path.empty()) {
         // this is a query for drives
-#ifdef WIN32
+#ifdef _WIN32
         char physical[65536];
         QueryDosDevice(NULL, physical, sizeof(physical));
         for (char *pos = physical; *pos; pos += strlen(pos) + 1) {
@@ -165,7 +165,7 @@ bool FileInfoCrawler::handle(const message::FileQuery &query, const buffer &payl
         case FileQuery::SystemInfo: {
             SystemInfo info;
             info.hostname = hostname();
-#ifdef WIN32
+#ifdef _WIN32
             info.iswindows = true;
 
             if (const char *h = getenv("USERPROFILE"))
