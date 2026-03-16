@@ -2,6 +2,7 @@
  * Visualization Testing Laboratory for Exascale Computing (VISTLE)
  */
 
+#include "vistle/core/messages.h"
 #include <iostream>
 #include <exception>
 #include <cstdlib>
@@ -2374,36 +2375,8 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
 
             case message::SETPARAMETER: {
                 auto setParam = msg.as<message::SetParameter>();
+                handlePriv(setParam);
 
-                if (setParam.destId() == session.id()) {
-                    session.handleMessage(setParam);
-                }
-
-                if (setParam.destId() == settings.id()) {
-                    settings.handleMessage(setParam);
-                }
-
-                if (setParam.destId() == params.id()) {
-                    params.handleMessage(setParam);
-                }
-
-                if (Id::isModule(setParam.destId())) {
-                    const std::string name = setParam.getName();
-                    if (name == "_position" || name == "_layer") {
-                        // for old workflows
-                        int id = setParam.destId();
-                        std::string suffix = "[" + std::to_string(id) + "]";
-                        std::string nname = name.substr(1) + suffix;
-                        auto nparam = setParam;
-                        nparam.setName(nname);
-                        nparam.setDestId(Id::Vistle);
-                        session.handleMessage(nparam);
-                    }
-
-                    m_executePending.insert(setParam.destId());
-                }
-
-                updateLinkedParameters(setParam);
                 break;
             }
             case message::SPAWNPREPARED: {
@@ -3054,6 +3027,11 @@ bool Hub::cleanQueue(int id)
             if (mm.getModuleA() == id || mm.getModuleB() == id) {
                 continue;
             }
+        } else if (m.type() == message::SETPARAMETER) {
+            auto &mm = m.as<SetParameter>();
+            if (mm.getModule() == id) {
+                continue;
+            }
         }
 
         guard.lock();
@@ -3076,6 +3054,23 @@ bool Hub::handleQueue()
         decltype(m_queue) queue;
         std::swap(queue, m_queue);
         guard.unlock();
+        for (auto &m: queue) {
+            if (m.type() == message::CONNECT) {
+            } else if (m.type() == message::DISCONNECT) {
+            } else if (m.type() == message::SETPARAMETER) {
+                auto &mm = m.as<SetParameter>();
+                if (m_stateTracker.handle(mm, nullptr)) {
+                    again = true;
+                    handlePriv(mm);
+                    //CERR << "handleQueue: CONNECT now: " << mm << std::endl;
+                } else {
+                    guard.lock();
+                    m_queue.push_back(m);
+                    guard.unlock();
+                    //CERR << "handleQueue: CONNECT later: " << mm << std::endl;
+                }
+            }
+        }
         for (auto &m: queue) {
             if (m.type() == message::CONNECT) {
                 auto &mm = m.as<Connect>();
@@ -3101,8 +3096,9 @@ bool Hub::handleQueue()
                     m_queue.push_back(m);
                     guard.unlock();
                 }
+            } else if (m.type() == message::SETPARAMETER) {
             } else {
-                std::cerr << "message other than Connect/Disconnect in queue: " << m << std::endl;
+                std::cerr << "message other than Connect/Disconnect or SetParameter in queue: " << m << std::endl;
                 guard.lock();
                 m_queue.push_back(m);
                 guard.unlock();
@@ -3893,6 +3889,44 @@ bool Hub::handlePriv(const message::RemoveHub &rm)
     }
 
     return false;
+}
+
+bool Hub::handlePriv(const message::SetParameter &param)
+{
+    if (param.destId() == session.id()) {
+        session.handleMessage(param);
+    }
+
+    if (param.destId() == settings.id()) {
+        settings.handleMessage(param);
+    }
+
+    if (param.destId() == params.id()) {
+        params.handleMessage(param);
+    }
+
+    if (Id::isModule(param.destId())) {
+        const std::string name = param.getName();
+        if (name == "_position" || name == "_layer") {
+            // for old workflows
+            int id = param.destId();
+            std::string suffix = "[" + std::to_string(id) + "]";
+            std::string nname = name.substr(1) + suffix;
+            auto nparam = param;
+            nparam.setName(nname);
+            nparam.setDestId(Id::Vistle);
+            session.handleMessage(nparam);
+        }
+
+        m_executePending.insert(param.destId());
+    }
+    if (m_stateTracker.handle(param, nullptr)) {
+        updateLinkedParameters(param);
+    } else {
+        queueMessage(param);
+    }
+
+    return true;
 }
 
 bool Hub::processStartupScripts()
