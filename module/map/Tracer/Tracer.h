@@ -39,6 +39,7 @@ private:
     bool prepare() override;
     bool reduce(int timestep) override;
     bool changeParameter(const vistle::Parameter *param) override;
+    void updateInfo();
 
     std::vector<std::vector<vistle::Object::const_ptr>> grid_in;
     std::vector<std::vector<std::future<vistle::Celltree3::const_ptr>>> celltree;

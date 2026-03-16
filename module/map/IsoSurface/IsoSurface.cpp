@@ -102,6 +102,7 @@ IsoSurface::IsoSurface(const std::string &name, int moduleID, mpi::communicator 
 #ifdef CUTTINGSURFACE
     addResultCache(m_gridCache);
 #endif
+    updateModuleInfo();
 }
 
 bool IsoSurface::changeParameter(const Parameter *param)
