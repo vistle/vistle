@@ -17,7 +17,7 @@ set(control_HEADERS
     uimanager.h
     vistleurl.h)
 
-if(Python_FOUND)
+if(Python3_FOUND)
     set(control_SOURCES ${control_SOURCES} pythoninterpreter.cpp)
     set(control_HEADERS ${control_HEADERS} pythoninterpreter.h)
 endif()
@@ -38,9 +38,9 @@ if(UNIX)
 endif()
 target_link_libraries(vistle_control PRIVATE vistle_config)
 
-if(Python_FOUND)
+if(Python3_FOUND)
     target_compile_definitions(vistle_control PRIVATE HAVE_PYTHON)
-    target_link_libraries(vistle_control PRIVATE Python::Python)
+    target_link_libraries(vistle_control PRIVATE Python3::Python)
     target_link_libraries(vistle_control PRIVATE vistle_python)
     target_link_libraries(vistle_control PRIVATE vistle_pythonmodule)
 endif()

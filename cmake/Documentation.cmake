@@ -32,7 +32,7 @@ endmacro()
 # e.g. "this is a test" -> "This Is a Test"
 function(titlecase INPUT OUTPUT_VAR)
     execute_process(
-        COMMAND "${Python_EXECUTABLE}" "${TOOLDIR}/titlecase.py" "${INPUT}"
+        COMMAND "${Python3_EXECUTABLE}" "${TOOLDIR}/titlecase.py" "${INPUT}"
         OUTPUT_VARIABLE TITLE
         OUTPUT_STRIP_TRAILING_WHITESPACE)
     set(${OUTPUT_VAR}
@@ -156,7 +156,7 @@ function(configure_documentation)
         ${CMAKE_COMMAND}
         -E
         env
-        ${Python_EXECUTABLE}
+        ${Python3_EXECUTABLE}
         ${TOOLDIR}/insertModuleLinks.py
         ${MODULE_DESCRIPTION_FILE}
         ${PROJECT_SOURCE_DIR}

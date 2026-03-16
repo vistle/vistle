@@ -94,9 +94,9 @@ target_link_libraries(
             vistle_propertybrowser
             vistle_remotefiledialog)
 
-if(Python_FOUND)
+if(Python3_FOUND)
     target_compile_definitions(vistle_gui PRIVATE -DHAVE_PYTHON)
-    target_link_libraries(vistle_gui PRIVATE Python::Python vistle_python)
+    target_link_libraries(vistle_gui PRIVATE Python3::Python vistle_python)
 endif()
 
 if(APPLE)
