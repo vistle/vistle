@@ -612,9 +612,9 @@ StateTracker::VistleState StateTracker::getState() const
         if (Id::isModule(id)) {
             appendModuleState(state, m);
         }
+        appendModulePorts(state, m);
         appendModuleParameter(state, m);
         appendModuleColor(state, m);
-        appendModulePorts(state, m);
         appendModuleInfo(state, m);
     }
 
