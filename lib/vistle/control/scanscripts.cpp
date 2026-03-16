@@ -15,7 +15,7 @@ std::vector<std::string> scanPreloadScripts()
     auto extraDirs = getenv("VISTLE_PRELOAD_SCRIPTS");
     std::vector<std::string> v;
     if (extraDirs) {
-#ifdef WIN32
+#ifdef _WIN32
         boost::split(v, extraDirs, boost::is_any_of(";"));
 #else
         boost::split(v, extraDirs, boost::is_any_of(":"));
