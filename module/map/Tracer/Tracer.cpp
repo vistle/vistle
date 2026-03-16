@@ -172,6 +172,8 @@ Tracer::Tracer(const std::string &name, int moduleID, mpi::communicator comm): M
     setCurrentParameterGroup("");
     m_simplificationError =
         addFloatParameter("simplification_error", "tolerable relative error for result simplification", 3e-3);
+
+    updateInfo();
 }
 
 void Tracer::addDescription(int kind, const std::string &name, const std::string &description)
@@ -1110,6 +1112,26 @@ bool Tracer::reduce(int timestep)
     return true;
 }
 
+void Tracer::updateInfo()
+{
+    switch (m_taskType->getValue()) {
+    case Streamlines:
+        setItemInfo("Streamlines");
+        break;
+    case Pathlines:
+        setItemInfo("Pathlines");
+        break;
+    case Streaklines:
+        setItemInfo("Streaklines");
+        if (rank() == 0)
+            sendError("Streaklines not implemented yet");
+        break;
+    case MovingPoints:
+        setItemInfo("Points");
+        break;
+    }
+}
+
 bool Tracer::changeParameter(const Parameter *param)
 {
     if (param == m_maxStartpoints) {
@@ -1124,22 +1146,8 @@ bool Tracer::changeParameter(const Parameter *param)
             setReducePolicy(message::ReducePolicy::PerTimestepOrdered);
         else
             setReducePolicy(message::ReducePolicy::OverAll);
-        switch (m_taskType->getValue()) {
-        case Streamlines:
-            setItemInfo("Streamlines");
-            break;
-        case Pathlines:
-            setItemInfo("Pathlines");
-            break;
-        case Streaklines:
-            setItemInfo("Streaklines");
-            if (rank() == 0)
-                sendError("Streaklines not implemented yet");
-            break;
-        case MovingPoints:
-            setItemInfo("Points");
-            break;
-        }
+
+        updateInfo();
     } else if (param == m_startStyle) {
         setParameterReadOnly(m_direction, m_startStyle->getValue() != Plane);
     }
