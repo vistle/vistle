@@ -1598,8 +1598,18 @@ bool StateTracker::handlePriv(const message::SetParameter &setParam)
             }
         }
     } else {
-        //this message has to processed by the module first, we do not have to do anything
-        //CERR << "reject based on id: " << setParam << std::endl;
+        if (Id::isModule(id)) {
+            auto it = runningMap.find(id);
+            if (it == runningMap.end()) {
+                //CERR << "rejected: module not found: " << setParam << std::endl;
+                return false;
+            }
+            auto param = getParameter(id, name);
+            if (!param) {
+                //CERR << "rejected: parameter not found: " << setParam << std::endl;
+                return false;
+            }
+        }
         return true;
     }
 
