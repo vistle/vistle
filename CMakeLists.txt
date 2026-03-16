@@ -1153,6 +1153,7 @@ endif()
 
 vistle_find_package(PkgConfig)
 vistle_find_package(ZSTD)
+vistle_find_package(LZ4)
 
 set(SZ3_FOUND FALSE)
 set(USE_SZ3 FALSE)

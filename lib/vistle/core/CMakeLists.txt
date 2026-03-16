@@ -1,6 +1,3 @@
-vistle_find_package(LZ4)
-#vistle_find_package(ZSTD)
-
 set(core_SOURCES
     message/colormap.cpp
     message/setname.cpp
