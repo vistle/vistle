@@ -28,7 +28,7 @@ public:
     bool StepConstantVelocity();
     vistle::Vector3 Interpolator(BlockData *bl, vistle::Index el, const vistle::Vector3 &point);
     void hInit();
-    bool hNew(Vect3 cur, Vect3 higher, Vect3 lower, Vect3 vel, vistle::Scalar unit);
+    bool hNew(Vect3 cur, Vect3 higher, Vect3 lower, Vect3 vel, Scal unit);
     void enableCelltree(bool value);
     Scal h() const;
 
@@ -40,6 +40,8 @@ private:
     bool m_forward;
     const vistle::Scalar *m_v[3];
     int m_cellSearchFlags;
+    static constexpr const Scal Eps = 1e-20;
+    static constexpr const Scal Third = Scal(1. / 3.);
 };
 
 extern template class Integrator<float>;
