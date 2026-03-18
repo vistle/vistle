@@ -40,7 +40,7 @@ void Integrator<S>::hInit()
 
     if (m_ptcl->m_global.velocity_relative) {
         Vect3 vel = VI(Interpolator(m_ptcl->m_block, m_ptcl->m_el, VV(m_ptcl->m_x)));
-        Scal v = std::max(vel.norm(), Scal(1e-7));
+        Scal v = std::max(vel.norm(), Eps);
         unit /= v;
     }
 
@@ -87,7 +87,7 @@ bool Integrator<S>::StepEuler()
     }
 
     Vect3 vel = VI(m_forward ? m_ptcl->m_v : -m_ptcl->m_v);
-    Scal v = std::max(vel.norm(), Scal(1e-7));
+    Scal v = std::max(vel.norm(), Eps);
     if (m_ptcl->m_global.velocity_relative)
         unit /= v;
     m_ptcl->m_x = m_ptcl->m_x + vel * m_h * unit;
@@ -96,7 +96,7 @@ bool Integrator<S>::StepEuler()
 }
 
 template<typename S>
-bool Integrator<S>::hNew(Vect3 cur, Vect3 higher, Vect3 lower, Vect3 vel, Scalar unit)
+bool Integrator<S>::hNew(Vect3 cur, Vect3 higher, Vect3 lower, Vect3 vel, Scal unit)
 {
     const auto &global = m_ptcl->m_global;
     const auto h_max = global.h_max;
@@ -111,7 +111,7 @@ bool Integrator<S>::hNew(Vect3 cur, Vect3 higher, Vect3 lower, Vect3 vel, Scalar
         unit = 1.;
     }
     if (global.velocity_relative) {
-        Scal v = std::max(vel.norm(), Scal(1e-7));
+        Scal v = std::max(vel.norm(), Eps);
         unit /= v;
     }
 
@@ -124,10 +124,10 @@ bool Integrator<S>::hNew(Vect3 cur, Vect3 higher, Vect3 lower, Vect3 vel, Scalar
         return true;
     }
 
-    Scal h_abs = 0.9 * m_h * std::pow(Scal(tol_abs / errestabs), Scal(1.0 / 3.0));
-    Scal h_rel = 0.9 * m_h * std::pow(Scal(tol_rel / errestrel), Scal(1.0 / 3.0));
+    Scal h_abs = 0.9 * m_h * std::pow(Scal(tol_abs / errestabs), Third);
+    Scal h_rel = 0.9 * m_h * std::pow(Scal(tol_rel / errestrel), Third);
     Scal h = std::min(std::max(h_abs, h_rel), 2 * m_h);
-    //Scalar h = 0.9*m_h*std::pow(Scalar(m_errtol/errest),Scalar(1.0/3.0))*unit;
+    //Scalar h = 0.9*m_h*std::pow(Scalar(m_errtol/errest),Third)*unit;
     if (errestabs <= tol_abs || errestrel <= tol_rel) {
         if (h < h_min * unit) {
             m_h = h_min * unit;
@@ -170,44 +170,41 @@ typename Integrator<S>::Scal Integrator<S>::h() const
 template<typename S>
 bool Integrator<S>::StepRK32()
 {
-    Scalar sign = m_forward ? 1. : -1.;
-    Vect3 k[3];
-    k[0] = sign * VI(m_ptcl->m_v);
+    Scal sign = m_forward ? 1. : -1.;
+    Vect3 k0 = sign * VI(m_ptcl->m_v);
     auto grid = m_ptcl->m_block->getGrid();
     Scalar cellSize = grid->cellDiameter(m_ptcl->m_el);
-    const Scalar third(1. / 3.);
 
     for (;;) {
-        const Vect3 x1 = m_ptcl->m_x + 0.5 * m_h * k[0];
+        const Vect3 x1 = m_ptcl->m_x + 0.5 * m_h * k0;
         Index el1 = grid->findCell(VV(x1), m_ptcl->m_el, m_cellSearchFlags);
         if (el1 == InvalidIndex) {
             m_ptcl->m_x = x1;
             m_hact = 0.5 * m_h;
             return false;
         }
+        m_hact = m_h;
         if (el1 != m_ptcl->m_el) {
             cellSize = std::min(grid->cellDiameter(el1), cellSize);
         }
 
-        k[1] = sign * VI(Interpolator(m_ptcl->m_block, el1, VV(x1)));
-        Vect3 x2nd = m_ptcl->m_x + m_h * (k[0] * 0.5 + k[1] * 0.5);
+        Vect3 k1 = sign * VI(Interpolator(m_ptcl->m_block, el1, VV(x1)));
 
-        const Vect3 x2 = m_ptcl->m_x + m_h * (-k[0] + 2 * k[1]);
+        const Vect3 x2 = m_ptcl->m_x + m_h * (2 * k1 - k0);
+        Vect3 x2nd = m_ptcl->m_x + m_h * 0.5 * (k0 + k1);
         Index el2 = grid->findCell(VV(x2), el1, m_cellSearchFlags);
         if (el2 == InvalidIndex) {
             m_ptcl->m_x = x2nd;
-            m_hact = m_h;
             return false;
         }
         if (el2 != el1) {
             cellSize = std::min(grid->cellDiameter(el2), cellSize);
         }
 
-        k[2] = sign * VI(Interpolator(m_ptcl->m_block, el2, VV(x2)));
-        Vect3 x3rd = m_ptcl->m_x + m_h * (0.5 * k[0] * third + 2 * k[1] * third + 0.5 * k[2] * third);
-        m_hact = m_h;
+        Vect3 k2 = sign * VI(Interpolator(m_ptcl->m_block, el2, VV(x2)));
+        Vect3 x3rd = m_ptcl->m_x + m_h * Third * (0.5 * k0 + 2 * k1 + 0.5 * k2);
 
-        bool accept = hNew(m_ptcl->m_x, x3rd, x2nd, k[0], cellSize);
+        bool accept = hNew(m_ptcl->m_x, x3rd, x2nd, k0, cellSize);
         if (accept) {
             m_ptcl->m_x = x3rd;
             return true;
