@@ -356,6 +356,9 @@ V getParameterDefault(config::Access *config, const std::string &module, const s
     }
 
     auto def = config->value<V>("modules/parameters", module, name, value);
+    if (def->exists()) {
+        return def->value();
+    }
     if (!name.empty() && name[0] == '_') {
         if (!def->exists()) {
             if (def->hasDefaultValue()) {
@@ -364,20 +367,31 @@ V getParameterDefault(config::Access *config, const std::string &module, const s
             // look up defaults for system parameters
             def = config->value<V>("modules/default", module, name, value);
         }
+        if (def->exists()) {
+            return def->value();
+        }
         if (!def->exists()) {
             if (def->hasDefaultValue()) {
                 value = def->defaultValue();
             }
             // global user overrides for system parameters
-            def = config->value<V>("modules/parameters", "ALL", name, value);
+            def = config->value<V>("modules/parameters", "ALL", name);
         }
         if (!def->exists()) {
             if (def->hasDefaultValue()) {
                 value = def->defaultValue();
             }
             // look up common default for system parameters
-            def = config->value<V>("modules/default", "ALL", name, value);
+            def = config->value<V>("modules/default", "ALL", name);
         }
+        if (def->exists()) {
+            return def->value();
+        } else {
+            if (def->hasDefaultValue()) {
+                value = def->defaultValue();
+            }
+        }
+        return value;
     }
     return def->value();
 }
