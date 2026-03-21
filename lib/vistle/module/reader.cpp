@@ -128,6 +128,11 @@ int Reader::numPartitions() const
     return m_numPartitions;
 }
 
+int Reader::numTimesteps() const
+{
+    return m_numTimesteps;
+}
+
 size_t Reader::waitForReaders(size_t maxRunning, bool &result)
 {
     while (m_tokens.size() > maxRunning) {

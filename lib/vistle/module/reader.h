@@ -105,6 +105,9 @@ public:
     //! query into how many parts the data should be split
     int numPartitions() const;
 
+    //! query number of timesteps to read
+    int numTimesteps() const;
+
 protected:
     void initDone() override;
     Parameter *addParameterGeneric(const std::string &name, std::shared_ptr<Parameter> parameter) override;
