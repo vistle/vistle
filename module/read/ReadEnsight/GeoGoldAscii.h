@@ -18,7 +18,6 @@
 #include "EnFile.h"
 
 #include <string>
-#include <vector>
 
 class GeoGoldAscii: public EnFile {
 public:
@@ -45,7 +44,7 @@ private:
     // read bounding box (EnSight Gold)
     bool readBB(FILE *in);
 
-    int lineCnt_; // actual linecount
-    int actPartNumber_;
+    int m_lineCount = 0; // actual linecount
+    int m_actPartNum = -1;
 };
 #endif

@@ -52,6 +52,32 @@ EnPart::EnPart(EnPart &&p)
     numList3d_ = std::move(p.numList3d_);
 }
 
+EnPart::EnPart(const EnPart &p)
+: x3d_(p.x3d_)
+, y3d_(p.y3d_)
+, z3d_(p.z3d_)
+, el2d_(p.el2d_)
+, cl2d_(p.cl2d_)
+, el3d_(p.el3d_)
+, cl3d_(p.cl3d_)
+, tl2d_(p.tl2d_)
+, tl3d_(p.tl3d_)
+, startPos_(p.startPos_)
+, partNum_(p.partNum_)
+, empty_(p.empty_)
+, comment_(p.comment_)
+, numCoords_(p.numCoords_)
+, numEleRead2d_(p.numEleRead2d_)
+, numEleRead3d_(p.numEleRead3d_)
+, numConnRead2d_(p.numConnRead2d_)
+, numConnRead3d_(p.numConnRead3d_)
+{
+    elementList_ = p.elementList_;
+    numList_ = p.numList_;
+    numList2d_ = p.numList2d_;
+    numList3d_ = p.numList3d_;
+}
+
 EnPart::~EnPart()
 {
     clearElements();
@@ -159,12 +185,17 @@ std::string EnPart::comment() const
     return comment_;
 }
 
-void EnPart::addElement(const EnElement &ele, const size_t anz, bool complete)
+void EnPart::addElement(EnElement &&ele, const size_t anz, bool complete)
 {
     // we add only valid elements
     if (ele.valid()) {
+        if (complete && ele.getBlanklist().size() != anz) {
+            CERR << "adding elements without blanklist" << std::endl;
+            abort();
+        }
+
         empty_ = false;
-        elementList_.push_back(ele);
+        elementList_.emplace_back(std::move(ele));
         numList_.push_back(anz);
 
         if (ele.getDim() == EnElement::D2) {
@@ -173,16 +204,13 @@ void EnPart::addElement(const EnElement &ele, const size_t anz, bool complete)
         if (ele.getDim() == EnElement::D3) {
             numList3d_.push_back(anz);
         }
-
-        if (complete && ele.getBlanklist().size() != anz) {
-            CERR << "adding elements without blanklist" << std::endl;
-            abort();
-        }
     }
 }
 
 void EnPart::clearElements()
 {
+    empty_ = true;
+
     elementList_.clear();
     numList_.clear();
     numList2d_.clear();
@@ -201,7 +229,7 @@ void EnPart::print(std::ostream &os) const
 
     os << "   numCoords " << numCoords_ << std::endl;
 
-#define p(a) "  " << #a << " " << (a##_ ? "yes" : "no  ")
+#define p(a) "  " << #a << ":" << (a##_ ? "yes" : "NO ")
     os << p(el2d) << p(cl2d) << std::endl;
     os << p(el3d) << p(cl3d) << std::endl;
 
@@ -209,10 +237,11 @@ void EnPart::print(std::ostream &os) const
     os << "   numConnRead3d " << numConnRead3d_ << "   numConnRead2d " << numConnRead2d_ << std::endl;
 
     os << p(x3d) << p(y3d) << p(z3d) << std::endl;
+#undef p
 
     os << "   files:" << std::endl;
     for (auto &f: startPos_) {
-        os << "      " << f.first << " -> " << f.second << std::endl;
+        os << "      " << (f.first.empty() ? "(geo)" : f.first) << " -> " << f.second << std::endl;
     }
 }
 
@@ -226,26 +255,24 @@ int EnPart::getPartNum() const
     return partNum_;
 }
 
-EnElement EnPart::findElementType(EnElement::Type type) const
+const EnElement *EnPart::findElementType(EnElement::Type type) const
 {
     for (size_t i = 0; i < elementList_.size(); ++i) {
         if (elementList_[i].getEnType() == type) {
-            return elementList_[i];
+            return &elementList_[i];
         }
     }
-    EnElement e;
-    return e;
+    return nullptr;
 }
 
-EnElement EnPart::findElementType(const std::string &name) const
+const EnElement *EnPart::findElementType(const std::string &name) const
 {
     for (size_t i = 0; i < elementList_.size(); ++i) {
         if (elementList_[i].getEnTypeStr() == name) {
-            return elementList_[i];
+            return &elementList_[i];
         }
     }
-    EnElement e;
-    return e;
+    return nullptr;
 }
 
 size_t EnPart::getElementNum(EnElement::Type type) const

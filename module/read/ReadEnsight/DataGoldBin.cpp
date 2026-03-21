@@ -16,12 +16,13 @@
 #include "ReadEnsight.h"
 #include "ByteSwap.h"
 
+#include <sstream>
 #include <vistle/core/vec.h>
 #include <vistle/core/indexed.h>
 
 using namespace vistle;
 
-#define CERR std::cerr << "DataGoldBin::" << __func__ << ": "
+#define CERR std::cerr << "DataGoldBin::" << __func__ << ": " << where() << ": "
 
 //
 // Constructor
@@ -242,87 +243,100 @@ vistle::Object::ptr DataGoldBin::read(int timestep, int block, EnPart *part)
             CERR << "elem part " << actPartNr << " found, currentLine=" << currentLine << std::endl;
         }
 
+        std::stringstream err;
+        err << "in  block " << block << " timestep " << timestep << " on part " << part->comment() << ": ";
         std::string elementType(currentLine);
         EnElement elem(elementType);
-        if (elem.valid()) {
-            // we have a valid EnSight element
-            auto anzEle = part->getElementNum(elem.getEnType());
-            //cerr << "DataGoldBin::readCells() " << anzEle << " for " << elementType  << std::endl;
-            EnElement thisEle = part->findElementType(elem.getEnType());
-            auto &bl = thisEle.getBlanklist();
-            if (thisEle.getBlanklist().size() != anzEle) {
-                CERR << "blanklist size problem " << bl.size() << std::endl;
-            }
-
-            switch (dim_) {
-            case 1: {
-                auto tArr1 = new vistle::Scalar[anzEle];
-                CERR << "read " << anzEle << " 1D values for " << elementType << std::endl;
-                // scalar data
-                getFloatArr(in, anzEle, tArr1);
-                if (thisEle.getDim() == EnElement::D2) {
-                    for (size_t i = 0; i < anzEle; ++i) {
-                        if (bl[i] > 0) {
-                            arr[0][eleCnt2d] = tArr1[i];
-                            ++eleCnt2d;
-                        }
-                    }
-                } else if (thisEle.getDim() == EnElement::D3) {
-                    for (size_t i = 0; i < anzEle; ++i) {
-                        if (bl[i] > 0) {
-                            arr[0][eleCnt3d] = tArr1[i];
-                            ++eleCnt3d;
-                        }
-                    }
-                }
-                // 			cerr << " EleCnt2d: " << eleCnt2d;
-                // 			cerr << " ACT-PART numEleRead2d " <<  part->numEleRead2d();
-                // 			cerr << std::endl;
-
-                // 			cerr << " EleCnt3d: " << eleCnt3d;
-                // 			cerr << " ACT-PART numEleRead3d " <<  part->numEleRead3d();
-                // 			cerr << std::endl;
-                delete[] tArr1;
-                break;
-            }
-            case 3: {
-                auto tArr1 = new vistle::Scalar[anzEle];
-                auto tArr2 = new vistle::Scalar[anzEle];
-                auto tArr3 = new vistle::Scalar[anzEle];
-                CERR << "read " << anzEle << " 3D values for " << elementType << std::endl;
-                // 3-dim vector data
-                getFloatArr(in, anzEle, tArr1);
-                getFloatArr(in, anzEle, tArr2);
-                getFloatArr(in, anzEle, tArr3);
-                if (thisEle.getDim() == EnElement::D2) {
-                    for (size_t i = 0; i < anzEle; ++i) {
-                        if (bl[i] > 0) {
-                            arr[0][eleCnt2d] = tArr1[i];
-                            arr[1][eleCnt2d] = tArr2[i];
-                            arr[2][eleCnt2d] = tArr3[i];
-                            ++eleCnt2d;
-                        }
-                    }
-                } else if (thisEle.getDim() == EnElement::D3) {
-                    for (size_t i = 0; i < anzEle; ++i) {
-                        if (bl[i] > 0) {
-                            arr[0][eleCnt3d] = tArr1[i];
-                            arr[1][eleCnt3d] = tArr2[i];
-                            arr[2][eleCnt3d] = tArr3[i];
-                            ++eleCnt3d;
-                        }
-                    }
-                }
-                delete[] tArr1;
-                delete[] tArr2;
-                delete[] tArr3;
-                break;
-            }
-            }
-        } else {
-            CERR << "unknown element type " << elementType << std::endl;
+        if (!elem.valid()) {
+            err << "unknown element type " << elementType << std::endl;
+            ens->sendError(err.str());
             result.reset();
             return result;
+        }
+
+        //cerr << "DataGoldBin::readCells() " << anzEle << " for " << elementType  << std::endl;
+        const auto *thisEle = part->findElementType(elem.getEnType());
+        if (!thisEle) {
+            err << "element not found for type " << elem.getEnType();
+            ens->sendError(err.str());
+            result.reset();
+            return result;
+        }
+        // we have a valid EnSight element
+        auto anzEle = part->getElementNum(elem.getEnType());
+        auto &bl = thisEle->getBlanklist();
+        if (bl.size() != anzEle) {
+            err << "blanklist size " << bl.size() << " does not match number of elements " << anzEle
+                << " for element type " << elementType;
+            ens->sendError(err.str());
+            result.reset();
+            return result;
+        }
+
+        switch (dim_) {
+        case 1: {
+            auto tArr1 = new vistle::Scalar[anzEle];
+            CERR << "read " << anzEle << " 1D values for " << elementType << std::endl;
+            // scalar data
+            getFloatArr(in, anzEle, tArr1);
+            if (thisEle->getDim() == EnElement::D2) {
+                for (size_t i = 0; i < anzEle; ++i) {
+                    if (bl[i] > 0) {
+                        arr[0][eleCnt2d] = tArr1[i];
+                        ++eleCnt2d;
+                    }
+                }
+            } else if (thisEle->getDim() == EnElement::D3) {
+                for (size_t i = 0; i < anzEle; ++i) {
+                    if (bl[i] > 0) {
+                        arr[0][eleCnt3d] = tArr1[i];
+                        ++eleCnt3d;
+                    }
+                }
+            }
+            // 			cerr << " EleCnt2d: " << eleCnt2d;
+            // 			cerr << " ACT-PART numEleRead2d " <<  part->numEleRead2d();
+            // 			cerr << std::endl;
+
+            // 			cerr << " EleCnt3d: " << eleCnt3d;
+            // 			cerr << " ACT-PART numEleRead3d " <<  part->numEleRead3d();
+            // 			cerr << std::endl;
+            delete[] tArr1;
+            break;
+        }
+        case 3: {
+            auto tArr1 = new vistle::Scalar[anzEle];
+            auto tArr2 = new vistle::Scalar[anzEle];
+            auto tArr3 = new vistle::Scalar[anzEle];
+            CERR << "read " << anzEle << " 3D values for " << elementType << std::endl;
+            // 3-dim vector data
+            getFloatArr(in, anzEle, tArr1);
+            getFloatArr(in, anzEle, tArr2);
+            getFloatArr(in, anzEle, tArr3);
+            if (thisEle->getDim() == EnElement::D2) {
+                for (size_t i = 0; i < anzEle; ++i) {
+                    if (bl[i] > 0) {
+                        arr[0][eleCnt2d] = tArr1[i];
+                        arr[1][eleCnt2d] = tArr2[i];
+                        arr[2][eleCnt2d] = tArr3[i];
+                        ++eleCnt2d;
+                    }
+                }
+            } else if (thisEle->getDim() == EnElement::D3) {
+                for (size_t i = 0; i < anzEle; ++i) {
+                    if (bl[i] > 0) {
+                        arr[0][eleCnt3d] = tArr1[i];
+                        arr[1][eleCnt3d] = tArr2[i];
+                        arr[2][eleCnt3d] = tArr3[i];
+                        ++eleCnt3d;
+                    }
+                }
+            }
+            delete[] tArr1;
+            delete[] tArr2;
+            delete[] tArr3;
+            break;
+        }
         }
 
         currentLine = getStr(in);

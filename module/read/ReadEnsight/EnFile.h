@@ -54,6 +54,8 @@ public:
 
     bool isOpen();
 
+    bool mayBeCorrupt() const;
+
     // check for binary file
     CaseFile::BinType binType();
 
@@ -64,9 +66,9 @@ public:
     // or the geo. file for the first timestep. This means we must still check the
     // length of the connection table
 
-    virtual void setPartList(PartList *p);
     virtual bool parseForParts() = 0;
 
+    void setPartList(PartList *p);
     void sendPartsToInfo();
 
     bool hasPartWithDim(int dim) const;
@@ -81,19 +83,13 @@ public:
     static std::unique_ptr<EnFile> createDataFile(ReadEnsight *mod, const CaseFile &c, const std::string &field,
                                                   int timestep);
 
-    bool fileMayBeCorrupt_ = true;
+    std::string name() const;
 
 protected:
     FP open();
 
     // functions used for BINARY input
     virtual std::string getStr(FILE *in);
-
-    // skip n ints
-    void skipInt(FILE *in, size_t n);
-
-    // skip n floats
-    void skipFloat(FILE *in, size_t n);
 
     // get integer
     virtual int getInt(FILE *in);
@@ -102,9 +98,13 @@ protected:
     // get integer array
     virtual int *getIntArr(FILE *in, size_t n, int *iarr = nullptr);
     virtual unsigned *getUIntArr(FILE *in, size_t n, unsigned *uarr = nullptr);
+    // skip n ints
+    void skipInt(FILE *in, size_t n);
 
     // get float array
     virtual vistle::Scalar *getFloatArr(FILE *in, size_t n, vistle::Scalar *farr = nullptr);
+    // skip n floats
+    void skipFloat(FILE *in, size_t n);
 
     // find a part by its part number
     virtual EnPart *findPart(int partNum) const;
@@ -114,6 +114,8 @@ protected:
     IdType elementId_ = UNKNOWN;
 
     CaseFile::BinType binType_;
+
+    bool fileMayBeCorrupt_ = true;
 
     bool byteSwap_ = false;
 
@@ -125,11 +127,12 @@ protected:
     ReadEnsight *ens = nullptr;
 
     ssize_t filePos() const;
-    std::string name() const;
 
     std::string name_;
 
     FP in_;
+
+    std::string where() const;
 
 private:
     template<typename T>

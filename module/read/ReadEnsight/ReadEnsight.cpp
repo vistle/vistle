@@ -23,8 +23,6 @@ ReadEnsight::ReadEnsight(const std::string &name, int moduleID, mpi::communicato
     m_casefile = addStringParameter("casefile", "EnSight case file", "", Parameter::ExistingFilename);
     setParameterFilters(m_casefile, "Case Files (*.case *.CASE *.encas)");
 
-    m_caseVerbose = addIntParameter("verbose_parser", "enable parser debug output", false, Parameter::Boolean);
-
     m_partSelection = addStringParameter("parts", "select parts", "all", Parameter::Restraint);
 
     m_grid = createOutputPort("grid_out", "geometry");
@@ -63,8 +61,10 @@ ReadEnsight::ReadEnsight(const std::string &name, int moduleID, mpi::communicato
         linkPortAndParameter(m_surf_elem[port], m_surf_elem_choice[port]);
     }
 
+    setCurrentParameterGroup("Details");
     m_earlyPartList =
         addIntParameter("early_partlist", "create part list before reading geometry", true, Parameter::Boolean);
+    m_caseVerbose = addIntParameter("verbose_parser", "enable parser debug output", false, Parameter::Boolean);
     m_dataBigEndianParam =
         addIntParameter("file_big_endian", "file is in big endian format", m_dataBigEndian, Parameter::Boolean);
     setParameterReadOnly(m_dataBigEndianParam, true);
@@ -72,11 +72,15 @@ ReadEnsight::ReadEnsight(const std::string &name, int moduleID, mpi::communicato
     observeParameter(m_casefile);
     observeParameter(m_earlyPartList);
 
-    setParallelizationMode(ParallelizeTimeAndBlocks);
+    setParallelizationMode(ParallelizeTimeAndBlocksAfterStatic);
 }
 
 bool ReadEnsight::examine(const vistle::Parameter *param)
 {
+    m_earlyParts.clear();
+    m_masterParts.clear();
+    m_globalParts.clear();
+
     if (!param || param == m_casefile || param == m_earlyPartList) {
         std::string file = m_casefile->getValue();
         filesystem::path path(file);
@@ -87,7 +91,7 @@ bool ReadEnsight::examine(const vistle::Parameter *param)
             parser.setVerbose(m_caseVerbose->getValue() != 0);
             if (!parser.isOpen() || !parser.parse()) {
                 std::string err = parser.lastError();
-                sendWarning("Cannot parse case file %s: %s", file.c_str(), err.c_str());
+                sendError("Cannot parse case file %s: %s", file.c_str(), err.c_str());
                 return false;
             }
 
@@ -155,10 +159,12 @@ bool ReadEnsight::examine(const vistle::Parameter *param)
             size_t ntimes = times.size();
             if (ntimes == 0)
                 ntimes = 1;
-            globalParts_.resize(ntimes);
+            m_globalParts.resize(ntimes);
             if (!createPartlists(-1, true)) {
+                m_globalParts.clear();
                 return false;
             }
+            m_earlyParts = m_globalParts[0];
 
             if (!hasPartWithDim(3)) {
                 for (int i = 0; i < NumVolVert; ++i) {
@@ -215,31 +221,47 @@ bool ReadEnsight::prepareRead()
         return false;
     }
 
-    if (m_earlyPartList->getValue() == 0) {
-        globalParts_.clear();
-        size_t ntimes = times.size();
-        if (ntimes == 0)
-            ntimes = 1;
-        globalParts_.resize(ntimes);
-    }
-    assert((times.size() == 0 && globalParts_.size() == 1) || globalParts_.size() == times.size());
+    size_t ntimes = times.size();
+    if (ntimes == 0)
+        ntimes = 1;
+    m_globalParts.clear();
+    m_globalParts.resize(ntimes);
+    m_globalParts[0] = m_earlyParts;
+    m_masterParts = m_earlyParts;
 
     if (!createPartlists(-1)) {
         return false;
     }
 
+    m_selectedParts.clear();
     m_selectedParts.add(m_partSelection->getValue());
 
-    size_t numParts(globalParts_[0].size());
+    size_t numParts(m_globalParts[0].size());
     size_t numActiveParts = 0;
+    size_t numActive2d = 0, numActive3d = 0;
     for (size_t i = 0; i < numParts; i++) {
         bool active = m_selectedParts(i);
         if (active) {
             ++numActiveParts;
+            const auto &p = m_globalParts[0][i];
+            if (p.getTotNumEle2d() > 0)
+                ++numActive2d;
+            if (p.getTotNumEle3d() > 0)
+                ++numActive3d;
         }
     }
-
     setPartitions(numActiveParts);
+
+    if (numActive2d == 0) {
+        auto act2d = getActiveFields(EnFile::SURFACE);
+        if (!act2d.empty())
+            sendWarning("surface/2D ports connected, but no 2D parts selected");
+    }
+    if (numActive3d == 0) {
+        auto act3d = getActiveFields(EnFile::VOLUME);
+        if (!act3d.empty())
+            sendWarning("volume/3D ports connected, but no 3D parts selected");
+    }
 
     return true;
 }
@@ -268,6 +290,9 @@ std::vector<std::pair<vistle::Port *, std::string>> ReadEnsight::getActiveFields
             if (choice.empty() || choice == NONE) {
                 continue;
             }
+            if (!m_vol_vert[i]->isConnected()) {
+                continue;
+            }
             ports.push_back(m_vol_vert[i]);
             choices.push_back(choice);
             fields.emplace_back(m_vol_vert[i], choice);
@@ -276,6 +301,9 @@ std::vector<std::pair<vistle::Port *, std::string>> ReadEnsight::getActiveFields
             auto field = m_vol_elem_choice[i];
             auto choice = field->getValue();
             if (choice.empty() || choice == NONE) {
+                continue;
+            }
+            if (!m_vol_elem[i]->isConnected()) {
                 continue;
             }
             ports.push_back(m_vol_elem[i]);
@@ -290,6 +318,9 @@ std::vector<std::pair<vistle::Port *, std::string>> ReadEnsight::getActiveFields
             if (choice.empty() || choice == NONE) {
                 continue;
             }
+            if (!m_surf_vert[i]->isConnected()) {
+                continue;
+            }
             ports.push_back(m_surf_vert[i]);
             choices.push_back(choice);
             fields.emplace_back(m_surf_vert[i], choice);
@@ -300,6 +331,9 @@ std::vector<std::pair<vistle::Port *, std::string>> ReadEnsight::getActiveFields
             if (choice.empty() || choice == NONE) {
                 continue;
             }
+            if (!m_surf_elem[i]->isConnected()) {
+                continue;
+            }
             ports.push_back(m_surf_elem[i]);
             choices.push_back(choice);
             fields.emplace_back(m_surf_elem[i], choice);
@@ -307,7 +341,7 @@ std::vector<std::pair<vistle::Port *, std::string>> ReadEnsight::getActiveFields
     }
 
     assert(ports.size() == choices.size());
-    std::cerr << "Reading " << ports.size() << " fields" << std::endl;
+    std::cerr << "Reading " << ports.size() << " fields (enabled dims=" << what << ")" << std::endl;
     for (size_t i = 0; i < ports.size(); ++i) {
         std::cerr << "  " << ports[i]->getName() << ": " << choices[i] << std::endl;
     }
@@ -317,40 +351,38 @@ std::vector<std::pair<vistle::Port *, std::string>> ReadEnsight::getActiveFields
 
 bool ReadEnsight::read(Reader::Token &token, int timestep, int block)
 {
-    if (m_geoFiles.size() > 1 && timestep < 0) {
+    if (timestep < 0 && numTimesteps() == m_geoFiles.size()) {
         return true;
     }
-    std::cerr << "reading t=" << timestep << ", block=" << block << ":" << std::endl;
 
     std::string geofile;
-    if (timestep >= 0 && timestep < m_geoFiles.size()) {
-        geofile = m_geoFiles[timestep];
-    } else if (timestep < 0 && m_geoFiles.size() == 1) {
+    if (timestep < 0) {
+        assert(m_geoFiles.size() == 1);
         geofile = m_geoFiles[0];
+    } else if (timestep >= 0 && numTimesteps() == m_geoFiles.size()) {
+        geofile = m_geoFiles[timestep];
     } else {
-        sendError("no geometry file name for timestep %d", timestep);
-        return false;
+        assert(m_geoFiles.size() == 1);
     }
-    if (geofile.empty()) {
-        sendError("empty geometry file name for timestep %d", timestep);
-        return false;
-    }
-    std::cerr << " geo=" << geofile << std::endl;
+    std::cerr << "reading t=" << timestep << ", block=" << block << ":"
+              << " geo=" << geofile << std::endl;
 
-    PartList *curPartList = &globalParts_[0];
-    if (timestep >= 0 && timestep < globalParts_.size()) {
-        curPartList = &globalParts_[timestep];
+    PartList *curPartList = &m_globalParts[0];
+    if (timestep >= 0) {
+        assert(timestep < m_globalParts.size());
+        curPartList = &m_globalParts[timestep];
     }
 
-    EnPart curPart;
+    EnPart *curPart = nullptr;
     int curNum = 0;
-    int count = 0;
-    for (const auto &p: *curPartList) {
-        bool active = m_selectedParts(count);
-        ++count;
+    size_t curPartIdx = 0;
+    for (curPartIdx = 0; curPartIdx < curPartList->size(); ++curPartIdx) {
+        auto &p = curPartList->at(curPartIdx);
+        std::cerr << " searching block " << block << ", time=" << timestep << ", checking part: " << p << std::endl;
+        bool active = m_selectedParts(curPartIdx);
         if (active) {
             if (curNum == block) {
-                curPart = p;
+                curPart = &p;
                 std::cerr << " reading for part: " << curPart << std::endl;
                 break;
             }
@@ -358,9 +390,13 @@ bool ReadEnsight::read(Reader::Token &token, int timestep, int block)
         }
     }
 
-    Object::ptr grid;
-    auto what = EnFile::VOLUME_AND_SURFACE;
-    {
+    if (!curPart) {
+        sendError("part for timestep %d, block %d not found", timestep, block);
+        return false;
+    }
+
+    Object::const_ptr geo;
+    if (!geofile.empty()) {
         auto file = EnFile::createGeometryFile(this, m_case, geofile);
         if (!file) {
             sendError("failed to open geo %s", geofile.c_str());
@@ -371,21 +407,42 @@ bool ReadEnsight::read(Reader::Token &token, int timestep, int block)
         m_case.setBinType(binType);
 
         file->setPartList(curPartList);
-        grid = file->read(timestep, block, &curPart);
-    }
-    if (!grid) {
-        sendError("failed to read geometry from %s", geofile.c_str());
-        return false;
+        Object::ptr grid = file->read(timestep, block, curPart);
+        if (!grid) {
+            sendError("failed to read geometry from %s", geofile.c_str());
+            return false;
+        }
+
+        token.applyMeta(grid);
+        grid->addAttribute(attribute::Part, curPart->comment());
+
+        if (auto unstr = UnstructuredGrid::as(grid)) {
+            token.addObject(m_grid, unstr);
+        } else if (auto poly = Polygons::as(grid)) {
+            token.addObject(m_surf, poly);
+        }
+
+        if (timestep < 0) {
+            m_constantGeo[block] = grid;
+            m_masterParts[curPartIdx] = *curPart; // now has blankslists; update master
+        }
+        geo = grid;
+    } else {
+        geo = m_constantGeo[block];
     }
 
-    token.applyMeta(grid);
-    grid->addAttribute(attribute::Part, curPart.comment());
-    if (auto unstr = UnstructuredGrid::as(grid)) {
-        token.addObject(m_grid, unstr);
+    auto what = EnFile::VOLUME_AND_SURFACE;
+    if (auto unstr = UnstructuredGrid::as(geo)) {
         what = EnFile::VOLUME;
-    } else if (auto poly = Polygons::as(grid)) {
-        token.addObject(m_surf, poly);
+    } else if (auto poly = Polygons::as(geo)) {
         what = EnFile::SURFACE;
+    } else {
+        std::cerr << "no grid for data t=" << timestep << ", block=" << block << std::endl;
+        return true;
+    }
+
+    if (timestep < 0 && numTimesteps() > 0) {
+        return true;
     }
 
     auto fields = getActiveFields(what);
@@ -400,17 +457,21 @@ bool ReadEnsight::read(Reader::Token &token, int timestep, int block)
         } else {
             std::cerr << "failed to open field " << field << " for timestep " << timestep << ", outputting to "
                       << port->getName() << std::endl;
-            return false;
+            continue;
         }
         file->setPartList(curPartList);
-        auto data = file->read(timestep, block, &curPart);
+        auto data = file->read(timestep, block, curPart);
         file.reset();
         if (data) {
-            data->addAttribute(attribute::Part, curPart.comment());
+            data->addAttribute(attribute::Part, curPart->comment());
             token.applyMeta(data);
             if (auto db = DataBase::as(data)) {
                 db->describe(field, id());
-                db->setGrid(grid);
+                auto di = m_case.getDataItem(field);
+                if (di) {
+                    db->setMapping(di->perVertex() ? DataBase::Vertex : DataBase::Element);
+                }
+                db->setGrid(geo);
                 token.addObject(port, db);
                 std::cerr << "read data: " << *db << std::endl;
             }
@@ -422,8 +483,15 @@ bool ReadEnsight::read(Reader::Token &token, int timestep, int block)
 
 bool ReadEnsight::finishRead()
 {
+    m_constantGeo.clear();
+    m_globalParts.clear();
+    m_masterParts.clear();
     if (m_earlyPartList->getValue() == 0) {
-        globalParts_.clear();
+        m_earlyParts.clear();
+    } else {
+        m_globalParts.push_back(m_earlyParts);
+        auto times = m_case.getAllRealTimes();
+        m_globalParts.resize(times.size());
     }
     return true;
 }
@@ -431,7 +499,7 @@ bool ReadEnsight::finishRead()
 // Create a list of all EnSight parts ( of the first timestep in time dependent data )
 // This is the master part
 // Write a table of all parts in the master part list  to the info channel
-bool ReadEnsight::createPartlists(int timestep, bool quick)
+bool ReadEnsight::createPartlists(int timestep, bool onlyGeo)
 {
     // we read only the first geometry file and assume that for moving geometries
     // the split-up in parts does not change
@@ -442,70 +510,80 @@ bool ReadEnsight::createPartlists(int timestep, bool quick)
         return false;
     }
 
-    if (m_geoFiles.size() <= idx) {
-        return true;
-    }
+    bool earlyPartList = m_earlyPartList->getValue() != 0;
 
-    if (quick || timestep >= 0 || m_earlyPartList->getValue() == 0) {
-        auto &fName = m_geoFiles[idx];
-        // create file object
-        auto enf = EnFile::createGeometryFile(this, m_case, fName);
-        if (!enf) {
-            sendError("Could not open geometry file %s", fName.c_str());
-            return false;
-        }
+    assert(m_globalParts.size() > idx);
+    auto &parts = m_globalParts[idx];
 
-        assert(globalParts_.size() > idx);
-        auto &parts = globalParts_[idx];
+    if (onlyGeo || idx > 0 || !earlyPartList) {
+        if (m_geoFiles.size() > idx) {
+            auto &fName = m_geoFiles[idx];
+            // create file object
+            auto enf = EnFile::createGeometryFile(this, m_case, fName);
+            if (!enf) {
+                sendError("Could not open geometry file %s", fName.c_str());
+                return false;
+            }
 
-        enf->setPartList(&parts);
-        // this creates the table and extracts the part infos
-        if (!enf->parseForParts()) {
-            sendError("Could not parse geometry file %s", fName.c_str());
             parts.clear();
-            return false;
-        }
-
-        if (enf->fileMayBeCorrupt_) {
-            if (timestep < 0) {
-                sendInfo("GeoFile %s may be corrupt - retrying with changed endianess", fName.c_str());
-                m_dataBigEndian = !m_dataBigEndian;
+            enf->setPartList(&parts);
+            // this creates the table and extracts the part infos
+            if (!enf->parseForParts()) {
+                sendError("Could not parse geometry file %s", fName.c_str());
                 parts.clear();
-                enf = EnFile::createGeometryFile(this, m_case, fName);
-                enf->setPartList(&parts);
-                if (!enf->parseForParts()) {
-                    sendError("GeoFile %s seems to be corrupt", fName.c_str());
-                    parts.clear();
-                    return false;
-                }
-                if (enf->fileMayBeCorrupt_) {
+                return false;
+            }
+
+            if (enf->mayBeCorrupt()) {
+                if (timestep < 0) {
+                    sendInfo("Could not parse geometry file %s - retrying with changed endianess", fName.c_str());
                     m_dataBigEndian = !m_dataBigEndian;
-                } else {
-                    setParameter(m_dataBigEndianParam, Integer(m_dataBigEndian));
+                    parts.clear();
+                    enf = EnFile::createGeometryFile(this, m_case, fName);
+                    if (!enf) {
+                        sendError("Could not open geometry file %s", fName.c_str());
+                        return false;
+                    }
+                    enf->setPartList(&parts);
+                    if (!enf->parseForParts()) {
+                        sendError("Could not find any parts in geometry file %s", fName.c_str());
+                        parts.clear();
+                        return false;
+                    }
+                    if (enf->mayBeCorrupt()) {
+                        m_dataBigEndian = !m_dataBigEndian;
+                    } else {
+                        setParameter(m_dataBigEndianParam, Integer(m_dataBigEndian));
+                    }
                 }
             }
-        }
-        assert(m_dataBigEndian == m_dataBigEndianParam->getValue());
+            assert(m_dataBigEndian == m_dataBigEndianParam->getValue());
 
-        if (enf->fileMayBeCorrupt_) {
-            sendError("GeoFile %s seems to be corrupt!! Check case file or geo file", fName.c_str());
-            parts.clear();
-            return false;
-        }
+            if (enf->mayBeCorrupt()) {
+                sendError("Could not parse geometry file %s", fName.c_str());
+                parts.clear();
+                return false;
+            }
 
-        auto binType = enf->binType();
-        m_case.setBinType(binType);
+            auto binType = enf->binType();
+            m_case.setBinType(binType);
 
-        if (timestep < 0) {
-            enf->sendPartsToInfo();
+            if (timestep < 0) {
+                if (onlyGeo || !earlyPartList) {
+                    enf->sendPartsToInfo();
+                }
+                m_masterParts = parts;
+            }
+        } else {
+            // geometry reused from first timestep
+            parts = m_masterParts;
         }
     }
 
-    if (quick) {
+    if (onlyGeo) {
         return true;
     }
 
-    auto &parts = globalParts_[idx];
     auto fields = getActiveFields(EnFile::VOLUME_AND_SURFACE);
     std::set<std::string> processed;
     for (size_t i = 0; i < fields.size(); ++i) {
@@ -520,9 +598,12 @@ bool ReadEnsight::createPartlists(int timestep, bool quick)
             return false;
         }
         file->setPartList(&parts);
-        if (file->parseForParts()) {
-            file->sendPartsToInfo();
+        if (!file->parseForParts()) {
+            std::string fname = file->name();
+            sendError("Could not parse field file %s", field.c_str());
+            parts.clear();
         }
+        //file->sendPartsToInfo();
 
         processed.insert(field);
     }
@@ -532,7 +613,7 @@ bool ReadEnsight::createPartlists(int timestep, bool quick)
 
 bool ReadEnsight::hasPartWithDim(int dim) const
 {
-    for (const auto &pl: globalParts_) {
+    for (const auto &pl: m_globalParts) {
         if (::hasPartWithDim(pl, dim)) {
             return true;
         }

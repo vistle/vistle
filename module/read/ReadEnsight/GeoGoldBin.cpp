@@ -12,27 +12,27 @@
 // ++ Date: 08.04.2002                                                    ++
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#include "ReadEnsight.h"
 #include "GeoGoldBin.h"
-#include "ByteSwap.h"
+#include "ReadEnsight.h"
 
 #include <vistle/core/unstr.h>
 #include <vistle/core/polygons.h>
 
-
-#include <vector>
-
 #include <boost/algorithm/string.hpp>
 using boost::algorithm::trim_copy;
 
+#include <vector>
+#include <string>
+#include <iostream>
+
+
 using namespace vistle;
 
-//#define DEBUG
+#define DEBUG
 
-#define CERR std::cerr << "GeoGoldBin::" << __func__ << ": "
+#define CERR std::cerr << "GeoGoldBin::" << __func__ << ": " << where() << ": "
 
-GeoGoldBin::GeoGoldBin(ReadEnsight *mod, const std::string &name, CaseFile::BinType binType)
-: EnFile(mod, name, binType), m_numCoords(0)
+GeoGoldBin::GeoGoldBin(ReadEnsight *mod, const std::string &name, CaseFile::BinType binType): EnFile(mod, name, binType)
 {
 #ifdef DEBUG
     CERR << "byteSwap_ = " << ((byteSwap_ == true) ? "true" : "false") << std::endl;
@@ -58,8 +58,8 @@ Object::ptr GeoGoldBin::read(int timeStep, int block, EnPart *part)
         return out;
     }
 
-    partFound = false;
-    ens->sendInfo("read part#%d/%d:  %d", part->getPartNum(), (int)partList_->size(), block);
+    m_partFound = false;
+    ens->sendInfo("read part#%d/%d: block=%d", part->getPartNum(), (int)partList_->size(), block);
     file::seek(in, part->startPos(), SEEK_SET);
     if (!readPart(in, *part)) {
         ens->sendWarning("reading part#%d failed, skipping", part->getPartNum());
@@ -69,6 +69,7 @@ Object::ptr GeoGoldBin::read(int timeStep, int block, EnPart *part)
         ens->sendWarning("reading connectivity for part#%d failed, skipping", part->getPartNum());
         return out;
     }
+
 #ifdef DEBUG
     CERR << "part: " << part << std::endl;
 #endif
@@ -200,10 +201,10 @@ bool GeoGoldBin::readPart(FILE *in, EnPart &actPart)
     // 2 lines description - ignore it
 
     std::string line;
-    if (!partFound) {
+    if (!m_partFound) {
         line = getStr(in);
     }
-    if (partFound || line.find("part") != std::string::npos) {
+    if (m_partFound || line.find("part") != std::string::npos) {
         // part No
 
         m_actPartNum = getInt(in);
@@ -230,7 +231,7 @@ bool GeoGoldBin::readPart(FILE *in, EnPart &actPart)
         }
         // number of coordinates
         size_t nc(getUInt(in));
-        m_numCoords = nc;
+        actPart.clearFields();
         actPart.setNumCoords(nc);
         actPart.x3d_.construct(nc);
         actPart.y3d_.construct(nc);
@@ -248,7 +249,7 @@ bool GeoGoldBin::readPart(FILE *in, EnPart &actPart)
             // workaround for broken EnSightFiles with Index map as floats
             float *tmpf = (float *)(iMap);
             if (nc > 2 && tmpf[0] == 1.0 && tmpf[1] == 2.0 && tmpf[2] == 3.0) {
-                fprintf(stderr, "Broken EnSight File!!! ignoring index map\n");
+                CERR << "Broken EnSight file - ignoring index map" << std::endl;
             }
             // read x-values
             getFloatArr(in, nc, x);
@@ -269,7 +270,6 @@ bool GeoGoldBin::readPart(FILE *in, EnPart &actPart)
         }
     } else
         CERR << "NO part header found" << std::endl;
-    //CERR << "got " << m_numCoords << " coordinates"   << std::endl;
     return true;
 }
 
@@ -279,15 +279,12 @@ bool GeoGoldBin::readPartConn(FILE *in, EnPart &actPart)
     CERR << "comment: " << actPart.comment() << std::endl;
 #endif
 
-    int &partNo(m_actPartNum);
-
     char buf[lineLen];
 
     size_t currElePtr2d = 0, currElePtr3d = 0;
     unsigned cornIn[20], cornOut[20];
-    size_t numElements;
 
-    partFound = false;
+    m_partFound = false;
     int statistic[30];
     int rstatistic[30][30];
     for (int ii = 0; ii < 30; ++ii) {
@@ -316,147 +313,143 @@ bool GeoGoldBin::readPartConn(FILE *in, EnPart &actPart)
 
     // we don't know a priori how many EnSight elements we can expect here therefore we have to read
     // until we find a new 'part'
-    while ((!feof(in)) && (!partFound)) {
+    while ((!feof(in)) && (!m_partFound)) {
         std::string tmp(getStr(in));
         if (tmp.find("part") != std::string::npos) {
-            partFound = true;
+            m_partFound = true;
+            break;
         }
         // scan for element type
         std::string elementType(tmp);
         EnElement elem(elementType);
         // we have a valid EnSight element
-        if (elem.valid() && !partFound) {
-            std::vector<int> blanklist;
-            // get number of elements
-            numElements = getUInt(in);
+        if (!elem.valid()) {
+            continue;
+        }
+
+        std::vector<vistle::Byte> blanklist;
+        // get number of elements
+        size_t numElements = getUInt(in);
 #ifdef DEBUG
-            CERR << " read " << numElements << " elements" << std::endl;
+        CERR << " read " << numElements << " elements" << std::endl;
 #endif
 
-            if (numElements > 0) {
-                // skip elements id's
-                if (elementId_ == GIVEN)
-                    skipInt(in, numElements);
+        if (numElements > 0) {
+            // skip elements id's
+            if (elementId_ == GIVEN)
+                skipInt(in, numElements);
 
-                // ------------------- NFACED ----------------------
-                if (elem.getEnType() == EnElement::nfaced) {
-                    // Read number of faces/points
-                    std::vector<unsigned> numFaces(numElements);
-                    std::vector<std::vector<unsigned>> numPoints(numElements);
-                    getUIntArr(in, numElements, numFaces.data());
-                    for (size_t i = 0; i < numElements; ++i) {
-                        numPoints[i].resize(numFaces[i]);
-                        getUIntArr(in, numFaces[i], numPoints[i].data());
-                    }
-
-                    // Read polyhedral elements (VARIANT 1)
-                    for (size_t i = 0; i < numElements; ++i) {
-                        typeLst3d.push_back(elem.getCovType());
-                        for (size_t j = 0; j < numFaces[i]; ++j) {
-                            size_t nc = numPoints[i][j];
-                            std::vector<unsigned> locArr(nc);
-                            getUIntArr(in, nc, locArr.data());
-                            for (size_t k = 0; k < nc; ++k) {
-                                cornLst3d.push_back(locArr[k] - 1);
-                                currElePtr3d++;
-                                if ((k != 0) && (locArr[k] == locArr[0])) {
-                                    // The first point appears twice in the face and would destroy
-                                    // our "first-point-again-ends-face"-definition. We explicitly
-                                    // start a new face here by adding the point again.
-                                    cornLst3d.push_back(locArr[k] - 1);
-                                    currElePtr3d++;
-                                }
-                            }
-                            cornLst3d.push_back(locArr[0] - 1);
-                            currElePtr3d++; // add first point again to mark the end of the face
-                        }
-                        eleLst3d.push_back(currElePtr3d);
-                        blanklist.push_back(1);
-                    }
+            // ------------------- NFACED ----------------------
+            if (elem.getEnType() == EnElement::nfaced) {
+                // Read number of faces/points
+                std::vector<unsigned> numFaces(numElements);
+                std::vector<std::vector<unsigned>> numPoints(numElements);
+                getUIntArr(in, numElements, numFaces.data());
+                for (size_t i = 0; i < numElements; ++i) {
+                    numPoints[i].resize(numFaces[i]);
+                    getUIntArr(in, numFaces[i], numPoints[i].data());
                 }
-                // ------------------- NFACED ----------------------
 
-                // ------------------- NSIDED ----------------------
-                else if (elem.getEnType() == EnElement::nsided) {
-                    // Read number of points
-                    std::vector<unsigned> numPoints(numElements);
-                    getUIntArr(in, numElements, numPoints.data());
-                    // Read elements
-                    for (size_t i = 0; i < numElements; ++i) {
-                        typeLst2d.push_back(elem.getCovType());
-                        size_t nc = numPoints[i];
+                // Read polyhedral elements (VARIANT 1)
+                for (size_t i = 0; i < numElements; ++i) {
+                    typeLst3d.push_back(elem.getCovType());
+                    for (size_t j = 0; j < numFaces[i]; ++j) {
+                        size_t nc = numPoints[i][j];
                         std::vector<unsigned> locArr(nc);
                         getUIntArr(in, nc, locArr.data());
                         for (size_t k = 0; k < nc; ++k) {
-                            cornLst2d.push_back(locArr[k] - 1);
-                        }
-                        currElePtr2d += nc;
-                        eleLst2d.push_back(currElePtr2d);
-                        blanklist.push_back(1);
-                    }
-                }
-                // ------------------- NSIDED ----------------------
-
-                // ---------------- DEFAULT ELEMENT-----------------
-                else {
-                    size_t nc = elem.getNumberOfCorners();
-                    size_t ncc = elem.getNumberOfVistleCorners();
-                    int covType = elem.getCovType();
-                    std::vector<unsigned> locArr(numElements * nc);
-                    getUIntArr(in, numElements * nc, locArr.data());
-                    size_t eleCnt(0);
-                    for (size_t i = 0; i < numElements; ++i) {
-                        // remap indices (EnSight elements may have a different element numbering scheme than Vistle)
-                        //  prepare arrays
-                        for (size_t j = 0; j < nc; ++j) {
-                            size_t idx = eleCnt + j;
-                            assert(locArr[idx] > 0);
-                            cornIn[j] = locArr[idx] - 1;
-                        }
-                        eleCnt += nc;
-                        // we add the element to the list of points if it has more than one
-                        // distinct point
-                        bool degen = !elem.hasDistinctCorners(cornIn);
-                        if (degen) {
-                            blanklist.push_back(-1);
-                            degCells++;
-                        } else {
-                            blanklist.push_back(1);
-                            // do the remapping
-                            elem.remap(cornIn, cornOut);
-                            if (elem.getDim() == EnElement::D2) {
-                                for (size_t j = 0; j < ncc; ++j)
-                                    cornLst2d.push_back(cornOut[j]);
-                                typeLst2d.push_back(covType);
-                                currElePtr2d += ncc;
-                                eleLst2d.push_back(currElePtr2d);
-                            } else if (elem.getDim() == EnElement::D3) {
-                                for (size_t j = 0; j < ncc; ++j)
-                                    cornLst3d.push_back(cornOut[j]);
-                                typeLst3d.push_back(covType);
-                                currElePtr3d += ncc;
-                                eleLst3d.push_back(currElePtr3d);
+                            cornLst3d.push_back(locArr[k] - 1);
+                            currElePtr3d++;
+                            if ((k != 0) && (locArr[k] == locArr[0])) {
+                                // The first point appears twice in the face and would destroy
+                                // our "first-point-again-ends-face"-definition. We explicitly
+                                // start a new face here by adding the point again.
+                                cornLst3d.push_back(locArr[k] - 1);
+                                currElePtr3d++;
                             }
                         }
+                        cornLst3d.push_back(locArr[0] - 1);
+                        currElePtr3d++; // add first point again to mark the end of the face
+                    }
+                    eleLst3d.push_back(currElePtr3d);
+                    blanklist.push_back(1);
+                }
+            }
+            // ------------------- NFACED ----------------------
+
+            // ------------------- NSIDED ----------------------
+            else if (elem.getEnType() == EnElement::nsided) {
+                // Read number of points
+                std::vector<unsigned> numPoints(numElements);
+                getUIntArr(in, numElements, numPoints.data());
+                // Read elements
+                for (size_t i = 0; i < numElements; ++i) {
+                    typeLst2d.push_back(elem.getCovType());
+                    size_t nc = numPoints[i];
+                    std::vector<unsigned> locArr(nc);
+                    getUIntArr(in, nc, locArr.data());
+                    for (size_t k = 0; k < nc; ++k) {
+                        cornLst2d.push_back(locArr[k] - 1);
+                    }
+                    currElePtr2d += nc;
+                    eleLst2d.push_back(currElePtr2d);
+                    blanklist.push_back(1);
+                }
+            }
+            // ------------------- NSIDED ----------------------
+
+            // ---------------- DEFAULT ELEMENT-----------------
+            else {
+                size_t nc = elem.getNumberOfCorners();
+                size_t ncc = elem.getNumberOfVistleCorners();
+                int covType = elem.getCovType();
+                std::vector<unsigned> locArr(numElements * nc);
+                getUIntArr(in, numElements * nc, locArr.data());
+                size_t eleCnt(0);
+                for (size_t i = 0; i < numElements; ++i) {
+                    // remap indices (EnSight elements may have a different element numbering scheme than Vistle)
+                    //  prepare arrays
+                    for (size_t j = 0; j < nc; ++j) {
+                        size_t idx = eleCnt + j;
+                        assert(locArr[idx] > 0);
+                        cornIn[j] = locArr[idx] - 1;
+                    }
+                    eleCnt += nc;
+                    // we add the element to the list of points if it has more than one
+                    // distinct point
+                    bool degen = !elem.hasDistinctCorners(cornIn);
+                    if (degen) {
+                        blanklist.push_back(0);
+                        degCells++;
+                    } else {
+                        blanklist.push_back(1);
+                        // do the remapping
+                        elem.remap(cornIn, cornOut);
+                        if (elem.getDim() == EnElement::D2) {
+                            for (size_t j = 0; j < ncc; ++j)
+                                cornLst2d.push_back(cornOut[j]);
+                            typeLst2d.push_back(covType);
+                            currElePtr2d += ncc;
+                            eleLst2d.push_back(currElePtr2d);
+                        } else if (elem.getDim() == EnElement::D3) {
+                            for (size_t j = 0; j < ncc; ++j)
+                                cornLst3d.push_back(cornOut[j]);
+                            typeLst3d.push_back(covType);
+                            currElePtr3d += ncc;
+                            eleLst3d.push_back(currElePtr3d);
+                        }
                     }
                 }
-                // ---------------- DEFAULT ELEMENT-----------------
             }
+            // ---------------- DEFAULT ELEMENT-----------------
+        }
 
 
 #ifdef DEBUG
-            CERR << "read " << numElements << " elements, #blanklist=" << blanklist.size() << std::endl;
+        CERR << "read " << numElements << " elements, #blanklist=" << blanklist.size() << std::endl;
 #endif
-            elem.setBlanklist(std::move(blanklist));
-            actPart.addElement(elem, numElements);
-        }
-    }
-    // we have read one line more than needed
-    if (partFound) {
-        //	in.sync();
-        //	if ( binType_ == EnFile::FBIN) in.seekg(-88L, ios::cur);
-        //	else in.seekg(-80L, ios::cur);
-        //	in.sync();
+        elem.setBlanklist(std::move(blanklist));
+        actPart.addElement(std::move(elem), numElements);
     }
 
     actPart.setNumEleRead2d(eleLst2d.size() - 1);
@@ -474,7 +467,7 @@ bool GeoGoldBin::readPartConn(FILE *in, EnPart &actPart)
             std::cerr << std::endl;
         }
 
-        sprintf(buf, " -> found %d fully degenerated cells in part %d", degCells, partNo);
+        sprintf(buf, " -> found %d fully degenerated cells in part %d", degCells, m_actPartNum);
         ens->sendInfo("%s", buf);
     }
 
@@ -610,7 +603,7 @@ bool GeoGoldBin::parseForParts()
             }
 
             // add element info to the part
-            actPart->addElement(elem, numElements, false);
+            actPart->addElement(std::move(elem), numElements, false);
         }
     }
 
@@ -621,7 +614,7 @@ bool GeoGoldBin::parseForParts()
     }
 
     if (!validElementFound) {
-        CERR << "WARNING never found a valid element SUSPICIOUS!!!!" << std::endl;
+        CERR << "WARNING: never found a valid element" << std::endl;
         fileMayBeCorrupt_ = true;
         return false;
     }

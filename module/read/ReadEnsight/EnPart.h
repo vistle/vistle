@@ -41,14 +41,15 @@ class EnPart {
 public:
     EnPart();
     EnPart(int pNum, const std::string &comment = "");
-    EnPart(EnPart &p) = delete;
+    EnPart(const EnPart &p);
     EnPart(EnPart &&p);
     ~EnPart();
 
     const EnPart &operator=(const EnPart &p);
+    const EnPart &operator=(EnPart &&p);
 
     // add element and number of elements to part data
-    void addElement(const EnElement &ele, size_t anz, bool complete = true);
+    void addElement(EnElement &&ele, size_t anz, bool complete = true);
 
     // remove all elements from part
     void clearElements();
@@ -76,8 +77,8 @@ public:
     // find Element by name
     // we assume that each element occurs only once
     // in a given part
-    EnElement findElementType(const std::string &name) const;
-    EnElement findElementType(EnElement::Type type) const;
+    const EnElement *findElementType(const std::string &name) const;
+    const EnElement *findElementType(EnElement::Type type) const;
 
     // returns number of cells per element
     size_t getElementNum(const std::string &name) const;

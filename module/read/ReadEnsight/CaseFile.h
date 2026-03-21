@@ -17,6 +17,7 @@
 
 #include "DataItem.h"
 
+#include <ostream>
 #include <vector>
 #include <map>
 #include <set>
@@ -24,11 +25,17 @@
 #include <utility>
 
 class TimeSet;
+class CaseFile;
+
+std::ostream &operator<<(std::ostream &os, const CaseFile &cf);
+std::ostream &operator<<(std::ostream &os, const TimeSet &ts);
 
 typedef std::map<std::string, DataItem> DataMap;
 typedef std::vector<TimeSet *> TimeSets;
 
 class CaseFile {
+    friend std::ostream &operator<<(std::ostream &os, const CaseFile &cf);
+
 public:
     enum { v5, v6, gold };
     enum BinType { CBIN, FBIN, NOBIN, UNKNOWN };
@@ -66,9 +73,9 @@ public:
     std::string getDir() const;
 
     // returns the name of the case without extension
-    std::string getProjectName();
+    std::string getProjectName() const;
 
-    std::string printEnVersion();
+    std::string printEnVersion() const;
 
     int getVersion() const { return version_; };
 
@@ -82,6 +89,8 @@ public:
     const TimeSet *getTimeSet(const std::string &field) const;
     const TimeSet *getGeoTimeSet() const;
     std::vector<float> getAllRealTimes() const;
+    std::vector<int> getAllTimes() const;
+    std::string getFileForTime(float t, const std::string &field = {}) const;
 
     std::vector<std::string> makeFileNames(const std::string &baseName, const TimeSet *ts) const;
 
@@ -105,6 +114,8 @@ private:
 
 // simple data class to store time step information
 class TimeSet {
+    friend std::ostream &operator<<(std::ostream &os, const TimeSet &ts);
+
 public:
     TimeSet(const int &n, const int &numTs);
     TimeSet(const TimeSet &ts);
@@ -134,4 +145,5 @@ private:
     std::vector<int> fileNums_; // file numbers
     std::vector<float> rTimes_; // real times
 };
+
 #endif
