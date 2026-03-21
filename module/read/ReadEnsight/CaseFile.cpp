@@ -111,7 +111,7 @@ const DataItem *CaseFile::getDataItem(const std::string &field) const
     return &it->second;
 }
 
-std::string CaseFile::printEnVersion()
+std::string CaseFile::printEnVersion() const
 {
     std::string out;
     switch (version_) {
@@ -156,7 +156,7 @@ std::string CaseFile::getDir() const
     return dir_;
 }
 
-std::string CaseFile::getProjectName()
+std::string CaseFile::getProjectName() const
 {
     return projectNm_;
 }
@@ -281,8 +281,7 @@ std::vector<float> CaseFile::getAllRealTimes() const
 //
 // Destructor
 //
-CaseFile::~CaseFile()
-{}
+CaseFile::~CaseFile() = default;
 
 /////////////////////////// class TimeSet //////////////////////////////
 
@@ -364,6 +363,43 @@ std::vector<std::pair<float, std::string>> TimeSet::getTimesAndFileNames(const s
     return result;
 }
 
+std::string CaseFile::getFileForTime(float t, const std::string &field) const
+{
+    std::string file;
+
+    const TimeSet *ts = nullptr;
+    std::string basename;
+    if (field.empty()) {
+        // grid
+        basename = getGeoFileNm();
+        ts = getGeoTimeSet();
+    } else {
+        // data
+        auto di = getDataItem(field);
+        if (!di)
+            return file;
+        basename = di->getFileName();
+        ts = getTimeSet(di->getTimeSet());
+    }
+    if (!ts)
+        ts = getTimeSet(DefaultTimeSet);
+
+    auto files = makeFileNames(basename, ts);
+    if (files.size() == 1)
+        return files[0];
+    auto times = ts->getRealTimes();
+    if (files.size() != times.size())
+        return file;
+    for (size_t i = 0; i < times.size(); i++) {
+        file = files[i];
+        if (t > times[i])
+            break;
+    }
+
+    return file;
+}
+
+
 void CaseFile::setBinType(BinType bt)
 {
     binType_ = bt;
@@ -372,4 +408,40 @@ void CaseFile::setBinType(BinType bt)
 CaseFile::BinType CaseFile::getBinType() const
 {
     return binType_;
+}
+
+std::ostream &operator<<(std::ostream &os, const CaseFile &cf)
+{
+    os << "CaseFile: " << cf.printEnVersion() << ", geo file: " << cf.getGeoFileNm()
+       << ", mgeo file: " << cf.getMGeoFileNm() << ", #data items: " << cf.dataIts_.size()
+       << ", time sets: " << cf.timeSets_.size() << ", used time sets: " << cf.usedTimeSets_.size()
+       << ", connectivity file index: " << cf.connectivityFileIndex_ << std::endl;
+    for (auto &kv: cf.dataIts_) {
+        os << "  " << kv.second.getDesc() << ": type=" << kv.second.getType()
+           << ", per vertex=" << kv.second.perVertex() << ", time set=" << kv.second.getTimeSet() << std::endl;
+    }
+    auto allTimes = cf.getAllRealTimes();
+    os << ", All real times: ";
+    for (auto t: allTimes) {
+        os << t << " ";
+    }
+    auto timesets = cf.getAllTimeSets();
+    os << ", Time Sets: ";
+    for (const auto ts: timesets) {
+        os << "  " << *ts << std::endl;
+    }
+    return os;
+}
+
+std::ostream &operator<<(std::ostream &os, const TimeSet &cf)
+{
+    os << "TimeSet: idx=" << cf.getIdx() << ", num time steps=" << cf.getNumTs() << ", file numbers: ";
+    for (auto &fn: cf.fileNums_) {
+        os << fn << " ";
+    }
+    os << ", real times: ";
+    for (auto &rt: cf.rTimes_) {
+        os << rt << " ";
+    }
+    return os;
 }

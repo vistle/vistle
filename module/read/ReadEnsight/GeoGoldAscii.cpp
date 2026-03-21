@@ -15,19 +15,21 @@
 #include "GeoGoldAscii.h"
 #include "ReadEnsight.h"
 
-#include <vector>
-#include <string>
-#include <iostream>
-
+#include <boost/geometry/util/tuples.hpp>
 #include <vistle/core/unstr.h>
 #include <vistle/core/polygons.h>
 
 #include <boost/algorithm/string.hpp>
 using boost::algorithm::trim_copy;
 
+#include <vector>
+#include <string>
+#include <iostream>
+
+
 using namespace vistle;
 
-#define CERR std::cerr << "GeoGoldAscii::" << __func__ << ": "
+#define CERR std::cerr << "GeoGoldAscii::" << __func__ << ": " << where() << ": "
 
 // helper converts char buf containing num ints of length int_leng to int-array arr
 template<typename T>
@@ -56,7 +58,7 @@ static void atoiArr(size_t int_leng, char *buf, T *arr, size_t num)
         }
         // this warning should never occur
         if (i > num)
-            CERR << "WARNING: found more numbers than expected!" << std::endl;
+            std::cerr << "GeoGoldAscii: atoiArr: WARNING: found more numbers than expected" << std::endl;
         // chunk will not be empty
         if (!chunk.empty())
             arr[i] = atol(chunk.c_str());
@@ -64,7 +66,7 @@ static void atoiArr(size_t int_leng, char *buf, T *arr, size_t num)
     }
 }
 
-GeoGoldAscii::GeoGoldAscii(ReadEnsight *mod, const std::string &name): EnFile(mod, name, CaseFile::NOBIN), lineCnt_(0)
+GeoGoldAscii::GeoGoldAscii(ReadEnsight *mod, const std::string &name): EnFile(mod, name, CaseFile::NOBIN)
 {}
 
 // read the file
@@ -93,12 +95,12 @@ vistle::Object::ptr GeoGoldAscii::read(int timestep, int block, EnPart *part)
     file::seek(in, part->startPos(), SEEK_SET);
     CERR << "reading part: " << part << " at " << part->startPos() << std::endl;
     if (!readPart(in, *part)) {
-        ens->sendWarning("reading part#%d failed, skipping", part->getPartNum());
+        ens->sendError("reading part#%d failed, skipping", part->getPartNum());
         return out;
     }
 
     if (!readPartConn(in, *part)) {
-        ens->sendWarning("reading connectivity for part#%d failed, skipping", part->getPartNum());
+        ens->sendError("reading connectivity for part#%d failed, skipping", part->getPartNum());
         return out;
     }
     CERR << "part: " << part << std::endl;
@@ -135,22 +137,23 @@ vistle::Object::ptr GeoGoldAscii::read(int timestep, int block, EnPart *part)
 // get Bounding Box section in EnSight GOLD (only)
 bool GeoGoldAscii::readBB(FILE *in)
 {
+    auto pos = file::tell(in);
     char buf[lineLen];
     // 2 lines description - ignore it
     fgets(buf, lineLen, in);
-    ++lineCnt_;
     std::string line(buf);
     if (line.find("extents") != std::string::npos) {
+        ++m_lineCount;
         //CERR << "extents section found" << std::endl;
         fgets(buf, lineLen, in);
-        ++lineCnt_;
+        ++m_lineCount;
         fgets(buf, lineLen, in);
-        ++lineCnt_;
+        ++m_lineCount;
         fgets(buf, lineLen, in);
-        ++lineCnt_;
+        ++m_lineCount;
     } else {
         // rewind one line
-        file::seek(in, -5L, SEEK_CUR);
+        file::seek(in, pos, SEEK_SET);
     }
 
     return true;
@@ -162,12 +165,12 @@ bool GeoGoldAscii::readHeader(FILE *in)
     char buf[lineLen];
     // 2 lines description - ignore it
     fgets(buf, lineLen, in);
-    ++lineCnt_;
+    ++m_lineCount;
     fgets(buf, lineLen, in);
-    ++lineCnt_;
+    ++m_lineCount;
     // node id
     fgets(buf, lineLen, in);
-    ++lineCnt_;
+    ++m_lineCount;
     std::string tmp(buf);
     char tok[20];
     strcpy(tok, " id");
@@ -197,7 +200,7 @@ bool GeoGoldAscii::readHeader(FILE *in)
 
     // element id
     fgets(buf, lineLen, in);
-    ++lineCnt_;
+    ++m_lineCount;
     tmp = std::string(buf);
 
     beg = tmp.find(tok);
@@ -223,7 +226,6 @@ bool GeoGoldAscii::readHeader(FILE *in)
         ret = false;
     }
 
-
     return ret;
 }
 
@@ -233,20 +235,20 @@ bool GeoGoldAscii::readPart(FILE *in, EnPart &actPart)
     int noRead(0);
     // 2 lines description - ignore it
     fgets(buf, lineLen, in);
-    ++lineCnt_;
+    ++m_lineCount;
     std::string line(buf);
-    CERR << lineCnt_ << " : " << line << std::endl;
+    CERR << m_lineCount << " : " << line << std::endl;
     if (line.find("part") == std::string::npos) {
-        CERR << lineCnt_ << " NO part header found" << std::endl;
+        CERR << m_lineCount << " NO part header found" << std::endl;
         return false;
     }
 
     // part No
     fgets(buf, lineLen, in);
-    ++lineCnt_;
+    ++m_lineCount;
     int partNo = -1;
     noRead = sscanf(buf, "%d", &partNo);
-    actPartNumber_ = partNo;
+    m_actPartNum = partNo;
     actPart.setPartNum(partNo);
     //CERR << "got part No: " << partNo << std::endl;
     if (noRead != 1) {
@@ -256,11 +258,11 @@ bool GeoGoldAscii::readPart(FILE *in, EnPart &actPart)
 
     // description line
     fgets(buf, lineLen, in);
-    ++lineCnt_;
+    ++m_lineCount;
     actPart.setComment(buf);
     // coordinates token
     fgets(buf, lineLen, in);
-    ++lineCnt_;
+    ++m_lineCount;
     line = std::string(buf);
     if (line.find("coordinates") == std::string::npos) {
         CERR << "coordinates key not found" << std::endl;
@@ -268,7 +270,7 @@ bool GeoGoldAscii::readPart(FILE *in, EnPart &actPart)
     }
     // number of coordinates
     fgets(buf, lineLen, in);
-    ++lineCnt_;
+    ++m_lineCount;
     size_t nc(0);
     noRead = sscanf(buf, "%zu", &nc);
     //CERR << "got No. of coordinates (per part): " << nc << std::endl;
@@ -276,6 +278,7 @@ bool GeoGoldAscii::readPart(FILE *in, EnPart &actPart)
         CERR << "Error reading no of coordinates" << std::endl;
         return false;
     }
+    actPart.clearFields();
     actPart.setNumCoords(nc);
     // allocate memory for the coordinate list per part
     actPart.x3d_.construct(nc);
@@ -289,60 +292,27 @@ bool GeoGoldAscii::readPart(FILE *in, EnPart &actPart)
     // id's or coordinates
     float val;
     switch (nodeId_) {
-    case OFF:
-    case ASSIGN:
-    case EN_IGNORE:
-        // read x-values
-        for (size_t i = 0; i < nc; ++i) {
-            fgets(buf, lineLen, in);
-            ++lineCnt_;
-            noRead = sscanf(buf, "%e", &val);
-            if (noRead != 1) {
-                CERR << "Error reading coordinates" << std::endl;
-                return false;
-            }
-            x[i] = val;
-        }
-        // read y-values
-        for (size_t i = 0; i < nc; ++i) {
-            fgets(buf, lineLen, in);
-            ++lineCnt_;
-            noRead = sscanf(buf, "%e", &val);
-            if (noRead != 1) {
-                CERR << "Error reading coordinates" << std::endl;
-                return false;
-            }
-            y[i] = val;
-        }
-        // read z-values
-        for (size_t i = 0; i < nc; ++i) {
-            fgets(buf, lineLen, in);
-            ++lineCnt_;
-            noRead = sscanf(buf, "%e", &val);
-            if (noRead != 1) {
-                CERR << "Error reading coordinates" << std::endl;
-                return false;
-            }
-            z[i] = val;
-        }
-        break;
     case GIVEN:
         // index array
         // the index array is currently ignored
         int iVal;
         for (size_t i = 0; i < nc; ++i) {
             fgets(buf, lineLen, in);
-            ++lineCnt_;
+            ++m_lineCount;
             noRead = sscanf(buf, "%d", &iVal);
             if (noRead != 1) {
                 CERR << "Error reading index array" << std::endl;
                 return false;
             }
         }
+        // fall through
+    case OFF:
+    case ASSIGN:
+    case EN_IGNORE:
         // read x-values
         for (size_t i = 0; i < nc; ++i) {
             fgets(buf, lineLen, in);
-            ++lineCnt_;
+            ++m_lineCount;
             noRead = sscanf(buf, "%e", &val);
             if (noRead != 1) {
                 CERR << "Error reading coordinates" << std::endl;
@@ -353,7 +323,7 @@ bool GeoGoldAscii::readPart(FILE *in, EnPart &actPart)
         // read y-values
         for (size_t i = 0; i < nc; ++i) {
             fgets(buf, lineLen, in);
-            ++lineCnt_;
+            ++m_lineCount;
             noRead = sscanf(buf, "%e", &val);
             if (noRead != 1) {
                 CERR << "Error reading coordinates" << std::endl;
@@ -364,7 +334,7 @@ bool GeoGoldAscii::readPart(FILE *in, EnPart &actPart)
         // read z-values
         for (size_t i = 0; i < nc; ++i) {
             fgets(buf, lineLen, in);
-            ++lineCnt_;
+            ++m_lineCount;
             noRead = sscanf(buf, "%e", &val);
             if (noRead != 1) {
                 CERR << "Error reading coordinates" << std::endl;
@@ -384,7 +354,7 @@ bool GeoGoldAscii::readPart(FILE *in, EnPart &actPart)
 
 bool GeoGoldAscii::readPartConn(FILE *in, EnPart &actPart)
 {
-    int &partNo(actPartNumber_);
+    int &partNo(m_actPartNum);
 
     char buf[lineLen];
     int currElePtr3d = 0, currElePtr2d = 0;
@@ -423,13 +393,14 @@ bool GeoGoldAscii::readPartConn(FILE *in, EnPart &actPart)
     // we don't know a priori how many EnSight elements we can expect here therefore we have to read
     // until we find a new 'part'
     while (!feof(in)) {
+        auto pos = file::tell(in);
         fgets(buf, lineLen, in);
-        ++lineCnt_;
+        ++m_lineCount;
         std::string tmp(buf);
 
         if (tmp.find("part") != std::string::npos) {
             // we have read one line more than needed
-            file::seek(in, -5L, SEEK_CUR);
+            file::seek(in, pos, SEEK_SET);
             break;
         }
         // scan for element type
@@ -437,10 +408,10 @@ bool GeoGoldAscii::readPartConn(FILE *in, EnPart &actPart)
         EnElement elem(elementType);
         // we have a valid EnSight element
         if (elem.valid()) {
-            std::vector<int> blanklist;
+            std::vector<vistle::Byte> blanklist;
             // get number of elements
             fgets(buf, lineLen, in);
-            ++lineCnt_;
+            ++m_lineCount;
             numElements = atol(buf);
             //CERR << elementType << "  " <<  numElements <<  std::endl;
             size_t nc = elem.getNumberOfCorners();
@@ -456,7 +427,7 @@ bool GeoGoldAscii::readPartConn(FILE *in, EnPart &actPart)
             case GIVEN:
                 for (size_t i = 0; i < numElements; ++i) {
                     fgets(buf, lineLen, in);
-                    ++lineCnt_;
+                    ++m_lineCount;
                 }
                 break;
             default:
@@ -467,7 +438,7 @@ bool GeoGoldAscii::readPartConn(FILE *in, EnPart &actPart)
 
             for (size_t i = 0; i < numElements; ++i) {
                 fgets(buf, lineLen, in);
-                ++lineCnt_;
+                ++m_lineCount;
                 // an integer always has 10 figures (see EnSight docu EnGold)
                 atoiArr(10, buf, locArr, nc);
                 // remap indices (EnSight elements may have a different numbering scheme than Vistle)
@@ -478,7 +449,7 @@ bool GeoGoldAscii::readPartConn(FILE *in, EnPart &actPart)
                 // distinct point
                 bool degen = !elem.hasDistinctCorners(cornIn);
                 if (degen) {
-                    blanklist.push_back(-1);
+                    blanklist.push_back(0);
                     degCells++;
                 } else {
                     blanklist.push_back(1);
@@ -501,7 +472,7 @@ bool GeoGoldAscii::readPartConn(FILE *in, EnPart &actPart)
                 }
             }
             elem.setBlanklist(std::move(blanklist));
-            actPart.addElement(elem, numElements);
+            actPart.addElement(std::move(elem), numElements);
         }
     }
 
@@ -532,8 +503,7 @@ bool GeoGoldAscii::readPartConn(FILE *in, EnPart &actPart)
 //
 // Destructor
 //
-GeoGoldAscii::~GeoGoldAscii()
-{}
+GeoGoldAscii::~GeoGoldAscii() = default;
 
 //
 // set up a list of parts
@@ -559,9 +529,9 @@ bool GeoGoldAscii::parseForParts()
         size_t nElem2D(0), nElem3D(0);
         ssize_t filePos = file::tell(in);
         fgets(buf, lineLen, in);
-        ++lineCnt_;
+        ++m_lineCount;
         std::string tmp(buf);
-        int actPartNr;
+        int actPartNr = 0;
 
         // scan for part token
         // read comment and print part line
@@ -571,24 +541,24 @@ bool GeoGoldAscii::parseForParts()
             // part line found
             // get part number
             fgets(buf, lineLen, in);
-            ++lineCnt_;
+            ++m_lineCount;
             actPartNr = atol(buf);
 
             // comment line we need it for the table output
             fgets(buf, lineLen, in);
-            ++lineCnt_;
+            ++m_lineCount;
             std::string comment(buf);
 
             // coordinates token
             fgets(buf, lineLen, in);
-            ++lineCnt_;
+            ++m_lineCount;
             std::string coordTok(buf);
             id = coordTok.find("coordinates");
             size_t numCoords(0);
             if (id != std::string::npos) {
                 // number of coordinates
                 fgets(buf, lineLen, in);
-                ++lineCnt_;
+                ++m_lineCount;
                 numCoords = atol(buf);
                 //CERR << "numCoords " << numCoords << std::endl;
                 switch (nodeId_) {
@@ -621,7 +591,7 @@ bool GeoGoldAscii::parseForParts()
         if (elem.valid()) {
             // get number of elements
             fgets(buf, lineLen, in);
-            ++lineCnt_;
+            ++m_lineCount;
             size_t numElements = atol(buf);
             size_t nc(elem.getNumberOfCorners());
             switch (elementId_) {
@@ -638,16 +608,15 @@ bool GeoGoldAscii::parseForParts()
             // the dimension of the cuurent part. The real numbers will be set
             // during the read phase
             if (elem.getDim() == EnElement::D2) {
-                if (actPart != nullptr)
-                    actPart->setNumEleRead2d(1);
+                nElem2D += numElements;
+                actPart->setNumEleRead2d(nElem2D);
             }
             if (elem.getDim() == EnElement::D3) {
-                if (actPart != nullptr)
-                    actPart->setNumEleRead3d(1);
+                nElem3D += numElements;
+                actPart->setNumEleRead3d(nElem3D);
             }
 
-            if (actPart != nullptr)
-                actPart->addElement(elem, numElements, false);
+            actPart->addElement(std::move(elem), numElements, false);
         }
     }
 

@@ -27,14 +27,16 @@ public:
     bool read(Token &token, int timestep = -1, int block = -1) override;
     bool finishRead() override;
 
-    std::vector<PartList> globalParts_;
+    PartList m_earlyParts; // saves parts and their offsets into the geometry file for the first timestep, if requested
+    PartList m_masterParts; // only  geometry parts, no fields
+    std::vector<PartList> m_globalParts; // all parts for all timesteps
     bool hasPartWithDim(int dim) const;
 
     bool byteSwap() const;
 
 private:
     // write a list of parts to the map editor (info channel)
-    bool createPartlists(int timestep, bool quick = false);
+    bool createPartlists(int timestep, bool onlyGeo = false);
     bool makeGeoFiles();
 
     std::vector<std::pair<vistle::Port *, std::string>> getActiveFields(EnFile::ReadType what);
@@ -60,5 +62,6 @@ private:
 
     std::vector<std::string> m_geoFiles;
     std::vector<std::string> m_fieldFiles[NumFields];
+    std::map<int, vistle::Object::const_ptr> m_constantGeo;
 };
 #endif

@@ -20,7 +20,7 @@
 
 using namespace vistle;
 
-#define CERR std::cerr << "DataGoldAscii::" << __func__ << ": "
+#define CERR std::cerr << "DataGoldAscii::" << __func__ << ": " << where() << ": "
 
 DataGoldAscii::DataGoldAscii(ReadEnsight *mod, const std::string &name, int dim, bool perVertex)
 : EnFile(mod, name, dim, CaseFile::NOBIN), lineCnt_(0), perVertex_(perVertex)
@@ -191,7 +191,7 @@ vistle::Object::ptr DataGoldAscii::read(int timestep, int block, EnPart *part)
                 ++lineCnt_;
                 actPartNr = atol(buf);
                 if (actPartNr != partToRead) {
-                    CERR << "part " << actPartNr << ", but reading for " << partToRead << ", returning" << std::endl;
+                    //CERR << "part " << actPartNr << ", but reading for " << partToRead << ", returning" << std::endl;
                     return result;
                 }
 
@@ -280,83 +280,67 @@ vistle::Object::ptr DataGoldAscii::read(int timestep, int block, EnPart *part)
             }
         }
 
+        std::stringstream err;
+        err << "in  block " << block << " timestep " << timestep << " on part " << part->comment() << ": ";
+
         // coordinates -line
         id = tmp.find("coordinates");
         if (id == std::string::npos) {
             std::string elementType(tmp);
             EnElement elem(elementType);
 
-            size_t anzEle(0);
             // we have a valid EnSight element
-            if (elem.valid()) {
-                anzEle = part->getElementNum(elem.getEnType());
-                //CERR << anzEle << " for " << elementType  << std::endl;
-                EnElement thisEle = part->findElementType(elem.getEnType());
-                std::vector<int> bl(thisEle.getBlanklist());
-                if (thisEle.getBlanklist().size() != anzEle) {
-                    CERR << "blanklist size problem " << bl.size() << std::endl;
-                }
+            if (!elem.valid()) {
+                err << "unknown element type " << elementType;
+                ens->sendError(err.str());
+                result.reset();
+                return result;
+            }
 
-                switch (dim_) {
-                case 1:
-                    // scalar data
-                    if (thisEle.getDim() == EnElement::D2) {
-                        for (size_t i = 0; i < anzEle; ++i) {
-                            fgets(buf, lineLen, in);
-                            ++lineCnt_;
-                            sscanf(buf, "%e", &val);
-                            if (bl[i] > 0) {
-                                arr[0][eleCnt2d] = val;
-                                ++eleCnt2d;
-                            }
-                        }
-                    } else if (thisEle.getDim() == EnElement::D3) {
-                        for (size_t i = 0; i < anzEle; ++i) {
-                            fgets(buf, lineLen, in);
-                            ++lineCnt_;
-                            sscanf(buf, "%e", &val);
-                            if (bl[i] > 0) {
-                                arr[0][eleCnt3d] = val;
-                                ++eleCnt3d;
-                            }
-                        }
-                    }
-                    break;
-                case 3: {
-                    float *tArr[3] = {};
-                    for (int j = 0; j < 3; j++) {
-                        tArr[j] = new float[anzEle];
-                        for (size_t i = 0; i < anzEle; ++i) {
-                            fgets(buf, lineLen, in);
-                            ++lineCnt_;
-                            sscanf(buf, "%e", &(tArr[j][i]));
-                        }
-                    }
-                    if (thisEle.getDim() == EnElement::D2) {
-                        for (size_t i = 0; i < anzEle; ++i) {
-                            if (bl[i] > 0) {
-                                arr[0][eleCnt2d] = tArr[0][i];
-                                arr[1][eleCnt2d] = tArr[1][i];
-                                arr[2][eleCnt2d] = tArr[2][i];
-                                ++eleCnt2d;
-                            }
-                        }
-                    } else if (thisEle.getDim() == EnElement::D3) {
-                        for (size_t i = 0; i < anzEle; ++i) {
-                            if (bl[i] > 0) {
-                                arr[0][eleCnt3d] = tArr[0][i];
-                                arr[1][eleCnt3d] = tArr[1][i];
-                                arr[2][eleCnt3d] = tArr[2][i];
-                                ++eleCnt3d;
+            size_t anzEle = part->getElementNum(elem.getEnType());
+            //CERR << anzEle << " for " << elementType  << std::endl;
+            const auto *thisEle = part->findElementType(elem.getEnType());
+            if (!thisEle) {
+                err << "element not found for type " << elem.getEnType();
+                ens->sendError(err.str());
+                result.reset();
+                return result;
+            }
+            const auto &bl = thisEle->getBlanklist();
+            if (bl.size() != anzEle) {
+                err << "blanklist size " << bl.size() << " does not match number of elements " << anzEle
+                    << " for element type " << elementType;
+                ens->sendError(err.str());
+                result.reset();
+                return result;
+            }
+
+            switch (dim_) {
+            case 1:
+            case 3: {
+                size_t num2d = eleCnt2d, num3d = eleCnt3d;
+                for (int j = 0; j < dim_; j++) {
+                    num2d = eleCnt2d;
+                    num3d = eleCnt3d;
+                    for (size_t i = 0; i < anzEle; ++i) {
+                        fgets(buf, lineLen, in);
+                        ++lineCnt_;
+                        sscanf(buf, "%e", &val);
+                        if (bl[i] > 0) {
+                            if (thisEle->getDim() == EnElement::D2) {
+                                arr[j][num2d] = val;
+                                ++num2d;
+                            } else if (thisEle->getDim() == EnElement::D3) {
+                                arr[j][num3d] = val;
+                                ++num3d;
                             }
                         }
                     }
-                    for (int j = 0; j < 3; ++j) {
-                        delete[] tArr[j];
-                    }
-                    break;
                 }
-                }
+                eleCnt2d = num2d;
+                eleCnt3d = num3d;
+                break;
+            }
             }
         }
     }

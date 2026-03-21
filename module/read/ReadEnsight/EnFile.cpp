@@ -202,14 +202,14 @@ std::unique_ptr<EnFile> EnFile::createDataFile(ReadEnsight *mod, const CaseFile 
 }
 
 EnFile::EnFile(ReadEnsight *mod, const std::string &name, const int dim, const CaseFile::BinType binType)
-: fileMayBeCorrupt_(false), binType_(binType), byteSwap_(false), dim_(dim), ens(mod), name_(name), in_(open())
+: binType_(binType), fileMayBeCorrupt_(false), byteSwap_(false), dim_(dim), ens(mod), name_(name), in_(open())
 {
     if (mod)
         byteSwap_ = mod->byteSwap();
 }
 
 EnFile::EnFile(ReadEnsight *mod, const std::string &name, const CaseFile::BinType binType)
-: fileMayBeCorrupt_(false), binType_(binType), byteSwap_(false), dim_(1), ens(mod), name_(name), in_(open())
+: binType_(binType), fileMayBeCorrupt_(false), byteSwap_(false), dim_(1), ens(mod), name_(name), in_(open())
 {
     if (mod)
         byteSwap_ = mod->byteSwap();
@@ -240,6 +240,11 @@ bool EnFile::isOpen()
     return in_.get() != nullptr;
 }
 
+bool EnFile::mayBeCorrupt() const
+{
+    return fileMayBeCorrupt_;
+}
+
 CaseFile::BinType EnFile::binType()
 {
     assert(binType_ != CaseFile::UNKNOWN);
@@ -258,13 +263,12 @@ void EnFile::skipFloat(FILE *in, size_t n)
 
         size_t olen(getSizeRaw(in));
         if ((ilen != olen)) {
-            CERR << "ERROR: wrong number of elements in block, expected" << n << " but blockstart: " << ilen
+            CERR << where() << ": "
+                 << "ERROR: wrong number of elements in block, expected" << n << " but blockstart: " << ilen
                  << " blockend: " << olen << std::endl;
         }
-    }
-
-    // Read floats up to 4GB
-    else {
+    } else {
+        // Read floats up to 4GB
         file::seek(in, n * sizeof(float), SEEK_CUR);
     }
 }
@@ -280,7 +284,8 @@ void EnFile::skipInt(FILE *in, size_t n)
 
         size_t olen(getSizeRaw(in));
         if ((ilen != olen) || (ilen != n * 4)) {
-            CERR << "ERROR: wrong number of elements in block, expected" << n << " but blockstart: " << ilen
+            CERR << where() << ": "
+                 << "ERROR: wrong number of elements in block, expected" << n << " but blockstart: " << ilen
                  << " blockend: " << olen << std::endl;
         }
     } else {
@@ -305,15 +310,18 @@ std::string EnFile::getStr(FILE *in)
             //end of file reached
             return ret;
         } else if (feof(in)) {
-            CERR << "ERROR: error during read of a fortran string" << std::endl;
+            CERR << where() << ": "
+                 << "ERROR: error during read of a fortran string" << std::endl;
             return ret;
         }
         //automatic byteorder detection
         if (ilen == 0) {
             olen = getSizeRaw(in);
-            CERR << "WARNING: empty std::string" << std::endl;
+            CERR << where() << ": "
+                 << "WARNING: empty std::string" << std::endl;
             if (olen != 0) {
-                CERR << "ERROR: not a fortran std::string " << std::endl;
+                CERR << where() << ": "
+                     << "ERROR: not a fortran std::string " << std::endl;
             }
             return ret;
         }
@@ -322,31 +330,37 @@ std::string EnFile::getStr(FILE *in)
             byteSwap(ilen);
         }
         if (ilen != strLen) {
-            CERR << "ERROR: not a fortran std::string of length 80" << std::endl;
+            CERR << where() << ": "
+                 << "ERROR: not a fortran std::string of length 80" << std::endl;
             return ret;
         }
         fread(buf, strLen, 1, in);
         if (feof(in)) {
-            CERR << "ERROR: end of file during read of a fortran std::string of length 80" << std::endl;
+            CERR << where() << ": "
+                 << "ERROR: end of file during read of a fortran std::string of length 80" << std::endl;
             return ret;
         } else if (ferror(in)) {
-            CERR << "ERROR: error during read of a fortran std::string of length 80" << std::endl;
+            CERR << where() << ": "
+                 << "ERROR: error during read of a fortran std::string of length 80" << std::endl;
             return ret;
         }
         olen = getSizeRaw(in);
         if (ilen != olen) {
-            CERR << "ERROR: not a fortran std::string of length 80" << std::endl;
+            CERR << where() << ": "
+                 << "ERROR: not a fortran std::string of length 80" << std::endl;
             return ret;
         }
     } else {
         fread(buf, strLen, 1, in);
         if (feof(in)) {
 #ifdef DEBUG
-            CERR << "ERROR: end of file during read of a C std::string of length 80" << std::endl;
+            CERR << where() << ": "
+                 << "ERROR: end of file during read of a C std::string of length 80" << std::endl;
 #endif
             return ret;
         } else if (ferror(in)) {
-            CERR << "ERROR: error during read of a C std::string of length 80" << std::endl;
+            CERR << where() << ": "
+                 << "ERROR: error during read of a C std::string of length 80" << std::endl;
             return ret;
         }
     }
@@ -363,10 +377,12 @@ T EnFile::getValRaw(FILE *in)
     T ret = 0;
     fread(&ret, sizeof(T), 1, in); // read a 4 byte integer
     if (feof(in)) {
-        CERR << "ERROR: end of file during read a value of size " << sizeof(T) << std::endl;
+        CERR << where() << ": "
+             << "ERROR: end of file during read a value of size " << sizeof(T) << std::endl;
         return 0;
     } else if (ferror(in)) {
-        CERR << "ERROR: error during read a value of size " << sizeof(T) << std::endl;
+        CERR << where() << ": "
+             << "ERROR: error during read a value of size " << sizeof(T) << std::endl;
         return 0;
     }
     if (byteSwap_) {
@@ -415,10 +431,12 @@ bool EnFile::getValArrHelper(FILE *in, size_t n, T *arr)
 
     fread(arr, sizeof(T), n, in);
     if (feof(in)) {
-        CERR << "ERROR: end of file during read of an array of size " << n * sizeof(T) << std::endl;
+        CERR << where() << ": "
+             << "ERROR: end of file during read of an array of size " << n * sizeof(T) << std::endl;
         return false;
     } else if (ferror(in)) {
-        CERR << "ERROR: error during read of an array of size " << n * sizeof(T) << std::endl;
+        CERR << where() << ": "
+             << "ERROR: error during read of an array of size " << n * sizeof(T) << std::endl;
         return false;
     }
 
@@ -441,10 +459,12 @@ T *EnFile::getValArr(FILE *in, size_t n, T *arr)
             getValArrHelper(in, n, arr);
             size_t olen(getSizeRaw(in));
             if ((ilen != olen) && (!feof(in))) {
-                CERR << "length mismatch (fortran) " << std::endl;
+                CERR << where() << ": "
+                     << "length mismatch (fortran) " << std::endl;
             }
         } else {
-            CERR << "stream not in good condition" << std::endl;
+            CERR << where() << ": "
+                 << "stream not in good condition" << std::endl;
         }
     } else {
         getValArrHelper(in, n, arr);
@@ -501,7 +521,8 @@ vistle::Scalar *EnFile::getFloatArr(FILE *in, size_t n, vistle::Scalar *farr)
             if (byteSwap_)
                 byteSwap((uint64_t *)buf, n);
             memcpy(dummyArr, buf, ilen);
-            CERR << "got 64-bit floats" << std::endl;
+            CERR << where() << ": "
+                 << "got 64-bit floats" << std::endl;
             if (farr != nullptr) {
                 for (size_t i = 0; i < n; ++i)
                     farr[i] = (float)dummyArr[i];
@@ -512,7 +533,8 @@ vistle::Scalar *EnFile::getFloatArr(FILE *in, size_t n, vistle::Scalar *farr)
             olen = getSizeRaw(in);
         }
         if ((ilen != olen) && (!feof(in))) {
-            CERR << "length mismatch (fortran) " << ilen << "     " << olen << std::endl;
+            CERR << where() << ": "
+                 << "length mismatch (fortran) " << ilen << "     " << olen << std::endl;
         }
 
         if (!eightBytePerFloat) {
@@ -549,11 +571,14 @@ std::string EnFile::name() const
 // find a part by its part number
 EnPart *EnFile::findPart(const int partNum) const
 {
-    if (partList_ != nullptr) {
-        for (size_t i = 0; i < partList_->size(); ++i) {
-            if ((*partList_)[i].getPartNum() == partNum)
-                return &(*partList_)[i];
-        }
+    if (!partList_) {
+        CERR << "findPart num=" << partNum << ": no part list" << std::endl;
+        return nullptr;
+    }
+
+    for (size_t i = 0; i < partList_->size(); ++i) {
+        if ((*partList_)[i].getPartNum() == partNum)
+            return &(*partList_)[i];
     }
     return nullptr;
 }
@@ -587,4 +612,9 @@ bool EnFile::hasPartWithDim(int dim) const
     }
 
     return false;
+}
+
+std::string EnFile::where() const
+{
+    return name_ + "@" + std::to_string(filePos());
 }

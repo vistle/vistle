@@ -27,6 +27,7 @@
 #include <boost/serialization/vector.hpp>
 
 #include <vistle/core/celltypes.h>
+#include <vistle/core/scalar.h>
 
 class EnPart;
 
@@ -69,13 +70,17 @@ public:
 
     /// copy constructor
     EnElement(const EnElement &e);
+    EnElement(EnElement &&e);
 
     const EnElement &operator=(const EnElement &e);
 
     /// DESTRUCTOR
     ~EnElement();
 
-    // return the dimEnsionality of element
+    // basic sanity check
+    bool check() const;
+
+    // return the dimensionality of element
     // i.e. 2D 3D
     Dimensionality getDim() const;
 
@@ -95,7 +100,7 @@ public:
     bool empty() const;
 
     // remap: either resort element corners or make new connectivity
-    size_t remap(unsigned *cornIn, unsigned *cornOut);
+    size_t remap(const unsigned *cornIn, unsigned *cornOut);
 
     // return EnSight type as a std::string
     std::string getEnTypeStr() const;
@@ -106,9 +111,9 @@ public:
     // returns true if cell is fully degenerated i.e. a point
     unsigned distinctCorners(const unsigned *ci, unsigned *co) const;
 
-    void setBlanklist(std::vector<int> &&bl);
+    void setBlanklist(std::vector<vistle::Byte> &&bl);
 
-    const std::vector<int> &getBlanklist() const;
+    const std::vector<vistle::Byte> &getBlanklist() const;
 
 private:
     bool valid_ = false;
@@ -118,12 +123,9 @@ private:
     vistle::cell::CellType vistleType_ = vistle::cell::NONE;
     Type enType_;
 
-    size_t startIdx_ = 0;
-    size_t endIdx_ = 0;
-
     std::string enTypeStr_;
 
-    std::vector<int> dataBlanklist_;
+    std::vector<vistle::Byte> dataBlanklist_;
 
     template<class Archive>
     void serialize(Archive &ar, const unsigned int version)
@@ -134,8 +136,6 @@ private:
         ar &dim_;
         ar &vistleType_;
         ar &enType_;
-        ar &startIdx_;
-        ar &endIdx_;
         ar &enTypeStr_;
         ar &dataBlanklist_;
     }

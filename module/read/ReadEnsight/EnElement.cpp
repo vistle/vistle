@@ -13,7 +13,6 @@
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 #include "EnElement.h"
-//#include "GeoFileAsc.h"
 
 #include <iostream>
 #include <cstring>
@@ -33,7 +32,9 @@ namespace cell = vistle::cell;
 // Constructor
 //
 EnElement::EnElement(): valid_(false), empty_(true)
-{}
+{
+    check();
+}
 
 EnElement::EnElement(const std::string &name)
 : valid_(false)
@@ -163,6 +164,8 @@ EnElement::EnElement(const std::string &name)
         valid_ = false;
         empty_ = true;
     }
+
+    check();
 }
 
 EnElement::EnElement(const EnElement &e)
@@ -172,11 +175,24 @@ EnElement::EnElement(const EnElement &e)
 , dim_(e.dim_)
 , vistleType_(e.vistleType_)
 , enType_(e.enType_)
-, startIdx_(e.startIdx_)
-, endIdx_(e.endIdx_)
 , enTypeStr_(trim_copy(e.enTypeStr_))
 , dataBlanklist_(e.dataBlanklist_)
-{}
+{
+    check();
+}
+
+EnElement::EnElement(EnElement &&e)
+: valid_(e.valid_)
+, empty_(e.empty_)
+, numCorn_(e.numCorn_)
+, dim_(e.dim_)
+, vistleType_(e.vistleType_)
+, enType_(e.enType_)
+, enTypeStr_(trim_copy(e.enTypeStr_))
+, dataBlanklist_(std::move(e.dataBlanklist_))
+{
+    check();
+}
 
 const EnElement &EnElement::operator=(const EnElement &e)
 {
@@ -189,17 +205,33 @@ const EnElement &EnElement::operator=(const EnElement &e)
     dim_ = e.dim_;
     vistleType_ = e.vistleType_;
     enType_ = e.enType_;
-    startIdx_ = e.startIdx_;
-    endIdx_ = e.endIdx_;
     enTypeStr_ = trim_copy(e.enTypeStr_);
     dataBlanklist_ = e.dataBlanklist_;
+
+    check();
 
     return *this;
 }
 
+bool EnElement::check() const
+{
+    if (!valid_) {
+        return true;
+    }
+    if (empty_) {
+        return true;
+    }
+    if (vistleType_ == cell::NONE) {
+        CERR << "invalid Vistle type" << std::endl;
+        abort();
+        return false;
+    }
+    return true;
+}
+
 // extend it later to EnSight elements which are not present in Vistle, like hexa20, ...
 // EnElement::remap(int *eleIn, int *eleOut, int *newTypes, int *newElem...)
-size_t EnElement::remap(unsigned *cornIn, unsigned *cornOut)
+size_t EnElement::remap(const unsigned *cornIn, unsigned *cornOut)
 {
     // only 2D elements have to be remapped
     // at the first stage
@@ -321,12 +353,12 @@ unsigned EnElement::distinctCorners(const unsigned *ci, unsigned *co) const
     return distinct;
 }
 
-void EnElement::setBlanklist(std::vector<int> &&bl)
+void EnElement::setBlanklist(std::vector<vistle::Byte> &&bl)
 {
     dataBlanklist_ = bl;
 }
 
-const std::vector<int> &EnElement::getBlanklist() const
+const std::vector<vistle::Byte> &EnElement::getBlanklist() const
 {
     assert(valid_);
     return dataBlanklist_;

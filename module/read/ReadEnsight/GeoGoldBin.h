@@ -44,8 +44,7 @@ private:
     // read bounding box (EnSight Gold)
     bool readBB(FILE *in);
 
-    size_t m_numCoords = 0; // number of coordinates
     int m_actPartNum = -1;
-    bool partFound = false;
+    bool m_partFound = false;
 };
 #endif
