@@ -1,3 +1,4 @@
+#include <boost/asio/error.hpp>
 #include <iostream>
 #include <functional>
 #include <memory>
@@ -420,23 +421,25 @@ bool recv_message(socket_t &sock, message::Buffer &msg, error_code &ec, bool blo
     }
 #endif
     auto szbuf = boost::asio::buffer(&sz, sizeof(sz));
-    size_t n = asio::read(sock, szbuf, ec);
+    do {
+        size_t n = asio::read(sock, szbuf, ec);
 #ifndef BLOCKING
-    if (!block)
-        sock.non_blocking(false);
+        if (!block)
+            sock.non_blocking(false);
 #endif
-    if (ec) {
+        if (ec) {
 #ifndef BLOCKING
-        if (!block && ec == boost::asio::error::would_block) {
-            ec.clear();
+            if (!block && ec == boost::asio::error::would_block) {
+                ec.clear();
+                return false;
+            }
+#endif
+            if (n != 0 || ec != boost::asio::error::eof) {
+                std::cerr << "message::recv: size error " << ec.message() << ", read " << n << " bytes" << std::endl;
+            }
             return false;
         }
-#endif
-        if (n != 0 || ec != boost::asio::error::eof) {
-            std::cerr << "message::recv: size error " << ec.message() << ", read " << n << " bytes" << std::endl;
-        }
-        return false;
-    }
+    } while (ec == boost::asio::error::interrupted);
 
 #ifndef BLOCKING
     if (!block) {
