@@ -157,7 +157,7 @@ size_t Reader::waitForReaders(size_t maxRunning, bool &result)
 bool Reader::readTimestep(std::shared_ptr<Token> &prev, const ReaderProperties &prop, int timestep, int step)
 {
     if (!prepareTimestep(timestep)) {
-        sendInfo("error preparing timestep %d", timestep);
+        sendError("error preparing timestep %d", timestep);
         return false;
     }
 
@@ -194,7 +194,7 @@ bool Reader::readTimestep(std::shared_ptr<Token> &prev, const ReaderProperties &
             }
             if (m_parallel == Serial) {
                 if (!read(*token, timestep, p)) {
-                    sendInfo("error reading time data %d on partition %d", timestep, p);
+                    sendError("error reading time data %d on partition %d", timestep, p);
                     result = false;
                     break;
                 }
@@ -211,7 +211,7 @@ bool Reader::readTimestep(std::shared_ptr<Token> &prev, const ReaderProperties &
                     setThreadName(tname);
                     PROF_SCOPE(PROF_CTX("read t=" + std::to_string(timestep) + " b=" + std::to_string(p)));
                     if (!read(*token, timestep, p)) {
-                        sendInfo("error reading time data %d on partition %d", timestep, p);
+                        sendError("error reading time data %d on partition %d", timestep, p);
                         return false;
                     }
                     return true;
@@ -278,14 +278,14 @@ bool Reader::readTimesteps(std::shared_ptr<Token> &prev, const ReaderProperties 
 bool Reader::prepare()
 {
     if (!m_readyForRead) {
-        sendInfo("not ready for reading");
+        sendError("not ready for reading");
         return true;
     }
 
     {
         PROF_SCOPE(PROF_CTX("prepareRead"));
         if (!prepareRead()) {
-            sendInfo("initiating read failed");
+            sendError("initiating read failed");
             return true;
         }
     }
