@@ -17,7 +17,12 @@ private:
     vistle::StringParameter *m_cells = nullptr;
     vistle::IntParameter *m_makeBars = nullptr;
 
-    vistle::ResultCache<vistle::Lines::ptr> m_cache;
+    struct Result {
+        vistle::Lines::ptr lines;
+        std::vector<vistle::Index> remap;
+        bool haveOutput = false;
+    };
+    vistle::ResultCache<Result> m_cache;
 };
 
 #endif
