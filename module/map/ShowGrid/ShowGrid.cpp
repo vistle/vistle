@@ -87,10 +87,12 @@ bool ShowGrid::compute()
     auto mapped = split.mapped;
     bool perElement = mapped && mapped->guessMapping() == DataBase::Element;
 
-    std::vector<Index> remap;
-    vistle::Lines::ptr lines;
-    bool haveOutput = false;
-    if (auto *entry = m_cache.getOrLock(input->getName(), lines)) {
+    Result result;
+    auto &remap = result.remap;
+    auto &lines = result.lines;
+    auto &haveOutput = result.haveOutput;
+
+    if (auto *entry = m_cache.getOrLock(input->getName(), result)) {
         lines.reset(new vistle::Lines(Object::Initialized));
         auto &ocl = lines->cl();
         auto &oel = lines->el();
@@ -865,14 +867,16 @@ bool ShowGrid::compute()
             }
         }
 
-        lines->copyAttributes(grid);
-        updateMeta(lines);
-        m_cache.storeAndUnlock(entry, lines);
-
         haveOutput = !ocl.empty();
         if (!haveOutput) {
-            lines->resetArrays();
+            lines->resetCoords();
+            lines->resetElements();
+            lines->resetCorners();
         }
+
+        lines->copyAttributes(grid);
+        updateMeta(lines);
+        m_cache.storeAndUnlock(entry, result);
     }
 
     if (mapped) {
