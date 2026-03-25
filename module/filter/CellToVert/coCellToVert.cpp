@@ -247,7 +247,12 @@ bool coCellToVert::simpleAlgo<Scalar>(Index num_elem, Index num_conn, Index num_
 
 DataBase::ptr coCellToVert::interpolate(Object::const_ptr geo_in, DataBase::const_ptr data_in)
 {
-    if (!geo_in || !data_in) {
+    if (!geo_in) {
+        std::cerr << "not geometry" << std::endl;
+        return DataBase::ptr();
+    }
+    if (!data_in) {
+        std::cerr << "no mapped data" << std::endl;
         return DataBase::ptr();
     }
 
@@ -296,6 +301,8 @@ DataBase::ptr coCellToVert::interpolate(Object::const_ptr geo_in, DataBase::cons
 
     const Index dataSize = data_in->getSize();
     if (dataSize < num_elem) {
+        std::cerr << "not enough data: only " << dataSize << " items for " << num_elem << " elements: " << *data_in
+                  << std::endl;
         return DataBase::ptr();
     }
 
@@ -381,5 +388,6 @@ DataBase::ptr coCellToVert::interpolate(Object::const_ptr geo_in, DataBase::cons
         }
     }
 
+    std::cerr << "format not supported: need Scalar, Index, or Byte" << std::endl;
     return DataBase::ptr();
 }
