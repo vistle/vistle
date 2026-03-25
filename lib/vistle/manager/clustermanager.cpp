@@ -1267,7 +1267,8 @@ bool ClusterManager::handlePriv(const message::Execute &exec)
         break;
     }
     case message::Execute::Prepare: {
-        CERR << "sending prepare to " << exec.getModule() << ", checking for execution" << std::endl;
+        CERR << "sending prepare to " << exec.getModule() << ", checking for execution: prepared=" << mod.prepared
+             << ", reduced=" << mod.reduced << std::endl;
         assert(!mod.prepared);
         assert(mod.reduced);
         mod.prepared = true;
@@ -1277,7 +1278,8 @@ bool ClusterManager::handlePriv(const message::Execute &exec)
         break;
     }
     case message::Execute::Reduce: {
-        CERR << "sending reduce to " << exec.getModule() << std::endl;
+        CERR << "sending reduce to " << exec.getModule() << ": prepared=" << mod.prepared << ", reduced=" << mod.reduced
+             << std::endl;
         assert(mod.prepared);
         assert(!mod.reduced);
         mod.prepared = false;
@@ -1291,7 +1293,8 @@ bool ClusterManager::handlePriv(const message::Execute &exec)
             mod.prepared = false;
             mod.reduced = true;
         } else if (Communicator::the().getRank() == 0) {
-            CERR << "non-broadcast Execute: " << exec << std::endl;
+            CERR << "non-broadcast Execute: " << exec << ": prepared=" << mod.prepared << ", reduced=" << mod.reduced
+                 << std::endl;
             if (mod.ranksStarted > 0) {
                 mod.delay(exec);
             } else {
