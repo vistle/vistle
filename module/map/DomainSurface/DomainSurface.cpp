@@ -198,6 +198,7 @@ bool DomainSurface::compute(const std::shared_ptr<BlockTask> &task) const
 
         if (!haveElementData && dm.empty()) {
             DataBase::ptr dout = data->clone();
+            dout->setMapping(haveElementData ? DataBase::Element : DataBase::Vertex);
             dout->setGrid(geo);
             updateMeta(dout);
             task->addObject(port, dout);
@@ -206,6 +207,7 @@ bool DomainSurface::compute(const std::shared_ptr<BlockTask> &task) const
 
         DataBase::ptr data_obj_out = remapData(data, dm, true);
         if (data_obj_out) {
+            data_obj_out->setMapping(haveElementData ? DataBase::Element : DataBase::Vertex);
             data_obj_out->setGrid(geo);
             data_obj_out->setMeta(data->meta());
             data_obj_out->copyAttributes(data);
