@@ -488,7 +488,9 @@ Array *applyTriangle(typename Geometry::const_ptr tri, MappedPtr mapped, const O
     bool buildConn = bin.ntri == InvalidIndex;
     if (buildConn) {
         bin.ntri = 0;
-        bin.vertexMap.resize(tri->getNumCoords(), InvalidIndex);
+        if (adap.mapping == vistle::DataBase::Vertex && options.indexedGeometry) {
+            bin.vertexMap.resize(tri->getNumCoords(), InvalidIndex);
+        }
     }
     Index vcount = 0;
     for (Index prim: bin.prim) {
@@ -513,19 +515,18 @@ Array *applyTriangle(typename Geometry::const_ptr tri, MappedPtr mapped, const O
                         ++bin.ntri;
                     for (Index k = 0; k < 3; ++k) {
                         Index v = k == 0 ? cl[begin] : cl[i + k];
-                        Index vm = bin.vertexMap[v];
-                        if (vm == InvalidIndex) {
-                            assert(buildConn);
-                            vm = vcount;
-                            bin.vertexMap[v] = vm;
+                        Index &vm = bin.vertexMap[v];
+                        if (buildConn) {
+                            if (vm == InvalidIndex) {
+                                assert(buildConn);
+                                vm = vcount;
+                            }
+                            bin.ncl.push_back(vm);
                         }
+                        assert(vm != InvalidIndex);
                         if (vm == vcount) {
                             ++vcount;
-
                             arr->push_back(adap.getValue(v));
-                        }
-                        if (buildConn) {
-                            bin.ncl.push_back(vm);
                         }
                     }
                 }
@@ -575,11 +576,12 @@ osg::Vec3Array *computeNormals(typename Geometry::const_ptr geometry, const Opti
         normals->resize(useVertexNormals ? numCoords : numPrim);
         for (Index prim = 0; prim < numPrim; ++prim) {
             const Index begin = geo.getPrimitiveBegin(prim), end = geo.getPrimitiveBegin(prim + 1);
+            assert(end - begin >= 3);
             Index v0 = cl[begin + 0], v1 = cl[begin + 1], v2 = cl[begin + 2];
             osg::Vec3 u(x[v0], y[v0], z[v0]);
             osg::Vec3 v(x[v1], y[v1], z[v1]);
             osg::Vec3 w(x[v2], y[v2], z[v2]);
-            osg::Vec3 normal = (w - u) ^ (v - u) * -1;
+            osg::Vec3 normal = (v - u) ^ (w - u);
             normal.normalize();
 
             if (useVertexNormals) {
