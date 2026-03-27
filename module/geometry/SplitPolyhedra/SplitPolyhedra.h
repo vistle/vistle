@@ -2,6 +2,9 @@
 #define VISTLE_SPLITPOLYHEDRA_SPLITPOLYHEDRA_H
 
 #include <vistle/module/module.h>
+#include <vistle/core/unstr.h>
+
+#include <vector>
 
 class SplitPolyhedra: public vistle::Module {
 public:
@@ -14,7 +17,11 @@ private:
     static const unsigned NumPorts = 3;
     std::array<vistle::Port *, NumPorts> m_inPorts;
     std::array<vistle::Port *, NumPorts> m_outPorts;
-    vistle::ResultCache<vistle::UnstructuredGrid::ptr> m_grids;
+    struct Result {
+        vistle::UnstructuredGrid::ptr simple;
+        std::vector<vistle::Index> elementMapping;
+    };
+    vistle::ResultCache<Result> m_grids;
 };
 
 #endif
