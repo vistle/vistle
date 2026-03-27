@@ -75,6 +75,7 @@ bool SplitPolyhedra::compute()
         auto split = splitContainerObject(in);
         if (grid) {
             if (split.geometry && grid->getHandle() != split.geometry->getHandle()) {
+                std::cerr << "differing grids: expecting " << *grid << ", but got " << *split.geometry << std::endl;
                 sendError("all inputs must have the same grid");
                 return true;
             }
@@ -107,9 +108,10 @@ bool SplitPolyhedra::compute()
         return true;
     }
 
-    UnstructuredGrid::ptr simple;
-    std::vector<Index> elementMapping;
-    if (auto entry = m_grids.getOrLock(grid->getName(), simple)) {
+    Result result;
+    auto &simple = result.simple;
+    auto &elementMapping = result.elementMapping;
+    if (auto entry = m_grids.getOrLock(grid->getName(), result)) {
         const Index *iel = grid->el().data();
         const Index *icl = grid->cl().data();
         const Byte *itl = grid->tl().data();
@@ -458,7 +460,7 @@ bool SplitPolyhedra::compute()
         if (nBadSplit > 0) {
             std::ostringstream oss;
             oss << nBadSplit << " polyhedra could not be split properly: consider using SplitToTetrahedra mode";
-            sendWarning(oss.str());
+            sendError(oss.str());
         }
 
         if (simple) {
@@ -466,8 +468,9 @@ bool SplitPolyhedra::compute()
             updateMeta(simple);
         }
 
-        m_grids.storeAndUnlock(entry, simple);
+        m_grids.storeAndUnlock(entry, result);
     }
+
 
     for (unsigned i = 0; i < NumPorts; ++i) {
         if (!m_outPorts[i]->isConnected())
@@ -475,8 +478,9 @@ bool SplitPolyhedra::compute()
 
         if (data[i]) {
             DataBase::ptr ndata;
-            if (perElement) {
+            if (perElement && data[i]->guessMapping() == DataBase::Element) {
                 ndata = data[i]->cloneType();
+                ndata->copyAttributes(data[i]);
                 ndata->setSize(elementMapping.size());
                 for (Index e = 0; e < elementMapping.size(); ++e) {
                     ndata->copyEntry(e, data[i], elementMapping[e]);
