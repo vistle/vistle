@@ -13,8 +13,22 @@ int main(int argc, char *argv[])
     std::string hostname = vistle::hostname();
     auto dir = std::make_unique<vistle::Directory>(argc, argv);
 
-    auto config = vistle::config::Access(hostname, hostname);
+    int rank = -1;
+    if (argc >= 2) {
+        if (std::string(argv[1]) == "-r") {
+            if (argc == 2) {
+                std::cerr << "-r requires a `rank` argument" << std::endl;
+                return 1;
+            }
+            rank = atoi(argv[2]);
+            argv += 2;
+            argc -= 2;
+        }
+    }
+
+    auto config = vistle::config::Access(hostname, hostname, rank);
     config.setPrefix(dir->prefix());
+
 
     if (argc < 5 || argc > 6) {
         std::cerr << "usage: vistle_config type file section entry [default]" << std::endl;
