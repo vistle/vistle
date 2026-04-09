@@ -20,14 +20,15 @@ Sample::Sample(const std::string &name, int moduleID, mpi::communicator comm): M
 
     m_mode = addIntParameter("mode", "interpolation mode", vistle::GridInterface::Linear, Parameter::Choice);
     V_ENUM_SET_CHOICES_SCOPE(m_mode, InterpolationMode, vistle::GridInterface);
-    m_createCelltree = addIntParameter("create_celltree", "create celltree", m_useCelltree, Parameter::Boolean);
+    m_createCelltree = addIntParameter("create_celltree", "create celltree for accelerated cell search", m_useCelltree,
+                                       Parameter::Boolean);
 
     m_valOutside =
         addIntParameter("value_outside", "value to be used if target is outside source domain", NaN, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_valOutside, ValueOutside);
     m_userDef = addFloatParameter("user_defined_value", "user defined value if target outside source domain", 1.0);
 
-    m_hits = addIntParameter("multi_hits", "handling if multiple interpolatied values found for one target point ",
+    m_hits = addIntParameter("multi_hits", "handling if multiple interpolated values found for one target point",
                              Average, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_hits, MultiHits);
 }
