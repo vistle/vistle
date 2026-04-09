@@ -17,12 +17,12 @@ The value of `frequency` determines how often the pipeline is processed. If set 
 The `keep_timesteps` flag controls whether the data from all timesteps is retained for rendering or if only the current/newest timestep can be displayed.
 
 FIXME
--simulation specific commands:
-	if we are connected, the simulation sets commands that will be send to the simulation when the status of the according parameter is changed (value does not matter).
+- simulation specific commands:
+	if the module is connected, the simulation sets commands that will be sent to the simulation when the status of the according parameter is changed (value does not matter).
 	
 Communication details
 ---------------------
--command shm-message-queue:
+- command shm-message-queue:
 	exchange information between SENSEI's Vistle-analysis-adapter and the module
--recvFromSim shm-message-queue:
-	we receive vistle messages from the simulation and pass them to the manager as if the came from this module. Mainly used to add vistle objects to the pipeline.
+- recvFromSim shm-message-queue:
+	we receive Vistle messages from the simulation and pass them to the manager as if the came from this module. Mainly used to add Vistle objects to the pipeline.
