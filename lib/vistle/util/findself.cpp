@@ -68,11 +68,17 @@ std::string getbindir(int argc, char *argv[])
         std::cerr << "Communicator: getbindir(): GetModuleFileName failed - error: " << GetLastError() << std::endl;
     }
 #else
-    char buf[PATH_MAX];
+    char buf[PATH_MAX + 1];
 #ifdef __APPLE__
     uint32_t size = sizeof(buf);
-    if (_NSGetExecutablePath(buf, &size) == 0) {
-        executable = buf;
+    auto result = _NSGetExecutablePath(buf, &size);
+    char *exec = nullptr;
+    if (result == 0)
+        exec = realpath(buf, nullptr);
+    if (result == 0 && exec != nullptr) {
+        executable = exec;
+        free(exec);
+        exec = nullptr;
     } else
 #else
     ssize_t len = readlink("/proc/self/exe", buf, sizeof(buf));
