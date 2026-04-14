@@ -1,3 +1,7 @@
+if(NOT COVER_VRML_LIBRARY)
+    return()
+endif()
+
 # provide dependencies checked in using(VRML)
 foreach(
     P
