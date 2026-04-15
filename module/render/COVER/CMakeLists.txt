@@ -30,6 +30,10 @@ vistle_add_library(
     SHARED
     COVER.cpp
     COVER.h
+    CoverVariant.cpp
+    CoverVariant.h
+    CoverCreator.cpp
+    CoverCreator.h
     PluginRenderObject.cpp
     PluginRenderObject.h
     VistleGeometryGenerator.h
