@@ -1042,5 +1042,3 @@ bool COVER::handleMessage(const message::Message *message, const MessagePayload 
 
     return Renderer::handleMessage(message, payload);
 }
-
-PluginRenderObject::~PluginRenderObject() = default;
