@@ -19,6 +19,7 @@
 
 #include <vtkAlgorithm.h>
 #include <vtkCellArray.h>
+#include <vtkIdList.h>
 #include <vtkCellData.h>
 #include <vtkCompositeDataSet.h>
 #include <vtkImageData.h>
@@ -330,43 +331,44 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, std::string &diagnostic
 
         assert(typelist[elemVistle] < UnstructuredGrid::NUM_TYPES);
 
-        vtkIdType npts = 0;
-        IDCONST vtkIdType *pts = nullptr;
-        vugrid->GetFaceStream(i, npts, pts);
         if (typelist[elemVistle] == UnstructuredGrid::POLYHEDRON) {
-            Index nface = npts;
-
-            vtkIdType j = 0;
+            vtkNew<vtkIdList> faceStream;
+            vugrid->GetFaceStream(i, faceStream);
+            Index nface = faceStream->GetId(0);
+            vtkIdType j = 1;
             for (Index f = 0; f < nface; ++f) {
-                assert(pts[j] >= 0);
-                Index nvert = pts[j];
+                Index nvert = faceStream->GetId(j);
                 ++j;
-                Index first = pts[j];
+                Index first = faceStream->GetId(j);
                 for (Index v = 0; v < nvert; ++v) {
-                    assert(pts[j] >= 0);
-                    connlist.emplace_back(pts[j]);
+                    connlist.emplace_back(faceStream->GetId(j));
                     ++j;
                 }
                 connlist.emplace_back(first);
             }
-        } else if (vugrid->GetCellType(i) == VTK_LAGRANGE_HEXAHEDRON) {
-            auto lagrangeCell = static_cast<vtkLagrangeHexahedron *>(vugrid->GetCell(i));
-            lagrangeConnectivityToLinearHexahedron(lagrangeCell->GetOrder(), pts, connlist);
-        } else if (vugrid->GetCellType(i) == VTK_LAGRANGE_QUADRILATERAL) {
-            auto lagrangeCell = static_cast<vtkLagrangeQuadrilateral *>(vugrid->GetCell(i));
-            lagrangeConnectivityToLinearQuadrilateral(lagrangeCell->GetOrder(), pts, connlist);
-        } else if (vugrid->GetCellType(i) == VTK_PIXEL || vugrid->GetCellType(i) == VTK_VOXEL) {
-            // account for different order
-            constexpr Index vtkOrder[] = {0, 1, 3, 2, 4, 5, 7, 6};
-            assert(npts <= sizeof(vtkOrder) / sizeof(vtkOrder[0]));
-            for (vtkIdType j = 0; j < npts; ++j) {
-                assert(pts[j] >= 0);
-                connlist.emplace_back(pts[vtkOrder[j]]);
-            }
         } else {
-            for (vtkIdType j = 0; j < npts; ++j) {
-                assert(pts[j] >= 0);
-                connlist.emplace_back(pts[j]);
+            vtkIdType npts = 0;
+            vtkIdType const *pts = nullptr;
+            vugrid->GetCellPoints(i, npts, pts);
+            if (vugrid->GetCellType(i) == VTK_LAGRANGE_HEXAHEDRON) {
+                auto lagrangeCell = static_cast<vtkLagrangeHexahedron *>(vugrid->GetCell(i));
+                lagrangeConnectivityToLinearHexahedron(lagrangeCell->GetOrder(), pts, connlist);
+            } else if (vugrid->GetCellType(i) == VTK_LAGRANGE_QUADRILATERAL) {
+                auto lagrangeCell = static_cast<vtkLagrangeQuadrilateral *>(vugrid->GetCell(i));
+                lagrangeConnectivityToLinearQuadrilateral(lagrangeCell->GetOrder(), pts, connlist);
+            } else if (vugrid->GetCellType(i) == VTK_PIXEL || vugrid->GetCellType(i) == VTK_VOXEL) {
+                // account for different vertex order
+                constexpr Index vtkOrder[] = {0, 1, 3, 2, 4, 5, 7, 6};
+                assert(npts <= sizeof(vtkOrder) / sizeof(vtkOrder[0]));
+                for (vtkIdType j = 0; j < npts; ++j) {
+                    assert(pts[j] >= 0);
+                    connlist.emplace_back(pts[vtkOrder[j]]);
+                }
+            } else {
+                for (vtkIdType j = 0; j < npts; ++j) {
+                    assert(pts[j] >= 0);
+                    connlist.emplace_back(pts[j]);
+                }
             }
         }
         ++elemVistle;
