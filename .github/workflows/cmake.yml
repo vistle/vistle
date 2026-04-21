@@ -7,7 +7,59 @@ on:
     branches: [ master ]
 
 jobs:
-  build:
+  windows:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022]
+        variant: [All]
+        build_type: [Release]
+        static_link: [OFF]
+        use_mpi: [ON]
+        modules_shared: [ON]
+        multi_process: [ON]
+        double_precision: [OFF]
+        large_index: [OFF]
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Create Build Environment
+        # Some projects don't allow in-source building, so create a separate build directory
+        # We'll use this as our working directory for all subsequent commands
+        run: cmake -E make_directory ${{runner.workspace}}/build
+
+      - name: Configure CMake
+        # Use a bash shell so we can use the same syntax for environment variable
+        # access regardless of the host operating system
+        shell: bash
+        working-directory: ${{runner.workspace}}/build
+        # Note the current convention is to use the -S and -B options here to specify source 
+        # and build directories, but this is only available with CMake 3.13 and higher.  
+        # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
+        run: >
+          cmake -G Ninja
+          $GITHUB_WORKSPACE
+          -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
+          -DVISTLE_BUILD_SHARED=${{matrix.static_link}}
+          -DVISTLE_MODULES_SHARED=${{matrix.modules_shared}}
+          -DVISTLE_64BIT_INDICES=${{matrix.large_index}}
+          -DVISTLE_DOUBLE_PRECISION=${{matrix.double_precision}}
+          -DVISTLE_MULTI_PROCESS=${{matrix.multi_process}}
+          -DVISTLE_USE_MPI=${{matrix.use_mpi}}
+
+      - name: Build
+        working-directory: ${{runner.workspace}}/build
+        shell: bash
+        # Execute the build.  You can specify a specific target with "--target <NAME>"
+        run: cmake --build . --config ${{matrix.build_type}}
+
+  unix:
     # The CMake configure and build commands are platform agnostic and should work equally
     # well on Windows or Mac.  You can convert this to a matrix build if you need
     # cross-platform coverage.
@@ -136,7 +188,7 @@ jobs:
         swap-storage: true
 
     - name: Sync and update submodules recursive
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         submodules: 'recursive'
 
