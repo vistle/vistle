@@ -1124,6 +1124,7 @@ std::shared_ptr<process::child> Hub::launchMpiProcess(int type, const std::vecto
     if (!child && spawn != "mpirun") {
         CERR << "launchMpiProcess: failed to execute " << args[0] << " via " << spawn << ", retrying with mpirun"
              << std::endl;
+        spawn = "mpirun";
         auto child = launchProcess(type, spawn, args, prog);
     }
 #endif
