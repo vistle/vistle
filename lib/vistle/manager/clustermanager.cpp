@@ -443,6 +443,7 @@ bool ClusterManager::dispatch(bool &received)
         // process messages that have been delayed because of a previous barrier
         auto &incoming = mod.incomingMessages;
         while (!incoming.empty()) {
+            received = true;
             if (!Communicator::the().handleMessage(incoming.front().buf, incoming.front().payload))
                 done = true;
             incoming.pop_front();
@@ -456,6 +457,7 @@ bool ClusterManager::dispatch(bool &received)
         std::swap(m_incomingMessages, incoming);
     }
     while (!incoming.empty()) {
+        received = true;
         int sender = incoming.front().buf.senderId();
         bool barrierReached = m_reachedSet.find(sender) != m_reachedSet.end();
         if (!barrierReached) {
