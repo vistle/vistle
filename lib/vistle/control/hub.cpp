@@ -465,7 +465,8 @@ boost::program_options::options_description &Hub::options()
         ("shell,s", "start interactive Python shell (requires ipython or python)")
         ("port,p", po::value<unsigned short>(), "control port")
         ("dataport", po::value<unsigned short>(), "data port")
-        ("execute,e", "call compute() after workflow has been loaded")
+        ("execute,exec,e", "call compute() after workflow has been loaded")
+        ("once", "call compute() after workflow has been loaded and then quit")
         ("snapshot", po::value<std::string>(), "store screenshot of workflow to this location")
         ("libsim,l", po::value<std::string>(), "connect to a LibSim instrumented simulation by entering the path to the .sim2 file")
         ("cover", "use OpenCOVER.mpi to manage Vistle session on cluster")
@@ -811,9 +812,15 @@ bool Hub::init(int argc, char *argv[])
         }
     }
 
-    if (vm.count("execute") > 0) {
+    if (vm.count("execute") || vm.count("once") > 0) {
         m_barrierAfterLoad = true;
         m_executeModules = true;
+    }
+
+    if (vm.count("once") > 0) {
+        m_barrierAfterLoad = true;
+        m_executeModules = true;
+        m_quitAfterExecute = true;
     }
 
     if (vm.count("snapshot") > 0) {
@@ -1887,6 +1894,11 @@ bool Hub::hubReady()
             msg.setDestId(message::Id::Broadcast);
             sendUi(msg);
             return true;
+        }
+
+        if (m_quitAfterExecute) {
+            std::cerr << "quitting..." << std::endl;
+            return false;
         }
     } else {
         auto hub = addHubForSelf();

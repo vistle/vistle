@@ -118,6 +118,11 @@ void PythonExecutor::run()
                 ok = m_interpreter.executeCommand("compute()");
             }
         }
+        if (ok && (m_flags & BarrierAfterLoad)) {
+            if (!m_interpreter.quitting()) {
+                ok = m_interpreter.executeCommand("barrier(\"after execute, automatic\")");
+            }
+        }
     }
 
     std::lock_guard<std::mutex> locker(m_mutex);
