@@ -273,6 +273,7 @@ private:
     std::string m_name;
     bool m_ready = false;
     int m_verbose = Verbosity::Normal;
+    bool m_quitAfterExecute = false;
 
     int m_moduleCount;
     message::Type m_traceMessages;
