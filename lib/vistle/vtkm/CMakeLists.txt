@@ -11,14 +11,6 @@ set(HEADERS
     ArrayHandleCountingModulus.h)
 
 vistle_add_library(vistle_viskores EXPORT ${SOURCES} ${HEADERS})
-target_include_directories(vistle_viskores SYSTEM PUBLIC ${VISKORES_INCLUDE_DIRS})
 viskores_add_target_information(vistle_viskores MODIFY_CUDA_FLAGS DEVICE_SOURCES convert_topology.cpp)
 
-vistle_target_link_libraries(
-    vistle_viskores
-    PUBLIC
-    ${VTK_LIBRARIES}
-    PRIVATE
-    vistle_core
-    vistle_module
-    viskores::filter)
+vistle_target_link_libraries(vistle_viskores PUBLIC viskores::filter PRIVATE vistle_core vistle_module)
