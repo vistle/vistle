@@ -79,6 +79,11 @@ endif()
 #
 # BigWhoop
 #
+include(FetchContent)
+fetchcontent_declare(Catch2 FIND_PACKAGE_ARGS)
+vistle_find_package(Catch2)
+fetchcontent_makeavailable(Catch2)
+
 add_subdirectory(BigWhoop)
 
 # enable POSIX features required by BigWhoop
