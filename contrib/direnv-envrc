@@ -68,15 +68,19 @@ if [ -z ${COVISEDIR+x} ]; then
         export COVISEDIR="$(cd ../covise; pwd -P)"
     fi
 fi
-if [ -z ${COVISEDIR+x} -a -d "${HOME}/covise" ]; then
-   export COVISEDIR=${HOME}/covise
+if [ -z ${COVISEDIR+x} ]; then
+    if [ -d "${HOME}/covise" ]; then
+        export COVISEDIR=${HOME}/covise
+    fi
 fi
-if [ -z "${COVISEDIR}" ]; then
+if [ -z ${COVISEDIR+x} ]; then
    if which print_covise_env >/dev/null 2>&1; then
        export COVISEDIR="$(print_covise_env COVISEDIR)" >/dev/null 2>&1
    fi
 fi
-if [ -n "${COVISEDIR}" ]; then
+if [ -z ${COVISEDIR+x} ]; then
+    :
+else
     . "${COVISEDIR}/.covise.sh"
 fi
 
@@ -100,66 +104,75 @@ else
 fi
 export VISTLE_BUILD_TYPE
 
-case "$VISTLE_BUILD_TYPE" in
-Debug|Sanitize)
-    if [ "${ARCHSUFFIX%opt}" != "${ARCHSUFFIX}" ]; then
-        ARCHSUFFIX="${ARCHSUFFIX%opt}"
-    fi
-    ;;
-RelWithDebInfo|Release|MinSizeRel|RelSanitize|*)
-    if [ -n "${ARCHSUFFIX}" -a "${ARCHSUFFIX%opt}" = "${ARCHSUFFIX}" ]; then
-        ARCHSUFFIX="${ARCHSUFFIX}opt"
-    fi
-    ;;
-esac
 
-if [ -n "${ARCHSUFFIX}" ]; then
-    export ARCHSUFFIX
-fi
-
-if [ -n "$COVISEDIR" ]; then
-    case "$ARCHSUFFIX" in
-        spack*)
+if [ -z ${COVISEDIR+x} ]; then
+    :
+else
+    case "$VISTLE_BUILD_TYPE" in
+    Debug|Sanitize)
+        if [ "${ARCHSUFFIX%opt}" != "${ARCHSUFFIX}" ]; then
+            ARCHSUFFIX="${ARCHSUFFIX%opt}"
+        fi
         ;;
-        *)
-            extlibs="$($COVISEDIR/bin/print_covise_env EXTERNLIBS)"
-            if [ -n "$extlibs" -a -d "$extlibs" ]; then
-                export EXTERNLIBS="$extlibs"
-                path_add ${libvar} "${EXTERNLIBS}/ALL/lib"
-                if [ -d "${EXTERNLIBS}/ALL/lib64" ]; then
-                    path_add ${libvar} "${EXTERNLIBS}/ALL/lib64"
-                fi
-            fi
+    RelWithDebInfo|Release|MinSizeRel|RelSanitize|*)
+        if [ -n "${ARCHSUFFIX}" -a "${ARCHSUFFIX%opt}" = "${ARCHSUFFIX}" ]; then
+            ARCHSUFFIX="${ARCHSUFFIX}opt"
+        fi
         ;;
     esac
-    path_add ${libvar} "${COVISEDIR}/${ARCHSUFFIX}/lib"
-    path_add ${libvar} "$builddir/lib/$VISTLE_BUILD_TYPE"
 
-    export COVISEDESTDIR="$(pwd -P)/${builddir}"
-    export COVISE_PATH="$COVISEDESTDIR:$COVISEDIR"
+    if [ -n "${ARCHSUFFIX}" ]; then
+        export ARCHSUFFIX
+    fi
+
+    if [ -n "$COVISEDIR" ]; then
+        case "$ARCHSUFFIX" in
+            spack*)
+            ;;
+            *)
+                extlibs="$($COVISEDIR/bin/print_covise_env EXTERNLIBS)"
+                if [ -n "$extlibs" -a -d "$extlibs" ]; then
+                    export EXTERNLIBS="$extlibs"
+                    path_add ${libvar} "${EXTERNLIBS}/ALL/lib"
+                    if [ -d "${EXTERNLIBS}/ALL/lib64" ]; then
+                        path_add ${libvar} "${EXTERNLIBS}/ALL/lib64"
+                    fi
+                fi
+            ;;
+        esac
+        path_add ${libvar} "${COVISEDIR}/${ARCHSUFFIX}/lib"
+        path_add ${libvar} "$builddir/lib/$VISTLE_BUILD_TYPE"
+
+        export COVISEDESTDIR="$(pwd -P)/${builddir}"
+        export COVISE_PATH="$COVISEDESTDIR:$COVISEDIR"
+    fi
+    export ${libvar}
+
+    case "$os" in
+    darwin*)
+        if [ ! -z ${EXTERNLIBS+x} ]; then
+            if [ -d "$EXTERNLIBS"/ALL ]; then
+                path_add DYLD_FRAMEWORK_PATH "$(${COVISEDIR}/bin/print_covise_env EXTERNLIBS)/ALL"
+                export DYLD_FRAMEWORK_PATH
+                export VISTLE_DYLD_FRAMEWORK_PATH="$DYLD_FRAMEWORK_PATH"
+            fi
+        fi
+        export VISTLE_DYLD_LIBRARY_PATH="$DYLD_LIBRARY_PATH"
+    ;;
+    esac
 fi
-export ${libvar}
-
-case "$os" in
-   darwin*)
-       if [ ! -z ${EXTERNLIBS+x} ]; then
-           if [ -d "$EXTERNLIBS"/ALL ]; then
-               path_add DYLD_FRAMEWORK_PATH "$(${COVISEDIR}/bin/print_covise_env EXTERNLIBS)/ALL"
-               export DYLD_FRAMEWORK_PATH
-               export VISTLE_DYLD_FRAMEWORK_PATH="$DYLD_FRAMEWORK_PATH"
-           fi
-       fi
-       export VISTLE_DYLD_LIBRARY_PATH="$DYLD_LIBRARY_PATH"
-   ;;
-esac
 
 export VMAKE_BUILD="$builddir"
 echo Build: dir="$builddir, ${ARCHSUFFIX:-no ARCHSUFFIX}, type=$VISTLE_BUILD_TYPE"
 
 path_add PYTHONPATH "${builddir}/lib/$VISTLE_BUILD_TYPE"
 path_add PYTHONPATH "${builddir}/share/vistle"
-path_add PYTHONPATH "${COVISEDIR}/Python"
-path_add PYTHONPATH "${COVISEDIR}/${ARCHSUFFIX}/lib"
+if [ -z ${COVISEDIR+x} ]; then
+    :
+else
+    path_add PYTHONPATH "${COVISEDIR}/Python"
+    path_add PYTHONPATH "${COVISEDIR}/${ARCHSUFFIX}/lib"
+fi
 
 PATH_add "${builddir}/bin"
 PATH_add "${builddir}/bin/$VISTLE_BUILD_TYPE"
