@@ -35,9 +35,9 @@ V_UTILEXPORT void hash_update(HashFunction &hash, const void *data, size_t lengt
 V_UTILEXPORT std::vector<uint8_t> hash_final(HashFunction &hash);
 
 class V_UTILEXPORT HashFunction {
-    friend HashFunction hash_new();
-    friend void hash_update(HashFunction &hash, const void *data, size_t length);
-    friend std::vector<uint8_t> hash_final(HashFunction &hash);
+    friend V_UTILEXPORT HashFunction hash_new();
+    friend V_UTILEXPORT void hash_update(HashFunction &hash, const void *data, size_t length);
+    friend V_UTILEXPORT std::vector<uint8_t> hash_final(HashFunction &hash);
 
 public:
     HashFunction(std::unique_ptr<Botan::HashFunction> &&hash);
