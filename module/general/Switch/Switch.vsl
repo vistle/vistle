@@ -1,0 +1,72 @@
+# /usr/bin/env vistle
+# this is a Python workflow from Vistle 2025.1-09a3d7fdc+
+
+MasterHub=getMasterHub()
+VistleSession=getVistleSession()
+WorkflowConfig=getWorkflowConfig()
+uuids = {}
+
+
+
+# spawn all local modules
+umGendat1 = spawnAsync(MasterHub, 'Gendat')
+umSwitch2 = spawnAsync(MasterHub, 'Switch')
+umCuttingSurface3 = spawnAsync(MasterHub, 'CuttingSurface')
+umBoundingBox4 = spawnAsync(MasterHub, 'BoundingBox')
+umCOVER5 = spawnAsync(MasterHub, 'COVER')
+umColor6 = spawnAsync(MasterHub, 'Color')
+umColor7 = spawnAsync(MasterHub, 'Color')
+
+mGendat1 = waitForSpawn(umGendat1)
+
+mSwitch2 = waitForSpawn(umSwitch2)
+setVectorParam(VistleSession, f'position[{mSwitch2}]', 0.0, 100.0)
+setIntParam(mSwitch2, '_cache_mode', 1, True)
+applyParameters(mSwitch2)
+
+mCuttingSurface3 = waitForSpawn(umCuttingSurface3)
+setVectorParam(VistleSession, f'position[{mCuttingSurface3}]', 0.0, 200.0)
+
+mBoundingBox4 = waitForSpawn(umBoundingBox4)
+setVectorParam(VistleSession, f'position[{mBoundingBox4}]', -100.0, 200.0)
+setVectorParam(mBoundingBox4, 'min', -1.0, -1.0, -1.0, True)
+setVectorParam(mBoundingBox4, 'max', 1.0, 1.0, 1.0, True)
+setIntVectorParam(mBoundingBox4, 'min_block', 0, 0, 0, True)
+setIntVectorParam(mBoundingBox4, 'max_block', 2, 6, 18, True)
+setIntVectorParam(mBoundingBox4, 'min_index', 0, 0, 0, True)
+setIntVectorParam(mBoundingBox4, 'max_index', 11, 120, 1188, True)
+applyParameters(mBoundingBox4)
+
+mCOVER5 = waitForSpawn(umCOVER5)
+setVectorParam(VistleSession, f'position[{mCOVER5}]', 0.0, 300.0)
+setIntParam(mCOVER5, 'render_mode', 4, True)
+applyParameters(mCOVER5)
+
+mColor6 = waitForSpawn(umColor6)
+setVectorParam(VistleSession, f'position[{mColor6}]', 100.0, 100.0)
+setStringParam(mColor6, 'species', 'scalar', True)
+setFloatParam(mColor6, 'min', 0.04785407334566116, True)
+setFloatParam(mColor6, 'max', 1.7320507764816284, True)
+applyParameters(mColor6)
+
+mColor7 = waitForSpawn(umColor7)
+setVectorParam(VistleSession, f'position[{mColor7}]', 200.0, 100.0)
+setStringParam(mColor7, 'species', 'vector', True)
+setFloatParam(mColor7, 'min', 0.04785407334566116, True)
+setFloatParam(mColor7, 'max', 1.7320507764816284, True)
+setIntParam(mColor7, 'map', 2, True)
+applyParameters(mColor7)
+
+# all local connections
+connect(mGendat1,'grid_out', mBoundingBox4,'grid_in')
+connect(mGendat1,'data_out0', mSwitch2,'in0')
+connect(mGendat1,'data_out0', mColor6,'data_in')
+connect(mGendat1,'data_out1', mSwitch2,'in3')
+connect(mGendat1,'data_out1', mColor7,'data_in')
+connect(mSwitch2,'out', mCuttingSurface3,'data_in')
+connect(mCuttingSurface3,'data_out', mCOVER5,'data_in')
+connect(mBoundingBox4,'grid_out', mCOVER5,'data_in')
+
+# spawn all remote modules
+
+# connections between local and remote
