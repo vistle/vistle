@@ -78,7 +78,7 @@ public:
     };
     void setOptions(const Options &options);
 
-    osg::Geode *operator()(osg::ref_ptr<osg::StateSet> state = NULL);
+    osg::Geode *makeNode();
 
     static bool isSupported(vistle::Object::Type t);
 
