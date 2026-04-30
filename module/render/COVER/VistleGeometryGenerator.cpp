@@ -938,7 +938,7 @@ const OsgColorMap *VistleGeometryGenerator::getColorMap(const vistle::ColorMapKe
     return nullptr;
 }
 
-osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defaultState)
+osg::Geode *VistleGeometryGenerator::makeNode()
 {
     if (m_ro)
         m_ro->updateBounds();
@@ -1006,14 +1006,10 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
         transparent = false;
     }
 
-    if (defaultState) {
-        state = new osg::StateSet(*defaultState);
+    if (transparent) {
+        state = opencover::VRSceneGraph::instance()->loadTransparentGeostate();
     } else {
-        if (transparent) {
-            state = opencover::VRSceneGraph::instance()->loadTransparentGeostate();
-        } else {
-            state = opencover::VRSceneGraph::instance()->loadDefaultGeostate();
-        }
+        state = opencover::VRSceneGraph::instance()->loadDefaultGeostate();
     }
     if (!state) {
         state = new osg::StateSet;

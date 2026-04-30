@@ -75,8 +75,7 @@ COVER::DelayedObject::DelayedObject(std::shared_ptr<PluginRenderObject> pro, Vis
 , generator(generator)
 , node_future(std::async(std::launch::async, [this]() {
     setThreadName("COVER:Geom:" + name);
-    auto result = this->generator();
-    return result;
+    return this->generator.makeNode();
 }))
 {}
 
