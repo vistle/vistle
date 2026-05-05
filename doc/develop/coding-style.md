@@ -46,7 +46,22 @@ Source Code Formatting
         do {
         } while(true);
 
-* put closing braces on 
+* if one case of an if branch has braces, use braces on the others as well:
+
+        if (condition) {
+          statement;
+        } else {
+          other statement;
+        }
+
+  or
+
+        if (condition)
+          statement;
+        else
+          other statement;
+
+  -- but do not mix them
 * use `UPPER_CASE` for preprocessor `#define`s
 * use `lowerCamelCase` for variables, functions, and methods
 * use `CamelCase` for `class` names, `enum`s
