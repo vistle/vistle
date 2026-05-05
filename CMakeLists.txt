@@ -575,7 +575,9 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
         if(CMAKE_CXX_COMPILER_VERSION MATCHES "^11"
            OR CMAKE_CXX_COMPILER_VERSION MATCHES "^12"
-           OR CMAKE_CXX_COMPILER_VERSION MATCHES "^13")
+           OR CMAKE_CXX_COMPILER_VERSION MATCHES "^13"
+           OR CMAKE_CXX_COMPILER_VERSION MATCHES "^14"
+           OR CMAKE_CXX_COMPILER_VERSION MATCHES "^15")
             # silence "note: parameter passing for argument of type ‘viskores::Vec<double, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1"
             set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-psabi")
         endif()
