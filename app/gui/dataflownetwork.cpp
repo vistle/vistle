@@ -169,7 +169,6 @@ void DataFlowNetwork::addModule(int moduleId, const boost::uuids::uuid &spawnUui
     bool move = true;
     Module *mod = findModule(spawnUuid);
     if (mod) {
-        mod->sendPosition();
         move = false;
     } else {
         mod = findModule(moduleId);
@@ -184,7 +183,8 @@ void DataFlowNetwork::addModule(int moduleId, const boost::uuids::uuid &spawnUui
     if (move) {
         auto pos = getModulePosition(moduleId);
         moveModule(moduleId, pos.x(), pos.y());
-    }
+    } else
+        mod->sendPosition();
     mod->setDisplayName(QString::fromStdString(m_state.getModuleDisplayName(moduleId)));
 }
 
