@@ -1,4 +1,4 @@
-if(NOT COVER_VRML_LIBRARY OR NOT COVER_VRMLINTERFACE_LIBRARY)
+if(NOT TARGET cover::vrml)
     return()
 endif()
 
@@ -21,4 +21,4 @@ set(SOURCES VisObjectSensor.cpp)
 cover_add_plugin(VisObjectSensor ${HEADERS} ${SOURCES})
 
 target_include_directories(VisObjectSensor PRIVATE ..) # for VistlePluginUtil
-target_link_libraries(VisObjectSensor ${COVER_VRMLINTERFACE_LIBRARY} ${COVER_VRML_LIBRARY} VistlePluginUtil vistle_util vistle_core)
+target_link_libraries(VisObjectSensor cover::vrml VistlePluginUtil vistle_util vistle_core)
