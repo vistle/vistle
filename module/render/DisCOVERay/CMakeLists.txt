@@ -2,11 +2,11 @@ vistle_find_package(ZLIB)
 
 include(FindPackageHandleStandardArgs)
 set(EMBREE_MAJOR 4)
-vistle_find_package(embree 4.0)
+vistle_find_package(embree CONFIG 4.0)
 find_package_handle_standard_args(EMBREE DEFAULT_MSG EMBREE_LIBRARY EMBREE_INCLUDE_DIRS)
 if(NOT EMBREE_FOUND)
     set(EMBREE_MAJOR 3)
-    vistle_find_package(embree 3.0)
+    vistle_find_package(embree CONFIG 3.0)
     find_package_handle_standard_args(EMBREE DEFAULT_MSG EMBREE_LIBRARY EMBREE_INCLUDE_DIRS)
 endif()
 
