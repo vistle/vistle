@@ -1,19 +1,10 @@
-vistle_find_package(
-    OpenSceneGraph
-    3.2.0
-    COMPONENTS
-    osgViewer
-    osgGA
-    osgDB
-    osgUtil
-    osgText
-    osgParticle
-    osgSim
-    osgFX)
-
 vistle_find_package(COVER)
 if(NOT COVER_FOUND)
     message("COVER not found - not building COVER wrapper")
+    return()
+endif()
+if(NOT OPENSCENEGRAPH_FOUND)
+    message("OpenSceneGraph not found - not building COVER wrapper")
     return()
 endif()
 
