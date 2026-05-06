@@ -565,8 +565,6 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
     endif()
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
-
     if(NOT ${BUILD_SHARED_LIBS})
         # for linking the libraries into plugins
         set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
