@@ -198,7 +198,7 @@ private:
     QList<Message> m_messages;
     bool m_messagesVisible = true;
     bool m_validPosition = false;
-    int m_layer = 0;
+    int m_layer = DataFlowNetwork::InvalidLayer;
 
     QList<Port *> m_inPorts, m_outPorts, m_paramPorts;
     ErrorIndicator *m_errorIndicator = nullptr;

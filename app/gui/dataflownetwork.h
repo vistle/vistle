@@ -40,7 +40,9 @@ public:
     ~DataFlowNetwork();
 
     enum Layers {
+        InvalidLayer = -2,
         AllLayers = -1,
+        DefaultLayer = 0,
     };
 
     ModuleBrowser *moduleBrowser() const;

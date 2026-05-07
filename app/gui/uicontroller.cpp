@@ -621,7 +621,7 @@ void UiController::parameterValueChanged(int moduleId, QString parameterName)
 {
 #if 0
    QString text = "Parameter value changed on ID: " + QString::number(moduleId) + ":" + parameterName;
-   m_console->appendDebug(text);
+   m_mainWindow->m_console->appendDebug(text);
 #endif
     if (moduleId != vistle::message::Id::Vistle)
         return;

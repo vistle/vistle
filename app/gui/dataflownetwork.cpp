@@ -187,6 +187,11 @@ void DataFlowNetwork::addModule(int moduleId, const boost::uuids::uuid &spawnUui
         mod->sendPosition();
     }
     mod->setDisplayName(QString::fromStdString(m_state.getModuleDisplayName(moduleId)));
+
+    auto l = getModuleLayer(moduleId);
+    if (l != DataFlowNetwork::InvalidLayer) {
+        mod->setLayer(l);
+    }
 }
 
 void DataFlowNetwork::deleteModule(int moduleId)
@@ -243,11 +248,11 @@ QPointF DataFlowNetwork::getModulePosition(int id)
 
 int DataFlowNetwork::getModuleLayer(int id)
 {
-    auto p =
-        DataFlowNetwork::getParameter<vistle::ParamVector>(vistle::message::Id::Vistle, QString("layer[%1]").arg(id));
-    if (!p)
-        return 0;
-    return p->getValue();
+    if (auto p =
+            DataFlowNetwork::getParameter<vistle::Integer>(vistle::message::Id::Vistle, QString("layer[%1]").arg(id))) {
+        return p->getValue();
+    }
+    return DataFlowNetwork::InvalidLayer;
 }
 
 void DataFlowNetwork::newPort(int moduleId, QString portName)
