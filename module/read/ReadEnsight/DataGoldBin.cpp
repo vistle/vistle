@@ -53,7 +53,7 @@ bool DataGoldBin::parseForParts()
             // we found a part line
             size_t id = tmp.find("part");
             if (id != std::string::npos) {
-                long partStart = filePos();
+                ssize_t partStart = filePos();
                 // part line found   -- we skip it for the moment --
                 int actPartNr = getInt(in);
                 auto actPart = findPart(actPartNr);
@@ -96,7 +96,7 @@ bool DataGoldBin::parseForParts()
         currentLine = getStr(in); // this should be the part line or an element name
         size_t id = currentLine.find("part");
         if (id != std::string::npos) {
-            long partStart = filePos();
+            ssize_t partStart = filePos();
             // part line found   -- we skip it for the moment --
             // length of "part" +1
             actPartNr = getInt(in);

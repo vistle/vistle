@@ -509,7 +509,7 @@ bool GeoGoldBin::parseForParts()
     }
 
     EnPart *actPart(nullptr);
-    long startPos = 0;
+    ssize_t startPos = 0;
     bool validElementFound = false;
     while (!feof(in)) {
         size_t nElem2D(0), nElem3D(0);

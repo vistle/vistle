@@ -47,7 +47,7 @@ bool DataGoldAscii::parseForParts()
         size_t numVal = 0;
 
         while (!feof(in)) {
-            long fpos = ftell(in);
+            ssize_t fpos = ftell(in);
             fgets(buf, lineLen, in);
             ++lineCnt_;
             std::string tmp(buf);
@@ -55,7 +55,7 @@ bool DataGoldAscii::parseForParts()
             // we found a part line
             id = tmp.find("part");
             if (id != std::string::npos) {
-                long partStart = fpos;
+                ssize_t partStart = fpos;
                 // part line found   -- we skip it for the moment --
                 fgets(buf, lineLen, in);
                 ++lineCnt_;
@@ -93,7 +93,7 @@ bool DataGoldAscii::parseForParts()
     int actPartNr = -1;
 
     while (!feof(in)) {
-        long fpos = ftell(in);
+        ssize_t fpos = ftell(in);
         fgets(buf, lineLen, in);
         ++lineCnt_;
         std::string tmp(buf);
@@ -101,7 +101,7 @@ bool DataGoldAscii::parseForParts()
         // we found a part line
         id = tmp.find("part");
         if (id != std::string::npos) {
-            long partStart = fpos;
+            ssize_t partStart = fpos;
             // part line found   -- we skip it for the moment --
             // length of "part" +1
             fgets(buf, lineLen, in);
