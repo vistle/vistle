@@ -82,7 +82,7 @@ Module::Module(QGraphicsItem *parent, QString name)
     createGeometry();
 
     setStatus(m_Status);
-    setLayer(m_layer);
+    setLayer(DataFlowNetwork::DefaultLayer);
 
     connect(this, &Module::callshowErrorInMainThread, this, &Module::showError);
     connect(m_errorIndicator, &ErrorIndicator::clicked, [this]() {
@@ -969,25 +969,27 @@ void Module::setSpawnUuid(const boost::uuids::uuid &uuid)
 
 int Module::layer() const
 {
-    return m_layer;
+    return m_layer == DataFlowNetwork::InvalidLayer ? DataFlowNetwork::DefaultLayer : m_layer;
 }
 
 void Module::setLayer(int layer)
 {
-    if (m_layer != layer) {
-        m_layer = layer;
-        DataFlowNetwork::setParameter(vistle::message::Id::Vistle, QString("layer[%1]").arg(id()),
-                                      vistle::Integer(layer));
-    }
+    m_layer = layer;
     updateLayer();
 }
 
 void Module::updateLayer()
 {
+    if (id() != vistle::message::Id::Invalid && m_layer != DataFlowNetwork::InvalidLayer) {
+        // don't update until we have our module id
+        DataFlowNetwork::setParameter(vistle::message::Id::Vistle, QString("layer[%1]").arg(id()),
+                                      vistle::Integer(m_layer));
+    }
+
     bool oldVis = isVisible();
     int activeLayer = DataFlowView::the()->visibleLayer();
     bool newVis =
-        m_layer == DataFlowNetwork::AllLayers || m_layer == activeLayer || activeLayer == DataFlowNetwork::AllLayers;
+        layer() == DataFlowNetwork::AllLayers || layer() == activeLayer || activeLayer == DataFlowNetwork::AllLayers;
 
     if (LayersAsOpacity) {
         setEnabled(newVis);
