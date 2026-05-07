@@ -29,9 +29,14 @@
 #include <boost/algorithm/string.hpp>
 
 #ifdef _WIN32
-int fseek(FILE *file, long offset, int whence)
+int EnFile::fseek(FILE *file, ssize_t offset, int whence)
 {
     return _fseeki64(file, offset, whence);
+}
+
+ssize_t EnFile::ftell(FILE *file)
+{
+    return _ftelli64(file);
 }
 #endif
 
@@ -538,7 +543,7 @@ vistle::Scalar *EnFile::getFloatArr(FILE *in, size_t n, vistle::Scalar *farr)
     return farr;
 }
 
-long EnFile::filePos() const
+ssize_t EnFile::filePos() const
 {
     return filePos_;
 }

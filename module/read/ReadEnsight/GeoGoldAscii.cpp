@@ -556,7 +556,8 @@ bool GeoGoldAscii::parseForParts()
     char buf[lineLen];
     EnPart *actPart(nullptr);
     while (!feof(in)) {
-        long filePos = ftell(in);
+        size_t nElem2D(0), nElem3D(0);
+        ssize_t filePos = ftell(in);
         fgets(buf, lineLen, in);
         ++lineCnt_;
         std::string tmp(buf);
@@ -566,7 +567,7 @@ bool GeoGoldAscii::parseForParts()
         // read comment and print part line
         size_t id = tmp.find("part");
         if (id != std::string::npos) {
-            long startPos = filePos;
+            ssize_t startPos = filePos;
             // part line found
             // get part number
             fgets(buf, lineLen, in);

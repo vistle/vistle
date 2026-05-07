@@ -56,8 +56,8 @@ public:
     // print out part object to stderr - debug
     void print(std::ostream &os) const;
 
-    void setStartPos(long pos, const std::string &filename = std::string());
-    long startPos(const std::string &filename = std::string()) const;
+    void setStartPos(ssize_t pos, const std::string &filename = std::string());
+    ssize_t startPos(const std::string &filename = std::string()) const;
 
     static std::string partInfoHeader();
     static std::string partInfoFooter();
@@ -129,7 +129,7 @@ public:
     vistle::ShmVector<vistle::Byte> tl2d_, tl3d_;
 
 private:
-    std::map<std::string, long> startPos_;
+    std::map<std::string, ssize_t> startPos_;
     int partNum_ = -1;
     std::vector<EnElement> elementList_;
     std::vector<size_t> numList_;

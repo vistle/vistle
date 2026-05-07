@@ -93,13 +93,13 @@ const EnPart &EnPart::operator=(const EnPart &p)
     return *this;
 }
 
-void EnPart::setStartPos(long pos, const std::string &name)
+void EnPart::setStartPos(ssize_t pos, const std::string &name)
 {
     //CERR << name << " " << pos << std::endl;
     startPos_[name] = pos;
 }
 
-long EnPart::startPos(const std::string &name) const
+ssize_t EnPart::startPos(const std::string &name) const
 {
     auto it = startPos_.find(name);
     if (it == startPos_.end()) {

@@ -26,10 +26,6 @@
 
 class ReadEnsight;
 
-#ifdef _WIN32
-int fseek(FILE *file, long offset, int whence);
-#endif
-
 class FP: public std::unique_ptr<FILE, decltype(&fclose)> {
 public:
     FP(FILE *f): std::unique_ptr<FILE, decltype(&fclose)>(f, fclose) {}
@@ -89,6 +85,12 @@ public:
 protected:
     FP open();
 
+#ifdef _WIN32
+    static int fseek(FILE *file, ssize_t offset, int whence);
+    ssize_t ftell(FILE *file);
+#endif
+
+
     // functions used for BINARY input
     virtual std::string getStr(FILE *in);
 
@@ -127,7 +129,7 @@ protected:
     // pointer to module for sending ui messages
     ReadEnsight *ens = nullptr;
 
-    long filePos() const;
+    ssize_t filePos() const;
     std::string name() const;
 
     std::string name_;
@@ -145,6 +147,6 @@ private:
     bool getValArrHelper(FILE *in, size_t n, T *uarr = nullptr);
     size_t getSizeRaw(FILE *in);
 
-    long filePos_ = 0;
+    ssize_t filePos_ = 0;
 };
 #endif
