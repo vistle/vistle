@@ -10,6 +10,5 @@ set(SOURCES MapHeight.cpp MapHeight.h)
 
 include("../IsoSurface/IsoSurface.cmake")
 
-target_link_libraries(${NAME} PRIVATE ${GDAL_LIBRARIES})
-target_include_directories(${NAME} SYSTEM PRIVATE ${GDAL_INCLUDE_DIR})
+target_link_libraries(${NAME} PRIVATE GDAL::GDAL)
 target_compile_definitions(${NAME} PRIVATE ISOHEIGHTSURFACE)
