@@ -79,9 +79,10 @@ endif()
 #
 # BigWhoop
 #
+vistle_find_package(Catch2 REQUIRED)
+# override the fetch content from BigWhoop to force an installed Catch2
 include(FetchContent)
 fetchcontent_declare(Catch2 FIND_PACKAGE_ARGS)
-vistle_find_package(Catch2)
 fetchcontent_makeavailable(Catch2)
 
 add_subdirectory(BigWhoop)
