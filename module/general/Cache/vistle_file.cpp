@@ -89,7 +89,7 @@ bool Read(int fd, T &t)
 
 bool Skip(int fd, size_t skip)
 {
-    off_t n = lseek(fd, skip, SEEK_CUR);
+    off_t n = file::seek(fd, skip, SEEK_CUR);
     if (n == off_t(-1)) {
         CERR << "failed to skip " << skip << " bytes, result was " << n << ", errno=" << strerror(errno) << std::endl;
         return false;
