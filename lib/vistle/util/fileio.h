@@ -20,4 +20,17 @@
 #include <unistd.h>
 #endif
 
+#include "export.h"
+#include "ssize_t.h"
+#include <cstdio>
+namespace file {
+
+V_UTILEXPORT ssize_t tell(int fd);
+V_UTILEXPORT ssize_t tell(FILE *file);
+
+V_UTILEXPORT ssize_t seek(int fd, ssize_t off, int whence = SEEK_SET);
+V_UTILEXPORT ssize_t seek(FILE *file, ssize_t off, int whence = SEEK_SET);
+
+} // namespace file
+
 #endif
