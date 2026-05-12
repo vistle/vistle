@@ -47,7 +47,7 @@ bool DataGoldAscii::parseForParts()
         size_t numVal = 0;
 
         while (!feof(in)) {
-            ssize_t fpos = ftell(in);
+            ssize_t fpos = file::tell(in);
             fgets(buf, lineLen, in);
             ++lineCnt_;
             std::string tmp(buf);
@@ -93,7 +93,7 @@ bool DataGoldAscii::parseForParts()
     int actPartNr = -1;
 
     while (!feof(in)) {
-        ssize_t fpos = ftell(in);
+        ssize_t fpos = file::tell(in);
         fgets(buf, lineLen, in);
         ++lineCnt_;
         std::string tmp(buf);
@@ -169,7 +169,7 @@ vistle::Object::ptr DataGoldAscii::read(int timestep, int block, EnPart *part)
     int partToRead = part->getPartNum();
 
 
-    fseek(in, part->startPos(name()), SEEK_SET);
+    file::seek(in, part->startPos(name()), SEEK_SET);
 
     char buf[lineLen];
     if (perVertex_) {

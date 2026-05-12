@@ -60,7 +60,7 @@ Object::ptr GeoGoldBin::read(int timeStep, int block, EnPart *part)
 
     partFound = false;
     ens->sendInfo("read part#%d/%d:  %d", part->getPartNum(), (int)partList_->size(), block);
-    fseek(in, part->startPos(), SEEK_SET);
+    file::seek(in, part->startPos(), SEEK_SET);
     if (!readPart(in, *part)) {
         ens->sendWarning("reading part#%d failed, skipping", part->getPartNum());
         return out;
@@ -91,7 +91,7 @@ Object::ptr GeoGoldBin::read(int timeStep, int block, EnPart *part)
         out = poly;
     } else {
         std::stringstream str;
-        str << "cannot handle: " << part << std::endl;
+        str << "cannot handle: " << part->getPartNum() << " : " << part->partInfoString() << std::endl;
         ens->sendWarning(str.str());
     }
 
@@ -116,9 +116,9 @@ bool GeoGoldBin::readBB(FILE *in)
         skipFloat(in, 6);
     } else {
         if (binType_ == CaseFile::FBIN) {
-            fseek(in, -88, SEEK_CUR); // 4 + 80 + 4
+            file::seek(in, -88, SEEK_CUR); // 4 + 80 + 4
         } else {
-            fseek(in, -80, SEEK_CUR);
+            file::seek(in, -80, SEEK_CUR);
         }
     }
     return true;

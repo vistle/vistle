@@ -23,6 +23,7 @@
 #include <memory>
 
 #include <vistle/module/reader.h>
+#include <vistle/util/fileio.h>
 
 class ReadEnsight;
 
@@ -84,12 +85,6 @@ public:
 
 protected:
     FP open();
-
-#ifdef _WIN32
-    static int fseek(FILE *file, ssize_t offset, int whence);
-    ssize_t ftell(FILE *file);
-#endif
-
 
     // functions used for BINARY input
     virtual std::string getStr(FILE *in);

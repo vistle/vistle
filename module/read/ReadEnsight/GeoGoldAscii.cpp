@@ -90,7 +90,7 @@ vistle::Object::ptr GeoGoldAscii::read(int timestep, int block, EnPart *part)
     ens->sendInfo("reading part#%d/%d:  %d", part->getPartNum(), (int)partList_->size(), block);
     // read parts and connectivity
 
-    fseek(in, part->startPos(), SEEK_SET);
+    file::seek(in, part->startPos(), SEEK_SET);
     CERR << "reading part: " << part << " at " << part->startPos() << std::endl;
     if (!readPart(in, *part)) {
         ens->sendWarning("reading part#%d failed, skipping", part->getPartNum());
@@ -121,7 +121,7 @@ vistle::Object::ptr GeoGoldAscii::read(int timestep, int block, EnPart *part)
         out = poly;
     } else {
         std::stringstream str;
-        str << "cannot handle: " << part << std::endl;
+        str << "cannot handle: " << part->getPartNum() << " : " << part->partInfoString() << std::endl;
         ens->sendWarning(str.str());
     }
     if (out) {
@@ -150,7 +150,7 @@ bool GeoGoldAscii::readBB(FILE *in)
         ++lineCnt_;
     } else {
         // rewind one line
-        fseek(in, -5L, SEEK_CUR);
+        file::seek(in, -5L, SEEK_CUR);
     }
 
     return true;
@@ -429,7 +429,7 @@ bool GeoGoldAscii::readPartConn(FILE *in, EnPart &actPart)
 
         if (tmp.find("part") != std::string::npos) {
             // we have read one line more than needed
-            fseek(in, -5L, SEEK_CUR);
+            file::seek(in, -5L, SEEK_CUR);
             break;
         }
         // scan for element type
@@ -557,7 +557,7 @@ bool GeoGoldAscii::parseForParts()
     EnPart *actPart(nullptr);
     while (!feof(in)) {
         size_t nElem2D(0), nElem3D(0);
-        ssize_t filePos = ftell(in);
+        ssize_t filePos = file::tell(in);
         fgets(buf, lineLen, in);
         ++lineCnt_;
         std::string tmp(buf);
@@ -593,10 +593,10 @@ bool GeoGoldAscii::parseForParts()
                 //CERR << "numCoords " << numCoords << std::endl;
                 switch (nodeId_) {
                 case GIVEN: // 10+1 + 3*(12+1)
-                    fseek(in, 50 * numCoords, SEEK_CUR);
+                    file::seek(in, 50 * numCoords, SEEK_CUR);
                     break;
                 default: // 39 = 3 * (12 + 1)
-                    fseek(in, 39 * numCoords, SEEK_CUR);
+                    file::seek(in, 39 * numCoords, SEEK_CUR);
                 }
             }
 
@@ -626,10 +626,10 @@ bool GeoGoldAscii::parseForParts()
             size_t nc(elem.getNumberOfCorners());
             switch (elementId_) {
             case GIVEN:
-                fseek(in, ((nc * 10) + 12) * numElements, SEEK_CUR);
+                file::seek(in, ((nc * 10) + 12) * numElements, SEEK_CUR);
                 break;
             default:
-                fseek(in, ((nc * 10) + 1) * numElements, SEEK_CUR);
+                file::seek(in, ((nc * 10) + 1) * numElements, SEEK_CUR);
             }
 
             // add element info to the part
