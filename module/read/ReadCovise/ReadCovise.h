@@ -56,7 +56,7 @@ struct Element {
     bool is_geometry = false;
     ssize_t objnum = -1;
     int index = -1, block = -1;
-    off_t offset = 0;
+    ssize_t offset = 0;
     std::vector<Element *> subelems;
     AttributeList attribs;
 };
