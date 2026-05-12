@@ -166,7 +166,7 @@ vistle::Object::ptr DataGoldBin::read(int timestep, int block, EnPart *part)
     };
 
     int partToRead = part->getPartNum();
-    fseek(in, part->startPos(name()), SEEK_SET);
+    file::seek(in, part->startPos(name()), SEEK_SET);
 
     if (perVertex_) {
         while (!feof(in)) {

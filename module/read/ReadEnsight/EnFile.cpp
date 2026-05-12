@@ -28,18 +28,6 @@
 #include <cfloat>
 #include <boost/algorithm/string.hpp>
 
-#ifdef _WIN32
-int EnFile::fseek(FILE *file, ssize_t offset, int whence)
-{
-    return _fseeki64(file, offset, whence);
-}
-
-ssize_t EnFile::ftell(FILE *file)
-{
-    return _ftelli64(file);
-}
-#endif
-
 //#define DEBUG
 
 #define CERR std::cerr << "EnFile::" << __func__ << ": "
@@ -256,12 +244,12 @@ CaseFile::BinType EnFile::binType()
 // helper skip n floats or doubles
 void EnFile::skipFloat(FILE *in, size_t n)
 {
-    filePos_ = ftell(in);
+    filePos_ = file::tell(in);
 
     if (binType_ == CaseFile::FBIN) { // check for block markers
         size_t ilen(getSizeRaw(in));
 
-        fseek(in, ilen, SEEK_CUR);
+        file::seek(in, ilen, SEEK_CUR);
 
         size_t olen(getSizeRaw(in));
         if ((ilen != olen)) {
@@ -272,18 +260,18 @@ void EnFile::skipFloat(FILE *in, size_t n)
 
     // Read floats up to 4GB
     else {
-        fseek(in, n * sizeof(float), SEEK_CUR);
+        file::seek(in, n * sizeof(float), SEEK_CUR);
     }
 }
 
 // helper skip n ints
 void EnFile::skipInt(FILE *in, size_t n)
 {
-    filePos_ = ftell(in);
+    filePos_ = file::tell(in);
 
     if (binType_ == CaseFile::FBIN) { // check for block markers
         size_t ilen(getSizeRaw(in));
-        fseek(in, n * 4, SEEK_CUR);
+        file::seek(in, n * 4, SEEK_CUR);
 
         size_t olen(getSizeRaw(in));
         if ((ilen != olen) || (ilen != n * 4)) {
@@ -291,7 +279,7 @@ void EnFile::skipInt(FILE *in, size_t n)
                  << " blockend: " << olen << std::endl;
         }
     } else {
-        fseek(in, n * sizeof(int), SEEK_CUR);
+        file::seek(in, n * sizeof(int), SEEK_CUR);
     }
 }
 
@@ -303,7 +291,7 @@ std::string EnFile::getStr(FILE *in)
     buf[80] = '\0';
     std::string ret;
 
-    filePos_ = ftell(in);
+    filePos_ = file::tell(in);
 
     if (binType_ == CaseFile::FBIN) {
         size_t olen(0);
@@ -385,7 +373,7 @@ T EnFile::getValRaw(FILE *in)
 template<typename T>
 T EnFile::getVal(FILE *in)
 {
-    filePos_ = ftell(in);
+    filePos_ = file::tell(in);
 
     if (binType_ == CaseFile::FBIN) {
         getSizeRaw(in);
@@ -416,7 +404,7 @@ template<typename T>
 bool EnFile::getValArrHelper(FILE *in, size_t n, T *arr)
 {
     if (!arr) {
-        fseek(in, n * sizeof(T), SEEK_CUR);
+        file::seek(in, n * sizeof(T), SEEK_CUR);
         return true;
     }
 
@@ -437,7 +425,7 @@ bool EnFile::getValArrHelper(FILE *in, size_t n, T *arr)
 template<typename T>
 T *EnFile::getValArr(FILE *in, size_t n, T *arr)
 {
-    filePos_ = ftell(in);
+    filePos_ = file::tell(in);
 
     if (n == 0)
         return arr;
@@ -477,7 +465,7 @@ void EnFile::setPartList(PartList *p)
 
 vistle::Scalar *EnFile::getFloatArr(FILE *in, size_t n, vistle::Scalar *farr)
 {
-    filePos_ = ftell(in);
+    filePos_ = file::tell(in);
 
     if (n == 0)
         return nullptr;
