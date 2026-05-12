@@ -185,6 +185,7 @@ void DataFlowNetwork::addModule(int moduleId, const boost::uuids::uuid &spawnUui
         moveModule(moduleId, pos.x(), pos.y());
     } else {
         mod->sendPosition();
+        mod->updateLayer();
     }
     mod->setDisplayName(QString::fromStdString(m_state.getModuleDisplayName(moduleId)));
 
