@@ -19,6 +19,7 @@
 #include <vistle/core/uniformgrid.h>
 #include <vistle/core/rectilineargrid.h>
 #include <vistle/core/structuredgrid.h>
+#include <vistle/util/fileio.h>
 
 #include <boost/algorithm/string/predicate.hpp>
 
@@ -298,16 +299,6 @@ bool ReadCovise::finishRead()
         m_objects[port].clear();
     }
     return true;
-}
-
-static off_t mytell(const int fd)
-{
-    return lseek(abs(fd), 0, SEEK_CUR);
-}
-
-static off_t seek(const int fd, off_t off)
-{
-    return lseek(abs(fd), off, SEEK_SET);
 }
 
 static int findBlockNum(const Element &elem)
@@ -875,7 +866,7 @@ bool ReadCovise::readGEOTEX(Token &token, const int port, int fd, Element *elem)
     bool ok = true;
     for (size_t i = 0; i < ncomp; ++i) {
         Element *e = new Element();
-        e->offset = mytell(fd);
+        e->offset = file::tell(fd);
         if (contains[i])
             ok &= readSkeleton(port, e);
         elem->subelems.push_back(e);
@@ -897,7 +888,7 @@ bool ReadCovise::readGEOMET(Token &token, const int port, int fd, Element *elem)
     bool ok = true;
     for (size_t i = 0; i < ncomp; ++i) {
         Element *e = new Element();
-        e->offset = mytell(fd);
+        e->offset = file::tell(fd);
         if (contains[i])
             ok &= readSkeleton(port, e);
         elem->subelems.push_back(e);
@@ -956,9 +947,9 @@ Object::ptr ReadCovise::readObjectIntern(Token &token, const int port, int fd, c
     }
 
     if (skeleton) {
-        elem->offset = mytell(fd);
+        elem->offset = file::tell(fd);
     } else {
-        seek(fd, elem->offset);
+        file::seek(fd, elem->offset);
     }
 
     char buf[7];
@@ -968,7 +959,7 @@ Object::ptr ReadCovise::readObjectIntern(Token &token, const int port, int fd, c
     }
     buf[6] = '\0';
     std::string type(buf);
-    //std::cerr << "ReadCovise::readObject " << type << " @ " << mytell(fd) << std::endl;
+    //std::cerr << "ReadCovise::readObject " << type << " @ " << file::tell(fd) << std::endl;
 
     if (skeleton)
         elem->type = type;
