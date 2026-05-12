@@ -1,7 +1,10 @@
 #include "fileio.h"
 
+namespace vistle {
+namespace file {
 
-ssize_t file::tell(const int fd)
+
+ssize_t tell(const int fd)
 {
 #ifdef WIN32
     return _lseeki64(fd, 0, SEEK_CUR);
@@ -10,7 +13,7 @@ ssize_t file::tell(const int fd)
 #endif
 }
 
-ssize_t file::tell(FILE *file)
+ssize_t tell(FILE *file)
 {
 #ifdef WIN32
     return _ftelli64(file);
@@ -19,7 +22,7 @@ ssize_t file::tell(FILE *file)
 #endif
 }
 
-ssize_t file::seek(int fd, ssize_t off, int whence)
+ssize_t seek(int fd, ssize_t off, int whence)
 {
 #ifdef WIN32
     return _lseeki64(fd, off, whence);
@@ -28,7 +31,7 @@ ssize_t file::seek(int fd, ssize_t off, int whence)
 #endif
 }
 
-ssize_t file::seek(FILE *file, ssize_t off, int whence)
+ssize_t seek(FILE *file, ssize_t off, int whence)
 {
 #ifdef WIN32
     return _fseeki64(file, off, whence);
@@ -36,3 +39,6 @@ ssize_t file::seek(FILE *file, ssize_t off, int whence)
     return fseek(file, off, whence);
 #endif
 }
+
+} // namespace file
+} // namespace vistle

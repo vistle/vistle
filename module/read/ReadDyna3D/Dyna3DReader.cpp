@@ -27,14 +27,10 @@
 
 #define SENDINFO
 
-#ifdef _WIN32
-#include <io.h>
-#include <fcntl.h>
-#endif
-
 #include "Dyna3DReader.h"
 #include <vistle/util/byteswap.h>
 #include <vistle/core/unstr.h>
+#include <vistle/util/fileio.h>
 #include <iostream>
 #include <vistle/util/filesystem.h>
 #include <vistle/util/enum.h>
@@ -42,11 +38,7 @@
 namespace fs = vistle::filesystem;
 using namespace vistle;
 
-#ifdef _WIN32
-const int OpenFlags = O_RDONLY | O_BINARY;
-#else
 const int OpenFlags = O_RDONLY;
-#endif
 
 // clang-format off
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(
@@ -1572,7 +1564,7 @@ int Dyna3DReader<wordsize, INTEGER, REAL>::grecaddr_(INTEGER i, INTEGER istart, 
         *iz = tauio_1.nrin - (itrecn - 1) * tauio_1.irl;
         if (tauio_1.itrecin != itrecn) {
             tauio_1.itrecin = itrecn;
-            if (lseek(infile, (itrecn - 1) * sizeof(tauio_1.tau), SEEK_SET) >= 0) {
+            if (file::seek(infile, (itrecn - 1) * sizeof(tauio_1.tau), SEEK_SET) >= 0) {
                 *irdst = ::read(infile, tauio_1.tau, sizeof(tauio_1.tau)) - sizeof(tauio_1.tau);
 
                 tauio_1.taulength = *irdst + sizeof(tauio_1.tau) / sizeof(WORD);

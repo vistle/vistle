@@ -20,6 +20,7 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <vistle/util/filesystem.h>
 #include <vistle/util/byteswap.h>
+#include <vistle/util/fileio.h>
 
 
 #include "ReadItlrBin.h"
@@ -30,6 +31,8 @@
 #endif
 
 MODULE_MAIN(ReadItlrBin)
+
+namespace file = vistle::file;
 
 struct File {
     File(const std::string &name): name(name) {}
@@ -321,7 +324,7 @@ bool skipArray(File &file, const std::string &name, const size_t num)
     }
     typedef typename on_disk<T>::type D;
     if (file.fp) {
-        return !fseek(file.fp, sizeof(D) * num, SEEK_CUR);
+        return !file::seek(file.fp, sizeof(D) * num, SEEK_CUR);
 #ifdef HAVE_HDF5
     } else if (file.file) {
         file.offset += num;

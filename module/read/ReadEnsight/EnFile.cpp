@@ -27,7 +27,11 @@
 #include <iostream>
 #include <cfloat>
 #include <boost/algorithm/string.hpp>
+
 #include <vistle/util/strings.h>
+#include <vistle/util/fileio.h>
+
+namespace file = vistle::file;
 
 //#define DEBUG
 
