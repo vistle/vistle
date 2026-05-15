@@ -8,6 +8,7 @@
 #include <vistle/core/statetracker.h>
 #include <vistle/util/buffer.h>
 #include <vistle/util/process.h>
+#include <vistle/util/enum.h>
 #include "uimanager.h"
 #include <vistle/net/tunnel.h>
 #include <vistle/net/dataproxy.h>
@@ -26,6 +27,9 @@ class PythonInterpreter;
 class PythonExecutor;
 class Directory;
 class Hub;
+
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(
+    HubVerbosity, (Quiet)(Normal)(Manager)(Modules)(DuplicateMessages)(ManagerMessages)(Messages)(AllMessages));
 
 class HubParameters: public ParameterManager {
 public:
@@ -101,16 +105,7 @@ public:
     int idToHub(int id) const;
     int id() const;
 
-    enum Verbosity {
-        Quiet,
-        Normal,
-        Manager,
-        Modules,
-        DuplicateMessages,
-        ManagerMessages,
-        Messages,
-        AllMessages,
-    };
+    typedef HubVerbosity Verbosity;
     Verbosity verbosity() const;
 
     message::MessageFactory make;
@@ -272,7 +267,7 @@ private:
     unsigned long m_localManagerRank0Pid = 0;
     std::string m_name;
     bool m_ready = false;
-    int m_verbose = Verbosity::Normal;
+    int m_verbose = Verbosity::Quiet;
     bool m_quitAfterExecute = false;
 
     int m_moduleCount;
