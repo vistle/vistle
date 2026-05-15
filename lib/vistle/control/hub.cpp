@@ -4141,6 +4141,13 @@ bool Hub::handlePriv(const message::Barrier &barrier)
     assert(!m_barrierActive);
     assert(m_reachedSet.empty());
     m_numBarrierParticipants = m_stateTracker.getNumRunning();
+    for (auto &mod: m_stateTracker.runningMap) {
+        if (!Id::isModule(mod.first))
+            continue;
+        auto state = m_stateTracker.getModuleState(mod.first);
+        if (state & StateObserver::Crashed)
+            m_numBarrierParticipants--;
+    }
     if (m_numBarrierParticipants == 0) {
         sendBarrierReached(*this, barrier.uuid());
     } else {
@@ -4329,7 +4336,7 @@ bool Hub::handlePriv(const message::ModuleExit &exit)
     }
 
     if (m_barrierActive) {
-        if (m_verbose >= Verbosity::Manager) {
+        if (m_verbose >= Verbosity::Normal) {
             CERR << "module " << id << " exited while barrier active" << std::endl;
         }
         auto r = make.message<message::BarrierReached>(m_barrierUuid);
