@@ -538,6 +538,8 @@ bool Hub::init(int argc, char *argv[])
 
     if (vm.count("quiet") > 0) {
         m_verbose = Verbosity::Quiet;
+    } else {
+        m_verbose += HubVerbosity::Normal;
     }
 
     if (vm.count("help")) {
@@ -560,6 +562,9 @@ bool Hub::init(int argc, char *argv[])
     }
     if (vm.count("dataport") > 0) {
         m_dataPort = vm["dataport"].as<unsigned short>();
+    }
+    if (m_verbose > Verbosity::Normal) {
+        CERR << "message level set to " << m_verbose << " (" << toString(Verbosity(m_verbose)) << ")" << std::endl;
     }
     if (m_verbose >= Verbosity::DuplicateMessages) {
         m_stateTracker.setVerbose(true);
