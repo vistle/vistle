@@ -18,3 +18,4 @@ A(ApproximateDepth, approximate_depth);
 A(RhrConfig, rhr_config);
 A(Sender, sender);
 A(TransformName, transformation_name);
+A(DepthOnly, depth_only);
