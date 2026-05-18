@@ -172,7 +172,11 @@ public:
 private:
     std::streamsize nread = 0;
     char buf[(1 << 16) + 1];
+#ifdef HAVE_LIBARCHIVE
     void *archive = nullptr;
+#endif
+#ifdef HAVE_LIBZIP
     void *zip = nullptr;
+#endif
 };
 #endif
