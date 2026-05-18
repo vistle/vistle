@@ -146,8 +146,9 @@ static void setValueInRange(PropertyManager *manager, PropertyManagerPrivate *ma
     if (data.val == oldVal)
         return;
 
-    if (setSubPropertyValue)
+    if (setSubPropertyValue) {
         (managerPrivate->*setSubPropertyValue)(property, data.val);
+    }
 
     emit(manager->*propertyChangedSignal)(property);
     emit(manager->*valueChangedSignal)(property, data.val);
@@ -186,11 +187,13 @@ setBorderValues(PropertyManager *manager, PropertyManagerPrivate *managerPrivate
 
     emit(manager->*rangeChangedSignal)(property, data.minVal, data.maxVal);
 
-    if (setSubPropertyRange)
+    if (setSubPropertyRange) {
         (managerPrivate->*setSubPropertyRange)(property, data.minVal, data.maxVal, data.val);
+    }
 
-    if (data.val == oldVal)
+    if (data.val == oldVal) {
         return;
+    }
 
     emit(manager->*propertyChangedSignal)(property);
     emit(manager->*valueChangedSignal)(property, data.val);
@@ -224,11 +227,13 @@ setBorderValue(PropertyManager *manager, PropertyManagerPrivate *managerPrivate,
 
     emit(manager->*rangeChangedSignal)(property, data.minVal, data.maxVal);
 
-    if (setSubPropertyRange)
+    if (setSubPropertyRange) {
         (managerPrivate->*setSubPropertyRange)(property, data.minVal, data.maxVal, data.val);
+    }
 
-    if (data.val == oldVal)
+    if (data.val == oldVal) {
         return;
+    }
 
     emit(manager->*propertyChangedSignal)(property);
     emit(manager->*valueChangedSignal)(property, data.val);
