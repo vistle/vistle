@@ -938,6 +938,18 @@ const OsgColorMap *VistleGeometryGenerator::getColorMap(const vistle::ColorMapKe
     return nullptr;
 }
 
+std::string getAttribute(const vistle::Object::const_ptr grid, const vistle::Object::const_ptr data,
+                         const std::string &name)
+{
+    if (!grid)
+        return "";
+    if (data && data->hasAttribute(name))
+        return data->getAttribute(name);
+    if (grid->hasAttribute(name))
+        return grid->getAttribute(name);
+    return "";
+}
+
 osg::Geode *VistleGeometryGenerator::makeNode()
 {
     if (m_ro)
@@ -978,17 +990,16 @@ osg::Geode *VistleGeometryGenerator::makeNode()
     osg::ref_ptr<osg::StateSet> state;
 
     bool transparent = false;
-    bool forceOpaque = false;
-    if (m_geo && m_geo->hasAttribute(attribute::Transparent)) {
-        transparent = m_geo->getAttribute(attribute::Transparent) != "false";
-        forceOpaque = !transparent;
+    if (auto t = getAttribute(m_geo, m_mapped, attribute::Transparent); !t.empty()) {
+        transparent = t != "false";
     }
 
     size_t numPrimitives = m_options.numPrimitives;
-    if (m_geo && m_geo->hasAttribute(attribute::BinNumPrimitives)) {
-        auto np = m_geo->getAttribute(attribute::BinNumPrimitives);
-        numPrimitives = atol(np.c_str());
+    if (auto num_primitives_attr = getAttribute(m_geo, m_mapped, attribute::BinNumPrimitives);
+        !num_primitives_attr.empty()) {
+        numPrimitives = atol(num_primitives_attr.c_str());
     }
+
 
     osg::Material *material = nullptr;
     if (m_ro && m_ro->hasSolidColor) {
@@ -1001,9 +1012,6 @@ osg::Geode *VistleGeometryGenerator::makeNode()
         material->setColorMode(osg::Material::AMBIENT_AND_DIFFUSE);
         if (c[3] > 0.f && c[3] < 1.f)
             transparent = true;
-    }
-    if (forceOpaque) {
-        transparent = false;
     }
 
     if (transparent) {
@@ -1018,6 +1026,12 @@ osg::Geode *VistleGeometryGenerator::makeNode()
             state->setMode(GL_BLEND, osg::StateAttribute::ON);
         }
     }
+    if (auto depth_only = getAttribute(m_geo, m_mapped, attribute::DepthOnly); !depth_only.empty()) {
+        state->setRenderBinDetails(-1, "RenderBin");
+        state->setNestRenderBins(false);
+        state->setAttributeAndModes(new osg::ColorMask(false, false, false, false), osg::StateAttribute::ON);
+    }
+
     state->setName(nodename + ".state");
     if (material)
         state->setAttribute(material);
