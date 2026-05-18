@@ -938,6 +938,16 @@ const OsgColorMap *VistleGeometryGenerator::getColorMap(const vistle::ColorMapKe
     return nullptr;
 }
 
+std::string getAttribute(const std::string &name, const vistle::Object::const_ptr data,
+                         const vistle::Object::const_ptr grid = nullptr)
+{
+    if (data && data->hasAttribute(name))
+        return data->getAttribute(name);
+    if (grid && grid->hasAttribute(name))
+        return grid->getAttribute(name);
+    return "";
+}
+
 osg::Geode *VistleGeometryGenerator::makeNode()
 {
     if (m_ro)
@@ -979,15 +989,9 @@ osg::Geode *VistleGeometryGenerator::makeNode()
 
     bool transparent = false;
     bool forceOpaque = false;
-    if (m_geo && m_geo->hasAttribute(attribute::Transparent)) {
-        transparent = m_geo->getAttribute(attribute::Transparent) != "false";
+    if (auto t = getAttribute(attribute::Transparent, m_mapped, m_geo); !t.empty()) {
+        transparent = t != "false";
         forceOpaque = !transparent;
-    }
-
-    size_t numPrimitives = m_options.numPrimitives;
-    if (m_geo && m_geo->hasAttribute(attribute::BinNumPrimitives)) {
-        auto np = m_geo->getAttribute(attribute::BinNumPrimitives);
-        numPrimitives = atol(np.c_str());
     }
 
     osg::Material *material = nullptr;
@@ -1002,10 +1006,10 @@ osg::Geode *VistleGeometryGenerator::makeNode()
         if (c[3] > 0.f && c[3] < 1.f)
             transparent = true;
     }
+
     if (forceOpaque) {
         transparent = false;
     }
-
     if (transparent) {
         state = opencover::VRSceneGraph::instance()->loadTransparentGeostate();
     } else {
@@ -1018,6 +1022,12 @@ osg::Geode *VistleGeometryGenerator::makeNode()
             state->setMode(GL_BLEND, osg::StateAttribute::ON);
         }
     }
+    if (auto depthOnly = getAttribute(attribute::DepthOnly, m_mapped, m_geo); !depthOnly.empty()) {
+        state->setRenderBinDetails(-1, "RenderBin");
+        state->setNestRenderBins(false);
+        state->setAttributeAndModes(new osg::ColorMask(false, false, false, false), osg::StateAttribute::ON);
+    }
+
     state->setName(nodename + ".state");
     if (material)
         state->setAttribute(material);
@@ -1068,6 +1078,11 @@ osg::Geode *VistleGeometryGenerator::makeNode()
             cached = true;
         if (cached)
             debug << "cached ";
+    }
+
+    size_t numPrimitives = m_options.numPrimitives;
+    if (auto np = getAttribute(attribute::BinNumPrimitives, m_mapped, m_geo); !np.empty()) {
+        numPrimitives = atol(np.c_str());
     }
 
     std::unique_ptr<std::vector<Index>> multiplicity; // how often a mapped value is used per supplied vertex
