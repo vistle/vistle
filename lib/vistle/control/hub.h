@@ -29,7 +29,8 @@ class Directory;
 class Hub;
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(
-    HubVerbosity, (Quiet)(Normal)(Manager)(Modules)(DuplicateMessages)(ManagerMessages)(Messages)(AllMessages));
+    HubVerbosity,
+    (Quiet)(Normal)(Console)(Manager)(Modules)(DuplicateMessages)(ManagerMessages)(Messages)(AllMessages));
 
 class HubParameters: public ParameterManager {
 public:
@@ -303,6 +304,7 @@ private:
     bool handlePriv(const message::Colormap &cm, const buffer *payload);
     bool handlePriv(const message::RemoveColormap &rmcm);
     bool handlePriv(const message::SetParameter &param);
+    bool handlePriv(const message::SendText &st, const buffer *payload);
 
     template<typename ConnMsg>
     bool handleConnectOrDisconnect(const ConnMsg &mm);

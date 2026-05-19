@@ -174,7 +174,7 @@ void Hub::ObservedChild::sendOutputToUi(bool console) const
     if (numDiscarded > 0) {
         std::ostringstream str;
         str << "[" << numDiscarded << " lines of output discarded]";
-        hub->sendInfo(str.str(), moduleId);
+        sendTextToUi(SendText::Info, 0, str.str(), moduleId);
     }
     size_t count = numDiscarded, startLine = count;
     std::string text;
@@ -563,7 +563,7 @@ bool Hub::init(int argc, char *argv[])
     if (vm.count("dataport") > 0) {
         m_dataPort = vm["dataport"].as<unsigned short>();
     }
-    if (m_verbose > Verbosity::Normal) {
+    if (m_verbose > Verbosity::Console) {
         CERR << "message level set to " << m_verbose << " (" << toString(Verbosity(m_verbose)) << ")" << std::endl;
     }
     if (m_verbose >= Verbosity::DuplicateMessages) {
@@ -2694,6 +2694,11 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                 handlePriv(rcm);
                 break;
             }
+            case SENDTEXT: {
+                const auto &st = msg.as<SendText>();
+                handlePriv(st, payload);
+                break;
+            }
             default: {
                 break;
             }
@@ -3841,7 +3846,7 @@ bool Hub::handlePriv(const message::Quit &quit, message::Identify::Identity send
             sendManager(quit);
     };
     if (quit.id() == Id::Broadcast) {
-        if (m_verbose > Verbosity::Normal) {
+        if (m_verbose > Verbosity::Console) {
             CERR << "quit requested by " << senderType << std::endl;
         }
         m_uiManager.requestQuit();
@@ -3907,6 +3912,42 @@ bool Hub::handlePriv(const message::RemoveHub &rm)
     }
 
     return false;
+}
+
+bool Hub::handlePriv(const message::SendText &st, const buffer *payload)
+{
+    if (m_verbose < Verbosity::Console) {
+        return true;
+    }
+    if (!payload) {
+        CERR << "received SendText without payload" << std::endl;
+        return true;
+    }
+
+    auto pl = message::getPayload<message::SendText::Payload>(*payload);
+    auto text = pl.text;
+    int id = st.senderId();
+    if (message::Id::isModule(id)) {
+        text = "[" + std::to_string(id) + "] " + text;
+    } else if (message::Id::isHub(id)) {
+        text = "Hub " + std::to_string(id) + ": " + text;
+    }
+
+    switch (st.textType()) {
+    case message::SendText::Info:
+        std::cerr << text << std::endl;
+        break;
+    case message::SendText::Warning:
+        std::cerr << text << std::endl;
+        break;
+    case message::SendText::Error:
+        std::cerr << text << std::endl;
+        break;
+    default:
+        break;
+    }
+
+    return true;
 }
 
 bool Hub::handlePriv(const message::SetParameter &param)
