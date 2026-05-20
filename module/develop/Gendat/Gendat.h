@@ -11,6 +11,7 @@ private:
     bool examine(const vistle::Parameter *param) override;
     bool read(Token &token, int timestep, int block) override;
 
+    template<typename CT>
     void block(Token &token, vistle::Index bx, vistle::Index by, vistle::Index bz, vistle::Index b,
                vistle::Index time) const;
 
@@ -18,6 +19,7 @@ private:
     vistle::IntParameter *m_geoMode;
     vistle::IntParameter *m_dataModeScalar;
     vistle::IntParameter *m_dataMode[3];
+    vistle::IntParameter *m_componentType;
     vistle::FloatParameter *m_dataScaleScalar;
     vistle::FloatParameter *m_dataScale[3];
     vistle::IntParameter *m_size[3];

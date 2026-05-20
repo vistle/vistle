@@ -34,6 +34,10 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(
         AnimDataMode,
         (Constant)(Add_Scale)(Divide_Scale)(Add_X)(Add_Y)(Add_Z))
+
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(
+        ComponentType,
+        (ScalarComponent)(IndexComponent)(ByteComponent))
 // clang-format on
 
 Gendat::Gendat(const std::string &name, int moduleID, mpi::communicator comm): Reader(name, moduleID, comm)
@@ -61,6 +65,9 @@ Gendat::Gendat(const std::string &name, int moduleID, mpi::communicator comm): R
     m_dataMode[2] = addIntParameter("data_mode_vec_z", "data generation mode", Identity_Z, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_dataMode[2], DataMode);
     m_dataScale[2] = addFloatParameter("data_scale_vec_z", "data scale factor", 1.);
+
+    m_componentType = addIntParameter("component_type", "data component type", ScalarComponent, Parameter::Choice);
+    V_ENUM_SET_CHOICES(m_componentType, ComponentType);
 
     m_size[0] = addIntParameter("size_x", "number of cells per block in x-direction", 11);
     m_size[1] = addIntParameter("size_y", "number of cells per block in y-direction", 10);
@@ -102,32 +109,21 @@ bool Gendat::examine(const Parameter *)
     return nblocks > 0;
 }
 
-bool Gendat::read(Reader::Token &token, int timestep, int blockNum)
+template<typename CT>
+CT convert(Scalar s)
 {
-    Index steps = m_steps->getValue();
-    if (steps > 0 && timestep < 0) {
-        // don't generate constant data when animation has been requested
-        return true;
-    }
-
-    Index blocks[3];
-    for (int i = 0; i < 3; ++i) {
-        blocks[i] = m_blocks[i]->getValue();
-    }
-
-    Index b = blockNum;
-    Index bx = b % blocks[0];
-    b /= blocks[0];
-    Index by = b % blocks[1];
-    b /= blocks[1];
-    Index bz = b;
-
-    block(token, bx, by, bz, blockNum, timestep);
-
-    return true;
+    return static_cast<CT>(s);
 }
 
-inline Scalar computeData(Scalar x, Scalar y, Scalar z, DataMode mode, Scalar scale, AnimDataMode anim, Index time)
+template<>
+Byte convert(Scalar s)
+{
+    return static_cast<Byte>(vistle::clamp<Scalar>(s * Scalar(255.999), 0., 255.));
+}
+
+
+template<typename CT>
+inline CT computeData(Scalar x, Scalar y, Scalar z, DataMode mode, Scalar scale, AnimDataMode anim, Index time)
 {
     switch (anim) {
     case Constant:
@@ -149,55 +145,70 @@ inline Scalar computeData(Scalar x, Scalar y, Scalar z, DataMode mode, Scalar sc
         break;
     }
 
+    Scalar result = {};
     switch (mode) {
     case One:
-        return scale;
+        result = scale;
+        break;
     case Dist_Origin:
-        return sqrt(x * x + y * y + z * z) * scale;
+        result = sqrt(x * x + y * y + z * z) * scale;
+        break;
     case Identity_X:
-        return x * scale;
+        result = x * scale;
+        break;
     case Identity_Y:
-        return y * scale;
+        result = y * scale;
+        break;
     case Identity_Z:
-        return z * scale;
+        result = z * scale;
+        break;
     case Sine_X:
-        return sin(x * M_PI) * scale;
+        result = sin(x * M_PI) * scale;
     case Sine_Y:
-        return sin(y * M_PI) * scale;
+        result = sin(y * M_PI) * scale;
+        break;
     case Sine_Z:
-        return sin(z * M_PI) * scale;
+        result = sin(z * M_PI) * scale;
+        break;
     case Cosine_X:
-        return cos(x * M_PI) * scale;
+        result = cos(x * M_PI) * scale;
+        break;
     case Cosine_Y:
-        return cos(y * M_PI) * scale;
+        result = cos(y * M_PI) * scale;
+        break;
     case Cosine_Z:
-        return cos(z * M_PI) * scale;
+        result = cos(z * M_PI) * scale;
+        break;
     case Random:
-        return rand() * scale;
+        result = rand() * scale;
+        break;
     }
 
-    return 0.;
+    return convert<CT>(result);
 }
 
-void setDataCells(Scalar *d, const ElementInterface *grid, DataMode mode, Scalar scale, AnimDataMode anim, Index time)
+template<typename CT>
+void setDataCells(CT *d, const ElementInterface *grid, DataMode mode, Scalar scale, AnimDataMode anim, Index time)
 {
     Index numElem = grid->getNumElements();
     for (Index idx = 0; idx < numElem; ++idx) {
         auto c = grid->cellCenter(idx);
-        d[idx] = computeData(c[0], c[1], c[2], mode, scale, anim, time);
+        d[idx] = computeData<CT>(c[0], c[1], c[2], mode, scale, anim, time);
     }
 }
 
-void setDataCoords(Scalar *d, Index numVert, const Scalar *xx, const Scalar *yy, const Scalar *zz, DataMode mode,
+template<typename CT>
+void setDataCoords(CT *d, Index numVert, const Scalar *xx, const Scalar *yy, const Scalar *zz, DataMode mode,
                    Scalar scale, AnimDataMode anim, Index time)
 {
     for (Index idx = 0; idx < numVert; ++idx) {
         Scalar x = xx[idx], y = yy[idx], z = zz[idx];
-        d[idx] = computeData(x, y, z, mode, scale, anim, time);
+        d[idx] = computeData<CT>(x, y, z, mode, scale, anim, time);
     }
 }
 
-void setDataUniform(Scalar *d, Index dim[3], Vector3 min, Vector3 max, DataMode mode, Scalar scale, AnimDataMode anim,
+template<typename CT>
+void setDataUniform(CT *d, Index dim[3], Vector3 min, Vector3 max, DataMode mode, Scalar scale, AnimDataMode anim,
                     Index time)
 {
     Vector3 dist = max - min;
@@ -215,7 +226,7 @@ void setDataUniform(Scalar *d, Index dim[3], Vector3 min, Vector3 max, DataMode 
                 Scalar y = min[1] + j * dist[1];
                 Scalar z = min[2] + k * dist[2];
 
-                d[idx] = computeData(x, y, z, mode, scale, anim, time);
+                d[idx] = computeData<CT>(x, y, z, mode, scale, anim, time);
             }
         }
     }
@@ -236,6 +247,7 @@ void setStructuredGridGlobalOffsets(StructuredGridBase::ptr ptr, Index offset[3]
     }
 }
 
+template<typename CT>
 void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::Index block, vistle::Index time) const
 {
     Index dim[3];
@@ -505,16 +517,16 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
     }
     Index numData = elementData ? numCells : numVert;
 
-    Vec<Scalar, 1>::ptr scalar;
+    typename Vec<CT, 1>::ptr scalar;
     if (isConnected("data_out0")) {
-        scalar.reset(new Vec<Scalar, 1>(numData));
+        scalar.reset(new Vec<CT, 1>(numData));
         scalar->setBlock(block);
         if (time >= 0)
             scalar->setTimestep(time);
     }
-    Vec<Scalar, 3>::ptr vector;
+    typename Vec<CT, 3>::ptr vector;
     if (isConnected("data_out1")) {
-        vector.reset(new Vec<Scalar, 3>(numData));
+        vector.reset(new Vec<CT, 3>(numData));
         vector->setBlock(block);
         if (time >= 0)
             vector->setTimestep(time);
@@ -593,4 +605,43 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
     if (delay > 0.) {
         usleep(int32_t(delay * 1e6));
     }
+}
+
+bool Gendat::read(Reader::Token &token, int timestep, int blockNum)
+{
+    Index steps = m_steps->getValue();
+    if (steps > 0 && timestep < 0) {
+        // don't generate constant data when animation has been requested
+        return true;
+    }
+
+    Index blocks[3];
+    for (int i = 0; i < 3; ++i) {
+        blocks[i] = m_blocks[i]->getValue();
+    }
+
+    Index b = blockNum;
+    Index bx = b % blocks[0];
+    b /= blocks[0];
+    Index by = b % blocks[1];
+    b /= blocks[1];
+    Index bz = b;
+
+    auto ct = static_cast<ComponentType>(m_componentType->getValue());
+    switch (ct) {
+    case ScalarComponent:
+        block<Scalar>(token, bx, by, bz, blockNum, timestep);
+        break;
+    case IndexComponent:
+        block<Index>(token, bx, by, bz, blockNum, timestep);
+        break;
+    case ByteComponent:
+        block<Byte>(token, bx, by, bz, blockNum, timestep);
+        break;
+    default:
+        std::cerr << "invalid component type: " << ct << std::endl;
+        assert("invalid component type" == nullptr);
+    }
+
+    return true;
 }
