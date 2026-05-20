@@ -99,6 +99,30 @@ private:
     Options m_options;
 
     static std::mutex s_coverMutex;
+    struct NodeInfo {
+        osg::ref_ptr<osg::StateSet> state;
+        bool lighted = true;
+        std::stringstream debug;
+        GeometryCache cache;
+        bool cached = false;
+        std::string nodename;
+        bool haveSpheres = false;
+        const OsgColorMap *colormap = nullptr;
+        vistle::DataBase::Mapping mapping = vistle::DataBase::Unspecified;
+        bool dataValid = false;
+        size_t numPrimitives = 0;
+        vistle::Normals::const_ptr normals;
+        std::unique_ptr<std::vector<vistle::Index>>
+            multiplicity; // how often a mapped value is used per supplied vertex
+    };
+    NodeInfo gatherNodeInfo();
+    osg::Drawable *handlePoints(NodeInfo &info);
+    std::vector<osg::ref_ptr<osg::Drawable>> handleLayerGrid(NodeInfo &info);
+    std::vector<osg::ref_ptr<osg::Drawable>> handleTriangles(NodeInfo &info);
+    std::vector<osg::ref_ptr<osg::Drawable>> handleQuads(NodeInfo &info);
+    std::vector<osg::ref_ptr<osg::Drawable>> handlePolygons(NodeInfo &info);
+    osg::Drawable *handleLines(NodeInfo &info);
+    void applyColorMap(NodeInfo &info);
 };
 
 #endif
