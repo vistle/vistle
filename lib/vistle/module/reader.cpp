@@ -164,6 +164,7 @@ bool Reader::readTimestep(std::shared_ptr<Token> &prev, const ReaderProperties &
     bool result = true;
     bool collective = m_collectiveIo == Collective || (timestep < 0 && m_collectiveIo == CollectiveConstant);
     bool partitioned = m_handlePartitions == Partition || (timestep >= 0 && m_handlePartitions == PartitionTimesteps);
+    bool serial = m_parallel == Serial || prop.concurrency == 1;
     std::shared_ptr<mpi::communicator> rest_comm, full_comm;
     if (collective) {
         bool have_rest = prop.numpart % size() != 0;
@@ -192,7 +193,7 @@ bool Reader::readTimestep(std::shared_ptr<Token> &prev, const ReaderProperties &
                     token->m_comm = rest_comm;
                 }
             }
-            if (m_parallel == Serial) {
+            if (serial) {
                 if (!read(*token, timestep, p)) {
                     sendError("error reading time data %d on partition %d", timestep, p);
                     result = false;
@@ -219,7 +220,7 @@ bool Reader::readTimestep(std::shared_ptr<Token> &prev, const ReaderProperties &
             }
         }
         if (cancelRequested()) {
-            if (m_parallel != Serial) {
+            if (!serial) {
                 waitForReaders(0, result);
                 prev.reset();
             }
@@ -228,7 +229,7 @@ bool Reader::readTimestep(std::shared_ptr<Token> &prev, const ReaderProperties &
         if (!result)
             break;
     }
-    if (m_parallel == Serial)
+    if (serial)
         return result;
     if (m_parallel == ParallelizeBlocks) {
         waitForReaders(0, result);
