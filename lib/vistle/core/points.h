@@ -21,6 +21,7 @@ public:
     Vec<Scalar>::const_ptr radius() const;
     void setRadius(Vec<Scalar>::const_ptr radius);
 
+    std::pair<Vector3, Vector3> getBounds() const override;
     Index getNumElements() override;
     Index getNumElements() const override;
     Index cellNumFaces(Index elem) const override;

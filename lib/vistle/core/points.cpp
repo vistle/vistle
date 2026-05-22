@@ -60,6 +60,37 @@ void Points::setRadius(Vec<Scalar>::const_ptr radius)
     d()->radius = radius;
 }
 
+std::pair<vistle::Vector3, vistle::Vector3> Points::getBounds() const
+{
+    auto rad = radius();
+    if (!rad) {
+        return Base::getBounds();
+    }
+
+    const Scalar *x = this->x().data();
+    const Scalar *y = this->y().data();
+    const Scalar *z = this->z().data();
+    const Scalar *r = rad->x().data();
+
+    Vector3 min(x[0], y[0], z[0]);
+    Vector3 max(x[0], y[0], z[0]);
+    for (Index i = 1; i < getNumPoints(); ++i) {
+        if (x[i] - r[i] < min.x())
+            min.x() = x[i] - r[i];
+        else if (x[i] + r[i] > max.x())
+            max.x() = x[i] + r[i];
+        if (y[i] - r[i] < min.y())
+            min.y() = y[i] - r[i];
+        else if (y[i] + r[i] > max.y())
+            max.y() = y[i] + r[i];
+        if (z[i] - r[i] < min.z())
+            min.z() = z[i] - r[i];
+        else if (z[i] + r[i] > max.z())
+            max.z() = z[i] + r[i];
+    }
+    return {min, max};
+}
+
 Index Points::getNumElements()
 {
     return getNumPoints();
