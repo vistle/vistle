@@ -282,7 +282,6 @@ Lines::ptr makeBox(Vector3 min, Vector3 max)
 } // namespace
 #endif
 
-
 bool Extrema::compute()
 {
     //std::cerr << "Extrema: compute: generation=" << m_generation << std::endl;
@@ -312,39 +311,47 @@ bool Extrema::compute()
         const Index num = coord->getNumCoords();
         const Scalar *x = coord->x().data(), *y = coord->y().data(), *z = coord->z().data();
         auto t = obj->getTransform();
-        if (t.isIdentity()) {
-            for (Index i = 0; i < num; ++i) {
-                Vector3 p(x[i], y[i], z[i]);
-                for (int c = 0; c < 3; ++c) {
-                    if (p[c] < min[c]) {
-                        min[c] = p[c];
-                        minIndex[c] = i;
-                        minBlock[c] = obj->getBlock();
-                    }
-                    if (p[c] > max[c]) {
-                        max[c] = p[c];
-                        maxIndex[c] = i;
-                        maxBlock[c] = obj->getBlock();
-                    }
+
+        auto updateExtrema = [&](const Vector3 &p, Index i) {
+            for (int c = 0; c < 3; ++c) {
+                if (p[c] < min[c]) {
+                    min[c] = p[c];
+                    minIndex[c] = i;
+                    minBlock[c] = obj->getBlock();
+                }
+                if (p[c] > max[c]) {
+                    max[c] = p[c];
+                    maxIndex[c] = i;
+                    maxBlock[c] = obj->getBlock();
                 }
             }
-        } else {
-            for (Index i = 0; i < num; ++i) {
-                auto p = transformPoint(t, Vector3(x[i], y[i], z[i]));
-                for (int c = 0; c < 3; ++c) {
-                    if (p[c] < min[c]) {
-                        min[c] = p[c];
-                        minIndex[c] = i;
-                        minBlock[c] = obj->getBlock();
-                    }
-                    if (p[c] > max[c]) {
-                        max[c] = p[c];
-                        maxIndex[c] = i;
-                        maxBlock[c] = obj->getBlock();
-                    }
-                }
+        };
+
+        const bool identity = t.isIdentity();
+        const auto radius = Points::as(obj) ? Points::as(obj)->radius() : nullptr;
+        auto pointAt = [&](Index i) {
+            Vector3 p(x[i], y[i], z[i]);
+            if (!identity)
+                p = transformPoint(t, p);
+            return p;
+        };
+        auto sphereAt = [&](Index i, Scalar radius) {
+            Vector3 p(x[i] + radius, y[i] + radius, z[i] + radius);
+            if (!identity)
+                p = transformPoint(t, p);
+            return p;
+        };
+
+        for (Index i = 0; i < num; ++i) {
+            if (radius) {
+                updateExtrema(sphereAt(i, radius->x()[i]), i);
+                updateExtrema(sphereAt(i, -radius->x()[i]), i);
+            } else {
+                updateExtrema(pointAt(i), i);
             }
+            updateExtrema(pointAt(i), i);
         }
+
         min.dim = 3;
         max.dim = 3;
         minIndex.dim = 3;
