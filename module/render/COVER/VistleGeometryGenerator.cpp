@@ -1156,6 +1156,8 @@ osg::Drawable *VistleGeometryGenerator::handlePoints(NodeInfo &info)
             info.lighted = false;
         }
     }
+    auto [min, max] = points->getBounds();
+    geom->setInitialBound(osg::BoundingBox({min.x(), min.y(), min.z()}, {max.x(), max.y(), max.z()}));
     return geom;
 }
 
