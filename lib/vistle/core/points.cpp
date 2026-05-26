@@ -72,8 +72,8 @@ std::pair<vistle::Vector3, vistle::Vector3> Points::getBounds() const
     const Scalar *z = this->z().data();
     const Scalar *r = rad->x().data();
 
-    Vector3 min(x[0], y[0], z[0]);
-    Vector3 max(x[0], y[0], z[0]);
+    Vector3 min(x[0] - r[0], y[0] - r[0], z[0] - r[0]);
+    Vector3 max(x[0] + r[0], y[0] + r[0], z[0] + r[0]);
     for (Index i = 1; i < getNumPoints(); ++i) {
         if (x[i] - r[i] < min.x())
             min.x() = x[i] - r[i];
