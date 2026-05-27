@@ -191,10 +191,8 @@ std::pair<typename Vec<T, Dim>::VecVector, typename Vec<T, Dim>::VecVector> Vec<
 
     const Index sz = getSize();
     for (unsigned c = 0; c < Dim; ++c) {
-        for (unsigned c = 0; c < Dim; ++c) {
-            min[c] = smax;
-            max[c] = smin;
-        }
+        min[c] = smax;
+        max[c] = smin;
 
         const T *d = x(c).data();
         for (Index i = 0; i < sz; ++i) {
