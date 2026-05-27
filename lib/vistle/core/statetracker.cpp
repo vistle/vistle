@@ -272,12 +272,12 @@ std::string StateTracker::getModuleDisplayName(int id) const
 {
     mutex_locker guard(m_stateMutex);
     RunningMap::const_iterator it = runningMap.find(id);
-    if (it != runningMap.end())
-        return it->second.displayName;
-    it = quitMap.find(id);
-    if (it != quitMap.end())
-        return it->second.displayName;
-    return std::string();
+    if (it == runningMap.end()) {
+        it = quitMap.find(id);
+        if (it == quitMap.end())
+            return std::string();
+    }
+    return it->second.displayName.empty() ? it->second.name : it->second.displayName;
 }
 
 std::string StateTracker::getModuleCategory(int id) const
