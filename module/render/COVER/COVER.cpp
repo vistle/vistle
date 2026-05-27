@@ -329,6 +329,22 @@ osg::ref_ptr<osg::Group> COVER::getParent(VistleRenderObject *ro)
     return parent;
 }
 
+opencover::coVRAnimationManager::FillMode getAnimationFill(const vistle::Object::const_ptr &geometry,
+                                                           const vistle::Object::const_ptr &texture)
+{
+    std::string mode;
+    if (texture)
+        mode = texture->getAttribute(vistle::attribute::AnimationFill);
+    if (mode.empty() && geometry)
+        mode = geometry->getAttribute(vistle::attribute::AnimationFill);
+    std::transform(mode.begin(), mode.end(), mode.begin(), ::tolower);
+    if (mode == "last")
+        return opencover::coVRAnimationManager::Last;
+    else if (mode == "cycle")
+        return opencover::coVRAnimationManager::Cycle;
+    return opencover::coVRAnimationManager::Nothing;
+}
+
 void COVER::removeObject(std::shared_ptr<vistle::RenderObject> vro)
 {
     auto pro = std::static_pointer_cast<PluginRenderObject>(vro);
@@ -394,7 +410,8 @@ void COVER::removeObject(std::shared_ptr<vistle::RenderObject> vro)
                         if (removed) {
                             //std::cerr << "empty timestep: removed some timesteps" << std::endl;
                             if (cr.animated(variant)->getNumChildren() > 0) {
-                                coVRAnimationManager::instance()->addSequence(cr.animated(variant));
+                                coVRAnimationManager::instance()->addSequence(
+                                    cr.animated(variant), getAnimationFill(pro->geometry, pro->mapdata));
                             } else {
                                 coVRAnimationManager::instance()->removeSequence(cr.animated(variant));
                             }
@@ -534,7 +551,7 @@ std::shared_ptr<vistle::RenderObject> COVER::addObject(int senderId, const std::
     }
     const int t = pro->timestep;
     if (t >= 0) {
-        coVRAnimationManager::instance()->addSequence(creator.animated(variant));
+        coVRAnimationManager::instance()->addSequence(creator.animated(variant), getAnimationFill(geometry, texture));
     }
 
     osg::ref_ptr<osg::Group> parent = getParent(cro.get());
@@ -586,7 +603,8 @@ bool COVER::render()
                 const std::string variant = pro->variant;
                 const int t = pro->timestep;
                 if (t >= 0) {
-                    coVRAnimationManager::instance()->addSequence(creator.animated(variant));
+                    coVRAnimationManager::instance()->addSequence(creator.animated(variant),
+                                                                  getAnimationFill(pro->geometry, pro->mapdata));
                 }
                 osg::ref_ptr<osg::Group> parent = getParent(pro->coverRenderObject.get());
                 parent->addChild(tr);
