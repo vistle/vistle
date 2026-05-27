@@ -103,7 +103,7 @@ bool VistleInteractor::isSame(coInteractor *i) const
 /// execute the Module
 void VistleInteractor::executeModule()
 {
-    auto &anim = *opencover::coVRAnimationManager::instance();
+    const auto &anim = *opencover::coVRAnimationManager::instance();
     double dt = 0.;
     if (anim.animationRunning() && std::abs(anim.getCurrentSpeed()) > 0.) {
         dt = 1. / anim.getCurrentSpeed();
