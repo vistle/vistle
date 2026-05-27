@@ -67,27 +67,28 @@ std::pair<vistle::Vector3, vistle::Vector3> Points::getBounds() const
         return Base::getBounds();
     }
 
-    const Scalar *x = this->x().data();
-    const Scalar *y = this->y().data();
-    const Scalar *z = this->z().data();
     const Scalar *r = rad->x().data();
 
-    Vector3 min(x[0] - r[0], y[0] - r[0], z[0] - r[0]);
-    Vector3 max(x[0] + r[0], y[0] + r[0], z[0] + r[0]);
-    for (Index i = 1; i < getNumPoints(); ++i) {
-        if (x[i] - r[i] < min.x())
-            min.x() = x[i] - r[i];
-        else if (x[i] + r[i] > max.x())
-            max.x() = x[i] + r[i];
-        if (y[i] - r[i] < min.y())
-            min.y() = y[i] - r[i];
-        else if (y[i] + r[i] > max.y())
-            max.y() = y[i] + r[i];
-        if (z[i] - r[i] < min.z())
-            min.z() = z[i] - r[i];
-        else if (z[i] + r[i] > max.z())
-            max.z() = z[i] + r[i];
+    Vector3 min;
+    Vector3 max;
+    const auto numPoints = getNumPoints();
+
+    std::array<const Scalar *, 3> coords;
+    for (unsigned c = 0; c < 3; ++c) {
+        min[c] = std::numeric_limits<Scalar>::max();
+        max[c] = std::numeric_limits<Scalar>::lowest();
+        coords[c] = this->x(c).data();
     }
+
+    for (Index i = 0; i < numPoints; ++i) {
+        for (unsigned c = 0; c < 3; ++c) {
+            if (coords[c][i] - r[i] < min[c])
+                min[c] = coords[c][i] - r[i];
+            if (coords[c][i] + r[i] > max[c])
+                max[c] = coords[c][i] + r[i];
+        }
+    }
+
     return {min, max};
 }
 
