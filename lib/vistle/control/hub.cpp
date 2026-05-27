@@ -3380,8 +3380,12 @@ bool Hub::editDelayedConnects(int oldModuleId, int newModuleId)
 bool Hub::cacheModuleValues(int oldModuleId, int newModuleId)
 {
     if (!stateTracker().getModuleDisplayName(oldModuleId).empty()) {
-        auto setname = make.message<message::SetName>(newModuleId, stateTracker().getModuleDisplayName(oldModuleId));
-        m_sendAfterSpawn[newModuleId].emplace_back(setname);
+        auto oldDisplayName = stateTracker().getModuleDisplayName(oldModuleId);
+        if (oldDisplayName != stateTracker().getModuleName(oldModuleId)) {
+            auto setname =
+                make.message<message::SetName>(newModuleId, stateTracker().getModuleDisplayName(oldModuleId));
+            m_sendAfterSpawn[newModuleId].emplace_back(setname);
+        }
     }
     if (!copyModuleParams(oldModuleId, newModuleId))
         return false;

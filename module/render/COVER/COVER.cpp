@@ -982,7 +982,7 @@ bool COVER::handleMessage(const message::Message *message, const MessagePayload 
         InteractorMap::iterator it = m_interactorMap.find(setname.module());
         if (it != m_interactorMap.end()) {
             auto inter = it->second;
-            inter->setDisplayName(setname.name());
+            inter->setDisplayName(state().getModuleDisplayName(setname.module()));
             coVRPluginList::instance()->newInteractor(inter->getObject(), inter);
         }
         return ret;
