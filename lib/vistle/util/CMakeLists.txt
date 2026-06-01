@@ -15,6 +15,7 @@ set(util_SOURCES
     netpbmimage.cpp
     sleep.cpp
     stopwatch.cpp
+    strings.cpp
     sysdep.cpp
     threadname.cpp
     tools.cpp
@@ -48,6 +49,7 @@ set(util_HEADERS
     sleep.h
     ssize_t.h
     stopwatch.h
+    strings.h
     sysdep.h
     threadname.h
     tools.h
@@ -70,6 +72,8 @@ vistle_target_link_libraries(
     Boost::filesystem
     PRIVATE
     Boost::timer
+    PRIVATE
+    Boost::locale
     PRIVATE
     Threads::Threads
     PRIVATE

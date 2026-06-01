@@ -504,7 +504,7 @@ else()
 endif()
 
 if(NOT VISTLE_GUI_ONLY)
-    set(BOOST_OPT ${BOOST_OPT} iostreams locale)
+    set(BOOST_OPT ${BOOST_OPT} iostreams)
 endif()
 
 if(VISTLE_INTERNAL_BOOST_MPI)
@@ -546,6 +546,7 @@ vistle_find_package(
     thread
     regex
     timer
+    locale
     ${BOOST_REQ}
     OPTIONAL_COMPONENTS
     ${BOOST_OPT})

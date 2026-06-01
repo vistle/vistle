@@ -43,6 +43,7 @@
 #include <vistle/rhr/rfbext.h>
 #include <vistle/util/crypto.h>
 #include <vistle/util/hostname.h>
+#include <vistle/util/strings.h>
 #include <vistle/module/module.h>
 #include <vistle/core/statetracker.h>
 
@@ -547,7 +548,7 @@ bool RhrClient::init()
 
     std::string confMode = covise::coCoviseConfig::getEntry("reprojectionMode", configKey);
     if (!confMode.empty()) {
-        std::transform(confMode.begin(), confMode.end(), confMode.begin(), ::tolower);
+        confMode = vistle::to_lower(confMode);
         if (confMode == "disable" || confMode == "asis")
             m_configuredMode = MultiChannelDrawer::AsIs;
         else if (confMode == "points")

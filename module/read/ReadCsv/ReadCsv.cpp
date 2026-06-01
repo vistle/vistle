@@ -4,6 +4,7 @@
 #include <vistle/core/points.h>
 #include <vistle/util/filesystem.h>
 #include <vistle/util/meta.h>
+#include <vistle/util/strings.h>
 
 #include <fstream>
 
@@ -133,10 +134,8 @@ bool ReadCsv::examine(const Parameter *param)
         m_choices = std::vector<std::string>{vistle::Reader::InvalidChoice};
         splitLine(m_choices, line, m_delimiter);
         auto lowerChoices = m_choices;
-        std::transform(lowerChoices.begin(), lowerChoices.end(), lowerChoices.begin(), [](std::string s) {
-            std::transform(s.begin(), s.end(), s.begin(), ::tolower);
-            return s;
-        });
+        std::transform(lowerChoices.begin(), lowerChoices.end(), lowerChoices.begin(),
+                       [](std::string s) { return to_lower(s); });
 
         for (auto p: m_selectionParams) {
             setParameterChoices(p, m_choices);
