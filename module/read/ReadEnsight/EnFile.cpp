@@ -27,6 +27,7 @@
 #include <iostream>
 #include <cfloat>
 #include <boost/algorithm/string.hpp>
+#include <vistle/util/strings.h>
 
 //#define DEBUG
 
@@ -52,7 +53,7 @@ CaseFile::BinType EnFile::guessBinType(ReadEnsight *mod, const std::string &file
     fclose(in);
 
     std::string firstLine(buf.begin(), buf.end());
-    std::transform(firstLine.begin(), firstLine.end(), firstLine.begin(), tolower);
+    firstLine = vistle::to_lower(firstLine);
 
     if ((firstLine.find("c binary") != std::string::npos) || (firstLine.find("cbinary") != std::string::npos)) {
         ret = CaseFile::CBIN;

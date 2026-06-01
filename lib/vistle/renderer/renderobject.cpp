@@ -21,8 +21,9 @@ std::string rgb_normalize_name(std::string name)
     const char *p = name.c_str();
     std::string colorname;
     while (*p) {
-        if (!isspace(*p))
-            colorname.push_back(tolower(*p));
+        auto c = static_cast<unsigned char>(*p);
+        if (!isspace(c))
+            colorname.push_back(tolower(c));
         ++p;
     }
     return colorname;

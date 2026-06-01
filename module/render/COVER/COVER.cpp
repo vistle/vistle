@@ -19,6 +19,7 @@
 #include <vistle/core/placeholder.h>
 #include <vistle/core/statetracker.h>
 #include <vistle/util/threadname.h>
+#include <vistle/util/strings.h>
 
 #include <osg/Node>
 #include <osg/Group>
@@ -337,7 +338,7 @@ opencover::coVRAnimationManager::FillMode getAnimationFill(const vistle::Object:
         mode = texture->getAttribute(vistle::attribute::AnimationFill);
     if (mode.empty() && geometry)
         mode = geometry->getAttribute(vistle::attribute::AnimationFill);
-    std::transform(mode.begin(), mode.end(), mode.begin(), ::tolower);
+    mode = to_lower(mode);
     if (mode == "last")
         return opencover::coVRAnimationManager::Last;
     else if (mode == "cycle")
