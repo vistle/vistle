@@ -58,7 +58,6 @@
 
 using namespace opencover;
 using namespace vistle;
-using message::RemoteRenderMessage;
 
 typedef std::lock_guard<std::recursive_mutex> lock_guard;
 
