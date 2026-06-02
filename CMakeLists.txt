@@ -530,6 +530,8 @@ if(APPLE)
     add_definitions(-DBOOST_INTERPROCESS_POSIX_PROCESS_SHARED)
 endif()
 
+vistle_find_package(Boost 1.78 OPTIONAL_COMPONENTS system QUIET)
+
 vistle_find_package(
     Boost
     1.78
@@ -545,7 +547,6 @@ vistle_find_package(
     timer
     ${BOOST_REQ}
     OPTIONAL_COMPONENTS
-    system
     ${BOOST_OPT})
 if(NOT TARGET Boost::system)
     add_library(Boost::system ALIAS Boost::boost)
