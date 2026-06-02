@@ -66,6 +66,7 @@ option(VISTLE_TIME_BUILD "Gather build times (Clang/ISPC)" OFF)
 option(VISTLE_PROFILE_NVTX "Annotate for Nsight profiler" OFF)
 option(VISTLE_PROFILE_CHROME "Annotate for showing timings in Chrome browser" OFF)
 option(VISTLE_PROFILE_ROCTX "Annotate for rocprof profiler" OFF)
+option(VISTLE_ANNOTATE_EXTRAE "Annotate with Extrae for Paraver" OFF)
 
 option(VISTLE_USE_CUDA "Build with CUDA support" OFF)
 option(VISTLE_USE_KOKKOS "Build with Kokkos support" OFF)
@@ -1235,6 +1236,11 @@ if(NOT VISTLE_INTERNAL_VISKORES)
 
     # make sure viskores and vistle data types are compatible (if not, overwrite user flags, accordingly)
     add_subdirectory(cmake/Modules/viskores)
+endif()
+
+if(VISTLE_ANNOTATE_EXTRAE)
+    vistle_find_package(Extrae REQUIRED)
+    target_compile_definitions(Extrae::mpitrace INTERFACE USE_EXTRAE)
 endif()
 
 # configure data-type sizes
