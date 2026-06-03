@@ -742,7 +742,6 @@ bool Tracer::reduce(int timestep)
         startParticles(numStart);
 
         bool first = true;
-        int numDeactivated = 0;
         // build list of particles to send to their owner
         for (auto it = activeParticles.begin(), next = it; it != activeParticles.end(); it = next) {
             next = it;
@@ -759,12 +758,10 @@ bool Tracer::reduce(int timestep)
                     sendlist.push_back(particle->id());
                 }
                 activeParticles.erase(it);
-                ++numDeactivated;
             }
         }
 
-        while (numDeactivated > 0 && !localParticles.empty()) {
-            --numDeactivated;
+        while (activeParticles.size() < maxNumActive && !localParticles.empty()) {
             auto p = *localParticles.begin();
             activeParticles.emplace(p);
             p->startTracing();
@@ -800,21 +797,16 @@ bool Tracer::reduce(int timestep)
                     if (r < 0) {
                         p->Deactivate(OutOfDomain);
                     } else if (r == rank()) {
-                        if (activeParticles.size() < maxNumActive) {
-                            activeParticles.emplace(p);
-                            p->startTracing();
-                        } else {
-                            localParticles.emplace(p);
-                        }
+                        localParticles.emplace(p);
                     }
                 }
             }
         }
 
-        std::copy(sendlist.begin(), sendlist.end(), std::back_inserter(datasendlist));
-
         numActiveMin = mpi::all_reduce(comm(), activeParticles.size() + localParticles.size(), mpi::minimum<Index>());
         numActiveMax = mpi::all_reduce(comm(), activeParticles.size() + localParticles.size(), mpi::maximum<Index>());
+
+        std::copy(sendlist.begin(), sendlist.end(), std::back_inserter(datasendlist));
         //std::cerr << "recvlist: " << datarecvlist.size() << ", sendlist: " << sendlist.size() << ", #active="<<activeParticles.size() << std::endl;
     } while (numActiveMax > 0 || nextParticleToStart < allParticles.size());
 
