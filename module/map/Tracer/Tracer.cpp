@@ -471,7 +471,6 @@ bool Tracer::reduce(int timestep)
     if (maxNumActive <= 0) {
         maxNumActive = std::thread::hardware_concurrency();
     }
-    Index maxNumActiveGlobal = mpi::all_reduce(comm(), maxNumActive, mpi::maximum<Index>());
     auto taskType = (TraceType)getIntParameter("taskType");
     TraceDirection traceDirection = (TraceDirection)getIntParameter("tdirection");
     if (taskType != Streamlines) {
@@ -703,43 +702,28 @@ bool Tracer::reduce(int timestep)
         }
     }
 
-    Index nextParticleToStart = 0;
-    auto startParticles = [this, &nextParticleToStart, &allParticles, &activeParticles, &localParticles,
-                           maxNumActive](int toStart) -> int {
-        int started = 0;
-        while (nextParticleToStart < allParticles.size()) {
-            if (started >= toStart)
-                break;
-
-            Index idx = nextParticleToStart;
-            ++nextParticleToStart;
-            auto particle = allParticles[idx];
-            int r = particle->searchRank(comm());
-            if (r >= 0) {
-                ++started;
-                if (rank() == r) {
-                    if (activeParticles.size() < maxNumActive) {
-                        activeParticles.emplace(particle);
-                        particle->startTracing();
-                    } else {
-                        localParticles.emplace(particle);
-                    }
-                }
+    // launch particles
+    for (Index idx = 0; idx < allParticles.size(); ++idx) {
+        auto particle = allParticles[idx];
+        int r = particle->searchRank(comm());
+        if (r < 0) {
+            particle->Deactivate(InitiallyOutOfDomain);
+        } else if (rank() == r) {
+            if (activeParticles.size() < maxNumActive) {
+                activeParticles.emplace(particle);
+                particle->startTracing();
             } else {
-                particle->Deactivate(InitiallyOutOfDomain);
+                localParticles.emplace(particle);
             }
         }
-        return started;
-    };
+    }
 
     std::vector<Index> datasendlist;
     std::vector<std::pair<Index, int>> datarecvlist; // particle id, source mpi rank
     const int mpisize = comm().size();
-    Index numActiveMax = 0, numActiveMin = std::numeric_limits<Index>::max();
+    Index numActiveMax = 0;
     do {
         std::vector<Index> sendlist;
-        Index numStart = maxNumActiveGlobal > numActiveMin ? maxNumActiveGlobal - numActiveMin : 0;
-        startParticles(numStart);
 
         bool first = true;
         // build list of particles to send to their owner
@@ -769,7 +753,7 @@ bool Tracer::reduce(int timestep)
         }
 
         if (mpisize == 1) {
-            numActiveMax = numActiveMin = activeParticles.size() + localParticles.size();
+            numActiveMax = activeParticles.size() + localParticles.size();
             continue;
         }
 
@@ -803,12 +787,11 @@ bool Tracer::reduce(int timestep)
             }
         }
 
-        numActiveMin = mpi::all_reduce(comm(), activeParticles.size() + localParticles.size(), mpi::minimum<Index>());
         numActiveMax = mpi::all_reduce(comm(), activeParticles.size() + localParticles.size(), mpi::maximum<Index>());
 
         std::copy(sendlist.begin(), sendlist.end(), std::back_inserter(datasendlist));
         //std::cerr << "recvlist: " << datarecvlist.size() << ", sendlist: " << sendlist.size() << ", #active="<<activeParticles.size() << std::endl;
-    } while (numActiveMax > 0 || nextParticleToStart < allParticles.size());
+    } while (numActiveMax > 0);
 
     if (mpisize == 1) {
         for (auto p: allParticles) {
