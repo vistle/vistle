@@ -854,11 +854,21 @@ double Segment::interpolationError(Index i0, Index i1, Index i) const
     auto dir = (x1 - x0).normalized();
     auto xi = x0 + dir.dot(x - x0) * dir;
 
+    double err = 0.;
+
+    auto xe = x - xi;
+    for (unsigned c = 0; c < 3; ++c) {
+        auto d = xe[c];
+        double e = std::abs(d) > eps ? 1. : 0.;
+        if (std::abs(x[c]) > eps)
+            e = std::abs(d / x[c]);
+        if (e > err)
+            err = e;
+    }
+
     int maxc = -1;
     dir.maxCoeff(&maxc);
     double t = interpolation_weight<double>(x0[maxc], x1[maxc], xi[maxc]);
-
-    double err = 0.;
 
     if (m_vhist.size() == m_xhist.size()) {
         auto v0 = m_vhist[i0], v1 = m_vhist[i1], v = m_vhist[i];
