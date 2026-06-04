@@ -120,6 +120,8 @@ public:
     StopReason stopReason() const;
     void enableCelltree(bool value);
     int searchRank(boost::mpi::communicator mpi_comm); //< returns MPI rank of node where tracing occurs
+    void initiateRankSearch(bool skipSearch = false);
+    int finishRankSearch(boost::mpi::communicator mpi_comm); //< returns MPI rank of node where tracing occurs
     void startTracing();
     bool isTracing(bool wait);
     bool madeProgress() const;
