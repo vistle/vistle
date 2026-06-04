@@ -77,25 +77,38 @@ void Particle<S>::enableCelltree(bool value)
 }
 
 template<class S>
-int Particle<S>::searchRank(boost::mpi::communicator mpi_comm)
+void Particle<S>::initiateRankSearch(bool skipSearch)
 {
     assert(!m_tracing);
     assert(!m_currentSegment);
     m_progress = false;
 
-    int rank = -1;
+    m_el = InvalidIndex;
 
-    if (findCell(m_time)) {
+    if (!skipSearch && findCell(m_time)) {
         m_integrator.hInit();
-        rank = mpi_comm.rank();
     }
+}
 
+template<class S>
+int Particle<S>::finishRankSearch(boost::mpi::communicator mpi_comm)
+{
+    int rank = m_el == InvalidIndex ? -1 : mpi_comm.rank();
     rank = boost::mpi::all_reduce(mpi_comm, rank, boost::mpi::maximum<int>());
+
     if (m_rank == -1) {
         m_rank = rank;
     }
 
     return rank;
+}
+
+
+template<class S>
+int Particle<S>::searchRank(boost::mpi::communicator mpi_comm)
+{
+    initiateRankSearch();
+    return finishRankSearch(mpi_comm);
 }
 
 template<class S>
@@ -333,6 +346,9 @@ bool Particle<S>::trace()
         Step();
         traced = true;
     }
+    if (m_currentSegment) {
+        m_currentSegment->simplify(m_global.simplification_error);
+    }
     UpdateBlock(nullptr);
     return traced;
 }
@@ -341,7 +357,6 @@ template<class S>
 void Particle<S>::finishSegment()
 {
     if (m_currentSegment) {
-        m_currentSegment->simplify(m_global.simplification_error);
         m_segments[m_currentSegment->m_num] = m_currentSegment;
         m_currentSegment.reset();
     }
