@@ -908,30 +908,24 @@ void Segment::simplify(double relerr)
 
     Index size = m_xhist.size();
     // nothing to simplify
-    if (size < 2)
+    if (size <= 2)
         return;
 
-    std::vector<Index> use{0}; // all vertices to retain
-    Index noKinks = 0;
-    for (Index i0 = 0, i1 = 0; i0 < size; i0 = i1) {
-        use.push_back(i1);
+    std::vector<Index> use; // all vertices to retain
+    use.push_back(0);
+    for (Index i0 = 0, i1 = 0; i0 < size - 1; i0 = i1) {
         // don't skip vertices where there is a kink
-        Index step = 1;
-        if (noKinks > i0) {
-            step = noKinks - i0;
-        }
-        while (i0 + step < size - 1 && Scalar(1) - cosAngle(i0 + step) < Scalar(relerr * 0.1)) {
-            ++step;
-            noKinks = i0 + step;
+        Index noKinks = 1;
+        while (i0 + noKinks < size - 1 && Scalar(1) - cosAngle(i0 + noKinks) < Scalar(relerr * 0.1)) {
+            ++noKinks;
         }
 
         // skip all vertices where interpolation works well
-        i1 = i0 + step;
-        assert(i1 <= size);
+        Index step = noKinks;
         while (step > 1) {
             bool canSkip = true;
-            for (Index i = i0 + 1; i < i1; ++i) {
-                if (interpolationError(i0, i1, i) > relerr) {
+            for (Index i = i0 + 1; i < i0 + step; ++i) {
+                if (interpolationError(i0, i0 + step, i) > relerr) {
                     canSkip = false;
                     break;
                 }
@@ -939,17 +933,18 @@ void Segment::simplify(double relerr)
             if (canSkip)
                 break;
             step = (step + 1) / 2;
-            i1 = i0 + step;
-            assert(i1 <= size);
         }
+        i1 = i0 + step;
+        assert(i1 < size);
         assert(i1 > use.back());
+        use.push_back(i1);
     }
+
     assert(use.back() <= size - 1);
     if (use.back() != size - 1)
         use.emplace_back(size - 1);
 
     if (use.size() != size) {
-        //std::cerr << "reducing from " << size << " to " << use.size() << std::endl;
         skipVector(m_xhist, use);
         skipVector(m_vhist, use);
         skipVector(m_stepWidth, use);
