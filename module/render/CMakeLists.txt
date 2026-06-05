@@ -1,5 +1,6 @@
 vistle_category("Render" "generate pixel images from geometry data")
 
+add_subdirectory(BlackHole)
 add_subdirectory(BlenderRenderer)
 add_subdirectory(DisCOVERay)
 add_subdirectory(ANARemote)

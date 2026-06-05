@@ -11,7 +11,7 @@ CellSelect = "SelectCells"
 # list of module groups that are able to replace each other
 groups = [ "renderer", "select", "color", "clip", "attribute", "info" ]
 # list all renderers - can replace each other
-renderer = [ "COVER", "BlenderRenderer", "ANARemote", "DisCOVERay" ]
+renderer = [ "COVER", "BlenderRenderer", "ANARemote", "DisCOVERay", "BlackHole" ]
 select = [ "Threshold", "CellSelect" ]
 color = [ "Color", "ColorRandom" ]
 clip = [ "CutGeometry", "ClipVtkm", "CellClipVtkm" ]
