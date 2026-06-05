@@ -471,6 +471,7 @@ boost::program_options::options_description &Hub::options()
         ("libsim,l", po::value<std::string>(), "connect to a LibSim instrumented simulation by entering the path to the .sim2 file")
         ("cover", "use OpenCOVER.mpi to manage Vistle session on cluster")
         ("vrb", po::value<std::string>(), "how to launch VRB on principal hub (tui/gui/no)")
+        ("replace", po::value<std::string>(), "replace modules")
         ("exposed,gateway-host,gateway,gw", po::value<std::string>(), "ports are exposed externally on this host")
         ("root", po::value<std::string>(), "path to Vistle build directory")
         ("buildtype", po::value<std::string>(), "build type suffix to binary in Vistle build directory")
@@ -555,6 +556,24 @@ bool Hub::init(int argc, char *argv[])
     if (vm.count("") > 0) {
         CERR << desc << std::endl;
         return false;
+    }
+    if (vm.count("replace") > 0) {
+        auto replacements = vm["replace"].as<std::string>();
+        size_t pos = 0;
+        while (pos < replacements.length()) {
+            size_t sep = replacements.find_first_of(",:", pos);
+            if (sep == std::string::npos) {
+                sep = replacements.length();
+            }
+            std::string pair = replacements.substr(pos, sep - pos);
+            size_t eq = pair.find('=');
+            if (eq != std::string::npos) {
+                std::string from = pair.substr(0, eq);
+                std::string to = pair.substr(eq + 1);
+                m_moduleReplacements[from] = to;
+            }
+            pos = sep + 1;
+        }
     }
 
     if (vm.count("port") > 0) {
@@ -2810,9 +2829,14 @@ bool Hub::notifySpawnError(message::Spawn &notify)
 bool Hub::handlePriv(const message::Spawn &spawn)
 {
     std::string moduleName(spawn.getName());
+    auto it = m_moduleReplacements.find(moduleName);
+    if (it != m_moduleReplacements.end()) {
+        moduleName = it->second;
+    }
     bool isCover = moduleName == "COVER";
 
     auto notify = spawn;
+    notify.setName(moduleName.c_str());
     if (spawn.hubId() == m_hubId) {
         if (isCover && m_coverIsManager) {
             notify.setAsPlugin(true);
@@ -2939,7 +2963,7 @@ bool Hub::handlePriv(const message::Spawn &spawn)
             if (!hub.hasUi)
                 continue;
 
-            spawnMirror(hubid, spawn.getName(), newId, newId);
+            spawnMirror(hubid, moduleName, newId, newId);
         }
     }
     return true;

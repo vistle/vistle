@@ -282,6 +282,8 @@ private:
 
     std::string m_statusText;
 
+    std::map<std::string, std::string> m_moduleReplacements;
+
     bool handlePriv(const message::Quit &quit, message::Identify::Identity senderType);
     bool handlePriv(const message::RemoveHub &rm);
     bool handlePriv(const message::Execute &exec, const buffer *payload);
