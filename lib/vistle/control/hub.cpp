@@ -51,6 +51,7 @@
 #include <boost/asio.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/program_options.hpp>
+#include <boost/tokenizer.hpp>
 #ifdef __linux__
 #include <sys/prctl.h>
 #endif
@@ -529,6 +530,14 @@ bool Hub::init(int argc, char *argv[])
     try {
         po::positional_options_description popt;
         popt.add("url", 1);
+        if (auto envopts = getenv("VISTLE_OPTIONS")) {
+            std::string opts(envopts);
+            boost::char_separator<char> sep(" \n\r");
+            boost::tokenizer<boost::char_separator<char>> tok(opts, sep);
+            std::vector<std::string> args;
+            std::copy(tok.begin(), tok.end(), std::back_inserter(args));
+            po::store(po::command_line_parser(args).options(desc).run(), vm);
+        }
         po::store(po::command_line_parser(argc, argv).options(desc).positional(popt).run(), vm);
         po::notify(vm);
     } catch (std::exception &e) {
