@@ -154,7 +154,9 @@ DataBase::ptr VtkmModule::prepareOutputField(const viskores::cont::DataSet &data
     if (auto mapped = vtkmGetField(dataset, fieldName)) {
         std::cerr << "mapped data: " << *mapped << std::endl;
         updateMeta(mapped);
-        mapped->copyAttributes(inputField, false /* do not replace existing attributes and retain *mapping* */);
+        auto mapping = mapped->mapping();
+        mapped->copyAttributes(inputField);
+        mapped->setMapping(mapping);
         if (outputGrid)
             mapped->setGrid(outputGrid);
         return mapped;
