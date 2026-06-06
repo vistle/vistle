@@ -33,7 +33,7 @@ bool FilterNode::changeParameter(const Parameter *p)
         case BlockNumber:
         case Timestep:
         default:
-            setParameterRange(m_nodeParam, (Integer)0, (Integer)InvalidIndex);
+            setParameterRange(m_nodeParam, (Integer)-1, (Integer)InvalidIndex);
             break;
         }
     }
