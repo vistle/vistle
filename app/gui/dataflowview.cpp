@@ -66,8 +66,8 @@ QAction *DataFlowView::addToToolBar(QToolBar *toolbar, QAction *before)
     for (int i = 0; i < m_numLayers; ++i) {
         m_visibleLayer->addItem(QString("Layer %1").arg(i));
     }
-    m_visibleLayer->setCurrentIndex(2);
-    emit visibleLayerChanged(0);
+    m_visibleLayer->setCurrentIndex(1);
+    emit visibleLayerChanged(-1);
 
     connect(m_visibleLayer, QOverload<int>::of(&QComboBox::activated), [this](int idx) {
         if (idx < 0) {
