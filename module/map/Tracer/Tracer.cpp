@@ -70,7 +70,7 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(
 
 Tracer::Tracer(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
-    setReducePolicy(message::ReducePolicy::PerTimestep);
+    setReducePolicy(message::ReducePolicy::PerTimestep); // for Streamlines
 
     m_inPort[0] = createInputPort("data_in0", "vector field");
     m_outPort[0] = createOutputPort("data_out0", "stream lines or points with mapped vector");
@@ -399,10 +399,10 @@ bool Tracer::reduce(int timestep)
             }
         }
     };
-    printGlobalStopStats();
 
     if (timestep == -1 && numTimesteps() > 0 && reducePolicy() == message::ReducePolicy::PerTimestep) {
         // all the work for stream lines has already be done per timestep
+        printGlobalStopStats();
         return true;
     }
 
@@ -630,7 +630,7 @@ bool Tracer::reduce(int timestep)
     std::vector<std::shared_ptr<ParticleT>> allParticles;
     std::set<std::shared_ptr<ParticleT>> localParticles, activeParticles;
 
-    Index numconstant = grid_in.size() ? grid_in[0].size() : 0;
+    Index numconstant = !grid_in.empty() ? grid_in[0].size() : 0;
     for (Index i = 0; i < numconstant; ++i) {
         if (useCelltree && !celltree.empty()) {
             if (celltree[0].size() > i && celltree[0][i].valid())
@@ -665,13 +665,6 @@ bool Tracer::reduce(int timestep)
 
         //create BlockData objects
         global.blocks[t].resize(numblocks + numconstant);
-        for (Index b = 0; b < numconstant; b++) {
-            DataBase::const_ptr din[NumPorts];
-            for (int i = 0; i < NumPorts; ++i) {
-                din[i] = data_in[i][0][b];
-            }
-            global.blocks[t][b].reset(new BlockData(b, grid_in[0][b], data_in0[0][b], din));
-        }
         for (Index b = 0; b < numblocks; b++) {
             if (useCelltree && celltree.size() > size_t(t + 1)) {
                 if (celltree[t + 1].size() > b && celltree[t + 1][b].valid())
@@ -681,8 +674,14 @@ bool Tracer::reduce(int timestep)
             for (int i = 0; i < NumPorts; ++i) {
                 din[i] = data_in[i][t + 1][b];
             }
-            global.blocks[t][b + numconstant].reset(
-                new BlockData(b + numconstant, grid_in[t + 1][b], data_in0[t + 1][b], din));
+            global.blocks[t][b].reset(new BlockData(b, grid_in[t + 1][b], data_in0[t + 1][b], din));
+        }
+        for (Index b = 0; b < numconstant; b++) {
+            DataBase::const_ptr din[NumPorts];
+            for (int i = 0; i < NumPorts; ++i) {
+                din[i] = data_in[i][0][b];
+            }
+            global.blocks[t][b + numblocks].reset(new BlockData(b + numblocks, grid_in[0][b], data_in0[0][b], din));
         }
 
         //create particle objects, 2 if traceDirection==Both
