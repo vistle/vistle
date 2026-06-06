@@ -25,7 +25,7 @@ Particle<S>::Particle(Index id, int rank, Index startId, const Vector3 &pos, boo
 , m_forward(forward)
 , m_x(VI(pos))
 , m_xold(VI(pos))
-, m_v(Vector3(std::numeric_limits<Scalar>::max(), 0, 0))
+, m_v(Vector3(m_global.min_vel, m_global.min_vel, m_global.min_vel))
 // keep large enough so that particle moves initially
 , m_stp(0)
 , m_time(0)
@@ -144,14 +144,15 @@ bool Particle<S>::isMoving()
     }
 
     bool moving = m_v.norm() > m_global.min_vel;
-    if ((m_global.trace_len >= 0 && std::abs(m_dist) > m_global.trace_len) ||
-        (m_global.trace_time >= 0 && std::abs(m_time) > m_global.trace_time) || (m_stp > m_global.max_step) ||
-        !moving) {
-        if (std::abs(m_dist) > m_global.trace_len)
+    bool withinsteps = m_stp < m_global.max_step;
+    bool withindist = std::abs(m_dist) <= m_global.trace_len;
+    bool withintime = std::abs(m_time) <= m_global.trace_time;
+    if (!withinsteps || !withindist || !withintime || !moving) {
+        if (!withindist)
             this->Deactivate(DistanceLimitReached);
-        else if (std::abs(m_time) > m_global.trace_time)
+        else if (!withintime)
             this->Deactivate(TimeLimitReached);
-        else if (m_stp > m_global.max_step)
+        else if (!withinsteps)
             this->Deactivate(StepLimitReached);
         else
             this->Deactivate(NotMoving);
