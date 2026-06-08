@@ -269,6 +269,7 @@ private:
     std::string m_name;
     bool m_ready = false;
     int m_verbose = Verbosity::Quiet;
+    std::set<std::string> m_verboseModules;
     bool m_quitAfterExecute = false;
 
     int m_moduleCount;
