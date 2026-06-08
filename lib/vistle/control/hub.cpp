@@ -567,6 +567,11 @@ bool Hub::init(int argc, char *argv[])
 
     if (vm.count("help")) {
         std::cout << argv[0] << " " << desc << std::endl;
+        std::cout << "some components of Vistle can be configured via environment variables, e.g.:\n";
+        std::cout << "    VISTLE_AFFINITY, VISTLE_CONNECTION, VISTLE_HOSTNAME, VISTLE_INSITU_OPTIONS,\n";
+        std::cout << "    VISTLE_INSITU_PAUSED, VISTLE_KEY, VISTLE_LOGFILE, VISTLE_OPTIONS, VISTLE_VERBOSE,\n"
+                     "    VISTLE_PRELOAD_SCRIPTS, VISTLE_SHM_PER_RANK, VISTLE_SHM_SIZE, VISTLE_STARTUP_DELAY"
+                  << std::endl;
         return false;
     }
 
