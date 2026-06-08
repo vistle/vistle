@@ -546,6 +546,19 @@ bool Hub::init(int argc, char *argv[])
         return false;
     }
 
+    if (auto *verb = getenv("VISTLE_VERBOSE")) {
+        std::string v(verb);
+        size_t pos = 0;
+        do {
+            auto end = v.find_first_of(",: ", pos);
+            if (end == std::string::npos)
+                end = v.size();
+            std::string mod = v.substr(pos, end);
+            m_verboseModules.insert(mod);
+            pos = end + 1;
+        } while (pos < v.size());
+    }
+
     if (vm.count("quiet") > 0) {
         m_verbose = Verbosity::Quiet;
     } else {
@@ -1088,12 +1101,22 @@ Hub::launchProcess(int type, const std::string &prog, const std::vector<std::str
                     print = true;
                 }
                 break;
-            default:
-                prefix = "[" + std::to_string(obs.moduleId) + "] ";
+            default: {
+                std::string mid = std::to_string(obs.moduleId);
+                std::string mname =
+                    message::Id::isModule(obs.moduleId) ? m_stateTracker.getModuleName(obs.moduleId) : std::string();
+                prefix = "[" + mid + "] ";
                 if (m_verbose >= Verbosity::Modules) {
                     print = true;
                 }
+                if (m_verboseModules.find(mid) != m_verboseModules.end()) {
+                    print = true;
+                }
+                if (m_verboseModules.find(mname) != m_verboseModules.end()) {
+                    print = true;
+                }
                 break;
+            }
             }
             if (print) {
                 if (stream == message::SendText::Cout)
