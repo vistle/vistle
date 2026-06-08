@@ -1034,7 +1034,20 @@ Hub::launchProcess(int type, const std::string &prog, const std::vector<std::str
     nargs.push_back(fmt::arg("uid", getuid()));
     nargs.push_back(fmt::arg("id", moduleId));
     nargs.push_back(fmt::arg("tmpdir", tmpdir));
-    if (!m_logfileFormat.empty()) {
+    if (m_logfileFormat == "help") {
+        m_logfileFormat.clear();
+        std::cout << "Logfile format options (for VISTLE_LOGFILE or config):\n";
+        std::cout << "  {name} - process name\n";
+        std::cout << "  {prog} - program name\n";
+        std::cout << "  {type} - process type\n";
+        std::cout << "  {hub} - hub ID\n";
+        std::cout << "  {port} - port number\n";
+        std::cout << "  {host} - hostname\n";
+        std::cout << "  {user} - username\n";
+        std::cout << "  {uid} - user ID\n";
+        std::cout << "  {id} - module ID\n";
+        std::cout << "  {tmpdir} - temporary directory\n";
+    } else if (!m_logfileFormat.empty()) {
         logfile = fmt::vformat(m_logfileFormat, nargs);
     }
 #else
