@@ -47,6 +47,11 @@ jobs:
             large_index: ON
 
     steps:
+    - name: Sync and update submodules recursive
+      uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+
     - name: Show info
       if: runner.os == 'Linux'
       run: |
@@ -134,11 +139,6 @@ jobs:
         large-packages: false
         docker-images: true
         swap-storage: true
-
-    - name: Sync and update submodules recursive
-      uses: actions/checkout@v2
-      with:
-        submodules: 'recursive'
 
     - name: ccache
       uses: hendrikmuhs/ccache-action@v1.2
