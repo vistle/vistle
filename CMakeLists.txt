@@ -133,7 +133,7 @@ macro(vistle_find_package package)
     if(pack STREQUAL "COVISE" OR pack STREQUAL "COVER")
         if(NOT "$ENV{COVISEDIR}" STREQUAL "")
             set(CMAKE_MODULE_PATH "$ENV{COVISEDIR}/cmake" ${CMAKE_MODULE_PATH})
-            set(CMAKE_MODULE_PATH "$ENV{COVISEDIR}/share/cmake" ${CMAKE_MODULE_PATH})
+            set(CMAKE_MODULE_PATH "$ENV{COVISEDIR}/share/covise/cmake" ${CMAKE_MODULE_PATH})
         endif()
     endif()
 
