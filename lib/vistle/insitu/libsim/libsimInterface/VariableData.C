@@ -191,11 +191,11 @@ VisIt_ArrayData *VisIt_VariableData::GetArray(int comp)
 
 static VisIt_VariableData *GetVariableDataObject(visit_handle h, const char *fname)
 {
-    char tmp[100];
+    char tmp[256];
     VisIt_VariableData *obj = (VisIt_VariableData *)VisItGetPointer(h);
     if (obj) {
         if (obj->objectType() != VISIT_VARIABLE_DATA) {
-            snprintf(tmp, 100,
+            snprintf(tmp, sizeof(tmp),
                      "%s: The provided handle does not point to a "
                      "VariableData object.",
                      fname);
@@ -203,7 +203,7 @@ static VisIt_VariableData *GetVariableDataObject(visit_handle h, const char *fna
             obj = NULL;
         }
     } else {
-        snprintf(tmp, 100,
+        snprintf(tmp, sizeof(tmp),
                  "%s: An invalid handle was provided for a "
                  "VariableData object.",
                  fname);
