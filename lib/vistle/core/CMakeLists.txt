@@ -196,7 +196,7 @@ vistle_target_link_libraries(
     PUBLIC
     Boost::system
     PUBLIC
-    viskores::cont)
+    vistle::viskores_cont)
 target_link_libraries(vistle_core PRIVATE vistle_config)
 
 target_include_directories(vistle_core SYSTEM PRIVATE ${ZFP_INCLUDE_DIRS})

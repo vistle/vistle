@@ -1045,13 +1045,13 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
         list(REMOVE_ITEM SOURCES "DEVICE_SOURCES")
         add_module(${targetname} ${description} ${SOURCES})
         if(IDX GREATER_EQUAL 0)
-            target_link_libraries(${targetname} PRIVATE viskores::worklet)
+            target_link_libraries(${targetname} PRIVATE vistle::viskores_worklet)
             if(VISTLE_CUDA_ENABLED AND IDX GREATER_EQUAL 0)
                 list(SUBLIST SOURCES ${IDX} -1 DEVSOURCES)
                 viskores_add_target_information(${targetname} MODIFY_CUDA_FLAGS DEVICE_SOURCES ${DEVSOURCES})
             endif()
         endif()
-        target_link_libraries(${targetname} PRIVATE vistle_viskores viskores::filter)
+        target_link_libraries(${targetname} PRIVATE vistle_viskores vistle::viskores_filter)
         if(VISTLE_CUDA_ENABLED AND VISTLE_USE_SEPARABLE_COMPILATION)
             set_target_properties(${targetname} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
         endif()
@@ -1199,20 +1199,6 @@ if(WIN32 AND Xdmf_FOUND)
     endif()
 endif()
 
-vistle_find_package(
-    VTK
-    5.0
-    COMPONENTS
-    vtkCommonDataModel
-    vtkIOXML
-    vtkIOHDF
-    vtkIOLegacy
-    # vtkCommonCore
-    # vtkFiltersCore
-    # vtkImagingCore
-    # vtkCommonExecutionModel
-    NO_MODULE)
-
 option(VISTLE_64BIT_INDICES "use 64-bit integers for array indices" OFF)
 option(VISTLE_DOUBLE_PRECISION "use double instead of float for coordinates and data arrays" OFF)
 
@@ -1257,7 +1243,20 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 set(COVISEDESTDIR ${PROJECT_BINARY_DIR})
 
-add_subdirectory(lib)
+add_subdirectory(lib/3rdparty)
+
+# find after building Viskores, in order to reduce interaction between Viskores that might be included with VTK
+vistle_find_package(
+    VTK
+    5.0
+    COMPONENTS
+    vtkCommonDataModel
+    vtkIOXML
+    vtkIOHDF
+    vtkIOLegacy
+    NO_MODULE)
+
+add_subdirectory(lib/vistle)
 add_subdirectory(module)
 add_subdirectory(app) # has to come after module subdirectory for static module registration
 add_subdirectory(test)
