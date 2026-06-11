@@ -13,4 +13,4 @@ set(HEADERS
 vistle_add_library(vistle_viskores EXPORT ${SOURCES} ${HEADERS})
 viskores_add_target_information(vistle_viskores MODIFY_CUDA_FLAGS DEVICE_SOURCES convert_topology.cpp)
 
-vistle_target_link_libraries(vistle_viskores PUBLIC viskores::filter PRIVATE vistle_core vistle_module)
+vistle_target_link_libraries(vistle_viskores PUBLIC vistle::viskores_filter PRIVATE vistle_core vistle_module)
