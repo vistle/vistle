@@ -44,6 +44,10 @@ function doexec() {
     exec "$@" < /dev/null
 }
 
+CONTAINER=
+if [ -f /.dockerenv ]; then
+    CONTAINER=docker
+fi
 
 if [ -n "$VISTLE_LAUNCH" ]; then
    case $VISTLE_LAUNCH in
@@ -197,6 +201,9 @@ fi
 
 case "$MPI_IMPL" in
     ompi)
+        if [ -n "$CONTAINER" ]; then
+            ALLOWROOT="--allow-run-as-root"
+        fi
         case "$BINDTO" in
             none|numa)
                 BIND="--bind-to $BINDTO"
@@ -212,11 +219,11 @@ case "$MPI_IMPL" in
         done
 
         if [ -n "$MPIHOSTFILE" ]; then
-            doexec mpirun $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND --hostfile ${MPIHOSTFILE} $WRAPPER "$@"
+            doexec mpirun $ENVS $ALLOWROOT $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND --hostfile ${MPIHOSTFILE} $WRAPPER "$@"
         elif [ -n "$MPIHOSTS" ]; then
-            doexec mpirun $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND -H ${MPIHOSTS} $WRAPPER "$@"
+            doexec mpirun $ENVS $ALLOWROOT $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND -H ${MPIHOSTS} $WRAPPER "$@"
         else
-            doexec mpirun $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND $WRAPPER "$@"
+            doexec mpirun $ENVS $ALLOWROOT $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND $WRAPPER "$@"
         fi
         ;;
       mpt)
