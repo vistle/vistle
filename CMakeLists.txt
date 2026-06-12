@@ -1265,5 +1265,8 @@ add_subdirectory(bin)
 write_category_descriptions(${CATEGORY_DESCRIPTION_FILE})
 configure_documentation()
 
+install(FILES example/*.vsl DESTINATION share/vistle/example/)
+install(FILES workflow/tutorial/*.vsl DESTINATION share/vistle/workflow/tutorial/)
+
 include(FeatureSummary)
 feature_summary(WHAT ALL)
