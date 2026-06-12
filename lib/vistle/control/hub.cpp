@@ -713,16 +713,21 @@ bool Hub::init(int argc, char *argv[])
                 auto wf = url.fragment();
 
                 file.clear();
-                for (vistle::filesystem::path dir(m_dir->prefix()); dir.has_parent_path(); dir = dir.parent_path()) {
-                    if (!vistle::filesystem::exists(dir))
-                        break;
-                    auto exts = {"", ".vsl", ".py"};
-                    for (const auto &ext: exts) {
-                        auto wf_ext = wf + ext;
-                        if (vistle::filesystem::exists(dir / wf_ext)) {
-                            file = (dir / wf_ext).string();
+                auto roots = {m_dir->prefix(), m_dir->share()};
+                for (const auto &root: roots) {
+                    for (vistle::filesystem::path dir(root); dir.has_parent_path(); dir = dir.parent_path()) {
+                        if (!vistle::filesystem::exists(dir))
                             break;
+                        auto exts = {"", ".vsl", ".py"};
+                        for (const auto &ext: exts) {
+                            auto wf_ext = wf + ext;
+                            if (vistle::filesystem::exists(dir / wf_ext)) {
+                                file = (dir / wf_ext).string();
+                                break;
+                            }
                         }
+                        if (!file.empty())
+                            break;
                     }
                     if (!file.empty())
                         break;
