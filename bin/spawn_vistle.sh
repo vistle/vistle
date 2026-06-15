@@ -201,8 +201,11 @@ fi
 
 case "$MPI_IMPL" in
     ompi)
-        if [ -n "$CONTAINER" ]; then
+        if [ "$(id)" = "0" ]; then
             ALLOWROOT="--allow-run-as-root"
+            if [ -z "$CONTAINER" ]; then
+                echo "Running as root, even though not in container"
+            fi
         fi
         case "$BINDTO" in
             none|numa)
