@@ -44,8 +44,8 @@ function doexec() {
     exec "$@" < /dev/null
 }
 
-CONTAINER=
-if [ -f /.dockerenv ]; then
+CONTAINER=${container}
+if [ -z "$CONTAINER" -a -f /.dockerenv ]; then
     CONTAINER=docker
 fi
 
