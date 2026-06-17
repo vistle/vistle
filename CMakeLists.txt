@@ -531,11 +531,11 @@ if(APPLE)
     add_definitions(-DBOOST_INTERPROCESS_POSIX_PROCESS_SHARED)
 endif()
 
-vistle_find_package(Boost 1.78 OPTIONAL_COMPONENTS system QUIET)
+vistle_find_package(Boost 1.75 OPTIONAL_COMPONENTS system QUIET)
 
 vistle_find_package(
     Boost
-    1.78
+    1.75
     REQUIRED
     COMPONENTS
     serialization
