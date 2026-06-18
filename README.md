@@ -43,17 +43,17 @@ Installation
 #### Build Requirements
 
 - **C++ compiler**:
-  support for C++14 (ISO/IEC 14882:2014) is required,
+  support for C++20 (ISO/IEC 14882:2020) is required,
   known good compilers:
-    - GCC (8-14)
-    - Clang (Xcode 14, 15)
-    - Microsoft Visual Studio 2022
+    - GCC (11-16)
+    - Apple Clang (Xcode 14, 15, 26)
+    - Microsoft Visual Studio (2022, 2025)
 
 - **CMake**:
   at least 3.10, on Windows 3.15
 
 - **Boost**:
-  At least 1.66.00 is required.
+  At least 1.75.00 is required.
      Note:
      - in order to switch MPI implementations without requiring a recompilation of Boost, we compile Boost.MPI together with Vistle
 
