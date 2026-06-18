@@ -375,6 +375,12 @@ void VistleGeometryGenerator::unlock()
     s_coverMutex.unlock();
 }
 
+// in order to not rely on guessing the normal mapping from the array size, store known mapping
+struct NormalsWithMapping {
+    osg::ref_ptr<osg::Vec3Array> array;
+    vistle::DataBase::Mapping mapping = vistle::DataBase::Unspecified;
+};
+
 template<class Geometry, class Array, class Mapped, bool normalize>
 struct DataAdapter;
 
@@ -437,22 +443,20 @@ struct DataAdapter<Geometry, osg::FloatArray, Mapped, normalize> {
 };
 
 template<class Geometry, bool normalize>
-struct DataAdapter<Geometry, osg::Vec3Array, osg::Vec3Array, normalize> {
-    DataAdapter(typename Geometry::const_ptr tri, osg::Vec3Array *mapped)
-    : size(mapped->size())
-    , mapping(size == tri->getNumElements() ? vistle::DataBase::Element : vistle::DataBase::Vertex)
-    , mapped(size > 0 ? mapped : nullptr)
+struct DataAdapter<Geometry, osg::Vec3Array, NormalsWithMapping, normalize> {
+    DataAdapter(typename Geometry::const_ptr /*tri*/, NormalsWithMapping *normals)
+    : size(normals->array ? normals->array->size() : 0), mapping(normals->mapping), normals(normals->array.get())
     {}
     osg::Vec3 getValue(Index idx)
     {
-        osg::Vec3 val = (*mapped)[idx];
+        osg::Vec3 val = (*normals)[idx];
         if (normalize)
             val.normalize();
         return val;
     }
     vistle::Index size = 0;
-    vistle::DataBase::Mapping mapping = vistle::DataBase::Vertex;
-    osg::Vec3Array *mapped = nullptr;
+    vistle::DataBase::Mapping mapping = vistle::DataBase::Unspecified;
+    osg::Vec3Array *normals = nullptr;
 };
 
 template<class Geometry, class MappedPtr, class Array, bool normalize>
@@ -558,7 +562,7 @@ Array *applyTriangle(typename Geometry::const_ptr tri, MappedPtr mapped, const O
 }
 
 template<class Geometry>
-osg::Vec3Array *computeNormals(typename Geometry::const_ptr geometry, const Options &options)
+NormalsWithMapping computeNormals(typename Geometry::const_ptr geometry, const Options &options)
 {
     PrimitiveAdapter<Geometry> geo(geometry);
 
@@ -571,9 +575,12 @@ osg::Vec3Array *computeNormals(typename Geometry::const_ptr geometry, const Opti
     const vistle::Scalar *y = geometry->y().data();
     const vistle::Scalar *z = geometry->z().data();
 
-    osg::Vec3Array *normals = new osg::Vec3Array;
+    NormalsWithMapping result;
+    result.array = new osg::Vec3Array;
+    osg::Vec3Array *normals = result.array.get();
     if (numCorners > 0) {
         bool useVertexNormals = options.indexedGeometry;
+        result.mapping = useVertexNormals ? vistle::DataBase::Vertex : vistle::DataBase::Element;
         normals->resize(useVertexNormals ? numCoords : numPrim);
         for (Index prim = 0; prim < numPrim; ++prim) {
             const Index begin = geo.getPrimitiveBegin(prim), end = geo.getPrimitiveBegin(prim + 1);
@@ -599,6 +606,7 @@ osg::Vec3Array *computeNormals(typename Geometry::const_ptr geometry, const Opti
                 (*normals)[v].normalize();
         }
     } else {
+        result.mapping = vistle::DataBase::Vertex;
         for (Index prim = 0; prim < numPrim; ++prim) {
             const Index begin = geo.getPrimitiveBegin(prim), end = geo.getPrimitiveBegin(prim + 1);
             const Index c = begin;
@@ -613,7 +621,7 @@ osg::Vec3Array *computeNormals(typename Geometry::const_ptr geometry, const Opti
         }
     }
 
-    return normals;
+    return result;
 }
 
 osg::PrimitiveSet *buildTrianglesFromTriangles(const PrimitiveBin &bin, const Options &options, const Byte *ghost)
@@ -1255,7 +1263,7 @@ std::vector<osg::ref_ptr<osg::Drawable>> VistleGeometryGenerator::handleTriangle
     info.debug << "Triangles: [ #c " << numCorners << ", #v " << numVertices
                << ", indexed=" << (m_options.indexedGeometry ? "t" : "f") << " ]";
 
-    osg::ref_ptr<osg::Vec3Array> gnormals;
+    NormalsWithMapping gnormals;
     if (!info.cached && !info.normals)
         gnormals = computeNormals<vistle::Triangles>(triangles, m_options);
 
@@ -1282,8 +1290,8 @@ std::vector<osg::ref_ptr<osg::Drawable>> VistleGeometryGenerator::handleTriangle
             osg::ref_ptr<osg::Vec3Array> norm = applyTriangle<Triangles, Normals::const_ptr, osg::Vec3Array, true>(
                 triangles, info.normals, m_options, bin);
             if (!norm)
-                norm = applyTriangle<Triangles, osg::Vec3Array *, osg::Vec3Array, false>(triangles, gnormals.get(),
-                                                                                         m_options, bin);
+                norm = applyTriangle<Triangles, NormalsWithMapping *, osg::Vec3Array, false>(
+                    triangles, gnormals.array ? &gnormals : nullptr, m_options, bin);
             geom->setNormalArray(norm.get());
             storeInCache(cache, vertices, ps, norm);
         }
@@ -1323,7 +1331,7 @@ std::vector<osg::ref_ptr<osg::Drawable>> VistleGeometryGenerator::handleQuads(No
     info.debug << "Quads: [ #c " << numCorners << ", #v " << numVertices
                << ", indexed=" << (m_options.indexedGeometry ? "t" : "f") << " ]";
 
-    osg::ref_ptr<osg::Vec3Array> gnormals;
+    NormalsWithMapping gnormals;
     if (!info.cached && !info.normals)
         gnormals = computeNormals<vistle::Quads>(quads, m_options);
 
@@ -1348,8 +1356,8 @@ std::vector<osg::ref_ptr<osg::Drawable>> VistleGeometryGenerator::handleQuads(No
             osg::ref_ptr<osg::Vec3Array> norm =
                 applyTriangle<Quads, Normals::const_ptr, osg::Vec3Array, true>(quads, info.normals, m_options, bin);
             if (!norm)
-                norm = applyTriangle<Quads, osg::Vec3Array *, osg::Vec3Array, false>(quads, gnormals.get(), m_options,
-                                                                                     bin);
+                norm = applyTriangle<Quads, NormalsWithMapping *, osg::Vec3Array, false>(
+                    quads, gnormals.array ? &gnormals : nullptr, m_options, bin);
             geom->setNormalArray(norm.get());
             storeInCache(info.cache, vertices, ps, norm);
         }
@@ -1393,7 +1401,7 @@ std::vector<osg::ref_ptr<osg::Drawable>> VistleGeometryGenerator::handlePolygons
 
     const Index *el = polygons->el().data();
 
-    osg::ref_ptr<osg::Vec3Array> gnormals;
+    NormalsWithMapping gnormals;
     if (!info.cached && !info.normals)
         gnormals = computeNormals<vistle::Indexed>(polygons, m_options);
 
@@ -1419,8 +1427,8 @@ std::vector<osg::ref_ptr<osg::Drawable>> VistleGeometryGenerator::handlePolygons
             osg::ref_ptr<osg::Vec3Array> norm = applyTriangle<Indexed, Normals::const_ptr, osg::Vec3Array, true>(
                 polygons, info.normals, m_options, bin);
             if (!norm)
-                norm = applyTriangle<Indexed, osg::Vec3Array *, osg::Vec3Array, false>(polygons, gnormals.get(),
-                                                                                       m_options, bin);
+                norm = applyTriangle<Indexed, NormalsWithMapping *, osg::Vec3Array, false>(
+                    polygons, gnormals.array ? &gnormals : nullptr, m_options, bin);
             geom->setNormalArray(norm.get());
             storeInCache(info.cache, vertices, ps, norm);
         }
