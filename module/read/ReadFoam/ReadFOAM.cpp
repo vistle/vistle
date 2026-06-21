@@ -171,7 +171,7 @@ int ReadFOAM::rankForBlock(int processor) const
 
 bool ReadFOAM::examine(const Parameter *p)
 {
-    if (!p || p == m_casedir || p == m_foamRunDir) {
+    if (!p || p == m_casedir) {
         const std::string casedir = m_casedir->getValue();
         setFoamRunDir(m_casedir->isDefault() ? casedir : vistle::filesystem::path(casedir).parent_path().string());
 
