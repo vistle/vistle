@@ -57,7 +57,7 @@ ReadFOAM::ReadFOAM(const std::string &name, int moduleId, mpi::communicator comm
     // file browser parameter
     m_casedir =
         addStringParameter("casedir", "OpenFOAM case directory", "/data/OpenFOAM", Parameter::ExistingDirectory);
-    m_foamRunDir = addIntParameter("foam_case", "select a case to set it's directory as casedir", 0, Parameter::Choice);
+    m_foamRunDir = addIntParameter("foam_case", "select a case to set its directory as casedir", 0, Parameter::Choice);
     auto foamRunDir = getenv("FOAM_RUN");
 
     if (foamRunDir)
