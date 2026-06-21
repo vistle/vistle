@@ -291,7 +291,8 @@ struct ParameterCheck<Integer> {
             return true;
         }
         if (value < 0 || size_t(value) >= choices.size()) {
-            std::cerr << "IntParameter: choice out of range" << std::endl;
+            std::cerr << "IntParameter: choice " << value << " out of range - have " << choices.size() << " choices"
+                      << std::endl;
             return false;
         }
         return true;
