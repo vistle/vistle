@@ -465,6 +465,11 @@ bool checkCaseSubDirectory(CaseInfo &info, const Path &dir, bool compare, bool e
         }
     }
 
+    if (info.constantdir.empty()) {
+        std::cerr << "did not find constant directory in " << dir.string() << std::endl;
+        return false;
+    }
+
     bool varyingChecked = false, constantChecked = false;
     for (Iterator it(dir); it != Iterator(); ++it)
     {
