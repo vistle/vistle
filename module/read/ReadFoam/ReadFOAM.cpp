@@ -128,16 +128,20 @@ void ReadFOAM::setFoamRunDir(const std::string &dir)
     m_foamRunBase = dir;
     m_foamCaseChoices.clear();
     m_foamCaseChoices.push_back("(Select case)");
-    for (auto &p: vistle::filesystem::directory_iterator(dir)) {
-        try {
-            if (vistle::filesystem::is_directory(p)) {
-                m_foamCaseChoices.push_back(p.path().filename().string());
+    try {
+        for (auto &p: vistle::filesystem::directory_iterator(dir)) {
+            try {
+                if (vistle::filesystem::is_directory(p)) {
+                    m_foamCaseChoices.push_back(p.path().filename().string());
+                }
+            } catch (const vistle::filesystem::filesystem_error &e) {
+                if (e.code() == std::errc::permission_denied)
+                    continue;
+                std::cerr << e.what() << '\n';
             }
-        } catch (const vistle::filesystem::filesystem_error &e) {
-            if (e.code() == std::errc::permission_denied)
-                continue;
-            std::cerr << e.what() << '\n';
         }
+    } catch (const vistle::filesystem::filesystem_error &e) {
+        std::cerr << e.what() << '\n';
     }
     setParameterChoices(m_foamRunDir, m_foamCaseChoices);
 }
