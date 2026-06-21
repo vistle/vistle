@@ -866,7 +866,7 @@ bool ReadCovise::readGEOTEX(Token &token, const int port, int fd, Element *elem)
     bool ok = true;
     for (size_t i = 0; i < ncomp; ++i) {
         Element *e = new Element();
-        e->offset = file::tell(fd);
+        e->offset = file::tell(abs(fd));
         if (contains[i])
             ok &= readSkeleton(port, e);
         elem->subelems.push_back(e);
@@ -888,7 +888,7 @@ bool ReadCovise::readGEOMET(Token &token, const int port, int fd, Element *elem)
     bool ok = true;
     for (size_t i = 0; i < ncomp; ++i) {
         Element *e = new Element();
-        e->offset = file::tell(fd);
+        e->offset = file::tell(abs(fd));
         if (contains[i])
             ok &= readSkeleton(port, e);
         elem->subelems.push_back(e);
@@ -947,9 +947,9 @@ Object::ptr ReadCovise::readObjectIntern(Token &token, const int port, int fd, c
     }
 
     if (skeleton) {
-        elem->offset = file::tell(fd);
+        elem->offset = file::tell(abs(fd));
     } else {
-        file::seek(fd, elem->offset);
+        file::seek(abs(fd), elem->offset);
     }
 
     char buf[7];
@@ -959,7 +959,7 @@ Object::ptr ReadCovise::readObjectIntern(Token &token, const int port, int fd, c
     }
     buf[6] = '\0';
     std::string type(buf);
-    //std::cerr << "ReadCovise::readObject " << type << " @ " << file::tell(fd) << std::endl;
+    //std::cerr << "ReadCovise::readObject " << type << " @ " << file::tell(abs(fd)) << std::endl;
 
     if (skeleton)
         elem->type = type;
