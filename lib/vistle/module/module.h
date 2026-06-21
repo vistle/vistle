@@ -123,8 +123,8 @@ class V_MODULEEXPORT Module: public ParameterManager, public MessageSender {
     friend class BlockTask;
 
 public:
-    static bool setup(const std::string &shmname, const std::string &classname, const std::string &modulename,
-                      int moduleID, const std::string &cluster, int rank);
+    static bool setup(const std::string &shmname, const std::string &classname, std::string modulename, int moduleID,
+                      const std::string &cluster, int rank);
     static bool cleanup(bool dedicated_process);
 
     Module(const std::string &name, const int moduleID, mpi::communicator comm);
