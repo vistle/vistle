@@ -1,4 +1,5 @@
 #include "fileio.h"
+#include <cassert>
 
 namespace vistle {
 namespace file {
@@ -6,6 +7,7 @@ namespace file {
 
 ssize_t tell(const int fd)
 {
+    assert(fd >= 0);
 #ifdef WIN32
     return _lseeki64(fd, 0, SEEK_CUR);
 #else
@@ -24,6 +26,7 @@ ssize_t tell(FILE *file)
 
 ssize_t seek(int fd, ssize_t off, int whence)
 {
+    assert(fd >= 0);
 #ifdef WIN32
     return _lseeki64(fd, off, whence);
 #else
