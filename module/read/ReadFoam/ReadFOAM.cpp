@@ -184,7 +184,9 @@ bool ReadFOAM::examine(const Parameter *p)
 
         m_case = getCaseInfo(casedir);
         if (!m_case.valid) {
-            std::cerr << casedir << " is not a valid OpenFOAM case" << std::endl;
+            std::stringstream str;
+            str << casedir << " is not a valid OpenFOAM case";
+            sendError(str.str());
             return false;
         }
         if (rank() == 0) {
@@ -208,8 +210,8 @@ bool ReadFOAM::examine(const Parameter *p)
                     sendInfo("%s", info.str().c_str());
                 }
             } else {
-                sendInfo("No global boundary file was found at %s",
-                         (m_case.casedir + "/constant/polyMesh/boundary").c_str());
+                sendWarning("No global boundary file was found at %s",
+                            (m_case.casedir + "/constant/polyMesh/boundary").c_str());
             }
         }
 
@@ -261,7 +263,9 @@ bool ReadFOAM::prepareRead()
     if (!m_case.valid)
         m_case = getCaseInfo(casedir);
     if (!m_case.valid) {
-        std::cerr << casedir << " is not a valid OpenFOAM case" << std::endl;
+        std::stringstream str;
+        str << casedir << " is not a valid OpenFOAM case";
+        sendError(str.str());
         return false;
     }
 
