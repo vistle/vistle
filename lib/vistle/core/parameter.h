@@ -1,11 +1,12 @@
 #ifndef VISTLE_CORE_PARAMETER_H
 #define VISTLE_CORE_PARAMETER_H
 
-#include <string>
-#include <iostream>
 #include <algorithm>
+#include <iostream>
 #include <limits>
+#include <map>
 #include <memory>
+#include <string>
 #include <boost/mpl/vector.hpp>
 
 #include <vistle/util/enum.h>
@@ -58,6 +59,11 @@ public:
                                         (InvalidPresentation) // keep last
     )
 
+    DEFINE_ENUM_WITH_STRING_CONVERSIONS(ConfigurationType,
+                                        (RendererGui) // show parameter in renderer, if possible
+                                        (NumConfigurationTypes) // keep last
+    )
+
     DEFINE_ENUM_WITH_STRING_CONVERSIONS(RangeType,
                                         // keep in that order
                                         (Minimum) // also used for filebrowser filters
@@ -84,6 +90,8 @@ public:
     const std::string &getName() const;
     Type type() const;
     Presentation presentation() const;
+    int configuration(ConfigurationType type, int defaultValue = 0) const;
+    void setConfiguration(ConfigurationType type, int value);
     const std::string &description() const;
     const std::vector<std::string> &choices() const;
     bool isReadOnly() const;
@@ -103,6 +111,7 @@ private:
     bool m_groupExpanded = true;
     bool m_immediate = false;
     bool m_readOnly = false;
+    std::map<ConfigurationType, int> m_configuration;
 
     friend class ParameterManager;
     friend class message::SetParameter;

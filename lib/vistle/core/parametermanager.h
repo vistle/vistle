@@ -54,6 +54,8 @@ public:
     bool getParameter(const std::string &name, T &value) const;
     void setParameterChoices(const std::string &name, const std::vector<std::string> &choices);
     void setParameterChoices(Parameter *param, const std::vector<std::string> &choices);
+    void configureParameter(const std::string &name, Parameter::ConfigurationType type, int value);
+    void configureParameter(Parameter *param, Parameter::ConfigurationType type, int value);
     void setParameterFilters(const std::string &name, const std::string &filters);
     void setParameterFilters(StringParameter *param, const std::string &filters);
     bool setParameterReadOnly(Parameter *param, bool readOnly);
@@ -107,6 +109,7 @@ public:
     bool handleMessage(const message::SetParameter &message);
     bool handleMessage(const message::AddParameter &message);
     bool handleMessage(const message::RemoveParameter &message);
+    bool handleMessage(const message::ConfigureParameter &message);
     virtual void sendParameterMessage(const message::Message &message, const buffer *payload = nullptr) const = 0;
     template<class Payload>
     void sendParameterMessageWithPayload(message::Message &message, Payload &payload);

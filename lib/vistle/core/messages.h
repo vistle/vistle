@@ -702,6 +702,21 @@ private:
     param_name_t name;
 };
 
+class V_COREEXPORT ConfigureParameter: public MessageBase<ConfigureParameter, CONFIGUREPARAMETER> {
+public:
+    ConfigureParameter(const Parameter &param, Parameter::ConfigurationType type, int value);
+    Parameter::ConfigurationType configType() const;
+    int value() const;
+    const char *getName() const;
+    int getModule() const;
+
+private:
+    int m_type;
+    int m_value;
+    int m_module;
+    param_name_t name;
+};
+
 class V_COREEXPORT Barrier: public MessageBase<Barrier, BARRIER> {
 public:
     Barrier(const std::string &info);

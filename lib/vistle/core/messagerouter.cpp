@@ -41,6 +41,7 @@ void Router::initRoutingTable()
     rt[ADDPARAMETER] = Track | DestUi | DestManager | DestModules | TriggerQueue | OnlyRank0;
     rt[REMOVEPARAMETER] = Track | DestUi | DestManager | DestModules | OnlyRank0;
     rt[SETPARAMETERCHOICES] = Track | DestUi | DestModules | OnlyRank0;
+    rt[CONFIGUREPARAMETER] = Track | DestUi | DestModules | OnlyRank0;
     rt[CONNECT] = Special;
     rt[DISCONNECT] = Special;
     rt[SETPARAMETER] = Track | QueueIfUnhandled | DestManager | DestUi | DestModules | OnlyRank0 | HandleOnMaster;

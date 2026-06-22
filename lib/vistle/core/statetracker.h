@@ -57,6 +57,8 @@ public:
     virtual void newParameter(int moduleId, const std::string &parameterName);
     virtual void parameterValueChanged(int moduleId, const std::string &parameterName);
     virtual void parameterChoicesChanged(int moduleId, const std::string &parameterName);
+    virtual void parameterConfigChanged(int moduleId, const std::string &parameterName,
+                                        Parameter::ConfigurationType configType);
     virtual void deleteParameter(int moduleId, const std::string &parameterName);
 
     virtual void newPort(int moduleId, const std::string &portName);
@@ -367,6 +369,7 @@ private:
     bool handlePriv(const message::RemoveParameter &removeParam);
     bool handlePriv(const message::SetParameter &setParam);
     bool handlePriv(const message::SetParameterChoices &choices, const buffer &payload);
+    bool handlePriv(const message::ConfigureParameter &config);
     bool handlePriv(const message::Kill &kill);
     bool handlePriv(const message::AddObject &addObj);
     bool handlePriv(const message::Barrier &barrier);
