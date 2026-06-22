@@ -1583,6 +1583,32 @@ bool SetParameterChoices::apply(std::shared_ptr<vistle::Parameter> param,
     return true;
 }
 
+ConfigureParameter::ConfigureParameter(const Parameter &param, Parameter::ConfigurationType type, int value)
+: m_type(type), m_value(value), m_module(param.module())
+{
+    COPY_STRING(name, param.getName());
+}
+
+Parameter::ConfigurationType ConfigureParameter::configType() const
+{
+    return static_cast<Parameter::ConfigurationType>(m_type);
+}
+
+int ConfigureParameter::value() const
+{
+    return m_value;
+}
+
+const char *ConfigureParameter::getName() const
+{
+    return name.data();
+}
+
+int ConfigureParameter::getModule() const
+{
+    return m_module;
+}
+
 Barrier::Barrier(const std::string &i)
 {
     COPY_STRING(m_info, i);

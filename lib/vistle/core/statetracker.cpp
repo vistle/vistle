@@ -460,6 +460,16 @@ void StateTracker::appendModuleParameter(VistleState &state, const Module &m) co
         SetParameter setMax(id, name, param, Parameter::Maximum);
         setMax.setSenderId(id);
         appendMessage(state, setMax);
+
+        for (int c = 0; c < Parameter::ConfigurationType::NumConfigurationTypes; ++c) {
+            Parameter::ConfigurationType type = static_cast<Parameter::ConfigurationType>(c);
+            int value = param->configuration(type);
+            if (value != 0) {
+                ConfigureParameter cp(*param, type, value);
+                cp.setSenderId(id);
+                appendMessage(state, cp);
+            }
+        }
     }
 }
 
@@ -865,6 +875,11 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
     case SETPARAMETERCHOICES: {
         const auto &choice = msg.as<SetParameterChoices>();
         handled = handlePriv(choice, pl);
+        break;
+    }
+    case CONFIGUREPARAMETER: {
+        const auto &config = msg.as<ConfigureParameter>();
+        handled = handlePriv(config);
         break;
     }
     case TRACE: {
@@ -1647,6 +1662,28 @@ bool StateTracker::handlePriv(const message::SetParameterChoices &choices, const
 
     for (StateObserver *o: m_observers) {
         o->parameterChoicesChanged(choices.senderId(), choices.getName());
+    }
+
+    return true;
+}
+
+bool StateTracker::handlePriv(const message::ConfigureParameter &config)
+{
+    mutex_locker guard(m_stateMutex);
+    const int senderId = config.senderId();
+    if (runningMap.find(senderId) == runningMap.end())
+        return false;
+
+    auto p = getParameter(config.senderId(), config.getName());
+    if (!p)
+        return false;
+    p->setConfiguration(config.configType(), config.value());
+
+    // CERR << "config changed for " << config.getModuleId() << ":" << config.getName() << ": #"
+    //      << Parameter::toString(config.configType()) << " : " << config.value() << std::endl;
+
+    for (StateObserver *o: m_observers) {
+        o->parameterConfigChanged(senderId, config.getName(), config.configType());
     }
 
     return true;
@@ -2500,6 +2537,9 @@ void StateObserver::newParameter(int moduleId, const std::string &parameterName)
 void StateObserver::parameterValueChanged(int moduleId, const std::string &parameterName)
 {}
 void StateObserver::parameterChoicesChanged(int moduleId, const std::string &parameterName)
+{}
+void StateObserver::parameterConfigChanged(int moduleId, const std::string &parameterName,
+                                           Parameter::ConfigurationType configType)
 {}
 void StateObserver::deleteParameter(int moduleId, const std::string &parameterName)
 {}

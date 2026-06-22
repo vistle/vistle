@@ -68,6 +68,19 @@ void Parameter::setPresentation(Parameter::Presentation pres)
     m_presentation = pres;
 }
 
+int Parameter::configuration(ConfigurationType type, int defaultValue) const
+{
+    auto it = m_configuration.find(type);
+    if (it == m_configuration.end())
+        return defaultValue;
+    return it->second;
+}
+
+void Parameter::setConfiguration(ConfigurationType type, int value)
+{
+    m_configuration[type] = value;
+}
+
 Parameter::Presentation Parameter::presentation() const
 {
     return m_presentation;

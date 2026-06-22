@@ -140,6 +140,19 @@ bool ParameterManager::handleMessage(const message::RemoveParameter &remove)
     return removeParameter(name);
 }
 
+bool ParameterManager::handleMessage(const message::ConfigureParameter &message)
+{
+    if (message.destId() != id())
+        return false;
+    auto it = m_parameters.find(message.getName());
+    if (it == m_parameters.end()) {
+        return false;
+    }
+    it->second.param->setConfiguration(message.configType(), message.value());
+    return true;
+}
+
+
 bool ParameterManager::handleMessage(const message::SetParameter &param)
 {
     if (param.destId() != id())
@@ -326,6 +339,21 @@ void ParameterManager::setParameterChoices(Parameter *param, const std::vector<s
     sc.setDestId(message::Id::ForBroadcast);
     message::SetParameterChoices::Payload pl(choices);
     sendParameterMessageWithPayload(sc, pl);
+}
+
+void ParameterManager::configureParameter(const std::string &name, Parameter::ConfigurationType type, int value)
+{
+    auto p = findParameter(name);
+    if (p)
+        configureParameter(p.get(), type, value);
+}
+
+void ParameterManager::configureParameter(Parameter *param, Parameter::ConfigurationType type, int value)
+{
+    param->setConfiguration(type, value);
+    message::ConfigureParameter cp(*param, type, value);
+    cp.setDestId(message::Id::ForBroadcast);
+    sendParameterMessage(cp);
 }
 
 void ParameterManager::setParameterFilters(const std::string &name, const std::string &filters)
