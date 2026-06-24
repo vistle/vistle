@@ -4260,9 +4260,10 @@ bool Hub::handlePriv(const message::Barrier &barrier)
              << std::endl;
     }
 
+    assert(!m_barrierActive);
     if (m_isMaster) {
-        assert(!m_barrierActive);
         assert(m_reachedSet.empty());
+
         m_numBarrierParticipants = m_stateTracker.getNumRunning();
         for (auto &mod: m_stateTracker.runningMap) {
             if (!Id::isModule(mod.first))
@@ -4282,6 +4283,9 @@ bool Hub::handlePriv(const message::Barrier &barrier)
             sendManager(buf);
         }
     } else {
+        m_barrierActive = true;
+        m_barrierUuid = barrier.uuid();
+
         message::Buffer buf(barrier);
         buf.setDestId(Id::NextHop);
         sendManager(barrier);
@@ -4296,8 +4300,10 @@ bool Hub::handlePriv(const message::BarrierReached &reached)
              << reached.senderId() << " (now " << m_reachedSet.size() << " of " << m_stateTracker.getNumRunning()
              << " modules)" << std::endl;
     }
+
     assert(m_barrierActive);
     assert(m_barrierUuid == reached.uuid());
+
     // message must be received from local manager and each slave
     if (m_isMaster) {
         m_reachedSet.insert(reached.senderId());
