@@ -4259,29 +4259,32 @@ bool Hub::handlePriv(const message::Barrier &barrier)
         CERR << "Barrier request: " << barrier.uuid() << " by " << barrier.senderId() << ": " << barrier.info()
              << std::endl;
     }
-    if (!m_isMaster) {
-        return true;
-    }
 
-    assert(!m_barrierActive);
-    assert(m_reachedSet.empty());
-    m_numBarrierParticipants = m_stateTracker.getNumRunning();
-    for (auto &mod: m_stateTracker.runningMap) {
-        if (!Id::isModule(mod.first))
-            continue;
-        auto state = m_stateTracker.getModuleState(mod.first);
-        if (state & StateObserver::Crashed)
-            m_numBarrierParticipants--;
-    }
-    if (m_numBarrierParticipants == 0) {
-        sendBarrierReached(*this, barrier.uuid());
+    if (m_isMaster) {
+        assert(!m_barrierActive);
+        assert(m_reachedSet.empty());
+        m_numBarrierParticipants = m_stateTracker.getNumRunning();
+        for (auto &mod: m_stateTracker.runningMap) {
+            if (!Id::isModule(mod.first))
+                continue;
+            auto state = m_stateTracker.getModuleState(mod.first);
+            if (state & StateObserver::Crashed)
+                m_numBarrierParticipants--;
+        }
+        if (m_numBarrierParticipants == 0) {
+            sendBarrierReached(*this, barrier.uuid());
+        } else {
+            m_barrierActive = true;
+            m_barrierUuid = barrier.uuid();
+            message::Buffer buf(barrier);
+            buf.setDestId(Id::NextHop);
+            sendSlaves(buf, true);
+            sendManager(buf);
+        }
     } else {
-        m_barrierActive = true;
-        m_barrierUuid = barrier.uuid();
         message::Buffer buf(barrier);
         buf.setDestId(Id::NextHop);
-        sendSlaves(buf, true);
-        sendManager(buf);
+        sendManager(barrier);
     }
     return true;
 }
@@ -4319,6 +4322,8 @@ bool Hub::handlePriv(const message::BarrierReached &reached)
             m_barrierActive = false;
             sendUi(reached);
             sendManager(reached);
+        } else {
+            sendMaster(reached);
         }
     }
     return true;
