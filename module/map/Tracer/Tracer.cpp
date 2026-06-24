@@ -704,7 +704,12 @@ bool Tracer::reduce(int timestep)
     // launch particles
     for (Index idx = 0; idx < allParticles.size(); ++idx) {
         auto particle = allParticles[idx];
-        int r = particle->searchRank(comm());
+        particle->initiateRankSearch();
+    }
+    for (Index idx = 0; idx < allParticles.size(); ++idx) {
+        auto particle = allParticles[idx];
+
+        int r = particle->finishRankSearch(comm());
         if (r < 0) {
             particle->Deactivate(InitiallyOutOfDomain);
         } else if (rank() == r) {
