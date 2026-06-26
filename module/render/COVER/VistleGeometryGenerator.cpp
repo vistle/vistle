@@ -2000,7 +2000,9 @@ osg::Geode *VistleGeometryGenerator::makeNode()
                << ", dataValid: " << (info.dataValid ? "true" : "false");
 
 
-    std::cerr << info.debug.str() << std::endl;
+    if (opencover::cover->debugLevel(2)) {
+        std::cerr << "VistleGeometryGenerator: " << info.debug.str() << std::endl;
+    }
     return makeGeode(info.nodename, draw, info.state.get(), m_options.buildKdTree);
 }
 

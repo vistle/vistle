@@ -1497,7 +1497,7 @@ bool ClusterManager::addObjectDestination(const message::AddObject &addObj, Obje
 
         bool broadcast = false;
         if (destMod.objectPolicy == message::ObjectReceivePolicy::Local) {
-            CERR << "LOCAL object add at " << destId << ": " << addObj2.objectName() << std::endl;
+            //CERR << "LOCAL object add at " << destId << ": " << addObj2.objectName() << std::endl;
             if (!sendMessage(destId, addObj2))
                 return false;
             portManager().addObject(destPort);
@@ -1505,7 +1505,7 @@ bool ClusterManager::addObjectDestination(const message::AddObject &addObj, Obje
             if (!checkExecuteObject(destId))
                 return false;
         } else {
-            CERR << "BROADCAST object add at " << destId << ": " << addObj2.objectName() << std::endl;
+            //CERR << "BROADCAST object add at " << destId << ": " << addObj2.objectName() << std::endl;
             broadcast = true;
             if (!Communicator::the().broadcastAndHandleMessage(addObj2))
                 return false;
@@ -1627,7 +1627,7 @@ bool ClusterManager::checkExecuteObject(int destId)
             return true;
         }
     }
-    CERR << "checkExecuteObject " << destId << ": " << numconn << " connections" << std::endl;
+    //CERR << "checkExecuteObject " << destId << ": " << numconn << " connections" << std::endl;
     if (numconn == 0)
         return true;
     for (const auto input: portManager().getConnectedInputPorts(destId)) {
