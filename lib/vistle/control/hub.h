@@ -1,8 +1,10 @@
 #ifndef VISTLE_CONTROL_HUB_H
 #define VISTLE_CONTROL_HUB_H
 
+#include <ctime>
 #include <memory>
 #include <atomic>
+#include <chrono>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/program_options.hpp>
 #include <vistle/core/statetracker.h>
@@ -166,6 +168,10 @@ private:
     bool m_proxyOnly = false;
     vistle::message::AddHub addHubForSelf() const;
 
+    std::chrono::high_resolution_clock::time_point m_startTime;
+    std::string msgPrefix(std::string prefix, const std::chrono::time_point<std::chrono::high_resolution_clock> &time =
+                                                  std::chrono::high_resolution_clock::now()) const;
+
     double m_gridSpacingX, m_gridSpacingY;
     static const int DefaultPort = 31093;
     unsigned short m_basePort = DefaultPort;
@@ -215,8 +221,12 @@ private:
         size_t numDiscarded = 0;
         bool streamOutput = false;
         struct TaggedLine {
-            TaggedLine(message::SendText::TextType type, const std::string &line): type(type), line(line) {}
+            TaggedLine(message::SendText::TextType type, const std::string &line): type(type), line(line)
+            {
+                timestamp = std::chrono::high_resolution_clock::now();
+            }
 
+            std::chrono::high_resolution_clock::time_point timestamp;
             message::SendText::TextType type;
             std::string line;
         };
