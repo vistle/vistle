@@ -368,7 +368,7 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
         m_objectList[ro->timestep + 1].push_back(ro);
     }
 
-#if 1
+#if 0
     std::string variant;
     std::string noobject;
     if (ro) {
