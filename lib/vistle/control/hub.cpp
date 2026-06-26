@@ -3,6 +3,7 @@
  */
 
 #include "vistle/core/messages.h"
+#include <chrono>
 #include <iostream>
 #include <exception>
 #include <cstdlib>
@@ -210,9 +211,25 @@ void Hub::ObservedChild::setOutputStreaming(bool enable)
     streamOutput = enable;
 }
 
+std::string Hub::msgPrefix(std::string prefix,
+                           const std::chrono::time_point<std::chrono::high_resolution_clock> &time) const
+{
+    while (prefix.length() < 4)
+        prefix = " " + prefix;
+
+    auto elapsed = time - m_startTime;
+    double ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
+
+    std::stringstream str;
+    str << "[";
+    str << std::fixed << std::setw(7) << std::setprecision(2) << (ms / 1000.0);
+    str << " " << prefix << "] ";
+    return str.str();
+}
+
 #define CERR \
-    std::cerr << "Hub" << (message::Id::isHub(m_hubId) ? " " + std::to_string(message::Id::MasterHub - m_hubId) : "") \
-              << ": "
+    std::cerr << msgPrefix( \
+        "Hub" + (message::Id::isHub(m_hubId) ? std::to_string(message::Id::MasterHub - m_hubId) : std::string()))
 
 static Hub *hub_instance = nullptr;
 volatile std::atomic<bool> Hub::s_interrupt(false);
@@ -298,6 +315,8 @@ Hub::Hub(bool inManager)
 {
     assert(!hub_instance);
     hub_instance = this;
+
+    m_startTime = std::chrono::high_resolution_clock::now();
 
     if (!inManager) {
         message::DefaultSender::init(m_hubId, 0);
@@ -1119,7 +1138,7 @@ Hub::launchProcess(int type, const std::string &prog, const std::vector<std::str
             case Process::Cleaner:
             case Process::GUI:
             case Process::VRB:
-                prefix = "[" + typePrefix + "] ";
+                prefix = typePrefix;
                 if (m_verbose >= Verbosity::Manager) {
                     print = true;
                 }
@@ -1128,7 +1147,7 @@ Hub::launchProcess(int type, const std::string &prog, const std::vector<std::str
                 std::string mid = std::to_string(obs.moduleId);
                 std::string mname =
                     message::Id::isModule(obs.moduleId) ? m_stateTracker.getModuleName(obs.moduleId) : std::string();
-                prefix = "[" + mid + "] ";
+                prefix = mid;
                 if (m_verbose >= Verbosity::Modules) {
                     print = true;
                 }
@@ -1142,6 +1161,7 @@ Hub::launchProcess(int type, const std::string &prog, const std::vector<std::str
             }
             }
             if (print) {
+                prefix = msgPrefix(prefix);
                 if (stream == message::SendText::Cout)
                     std::cout << prefix + line << std::flush;
                 else
@@ -2334,6 +2354,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                 || msg.type() == message::ADDOBJECT || msg.type() == message::ADDOBJECTCOMPLETED
 #endif
             ) {
+                CERR;
                 if (track)
                     std::cerr << "t";
                 else
