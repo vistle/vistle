@@ -5,6 +5,7 @@
 #include "vistle/core/messages.h"
 #include <chrono>
 #include <iostream>
+#include <iomanip>
 #include <exception>
 #include <cstdlib>
 #include <numbers>
