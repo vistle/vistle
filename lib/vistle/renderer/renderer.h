@@ -60,6 +60,7 @@ public:
     }
 
 protected:
+    bool needsSync(const message::Message &m) const override;
     bool handleMessage(const message::Message *message, const MessagePayload &payload) override;
 
     virtual bool addColorMap(const vistle::message::Colormap &cm, std::vector<vistle::RGBA> &rgba);
@@ -127,7 +128,6 @@ private:
     std::vector<std::vector<std::shared_ptr<RenderObject>>> m_objectList;
     IntParameter *m_renderMode = nullptr;
     IntParameter *m_objectsPerFrame = nullptr;
-    bool needsSync(const message::Message &m) const;
 
     VariantMap m_variants;
     ColorMapMap m_colormaps;

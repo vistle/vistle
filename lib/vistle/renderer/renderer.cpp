@@ -49,29 +49,13 @@ bool Renderer::needsSync(const message::Message &m) const
 {
     using namespace vistle::message;
 
-    if (Module::needsSync(m)) {
-        return true;
-    }
-
     switch (m.type()) {
-    case CANCELEXECUTE:
-    case QUIT:
-    case KILL:
-    case BARRIER:
-    case CONNECT:
-    case DISCONNECT:
-    case ADDPARAMETER:
-    case SETPARAMETER:
-    case SETPARAMETERCHOICES:
-    case REMOVEPARAMETER:
-    case REPLAYFINISHED:
-    case COVER:
-    case COLORMAP:
-    case REMOVECOLORMAP:
         return true;
     default:
-        return false;
+        break;
     }
+
+    return Module::needsSync(m);
 }
 
 std::array<Object::const_ptr, 3> splitObject(Object::const_ptr container)

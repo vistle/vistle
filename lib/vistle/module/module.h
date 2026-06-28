@@ -358,7 +358,7 @@ private:
     Port *findOutputPort(const std::string &name);
     const Port *findOutputPort(const std::string &name) const;
 
-    bool needsSync(const message::Message &m) const;
+    virtual bool needsSync(const message::Message &m) const;
 
     //! notify that a module has added a parameter
     virtual bool parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg,

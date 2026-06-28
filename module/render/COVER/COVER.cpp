@@ -31,6 +31,7 @@
 #include <VistlePluginUtil/VistleMessage.h>
 #include "VistleGeometryGenerator.h"
 #include "CoverConfigBridge.h"
+#include "vistle/renderer/renderer.h"
 
 #include "COVER.h"
 
@@ -925,6 +926,36 @@ void COVER::eventLoop()
         runMain(argc, argv);
 #endif
     }
+}
+
+bool COVER::needsSync(const vistle::message::Message &m) const
+{
+    using namespace vistle::message;
+
+    switch (m.type()) {
+    case CANCELEXECUTE:
+    case KILL:
+    case BARRIER:
+    case SETID:
+    case SETNAME:
+    case ADDHUB:
+    case REMOVEHUB:
+    case CONNECT:
+    case DISCONNECT:
+    case ADDPARAMETER:
+    case SETPARAMETER:
+    case SETPARAMETERCHOICES:
+    case CONFIGUREPARAMETER:
+    case REMOVEPARAMETER:
+    case REPLAYFINISHED:
+    case vistle::message::COVER:
+    case COLORMAP:
+    case REMOVECOLORMAP:
+        return true;
+    default:
+        break;
+    }
+    return Renderer::needsSync(m);
 }
 
 bool COVER::handleMessage(const message::Message *message, const MessagePayload &payload)
