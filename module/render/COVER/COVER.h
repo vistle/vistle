@@ -72,6 +72,8 @@ public:
 
     bool executeAll() const;
 
+    bool needsSync(const vistle::message::Message &m) const override;
+
     opencover::coVRPlugin *plugin() const { return m_plugin; }
 
     typedef std::map<std::string, std::string> FileAttachmentMap;
