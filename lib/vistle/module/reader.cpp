@@ -1,7 +1,7 @@
 #include "reader.h"
 #include <vistle/util/profile.h>
 #include <vistle/util/threadname.h>
-
+#include <mutex>
 #define PROF_CTX(s) (std::to_string(m_id) + ":" + m_name + ": " + s).c_str()
 
 namespace vistle {
@@ -370,6 +370,26 @@ bool Reader::compute()
     return true;
 }
 
+void Reader::updateMeta(vistle::Object::ptr object) const
+{
+    if (!object)
+        return;
+
+    {
+        std::lock_guard guard(object->objectMutex());
+        object->addAttribute(attribute::DatasetName, m_datasetName);
+    }
+
+    // update referenced objects, if not yet valid
+    auto refs = object->referencedObjects();
+    for (auto &ref: refs) {
+        std::lock_guard guard(ref->objectMutex());
+        auto o = std::const_pointer_cast<Object>(ref);
+        o->addAttribute(attribute::DatasetName, m_datasetName);
+    }
+    Module::updateMeta(object);
+}
+
 bool Reader::prepareRead()
 {
     return true;
@@ -509,8 +529,8 @@ bool Reader::changeParameter(const Parameter *param)
             val = val.substr(slash + 1);
         }
         auto dot = val.find('.');
-        val = val.substr(0, dot);
-        setItemInfo(val);
+        m_datasetName = val.substr(0, dot);
+        setItemInfo(m_datasetName);
     }
 
     bool ret = Module::changeParameter(param);
