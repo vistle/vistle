@@ -112,6 +112,7 @@ protected:
     void initDone() override;
     Parameter *addParameterGeneric(const std::string &name, std::shared_ptr<Parameter> parameter) override;
     bool removeParameter(const std::string &name) override;
+    void updateMeta(vistle::Object::ptr object) const override;
 
     enum ParallelizationMode {
         Serial, ///< only one operation at a time, all blocks of a timestep first, then other timesteps
@@ -202,7 +203,6 @@ private:
     bool readTimesteps(std::shared_ptr<Token> &prev, const ReaderProperties &prop);
     bool prepare() override;
     bool compute() override;
-
     ParallelizationMode m_parallel = Serial;
     std::mutex m_mutex; // protect ports and message queues
     std::deque<std::shared_ptr<Token>> m_tokens;
@@ -225,7 +225,7 @@ private:
 
     unsigned long m_tokenCount = 0;
     std::shared_ptr<StringParameter> m_firstFileBrowser;
-
+    std::string m_datasetName;
     /*
     * # files (api)
     * file selection (ui)

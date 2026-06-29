@@ -275,7 +275,7 @@ public:
     //request execution of this module
     void execute() const;
 
-    void updateMeta(vistle::Object::ptr object) const;
+    virtual void updateMeta(vistle::Object::ptr object) const;
 
 protected:
     virtual void setInputSpecies(const std::string &species); //< _species attribute on input has changed
