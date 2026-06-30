@@ -1,6 +1,6 @@
 /**\file
  * \brief RhrClient plugin class
- * 
+ *
  * \author Martin Aumüller <aumueller@hlrs.de>
  * \author (c) 2013 HLRS
  *
@@ -1163,15 +1163,17 @@ void RhrClient::addRemoteConnection(const std::string &serverKey, const std::str
     remote->startThread();
 
     unsigned short port = 0;
-    if (remote->isListener() && remote->m_setServerParameters && moduleId != vistle::message::Id::Invalid) {
-        while (!remote->isListening() && !remote->isConnected()) {
-            usleep(1000);
-        }
+    if (coVRMSController::instance()->isMaster()) {
+        if (remote->isListener() && remote->m_setServerParameters && moduleId != vistle::message::Id::Invalid) {
+            while (!remote->isListening() && !remote->isConnected()) {
+                usleep(1000);
+            }
 
-        port = remote->m_port;
-    } else {
-        while (!remote->isListening() && !remote->isConnected()) {
-            usleep(1000);
+            port = remote->m_port;
+        } else {
+            while (!remote->isListening() && !remote->isConnected()) {
+                usleep(1000);
+            }
         }
     }
 
