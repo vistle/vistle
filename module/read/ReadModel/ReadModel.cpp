@@ -30,6 +30,7 @@ ReadModel::ReadModel(const std::string &name, int moduleID, mpi::communicator co
 
     addIntParameter("indexed_geometry", "create indexed geometry?", 0, Parameter::Boolean);
     addIntParameter("triangulate", "only create triangles", 0, Parameter::Boolean);
+    addIntParameter("normals", "read normals, if available", 1, Parameter::Boolean);
 
     auto firstBlock = addIntParameter("first_block", "number of first block", 0);
     observeParameter(firstBlock);
@@ -102,6 +103,7 @@ Object::ptr ReadModel::load(const std::string &name) const
     Object::ptr ret;
     Assimp::Importer importer;
     bool indexed = false;
+    bool readNormals = getIntParameter("normals");
     unsigned int readFlags = aiProcess_PreTransformVertices | aiProcess_SortByPType | aiProcess_ImproveCacheLocality |
                              aiProcess_OptimizeGraph | aiProcess_OptimizeMeshes;
     if (getIntParameter("indexed_geometry")) {
@@ -180,7 +182,7 @@ Object::ptr ReadModel::load(const std::string &name) const
                     }
                 }
                 ret = coords;
-                if (mesh->HasNormals()) {
+                if (mesh->HasNormals() && readNormals) {
                     Normals::ptr normals(new Normals(mesh->mNumVertices));
                     Scalar *n[3] = {nullptr, nullptr, nullptr};
                     for (int c = 0; c < 3; ++c) {
