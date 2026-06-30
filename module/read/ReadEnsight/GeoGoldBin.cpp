@@ -90,9 +90,16 @@ Object::ptr GeoGoldBin::read(int timeStep, int block, EnPart *part)
         poly->d()->x[1] = part->y3d_;
         poly->d()->x[2] = part->z3d_;
         out = poly;
+    } else if (part->numEleRead2d() == 0 && part->numConnRead2d() == 0 && part->numEleRead3d() == 0 &&
+               part->numConnRead3d() == 0 && part->x3d_ && part->y3d_ && part->z3d_) {
+        auto unstr = std::make_shared<UnstructuredGrid>(0, 0, 0);
+        unstr->d()->x[0] = part->x3d_;
+        unstr->d()->x[1] = part->y3d_;
+        unstr->d()->x[2] = part->z3d_;
+        out = unstr;
     } else {
         std::stringstream str;
-        str << "cannot handle: " << part->getPartNum() << " : " << part->partInfoString() << std::endl;
+        str << "cannot handle part: #" << part->getPartNum() << ": " << part->partInfoString() << std::endl;
         ens->sendWarning(str.str());
     }
 
