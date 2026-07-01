@@ -1,5 +1,4 @@
-vistle_find_package(anari CONFIG)
-if(NOT anari_FOUND)
+if(NOT TARGET anari::anari)
     return()
 endif()
 
@@ -12,4 +11,4 @@ add_module(
     anarirenderobject.h
     anarirenderobject.cpp)
 
-target_link_libraries(ANARemote PRIVATE anari::anari vistle_renderer vistle_rhr)
+target_link_libraries(ANARemote PRIVATE vistle::viskores_anari anari::anari vistle_renderer vistle_rhr)
