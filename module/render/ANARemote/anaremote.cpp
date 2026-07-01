@@ -12,6 +12,8 @@
 #include <anari/anari_cpp.hpp>
 #include <anari/anari_cpp/ext/std.h>
 
+#include <viskores/interop/anari/ANARILoadDevice.h>
+
 #include "anarirenderobject.h"
 #include "projection.h"
 
@@ -82,9 +84,7 @@ public:
     void statusFunc(ANARIDevice device, ANARIObject source, ANARIDataType sourceType, ANARIStatusSeverity severity,
                     ANARIStatusCode code, const char *message) const;
 
-    anari::Library m_wrapperLibrary = nullptr; // debug wrapper
     anari::Device m_wrapperDevice = nullptr;
-    anari::Library m_library = nullptr;
     anari::Device m_nestedDevice = nullptr;
     anari::Device m_device = nullptr; // device to send commands to: m_wrapperDevice for debug, m_nestedDevice otherwise
     anari::Renderer m_renderer = nullptr;
@@ -140,8 +140,9 @@ Anari::Anari(const std::string &name, int moduleId, mpi::communicator comm)
     m_pointSizeParam = addFloatParameter("point_size", "size of points", AnariRenderObject::pointSize);
     setParameterRange(m_pointSizeParam, (Float)0, (Float)1e6);
 
-    m_libraryParam = addStringParameter("library", "ANARI renderer library", "helide", Parameter::Choice);
-    setParameterChoices(m_libraryParam, {"sink", "environment", "helide", "ospray", "visrtx", "visgl", "visionaray"});
+    m_libraryParam = addStringParameter("library", "ANARI renderer library", "viskores", Parameter::Choice);
+    setParameterChoices(m_libraryParam,
+                        {"sink", "environment", "viskores", "helide", "ospray", "visrtx", "visgl", "visionaray"});
 
     m_rendererParam = addStringParameter("renderer", "ANARI renderer type", "default", Parameter::Choice);
     setParameterChoices(m_rendererParam, {"default"});
@@ -155,16 +156,12 @@ Anari::Anari(const std::string &name, int moduleId, mpi::communicator comm)
 Anari::~Anari()
 {
     unloadAnari();
-    anari::unloadLibrary(m_wrapperLibrary);
-    m_wrapperLibrary = nullptr;
 }
 
 void Anari::prepareQuit()
 {
     removeAllObjects();
     unloadAnari();
-    anari::unloadLibrary(m_wrapperLibrary);
-    m_wrapperLibrary = nullptr;
 
     Renderer::prepareQuit();
 }
@@ -326,10 +323,6 @@ void Anari::unloadAnari()
         m_nestedDevice = nullptr;
     }
     m_device = nullptr;
-    anari::unloadLibrary(m_library);
-    m_library = nullptr;
-    anari::unloadLibrary(m_wrapperLibrary);
-    m_wrapperLibrary = nullptr;
 }
 
 anari::Device Anari::recreate(anari::Device dev)
@@ -381,20 +374,44 @@ bool Anari::changeParameter(const Parameter *p)
     } else if (p == m_libraryParam) {
         if (m_device) {
             releaseDevice(m_device);
+            m_device = nullptr;
         }
 
+        anari::Device nested = nullptr;
         auto libname = m_libraryParam->getValue();
-        auto lib = anari::loadLibrary(libname.c_str(), anariStatusFunc, this);
-        if (lib) {
-            anari::Extensions extensions = anari::extension::getDeviceExtensionStruct(lib, "default");
-            if (!extensions.ANARI_KHR_GEOMETRY_TRIANGLE)
-                sendWarning("device does not support ANARI_KHR_GEOMETRY_TRIANGLE");
-            if (!extensions.ANARI_KHR_CAMERA_PERSPECTIVE)
-                sendWarning("device does not support ANARI_KHR_CAMERA_PERSPECTIVE");
-            if (!extensions.ANARI_KHR_MATERIAL_MATTE)
-                sendWarning("device doesn't support ANARI_KHR_MATERIAL_MATTE");
+        if (libname.empty())
+            libname = "viskores";
+        if (libname == "viskores") {
+            nested = viskores::interop::anari::ANARILoadDevice(libname);
+            if (!nested) {
+                sendError("failed to load viskores default device");
+            }
+            auto rt = getRendererTypes(nullptr, nested);
+            setParameterChoices(m_rendererParam, rt);
+        } else {
+            auto lib = anari::loadLibrary(libname.c_str(), anariStatusFunc, this);
+            if (lib) {
+                anari::Extensions extensions = anari::extension::getDeviceExtensionStruct(lib, "default");
+                if (!extensions.ANARI_KHR_GEOMETRY_TRIANGLE)
+                    sendWarning("device does not support ANARI_KHR_GEOMETRY_TRIANGLE");
+                if (!extensions.ANARI_KHR_CAMERA_PERSPECTIVE)
+                    sendWarning("device does not support ANARI_KHR_CAMERA_PERSPECTIVE");
+                if (!extensions.ANARI_KHR_MATERIAL_MATTE)
+                    sendWarning("device does not support ANARI_KHR_MATERIAL_MATTE");
 
-            auto nested = anari::newDevice(lib, "default");
+                nested = anari::newDevice(lib, "default");
+                if (!nested) {
+                    sendError("failed to create default device for library %s", libname.c_str());
+                }
+                auto rt = getRendererTypes(lib, nested);
+                setParameterChoices(m_rendererParam, rt);
+                anari::unloadLibrary(lib);
+            } else {
+                sendError("failed to load library %s", libname.c_str());
+            }
+        }
+
+        if (nested) {
             auto dev = nested;
             if (m_wrapperDevice) {
                 anari::setParameter(m_wrapperDevice, m_wrapperDevice, "wrappedDevice", nested);
@@ -410,43 +427,38 @@ bool Anari::changeParameter(const Parameter *p)
                 m_nestedDevice = nested;
                 assert(m_world);
 
-                auto rt = getRendererTypes(lib, nested);
-                setParameterChoices(m_rendererParam, rt);
-
                 m_renderer = createRenderer(dev, m_rendererParam->getValue());
             } else {
                 sendError("failed to create default device");
                 unloadAnari();
             }
-
-        } else {
-            sendError("failed to load library %s", libname.c_str());
         }
-        anari::unloadLibrary(m_library);
-        m_library = lib;
     } else if (p == m_debugWrapper) {
         if (m_debugWrapper->getValue()) {
-            if (!m_wrapperLibrary) {
-                m_wrapperLibrary = anari::loadLibrary("debug", anariStatusFunc, this);
-            }
-            if (m_wrapperLibrary) {
-                if (!m_wrapperDevice) {
-                    m_wrapperDevice = anari::newDevice(m_wrapperLibrary, "debug");
-                    anari::setParameter(m_wrapperDevice, m_wrapperDevice, "wrappedDevice", m_nestedDevice);
-                    anari::commitParameters(m_wrapperDevice, m_wrapperDevice);
+            if (!m_wrapperDevice) {
+                auto lib = anari::loadLibrary("debug", anariStatusFunc, this);
+                if (lib) {
+                    m_wrapperDevice = anari::newDevice(lib, "debug");
+                    if (m_wrapperDevice) {
+                        anari::setParameter(m_wrapperDevice, m_wrapperDevice, "wrappedDevice", m_nestedDevice);
+                        anari::commitParameters(m_wrapperDevice, m_wrapperDevice);
+
+                        releaseDevice(m_device);
+                        recreate(m_wrapperDevice); // do not release m_nestedDevice, as it is wrapped and still in use
+                        m_device = m_wrapperDevice;
+                    }
+                    anari::unloadLibrary(lib);
                 }
-                releaseDevice(m_device);
-                recreate(m_wrapperDevice); // do not release m_nestedDevice, as it is wrapped and still in use
-                m_device = m_wrapperDevice;
             }
         } else {
             if (m_wrapperDevice) {
                 releaseDevice(m_wrapperDevice);
                 anari::unsetParameter(m_wrapperDevice, m_wrapperDevice, "wrappedDevice");
                 anari::commitParameters(m_wrapperDevice, m_wrapperDevice);
-                recreate(m_nestedDevice);
                 anari::release(m_wrapperDevice, m_wrapperDevice);
                 m_wrapperDevice = nullptr;
+
+                recreate(m_nestedDevice);
             }
         }
     } else if (p == m_rendererParam) {
@@ -454,7 +466,7 @@ bool Anari::changeParameter(const Parameter *p)
             anari::release(m_device, m_renderer);
         }
         m_renderer = nullptr;
-        if (m_library && m_device) {
+        if (m_device) {
             auto rt = m_rendererParam->getValue();
             m_renderer = createRenderer(m_device, rt);
             if (!m_renderer) {
