@@ -682,7 +682,7 @@ void Anari::removeObject(std::shared_ptr<RenderObject> vro)
 
     while (!anim_geometry.empty() && anim_geometry.back().empty())
         anim_geometry.pop_back();
-    
+
     if (t == -1 || t == m_timestep) {
         m_renderManager.setModified();
     }
