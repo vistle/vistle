@@ -272,6 +272,8 @@ bool Renderer::dispatch(bool block, bool *messageReceived, unsigned int minPrio)
         ++numSync;
     } while (maxNumMessages > 0 && numSync < m_numObjectsPerFrame);
 
+    ParameterManager::applyDelayedChanges(); // normally done in Execute, but Renderer does not get executed
+
     double start = 0.;
     if (m_benchmark) {
         comm().barrier();
