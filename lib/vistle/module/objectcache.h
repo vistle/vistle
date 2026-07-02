@@ -27,7 +27,7 @@ public:
     CacheMode cacheMode() const;
     void setCacheMode(CacheMode mode);
 
-    void addObject(const std::string &portname, Object::const_ptr object);
+    void addObject(const std::string &portname, Object::const_ptr object, bool isComputePort);
     std::pair<std::map<std::string, ObjectList>, bool> getObjects() const;
     // keep track of connected ports
     void addPort(const std::string &portname);

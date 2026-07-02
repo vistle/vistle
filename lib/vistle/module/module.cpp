@@ -1206,7 +1206,8 @@ bool Module::addInputObject(int sender, const std::string &senderPort, const std
     Port *p = findInputPort(portName);
 
     if (p) {
-        m_cache.addObject(portName, object);
+        auto isComputePort = !(p->flags() & Port::NOCOMPUTE);
+        m_cache.addObject(portName, object, isComputePort);
         p->objects().push_back(object);
         return true;
     }

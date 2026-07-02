@@ -79,12 +79,12 @@ ObjectCache::Entry::Entry(Object::const_ptr object, bool cacheByNameOnly)
 , iteration(getIteration(object))
 {}
 
-void ObjectCache::addObject(const std::string &portname, Object::const_ptr object)
+void ObjectCache::addObject(const std::string &portname, Object::const_ptr object, bool isComputePort)
 {
     Meta &meta = m_meta[portname];
     const Meta oldmeta = meta;
     meta = object->meta();
-    if (oldmeta.creator() != meta.creator() || oldmeta.generation() != meta.generation()) {
+    if (isComputePort && (oldmeta.creator() != meta.creator() || oldmeta.generation() != meta.generation())) {
         ++m_generation;
     }
 
