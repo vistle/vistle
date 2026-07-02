@@ -847,6 +847,11 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
         handled = handlePriv(rp);
         break;
     }
+    case CHANGEPORTFLAGS: {
+        const auto &cpf = msg.as<ChangePortFlags>();
+        handled = handlePriv(cpf);
+        break;
+    }
     case ADDPARAMETER: {
         const auto &add = msg.as<AddParameter>();
         handled = handlePriv(add);
@@ -1860,6 +1865,18 @@ bool StateTracker::handlePriv(const message::RemovePort &destroyPort)
 
     return true;
 }
+
+bool StateTracker::handlePriv(const message::ChangePortFlags &changePortFlags)
+{
+    mutex_locker guard(m_stateMutex);
+    if (portTracker()) {
+        Port p = changePortFlags.getPort();
+        portTracker()->setPortFlags(p, static_cast<Port::Flags>(p.flags()));
+    }
+
+    return true;
+}
+
 
 bool StateTracker::handlePriv(const message::ReplayFinished &reset)
 {

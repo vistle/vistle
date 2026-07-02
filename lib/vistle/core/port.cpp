@@ -37,6 +37,11 @@ unsigned Port::flags() const
     return m_flags;
 }
 
+void Port::setFlags(unsigned flags)
+{
+    m_flags = flags;
+}
+
 ObjectList &Port::objects()
 {
     return m_objects;

@@ -23,6 +23,7 @@ public:
     const Port *addPort(const int moduleID, const std::string &name, const std::string &description,
                         const Port::Type type, int flags = 0);
     const Port *addPort(const Port &port);
+    const Port *setPortFlags(const Port &port, Port::Flags flags);
     virtual std::vector<message::Buffer> removePort(const Port &port);
 
     bool addConnection(const Port &out, const Port &in);

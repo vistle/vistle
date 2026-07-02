@@ -474,6 +474,16 @@ public:
 private:
     port_name_t m_name;
 };
+//! notification that a module has destroyed an input/output port
+class V_COREEXPORT ChangePortFlags: public MessageBase<ChangePortFlags, CHANGEPORTFLAGS> {
+public:
+    explicit ChangePortFlags(const Port &port, int flags);
+    Port getPort() const;
+
+private:
+    port_name_t m_name;
+    int m_flags;
+};
 
 class AddObjectCompleted;
 

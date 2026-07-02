@@ -112,6 +112,18 @@ const Port *PortTracker::addPort(const Port &port)
     return addPort(port.getModuleID(), port.getName(), port.getDescription(), port.getType(), port.flags());
 }
 
+const Port *PortTracker::setPortFlags(const Port &port, Port::Flags flags)
+{
+    auto p = findPort(port);
+    if (!p) {
+        CERR << "changePortFlags: port " << port << " not found" << std::endl;
+        return nullptr;
+    }
+    p->setFlags(flags);
+    check();
+    return p;
+}
+
 std::vector<message::Buffer> PortTracker::removePort(const Port &p)
 {
     //CERR << "removing port " << p << std::endl;
