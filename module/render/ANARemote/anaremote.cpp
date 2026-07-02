@@ -433,6 +433,7 @@ bool Anari::changeParameter(const Parameter *p)
                 unloadAnari();
             }
         }
+        m_renderManager.setModified();
     } else if (p == m_debugWrapper) {
         if (m_debugWrapper->getValue()) {
             if (!m_wrapperDevice) {
@@ -681,6 +682,10 @@ void Anari::removeObject(std::shared_ptr<RenderObject> vro)
 
     while (!anim_geometry.empty() && anim_geometry.back().empty())
         anim_geometry.pop_back();
+    
+    if (t == -1 || t == m_timestep) {
+        m_renderManager.setModified();
+    }
 
     CERR << "removeObject(" << ro->senderId << "/" << ro->variant << ", t=" << t << "@" << m_timestep << "/"
          << numTimesteps() << ")" << std::endl;
@@ -710,6 +715,10 @@ std::shared_ptr<RenderObject> Anari::addObject(int sender, const std::string &se
         if (anim_geometry.size() <= size_t(t))
             anim_geometry.resize(t + 1);
         anim_geometry[t].push_back(ro);
+    }
+
+    if (t == -1 || t == m_timestep) {
+        m_renderManager.setModified();
     }
 
     m_renderManager.addObject(ro);
