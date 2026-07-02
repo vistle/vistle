@@ -47,6 +47,8 @@ public:
     const std::string &getDescription() const;
     Type getType() const;
     unsigned flags() const;
+    void setFlags(unsigned flags);
+
 
     ObjectList &objects();
     const ObjectList &objects() const;

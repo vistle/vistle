@@ -38,6 +38,7 @@ void Router::initRoutingTable()
     rt[CREATEMODULECOMPOUND] = Track | DestHub | DestManager | HandleOnHub;
     rt[ADDPORT] = Track | DestUi | DestManager | DestModules | TriggerQueue | OnlyRank0 | HandleOnMaster;
     rt[REMOVEPORT] = Track | DestUi | DestManager | DestModules | OnlyRank0;
+    rt[CHANGEPORTFLAGS] = Track | DestUi | DestManager | DestModules | OnlyRank0;
     rt[ADDPARAMETER] = Track | DestUi | DestManager | DestModules | TriggerQueue | OnlyRank0;
     rt[REMOVEPARAMETER] = Track | DestUi | DestManager | DestModules | OnlyRank0;
     rt[SETPARAMETERCHOICES] = Track | DestUi | DestModules | OnlyRank0;

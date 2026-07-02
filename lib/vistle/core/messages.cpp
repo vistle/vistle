@@ -845,6 +845,18 @@ Port RemovePort::getPort() const
     return Port(senderId(), m_name.data(), Port::ANY);
 }
 
+ChangePortFlags::ChangePortFlags(const Port &port, int flags): m_flags(flags)
+{
+    COPY_STRING(m_name, port.getName());
+}
+
+Port ChangePortFlags::getPort() const
+{
+    Port p(senderId(), m_name.data(), Port::Type::ANY, m_flags);
+    p.setFlags(m_flags);
+    return p;
+}
+
 AddObject::AddObject(const std::string &sender, vistle::Object::const_ptr obj, const std::string &dest)
 : m_meta(obj->meta())
 , m_objectType(obj->getType())

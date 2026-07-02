@@ -365,6 +365,7 @@ private:
     bool handlePriv(const message::Idle &idle);
     bool handlePriv(const message::AddPort &createPort);
     bool handlePriv(const message::RemovePort &destroyPort);
+    bool handlePriv(const message::ChangePortFlags &changePortFlags);
     bool handlePriv(const message::AddParameter &addParam);
     bool handlePriv(const message::RemoveParameter &removeParam);
     bool handlePriv(const message::SetParameter &setParam);

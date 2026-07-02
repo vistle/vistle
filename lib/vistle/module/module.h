@@ -157,6 +157,8 @@ public:
 
     Port *createInputPort(const std::string &name, const std::string &description, const int flags = 0);
     Port *createOutputPort(const std::string &name, const std::string &description, const int flags = 0);
+    void setPortFlags(const std::string &portName, Port::Flags flags);
+    void setPortFlags(Port *port, Port::Flags flags);
     bool destroyPort(const std::string &portName);
     bool destroyPort(const Port *port);
     bool setPortState(const Port *port, message::ItemInfo::PortState state);
