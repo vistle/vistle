@@ -286,7 +286,7 @@ ui::Slider *createSlider(const vistle::ParameterBase<T> &param, opencover::ui::G
     return slider;
 }
 
-void VistlePlugin::showVrControl(const std::string &moduleType, const std::shared_ptr<vistle::Parameter> &param)
+void VistlePlugin::showVrControl(const std::string &moduleName, const std::shared_ptr<vistle::Parameter> &param)
 {
     if (!param || !cover->visMenu)
         return;
@@ -300,10 +300,10 @@ void VistlePlugin::showVrControl(const std::string &moduleType, const std::share
 
     auto &moduleControls = m_moduleControls[moduleId];
     if (!moduleControls.submenu) {
-        const std::string submenuName = moduleType + std::to_string(moduleId);
+        const std::string submenuName = moduleName + std::to_string(moduleId);
         moduleControls.submenu = new ui::Menu(cover->visMenu, submenuName);
     }
-    moduleControls.submenu->setText(moduleType);
+    moduleControls.submenu->setText(moduleName);
 
     auto &control = moduleControls.controls[name];
     if (control.type != ControlType::Invalid) {
