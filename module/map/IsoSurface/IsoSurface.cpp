@@ -117,6 +117,10 @@ bool IsoSurface::changeParameter(const Parameter *param)
             setReducePolicy(message::ReducePolicy::PerTimestep);
         else
             setReducePolicy(message::ReducePolicy::OverAll);
+
+        bool perValue = m_pointOrValue->getValue() == Value;
+        setParameterReadOnly(m_isovalue, !perValue);
+        setParameterReadOnly(m_isopoint, perValue);
     }
 
     if (param == m_isovalue || param == m_pointOrValue) {
