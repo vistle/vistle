@@ -631,8 +631,8 @@ if(NOT VISTLE_GUI_ONLY)
         if(NOT VISTLE_MULTI_PROCESS)
             message(WARNING "Using dummy MPI implementation that is not thread-safe, thus resorting to multi-process configuration")
             set(VISTLE_MULTI_PROCESS
-                TRUE
-                CACHE STRING "" FORCE)
+                OFF
+                CACHE BOOL "use multiple processes communicating via shared memory" FORCE)
         endif()
     endif()
 
