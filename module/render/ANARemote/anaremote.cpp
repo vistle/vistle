@@ -295,11 +295,15 @@ void Anari::releaseDevice(anari::Device dev)
         }
         m_cameras.clear();
 
-        anari::release(dev, m_renderer);
-        m_renderer = nullptr;
+        if (m_renderer) {
+            anari::release(dev, m_renderer);
+            m_renderer = nullptr;
+        }
 
-        anari::release(dev, m_world);
-        m_world = nullptr;
+        if (m_world) {
+            anari::release(dev, m_world);
+            m_world = nullptr;
+        }
 
 #if 0
         anari::release(dev, m_device);
