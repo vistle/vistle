@@ -81,18 +81,24 @@ void unmapParameterArray(Device device, Object object, const char *name)
 template<typename T>
 void ShmArrayDeleter(const void *userPtr, const void *appMemory)
 {
-    auto shm = reinterpret_cast<vistle::ShmVector<T> *>(const_cast<void *>(userPtr));
-    shm->unref();
+    auto shmHandle = reinterpret_cast<vistle::ShmVector<T> *>(const_cast<void *>(userPtr));
+
+    // destructor reduces refcount and deletes the array if the count is 0
+    delete shmHandle;
 }
 
 template<typename T>
 inline anari::Array1D shareArray1D(anari::Device d, const vistle::ShmVector<T> &shm, uint64_t numItems1)
 {
     assert(numItems1 <= shm->size());
-    shm->ref();
+
+    // create independent copy of the shm handle (copy constructor increases refcount),
+    // and let ShmArrayDeleter delete it when the ANARI array is destroyed
+    auto *shmHandle = new vistle::ShmVector<T>(shm);
+
     auto appMemory = shm->data();
     static auto deleter = &ShmArrayDeleter<T>;
-    return anariNewArray1D(d, appMemory, deleter, &shm, anari::detail::getType<T>(), numItems1);
+    return anariNewArray1D(d, appMemory, deleter, shmHandle, anari::detail::getType<T>(), numItems1);
 }
 
 AnariRenderObject::AnariRenderObject(anari::Device device, int senderId, const std::string &senderPort,
