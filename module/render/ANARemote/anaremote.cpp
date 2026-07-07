@@ -457,13 +457,12 @@ bool Anari::changeParameter(const Parameter *p)
             }
         } else {
             if (m_wrapperDevice) {
-                releaseDevice(m_wrapperDevice);
+                recreate(m_nestedDevice);
+
                 anari::unsetParameter(m_wrapperDevice, m_wrapperDevice, "wrappedDevice");
                 anari::commitParameters(m_wrapperDevice, m_wrapperDevice);
                 anari::release(m_wrapperDevice, m_wrapperDevice);
                 m_wrapperDevice = nullptr;
-
-                recreate(m_nestedDevice);
             }
         }
     } else if (p == m_rendererParam) {
