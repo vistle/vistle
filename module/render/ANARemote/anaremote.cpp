@@ -316,6 +316,8 @@ void Anari::unloadAnari()
 {
     releaseDevice(m_device);
 
+    m_colormaps.clear();
+
     if (m_wrapperDevice) {
         anari::unsetParameter(m_wrapperDevice, m_wrapperDevice, "wrappedDevice");
         anari::commitParameters(m_wrapperDevice, m_wrapperDevice);
@@ -326,6 +328,7 @@ void Anari::unloadAnari()
         anari::release(m_nestedDevice, m_nestedDevice);
         m_nestedDevice = nullptr;
     }
+
     m_device = nullptr;
 }
 
