@@ -2,13 +2,13 @@ set(core_SOURCES
     message/colormap.cpp
     message/setname.cpp
     allobjects.cpp # just one file including all the others for faster compilation
-    availablemodule.cpp
     archive_loader.cpp
     archive_saver.cpp
-    archives.cpp
-    archives_compress.cpp
-    archives_compress_sz3.cpp
     archives_compress_bigwhoop.cpp
+    archives_compress_sz3.cpp
+    archives_compress.cpp
+    archives.cpp
+    availablemodule.cpp
     cellalgorithm.cpp
     filequery.cpp
     geometry.cpp
@@ -25,10 +25,10 @@ set(core_SOURCES
     paramvector.cpp
     port.cpp
     porttracker.cpp
-    shm.cpp
     shm_array.cpp
     shm_obj_ref.cpp
     shm_reference.cpp
+    shm.cpp
     shmname.cpp
     statetracker.cpp
     tcpmessage.cpp
@@ -62,108 +62,108 @@ set(core_SOURCES
     vertexownerlist.cpp)
 
 set(core_HEADERS
-    message/colormap.h
-    message/setname.h
     archive_loader.h
     archive_saver.h
-    archives.h
-    archives_compress.h
-    archives_compress_sz3.h
     archives_compress_bigwhoop.h
+    archives_compress_sz3.h
+    archives_compress.h
     archives_config.h
     archives_impl.h
+    archives.h
     availablemodule.h
     cellalgorithm.h
-    celltree.h
     celltree_impl.h
-    celltreenode.h
+    celltree.h
     celltreenode_decl.h
+    celltreenode.h
     celltypes.h
-    coords.h
     coords_impl.h
-    database.h
+    coords.h
     database_impl.h
+    database.h
     dimensions.h
-    empty.h
     empty_impl.h
+    empty.h
     export.h
     filequery.h
     geometry.h
     grid.h
     index.h
-    indexed.h
     indexed_impl.h
-    layergrid.h
+    indexed.h
     layergrid_impl.h
-    lines.h
+    layergrid.h
     lines_impl.h
+    lines.h
     message.h
+    message/colormap.h
+    message/setname.h
     messagepayload.h
     messagepayloadtemplates.h
     messagequeue.h
     messagerouter.h
     messages.h
     messagesender.h
-    ngons.h
     ngons_impl.h
-    normals.h
+    ngons.h
     normals_impl.h
-    object.h
+    normals.h
     object_impl.h
-    objectmeta.h
+    object.h
     objectmeta_impl.h
+    objectmeta.h
     parameter.h
-    parametermanager.h
     parametermanager_impl.h
-    paramvector.h
+    parametermanager.h
     paramvector_impl.h
-    placeholder.h
+    paramvector.h
     placeholder_impl.h
-    points.h
+    placeholder.h
     points_impl.h
-    polygons.h
+    points.h
     polygons_impl.h
+    polygons.h
     port.h
     porttracker.h
     quads.h
-    rectilineargrid.h
     rectilineargrid_impl.h
+    rectilineargrid.h
     rgba.h
     scalar.h
     scalars.h
     serialize.h
-    shm.h
-    shm_array.h
     shm_array_impl.h
+    shm_array.h
     shm_config.h
     shm_impl.h
-    shm_obj_ref.h
     shm_obj_ref_impl.h
-    shm_reference.h
+    shm_obj_ref.h
     shm_reference_impl.h
+    shm_reference.h
+    shm.h
     shmdata.h
     shmname.h
     shmvector.h
     statetracker.h
-    structuredgrid.h
     structuredgrid_impl.h
-    structuredgridbase.h
+    structuredgrid.h
     structuredgridbase_impl.h
+    structuredgridbase.h
     tcpmessage.h
     triangles.h
-    uniformgrid.h
     uniformgrid_impl.h
-    unstr.h
+    uniformgrid.h
     unstr_geo.h
     unstr_impl.h
+    unstr.h
     uuid.h
-    vec.h
     vec_impl.h
     vec_template.h
+    vec.h
     vector.h
     vectortypes.h
-    vertexownerlist.h
-    vertexownerlist_impl.h)
+    vertexownerlist_impl.h
+    vertexownerlist.h)
 
 if(MSVC)
     set_source_files_properties(allobjects.cpp PROPERTIES COMPILE_FLAGS /bigobj)
