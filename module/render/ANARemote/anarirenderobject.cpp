@@ -366,10 +366,12 @@ void AnariRenderObject::create(anari::Device device)
     if (haveColor) {
         anari::setParameter(device, mat, "color", "color");
     } else if (useSampler) {
-        if (colorMap)
+        if (colorMap) {
             anari::setParameter(device, mat, "color", colorMap->sampler);
-        else
+            anari::setParameter(device, geom, "useValueRange", true);
+        } else {
             anari::unsetParameter(device, mat, "color");
+        }
     } else if (hasSolidColor) {
         anari::setParameter(device, mat, "color",
                             anari::std_types::vec4{static_cast<float>(solidColor[0]), static_cast<float>(solidColor[1]),
