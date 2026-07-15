@@ -368,7 +368,7 @@ void AnariRenderObject::create(anari::Device device)
     } else if (useSampler) {
         if (colorMap) {
             anari::setParameter(device, mat, "color", colorMap->sampler);
-            anari::setParameter(device, geom, "useValueRange", true);
+            anari::setParameter(device, geom, "useCustomRangeForTracer", true);
         } else {
             anari::unsetParameter(device, mat, "color");
         }
