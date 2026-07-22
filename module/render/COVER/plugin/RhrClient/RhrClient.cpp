@@ -574,7 +574,7 @@ bool RhrClient::init()
     reprojMode->append("Points (adaptive with neighbors)");
     reprojMode->append("Mesh");
     reprojMode->append("Mesh with holes");
-    reprojMode->append("Disable & adapt viewer");
+    reprojMode->append("Disable and adapt viewer");
     reprojMode->setCallback([this](int choice) {
         if (choice > MultiChannelDrawer::ReprojectMeshWithHoles) {
             choice = MultiChannelDrawer::AsIs;
@@ -1074,12 +1074,12 @@ void RhrClient::message(int toWhom, int type, int len, const void *msg)
 
 bool RhrClient::updateViewer()
 {
-    CERR << "updating viewer matrix" << std::endl;
     auto it = m_remotes.begin();
     if (it != m_remotes.end()) {
         const auto &m = it->second->getHeadMat();
         if (VRViewer::instance()->getViewerMat() != m) {
             VRViewer::instance()->updateViewerMat(m);
+            CERR << "updating viewer matrix" << std::endl;
             return true;
         }
     }
