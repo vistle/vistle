@@ -1290,12 +1290,17 @@ bool RhrClient::sendMessage(const vistle::message::Buffer &msg, const vistle::bu
 void RhrClient::updateStatus(const string &serverKey)
 {
     auto it = m_remotes.find(serverKey);
+    if (it == m_remotes.end())
+        return;
     auto name = it->second->name();
     auto text = it->second->status();
     auto stat = name + ": " + text;
     stat = coVRMSController::instance()->syncString(stat);
-    if (m_remoteStatus[serverKey]->text() != stat)
-        m_remoteStatus[serverKey]->setText(stat);
+    auto labelIt = m_remoteStatus.find(serverKey);
+    if (labelIt == m_remoteStatus.end())
+        return;
+    if (labelIt->second->text() != stat)
+        labelIt->second->setText(stat);
 }
 
 COVERPLUGIN(RhrClient)
