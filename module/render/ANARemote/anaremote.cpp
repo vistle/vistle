@@ -623,9 +623,21 @@ bool Anari::render()
         glm::box2 imgRegion;
         offaxisStereoCameraFromTransform(proj.inverse(), mv.inverse(), eye, dir, up, fovy, aspect, imgRegion);
 
+        const glm::vec3 nearPos = glm::unprojectNDC(proj.inverse(), mv.inverse(), glm::vec3(0.f, 0.f, -1.f));
+        float nearPlane = (nearPos - eye).dot(dir);
+        if (!std::isfinite(nearPlane) || nearPlane <= 0.f)
+            nearPlane = 1e-4f;
+
+        const glm::vec3 farPos = glm::unprojectNDC(proj.inverse(), mv.inverse(), glm::vec3(0.f, 0.f, 1.f));
+        float farPlane = (farPos - eye).dot(dir);
+        if (!std::isfinite(farPlane) || farPlane <= nearPlane)
+            farPlane = nearPlane + 1.f;
+
         auto &camera = m_cameras[i];
         anariSetParameter(m_device, camera, "fovy", ANARI_FLOAT32, &fovy);
         anariSetParameter(m_device, camera, "aspect", ANARI_FLOAT32, &aspect);
+        anariSetParameter(m_device, camera, "near", ANARI_FLOAT32, &nearPlane);
+        anariSetParameter(m_device, camera, "far", ANARI_FLOAT32, &farPlane);
         anariSetParameter(m_device, camera, "position", ANARI_FLOAT32_VEC3, &eye[0]);
         anariSetParameter(m_device, camera, "direction", ANARI_FLOAT32_VEC3, &dir[0]);
         anariSetParameter(m_device, camera, "up", ANARI_FLOAT32_VEC3, &up[0]);
