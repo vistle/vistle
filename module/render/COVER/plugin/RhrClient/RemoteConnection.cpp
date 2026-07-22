@@ -1264,9 +1264,9 @@ bool RemoteConnection::updateTileQueue()
 
         auto msg = dt->msg;
         if (frameDone && waitForFrame) {
-            finishFrame(*msg);
-            assert(!m_waitForFrame);
-            return true;
+            if (finishFrame(*msg)) {
+                return true;
+            }
         }
 
         locker.lock();
@@ -1317,10 +1317,18 @@ bool RemoteConnection::updateTileQueue()
     return false;
 }
 
-void RemoteConnection::finishFrame(const RemoteRenderMessage &msg)
+bool RemoteConnection::finishFrame(const RemoteRenderMessage &msg)
 {
     {
         std::lock_guard<std::mutex> locker(*m_taskMutex);
+
+        if (m_waitForFrame == false || m_queuedTiles != 0)
+            return false;
+        if (!m_runningTasks.empty())
+            return false;
+        if (!m_finishedTasks.empty())
+            return false;
+
         m_frameReady = true;
         m_waitForFrame = false;
         m_newHead = m_receivingHead;
@@ -1372,6 +1380,8 @@ void RemoteConnection::finishFrame(const RemoteRenderMessage &msg)
     }
     m_lastFrameTime = frametime;
     m_remoteSkippedPerFrame = 0;
+
+    return true;
 }
 
 

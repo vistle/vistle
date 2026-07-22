@@ -166,7 +166,7 @@ public:
     void gatherTileStats(const vistle::message::RemoteRenderMessage &remote, const vistle::tileMsg &msg);
     void handleTileMeta(const vistle::message::RemoteRenderMessage &remote, const vistle::tileMsg &msg);
 
-    void finishFrame(const vistle::message::RemoteRenderMessage &msg);
+    bool finishFrame(const vistle::message::RemoteRenderMessage &msg);
 
     long currentFrame = -1;
     bool expectNewFrame = true;
