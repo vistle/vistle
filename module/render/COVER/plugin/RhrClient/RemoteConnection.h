@@ -69,6 +69,7 @@ public:
     std::unique_ptr<std::recursive_mutex> m_mutex, m_sendMutex;
     std::unique_ptr<std::mutex> m_taskMutex;
     std::unique_ptr<std::thread> m_thread;
+    std::condition_variable m_taskFinished;
     bool m_listen = false;
     bool m_running = false;
     bool m_listening = false;

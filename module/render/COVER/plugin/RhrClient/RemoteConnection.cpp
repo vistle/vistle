@@ -4,6 +4,7 @@
 #include <sstream>
 #include <iomanip>
 #include <iostream>
+#include <condition_variable>
 
 #include <VistlePluginUtil/VistleRenderObject.h>
 
@@ -119,8 +120,8 @@ RemoteConnection::~RemoteConnection()
         NOTIFY_INFO << "disconnected from server" << std::endl;
     }
 
-    while (!m_runningTasks.empty())
-        usleep(1000);
+    std::unique_lock<std::mutex> lock(*m_taskMutex);
+    m_taskFinished.wait(lock, [this]() { return m_runningTasks.empty(); });
 }
 
 void RemoteConnection::init()
@@ -1176,7 +1177,9 @@ void RemoteConnection::enqueueTask(std::shared_ptr<DecodeTask> task)
         std::lock_guard<std::mutex> locker(*m_taskMutex);
         m_finishedTasks.emplace_back(task);
         m_runningTasks.erase(task);
-        //CERR << "FIN: #running=" << m_runningTasks.size() << ", #fin=" << m_finishedTasks.size() << std::endl;
+        if (m_runningTasks.empty()) {
+            m_taskFinished.notify_all();
+        }
         return ok;
     });
 }
