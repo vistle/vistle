@@ -667,9 +667,9 @@ void RhrClient::addObject(const opencover::RenderObject *baseObj, osg::Group *pa
     config >> method >> address >> portString;
     unsigned short port = 0;
     int moduleId = 0;
-    if (portString[0] == ':') {
+    if (!portString.empty() && portString[0] == ':') {
         std::stringstream(portString.substr(1)) >> moduleId;
-    } else {
+    } else if (!portString.empty()) {
         std::stringstream(portString) >> port;
     }
 
