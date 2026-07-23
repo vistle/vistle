@@ -30,6 +30,7 @@ void transformDepthFromWorldToGL(const float *world, float *gl, vec3 eye, vec3 d
         for (int x = 0; x < width; ++x) {
             size_t index = x + size_t(width) * y;
             float t = world[index];
+
             if (std::isfinite(t)) {
                 float screen_x = vistle::lerp(imageRegion.min[0], imageRegion.max[0], x / (float)width);
 
@@ -47,6 +48,15 @@ void transformDepthFromWorldToGL(const float *world, float *gl, vec3 eye, vec3 d
                 gl[index] = 1.f;
             }
         }
+    }
+}
+
+void clampDepthBuffer(const float *depthBufferIn, float *depthBufferOut, int width, int height)
+{
+    const auto numPixels = size_t(width) * size_t(height);
+    for (size_t index = 0; index < numPixels; ++index) {
+        const float depthIn = depthBufferIn[index];
+        depthBufferOut[index] = std::isfinite(depthIn) ? vistle::clamp<float>(depthIn, 0.f, 1.f) : 1.f;
     }
 }
 
