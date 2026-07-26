@@ -13,6 +13,7 @@
 #include <vistle/core/lines.h>
 #include <vistle/core/points.h>
 #include <vistle/core/normals.h>
+#include <vistle/core/unstr.h>
 
 #include "ReadModel.h"
 
@@ -100,7 +101,6 @@ bool ReadModel::prepareRead()
 
 Object::ptr ReadModel::load(const std::string &name) const
 {
-    Object::ptr ret;
     Assimp::Importer importer;
     bool indexed = false;
     bool readNormals = getIntParameter("normals");
@@ -120,92 +120,178 @@ Object::ptr ReadModel::load(const std::string &name) const
             std::string s = str.str();
             sendError("%s", s.c_str());
         }
-        return ret;
+        return {};
     }
 
+    enum OutputType {
+        Unknown,
+        Point,
+        Line,
+        Triangle,
+        Polygon,
+        Unstructured,
+    };
+    OutputType outputType = Unknown;
+
+    size_t totNumVert = 0, totNumIndex = 0, totNumFace = 0;
+    bool haveNormals = false;
+    for (unsigned int m = 0; m < scene->mNumMeshes; ++m) {
+        const aiMesh *mesh = scene->mMeshes[m];
+        if (!mesh->HasPositions()) {
+            continue;
+        }
+        if (mesh->HasNormals() && readNormals) {
+            haveNormals = true;
+        }
+
+        if (mesh->HasFaces()) {
+            if (mesh->mPrimitiveTypes & aiPrimitiveType_POLYGON) {
+                if (outputType == Polygon || outputType == Triangle || outputType == Unknown)
+                    outputType = Polygon;
+                else
+                    outputType = Unstructured;
+                totNumFace += mesh->mNumFaces;
+                totNumVert += mesh->mNumVertices;
+                Index numIndex = 0;
+                for (unsigned int f = 0; f < mesh->mNumFaces; ++f) {
+                    numIndex += mesh->mFaces[f].mNumIndices;
+                }
+                totNumIndex += numIndex;
+            }
+            if (mesh->mPrimitiveTypes & aiPrimitiveType_TRIANGLE) {
+                if (outputType == Triangle || outputType == Unknown)
+                    outputType = Triangle;
+                else if (outputType != Polygon)
+                    outputType = Unstructured;
+                totNumFace += mesh->mNumFaces;
+                totNumVert += mesh->mNumVertices;
+                Index numIndex = indexed ? mesh->mNumFaces * 3 : 0;
+                totNumIndex += numIndex;
+            }
+        } else {
+            if (outputType == Point || outputType == Unknown)
+                outputType = Point;
+            else
+                outputType = Unstructured;
+            totNumVert += mesh->mNumVertices;
+        }
+    }
+
+    Normals::ptr normals;
+
+    Coords::ptr coords;
+    Points::ptr points;
+    Triangles::ptr tri;
+    Polygons::ptr poly;
+    UnstructuredGrid::ptr unstr;
+    Index *el = nullptr, *cl = nullptr;
+    Byte *tl = nullptr;
+    Scalar *x[3] = {};
+    Scalar *norm[3] = {};
+    switch (outputType) {
+    case Unknown:
+        return {};
+        break;
+    case Point:
+        coords = points = std::make_shared<Points>(totNumVert);
+        break;
+    case Triangle:
+        coords = tri = std::make_shared<Triangles>(totNumIndex, totNumVert);
+        if (indexed)
+            cl = tri->cl().data();
+        break;
+    case Polygon:
+        coords = poly = std::make_shared<Polygons>(totNumFace, totNumIndex, totNumVert);
+        el = poly->el().data();
+        if (indexed)
+            cl = poly->cl().data();
+        break;
+    case Unstructured:
+        coords = unstr = std::make_shared<UnstructuredGrid>(totNumFace, totNumIndex, totNumVert);
+        tl = unstr->tl().data();
+        el = unstr->el().data();
+        if (indexed)
+            cl = poly->cl().data();
+        break;
+    }
+    if (coords) {
+        for (int c = 0; c < 3; ++c) {
+            x[c] = coords->x(c).data();
+        }
+    }
+    if (haveNormals) {
+        normals = std::make_shared<Normals>(totNumVert);
+        for (int c = 0; c < 3; ++c) {
+            norm[c] = normals->x(c).data();
+        }
+    }
+
+    Index vertCount = 0, coordCount = 0;
+    Index idx = 0;
     for (unsigned int m = 0; m < scene->mNumMeshes; ++m) {
         const aiMesh *mesh = scene->mMeshes[m];
         if (mesh->HasPositions()) {
-            Coords::ptr coords;
             if (mesh->HasFaces()) {
-                auto numVert = mesh->mNumVertices;
                 auto numFace = mesh->mNumFaces;
                 if (mesh->mPrimitiveTypes & aiPrimitiveType_POLYGON) {
-                    Index numIndex = 0;
                     for (unsigned int f = 0; f < numFace; ++f) {
-                        numIndex += mesh->mFaces[f].mNumIndices;
-                    }
-                    Polygons::ptr poly(new Polygons(numFace, numIndex, numVert));
-                    coords = poly;
-                    auto *el = poly->el().data();
-                    auto *cl = indexed ? poly->cl().data() : nullptr;
-                    Index idx = 0, vertCount = 0;
-                    for (unsigned int f = 0; f < numFace; ++f) {
-                        el[idx++] = vertCount;
                         if (indexed) {
                             const auto &face = mesh->mFaces[f];
                             for (unsigned int i = 0; i < face.mNumIndices; ++i) {
                                 cl[vertCount++] = face.mIndices[i];
                             }
                         }
+                        if (tl)
+                            tl[idx] = UnstructuredGrid::POLYGON;
+                        el[idx++] = vertCount;
                     }
-                    el[idx] = vertCount;
                 } else if (mesh->mPrimitiveTypes & aiPrimitiveType_TRIANGLE) {
-                    Index numIndex = indexed ? mesh->mNumFaces * 3 : 0;
-                    Triangles::ptr tri(new Triangles(numIndex, numVert));
-                    coords = tri;
                     if (indexed) {
-                        auto *cl = tri->cl().data();
-                        Index vertCount = 0;
                         for (unsigned int f = 0; f < numFace; ++f) {
                             const auto &face = mesh->mFaces[f];
                             assert(face.mNumIndices == 3);
                             for (unsigned int i = 0; i < face.mNumIndices; ++i) {
                                 cl[vertCount++] = face.mIndices[i];
                             }
+                            if (tl)
+                                tl[idx] = UnstructuredGrid::TRIANGLE;
+                            if (el)
+                                el[idx++] = vertCount;
                         }
                     }
                 }
             } else {
-                Points::ptr points(new Points(mesh->mNumVertices));
-                coords = points;
+                ++vertCount;
+                if (tl)
+                    tl[idx] = UnstructuredGrid::POINT;
+                if (el)
+                    el[idx++] = vertCount;
             }
             if (coords) {
-                Scalar *x[3] = {nullptr, nullptr, nullptr};
-                for (int c = 0; c < 3; ++c) {
-                    x[c] = coords->x(c).data();
-                }
                 for (Index i = 0; i < mesh->mNumVertices; ++i) {
                     const auto &vert = mesh->mVertices[i];
                     for (unsigned int c = 0; c < 3; ++c) {
-                        x[c][i] = vert[c];
+                        x[c][coordCount + i] = vert[c];
                     }
                 }
-                ret = coords;
                 if (mesh->HasNormals() && readNormals) {
-                    Normals::ptr normals(new Normals(mesh->mNumVertices));
-                    Scalar *n[3] = {nullptr, nullptr, nullptr};
-                    for (int c = 0; c < 3; ++c) {
-                        n[c] = normals->x(c).data();
-                    }
                     for (Index i = 0; i < mesh->mNumVertices; ++i) {
-                        const auto &norm = mesh->mNormals[i];
+                        const auto &n = mesh->mNormals[i];
                         for (unsigned int c = 0; c < 3; ++c) {
-                            n[c][i] = norm[c];
+                            norm[c][coordCount + i] = n[c];
                         }
                     }
-                    updateMeta(normals);
-                    coords->setNormals(normals);
                 }
+
+                coordCount += mesh->mNumVertices;
             }
         }
-
-        break;
     }
 
-    if (scene->mNumMeshes > 1) {
-        sendInfo("file %s contains %d meshes, all but the first have been ignored", name.c_str(), scene->mNumMeshes);
+    if (normals) {
+        updateMeta(normals);
+        coords->setNormals(normals);
     }
 
-    return ret;
+    return coords;
 }
