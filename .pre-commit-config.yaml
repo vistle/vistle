@@ -25,6 +25,11 @@ repos:
         language: python
         types: [text]
         #files: '*.h'
+-   repo: https://github.com/codespell-project/codespell
+    rev: v2.4.3
+    hooks:
+    -   id: codespell
+        args: [--write-changes, --interactive, "0", --skip, "lib/vistle/util/valgrind.h,lib/vistle/insitu/libsim/libsimInterface/SimOperatorPluginManager.C", --ignore-words, .pre-commit/codespell-ignore]
 -   repo: https://github.com/cheshirekow/cmake-format-precommit
     rev: v0.6.13
     hooks:
