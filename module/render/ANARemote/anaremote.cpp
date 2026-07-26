@@ -84,6 +84,7 @@ public:
     void statusFunc(ANARIDevice device, ANARIObject source, ANARIDataType sourceType, ANARIStatusSeverity severity,
                     ANARIStatusCode code, const char *message) const;
 
+    anari::Library m_library = nullptr;
     anari::Device m_wrapperDevice = nullptr;
     anari::Device m_nestedDevice = nullptr;
     anari::Device m_device = nullptr; // device to send commands to: m_wrapperDevice for debug, m_nestedDevice otherwise
@@ -330,6 +331,11 @@ void Anari::unloadAnari()
     }
 
     m_device = nullptr;
+
+    if (m_library) {
+        anari::unloadLibrary(m_library);
+        m_library = nullptr;
+    }
 }
 
 anari::Device Anari::recreate(anari::Device dev)
@@ -412,9 +418,12 @@ bool Anari::changeParameter(const Parameter *p)
                 }
                 auto rt = getRendererTypes(lib, nested);
                 setParameterChoices(m_rendererParam, rt);
-                anari::unloadLibrary(lib);
             } else {
                 sendError("failed to load library %s", libname.c_str());
+            }
+            if (m_library && lib != m_library) {
+                anari::unloadLibrary(m_library);
+                m_library = lib;
             }
         }
 
