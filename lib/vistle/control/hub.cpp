@@ -248,7 +248,7 @@ void Hub::signalHandler(const boost::system::error_code &error, int signal_numbe
     switch (signal_number) {
     case SIGINT:
     case SIGTERM:
-        //std::cerr << "Hub: interruting because of signal" << std::endl;
+        //std::cerr << "Hub: interrupting because of signal" << std::endl;
         s_interrupt = true;
         break;
     }

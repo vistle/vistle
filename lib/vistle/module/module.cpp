@@ -88,7 +88,7 @@ void broadcast(const mpi::communicator &comm, T *values, size_t count, int root)
     auto hashref = hashval;
     mpi::broadcast(comm, hashref, root);
     if (hashval != hashref) {
-        std::cerr << "vistle::bigmpi::broadcast: hash mismatch on rank " << comm.rank() << " after transfering "
+        std::cerr << "vistle::bigmpi::broadcast: hash mismatch on rank " << comm.rank() << " after transferring "
                   << count << " items of size " << sizeof(T) << std::endl;
         abort();
     }
@@ -130,7 +130,7 @@ void recv(const mpi::communicator &comm, int rank, int tag, T *values, size_t co
     auto hashref = hashval;
     comm.recv(rank, tag, hashref);
     if (hashval != hashref) {
-        std::cerr << "vistle::bigmpi::recv: hash mismatch on rank " << comm.rank() << " after transfering " << count
+        std::cerr << "vistle::bigmpi::recv: hash mismatch on rank " << comm.rank() << " after transferring " << count
                   << " items of size " << sizeof(T) << std::endl;
         abort();
     }
@@ -1111,7 +1111,7 @@ void Module::addResultCache(ResultCacheBase &cache)
     if (!m_useResultCache) {
         setCurrentParameterGroup("System");
         m_useResultCache =
-            addIntParameter("_use_result_cache", "whether to try to cache results for re-use in subsequent timesteps",
+            addIntParameter("_use_result_cache", "whether to try to cache results for reuse in subsequent timesteps",
                             true, Parameter::Boolean);
     }
     cache.enable(m_useResultCache->getValue());

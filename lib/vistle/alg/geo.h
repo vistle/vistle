@@ -11,7 +11,7 @@ namespace vistle {
 /**
  * @brief Calculate tetrahedron volume with corner coords.
  *
- *     Vp = volume parallelpiped
+ *     Vp = volume parallelepiped
  *     Vt = volume tetrahedron
  *     Vt = Vp/6
  *
@@ -38,7 +38,7 @@ float calcTetrahedronVolume(float *points)
 /**
  * @brief Calculate volume geometry which isn't self-penetrating itself.
  *
- *    VK = sum (det (a,b,c) : a,b,c element cyclic ordered tripel)
+ *    VK = sum (det (a,b,c) : a,b,c element cyclic ordered triple)
  *
  * @tparam ForwardIt Iterator type.
  * @param coords Coordinates container iterator (x1 y1 z1 x2 y2 z2 ... xn yn zn).

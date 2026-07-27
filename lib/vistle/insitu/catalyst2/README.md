@@ -3,7 +3,7 @@ Catalyst II adapter for Vistle
 
 usage:
 
-In the simulation code send conduit node with vistle conection details in catalyst_initialize.
+In the simulation code send conduit node with vistle connection details in catalyst_initialize.
 An example node can be found in vistleCatalystConfig.yaml.
 With the "catalyst/mpi_comm" node the mpi communicator can be passed to Vistle.
 

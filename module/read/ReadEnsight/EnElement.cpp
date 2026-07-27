@@ -159,7 +159,7 @@ EnElement::EnElement(const std::string &name)
         vistleType_ = cell::POLYHEDRON;
         enType_ = nfaced;
     }
-    // we allow a dummy element thats the only one which is empty
+    // we allow a dummy element that's the only one which is empty
     else if (name.find("dummy") != std::string::npos) {
         valid_ = false;
         empty_ = true;

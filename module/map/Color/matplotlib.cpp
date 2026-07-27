@@ -1,4 +1,4 @@
-// created by coppying _cm_listed.py from matplotlib
+// created by copying _cm_listed.py from matplotlib
 
 #include "matplotlib.h"
 

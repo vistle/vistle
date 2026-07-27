@@ -36,7 +36,7 @@ typedef std::vector<EnPart> PartList;
 //
 // describes a EnSight element as class of elements
 // it contains NO specific information about real elements (like corner indices)
-// in out model but serves as a skelton for the elemts in a given EnSight part
+// in out model but serves as a skeleton for the elements in a given EnSight part
 //
 class EnElement {
     friend class boost::serialization::access;

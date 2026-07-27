@@ -284,7 +284,7 @@ bool ReadIagNetcdf::examine(const vistle::Parameter *param)
     }
 
     std::sort(m_dataFiles.begin(),
-              m_dataFiles.end()); // alpha-numeric sort hopefully brings timesteps into proper order
+              m_dataFiles.end()); // alphanumeric sort hopefully brings timesteps into proper order
 
     setTimesteps(m_dataFiles.size());
     if (rank() == 0)

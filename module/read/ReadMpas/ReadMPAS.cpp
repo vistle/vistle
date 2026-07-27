@@ -301,7 +301,7 @@ bool ReadMPAS::prepareRead()
         }
 
         std::sort(dataFileList.begin(),
-                  dataFileList.end()); // alpha-numeric sort hopefully brings timesteps into proper order
+                  dataFileList.end()); // alphanumeric sort hopefully brings timesteps into proper order
 
         setTimesteps(dataFileList.size());
         if (rank() == 0)
@@ -886,7 +886,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
 #else
         NcmpiFile ncFirstFile(*token.comm(), firstFileName, NcmpiFile::read);
         assert(dimensionExists(DimNCells, ncFirstFile));
-        // first of all: validate that all neccesary dimensions and variables exist
+        // first of all: validate that all necessary dimensions and variables exist
         if (!dimensionExists(DimNCells, ncFirstFile) || !dimensionExists(DimNVertices, ncFirstFile) ||
             !dimensionExists(DimMaxEdges, ncFirstFile)) {
             sendError("Missing dimension info -> quit");

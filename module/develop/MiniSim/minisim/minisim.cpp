@@ -69,7 +69,7 @@ void MiniSim::run(MiniSimModule &mod, size_t numTimesteps, const std::string &in
     SpPoint origin{0., 0., 0.};
     SpPoint spacing{1., 1., 1.};
     if (bounds[1] >= bounds[0]) {
-        // valid bounds specififed on the command line, calculate the
+        // valid bounds specified on the command line, calculate the
         // global origin and spacing.
         for (int i = 0; i < 3; ++i)
             origin[i] = bounds[2 * i];

@@ -93,7 +93,7 @@ static std::map<std::string, vistle::Object::ptr> cachedMeshes;
    * https://docs.paraview.org/en/latest/Catalyst/blueprints.html#protocol-initialize
    * additional paramets for vistle (under the "vistle" node are:
    *  paused: 1 or 0 -> wait for the user to start the simulation/visualization
-   *  options: string -> additional launch options for vistle in singe process mode (not supported yet)
+   *  options: string -> additional launch options for vistle in single process mode (not supported yet)
    */
 enum catalyst_status catalyst_initialize_vistle(const conduit_node *cparams)
 {

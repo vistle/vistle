@@ -252,7 +252,7 @@ void PlaneClip::processCoordinates()
  * @brief Split the edges between two corners specified by given index.
  *
  * @param i First corner.
- * @param j Secont corner.
+ * @param j Second corner.
  *
  * @return Interpolated vector3 object between corners.
  */
@@ -293,11 +293,11 @@ void PlaneClip::prepareToEmitInOrder(const Index *vertexMap, const Index &start,
 }
 
 /**
- * @brief Initialize the prexisting corner.
+ * @brief Initialize the preexisting corner.
  *
  * @param idx Current index.
  *
- * @return The prexisting corner from connect list if the cornerlist is available, else simply return the index.
+ * @return The preexisting corner from connect list if the cornerlist is available, else simply return the index.
  */
 auto PlaneClip::initPreExistCorner(const Index &idx)
 {
@@ -305,12 +305,12 @@ auto PlaneClip::initPreExistCorner(const Index &idx)
 }
 
 /**
- * @brief Initialize the prexisting corner and check afterwards if it fullfills the logical bool operation given.
+ * @brief Initialize the preexisting corner and check afterwards if it fulfills the logical bool operation given.
  *
  * @param op Logical bool function.
  * @param idx Current index.
  *
- * @return The prexisting corner from connect list if the cornerlist is available and the logical operation is correct, else simply return the index.
+ * @return The preexisting corner from connect list if the cornerlist is available and the logical operation is correct, else simply return the index.
  */
 auto PlaneClip::initPreExistCornerAndCheck(LogicalOperation op, const Index &idx)
 {
@@ -366,9 +366,9 @@ void PlaneClip::copyIdxToOutConnList(const Index &out, const Index &idx)
 }
 
 /**
- * @brief Copy given indeces to output connect list by starting with index out and incrementing this by one with each iteration.
+ * @brief Copy given indices to output connect list by starting with index out and incrementing this by one with each iteration.
  *
- * @param out Start index for ouput.
+ * @param out Start index for output.
  * @param vecIdx Values to assign.
  *
  * @return Last index of output assignment.
@@ -384,10 +384,10 @@ auto PlaneClip::copyIndecesToOutConnList(const Index &out, const std::vector<Ind
 }
 
 /**
- * @brief Copy given indeces to output connect list by starting with index out and incrementing this by one with each iteration and check logical operation on result (useful for debugging).
+ * @brief Copy given indices to output connect list by starting with index out and incrementing this by one with each iteration and check logical operation on result (useful for debugging).
  *
  * @param op Boolsche logical operation.
- * @param out Start index for ouput.
+ * @param out Start index for output.
  * @param vecIdx Values to assign.
  */
 void PlaneClip::copyIndecesToOutConnListAndCheck(LogicalOperation op, const Index &out,
@@ -429,7 +429,7 @@ void PlaneClip::iterCopyOfVec3ToOutCoords(Index &idx, VistleVec3Args &&...vecs)
 /**
  * @brief Inserts the element and all vertices, if all vertices in the element are on the right side of the cutting plane.
  *
- * @param numVertsOnly Use only the number of vertices to set indeces of corner and coordinates.
+ * @param numVertsOnly Use only the number of vertices to set indices of corner and coordinates.
  * @param vertexMap Pointer to map from vertex indices in the incoming object to vertex indices in the outgoing object.
  * @param start Start index for this triangle in vertexMap.
  * @param outIdxCorner Index of first corner outside.
@@ -458,7 +458,7 @@ void PlaneClip::insertTriElemNextToCutPlane(bool numVertsOnly, const Index *vert
 /**
  * @brief Inserts the element and all vertices, if all vertices in the element are on the right side of the cutting plane. Used if not all corners of a triangle are in the visible area.
  *
- * @param numVertsOnly Use only the number of vertices to set indeces of corner and coordinates.
+ * @param numVertsOnly Use only the number of vertices to set indices of corner and coordinates.
  * @param vertexMap Pointer to map from vertex indices in the incoming object to vertex indices in the outgoing object.
  * @param numIn Corners inside visible area.
  * @param cornerIn For the case where we have to split edges, new triangles might be created => corner inside.
@@ -587,7 +587,7 @@ void PlaneClip::helper_fillConnListIfElemVisible(const Index *vertexMap, const I
 }
 
 /**
- * @brief Fill connection list in case all elemets and vertices are on the right side (check not included).
+ * @brief Fill connection list in case all elements and vertices are on the right side (check not included).
  *
  * @param start Start index of corner of polygon in cornerlist.
  * @param end End index of corner of polygon in cornerlist.
@@ -615,7 +615,7 @@ void PlaneClip::fillConnListIfElemVisible(const Index &start, const Index &end, 
 /**
  * @brief If all vertices in the element are on the right side of the cutting plane, insert the element and all vertices.
  *
- * @param numVertsOnly Use only the number of vertices to set indeces of corner, element number of polygons and coordinates.
+ * @param numVertsOnly Use only the number of vertices to set indices of corner, element number of polygons and coordinates.
  * @param vertexMap Pointer to map from vertex indices in the incoming object to vertex indices in the outgoing object.
  * @param numIn Corners inside visible area.
  * @param start Start index for this triangle in vertexMap.
@@ -646,7 +646,7 @@ void PlaneClip::insertPolyElemNextToPlane(bool numVertsOnly, const Index &numIn,
  *       between the line formed by the two vertices and the
  *       plane
  *
- * @param numVertsOnly Use only the number of vertices to set indeces of corner, element number of polygons and coordinates.
+ * @param numVertsOnly Use only the number of vertices to set indices of corner, element number of polygons and coordinates.
  * @param numCreate
  * @param numCorner
  * @param numIn Corners inside visible area.

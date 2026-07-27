@@ -11,7 +11,7 @@
 #include <memory>
 #include <array>
 
-// losely based on osg::HeightField
+// loosely based on osg::HeightField
 class HeightMap: public osg::Drawable {
 public:
     enum DataMode {

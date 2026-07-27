@@ -22,7 +22,7 @@ ManipulateGhosts::ManipulateGhosts(const std::string &name, int moduleID, mpi::c
 : Module(name, moduleID, comm)
 {
     m_gridIn = createInputPort("grid_in", "unstructured grid");
-    m_gridOut = createOutputPort("grid_out", "unstructured grid with tesselated polyhedra");
+    m_gridOut = createOutputPort("grid_out", "unstructured grid with tessellated polyhedra");
 
     m_operation = addIntParameter("operation", "operation to perform", Identity, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_operation, Operation);

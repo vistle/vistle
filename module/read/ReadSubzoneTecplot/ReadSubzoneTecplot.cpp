@@ -390,7 +390,7 @@ StructuredGrid::ptr ReadSubzoneTecplot::createStructuredGrid(void *fh, int32_t i
 
     int32_t startIndex = 1;
 
-    // TODO: change for more than structured gird (zoneType=0) -> test data needed
+    // TODO: change for more than structured grid (zoneType=0) -> test data needed
     // Read the number of values for each variable
 
     int64_t n = 0;
@@ -447,7 +447,7 @@ Vec<Scalar, 3>::ptr ReadSubzoneTecplot::combineVarstoOneOutput(std::vector<T> x,
     return result;
 }
 
-// Finds variables with the same name in the variable list and ouputs their indices in a map.
+// Finds variables with the same name in the variable list and outputs their indices in a map.
 // The map key is the variable name without the last character, and the value is a vector
 // containing the indices of the variables that match this prefix.
 std::unordered_map<std::string, std::vector<int>>

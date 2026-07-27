@@ -604,7 +604,7 @@ bool GeoGoldAscii::parseForParts()
             // add element info to the part
             // we set the number of 2/3D elements to 1 if
             // we find the corresponding element type that's suuficient to mark
-            // the dimension of the cuurent part. The real numbers will be set
+            // the dimension of the current part. The real numbers will be set
             // during the read phase
             if (elem.getDim() == EnElement::D2) {
                 nElem2D += numElements;

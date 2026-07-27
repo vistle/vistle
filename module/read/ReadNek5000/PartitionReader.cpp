@@ -628,7 +628,7 @@ bool PartitionReader::constructUnstructuredGrid(int timestep)
     //maps from  (sorted) global (from map file) cornerid(s) to cornerindex(indices) in connectivity list
     map<int, int> writtenCorners;
     map<Edge, pair<bool, vector<int>>>
-        writtenEdges; //key is sorted global indices, bool is wheter it had to be sorted, vector contains the indices to the coordinates in mesh file
+        writtenEdges; //key is sorted global indices, bool is whether it had to be sorted, vector contains the indices to the coordinates in mesh file
     map<Plane, pair<Plane, vector<int>>>
         writtenPlanes; //key is sorted global indices, pair contains unsorted globl indices and a vector containing the indices to the coordinates in mesh file
 

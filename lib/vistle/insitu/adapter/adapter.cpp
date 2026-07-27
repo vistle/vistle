@@ -206,7 +206,7 @@ bool Adapter::finalize()
     MPI_Reduce(&simulationTime, &averageSimTime, 1, MPI_DOUBLE, MPI_SUM, 0, m_comm);
     if (m_rank == 0) {
         std::cerr << "simulation took " << averageSimTime / m_mpiSize << "s" << std::endl;
-        std::cerr << "avarage time spend in execute: " << averageTimeSpendInExecute / m_mpiSize << "s" << std::endl;
+        std::cerr << "average time spend in execute: " << averageTimeSpendInExecute / m_mpiSize << "s" << std::endl;
     }
     if (m_internals->moduleInfo.isInitialized()) {
         m_internals->messageHandler->send(ConnectionClosed{true});

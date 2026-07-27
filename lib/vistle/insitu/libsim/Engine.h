@@ -65,7 +65,7 @@ public:
     void SetSimulationCommandCallback(void (*sc)(const char *, const char *, void *), void *scdata);
     // set callbacks (called from sim and from the LibSim static library whyle syncing)
     void setSlaveComandCallback(void (*sc)(void));
-    // return the file descripter of m_socket so that LibSim can wait for messages on that socket
+    // return the file descriptor of m_socket so that LibSim can wait for messages on that socket
     message::socket_handle GetInputSocket();
 
 private:

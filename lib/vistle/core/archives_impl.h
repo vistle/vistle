@@ -354,7 +354,7 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::save(Archive &ar) const
         param.rate = cs.zfpRate;
         param.precision = cs.zfpPrecision;
         param.accuracy = cs.zfpAccuracy;
-        //std::cerr << "trying to compresss " << std::endl;
+        //std::cerr << "trying to compress " << std::endl;
         buffer compressed;
         Index dim[3];
         dim[0] = m_dim[0];

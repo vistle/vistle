@@ -271,7 +271,7 @@ bool InSituModuleBase::handleInsituMessage(message::Message &msg)
     case InSituMessageType::SetPorts: // list of ports, last entry is the type description (e.g mesh or variable)
     {
         auto em = msg.unpackOrCast<SetPorts>();
-        for (auto i = m_outputPorts.begin(); i != m_outputPorts.end(); ++i) { // destoy unnecessary ports
+        for (auto i = m_outputPorts.begin(); i != m_outputPorts.end(); ++i) { // destroy unnecessary ports
             if (std::find_if(em.value.begin(), em.value.end(), [i](const std::vector<std::string> &ports) {
                     return std::find(ports.begin(), ports.end(), i->first) != ports.end();
                 }) == em.value.end()) {

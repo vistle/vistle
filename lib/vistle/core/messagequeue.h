@@ -46,7 +46,7 @@ private:
 
     const std::string m_name;
     message_queue m_mq;
-    std::deque<message::Buffer> m_queue; // for messages with prioritiy 0
+    std::deque<message::Buffer> m_queue; // for messages with priority 0
     std::map<unsigned int, std::deque<message::Buffer>> m_prioQueues; // for messages with higher priority
     std::mutex m_mutex;
 };

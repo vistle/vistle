@@ -270,7 +270,7 @@ if(WIN32)
 
     add_definitions(-D_WIN32_WINNT=0x0601) # windows 7
     set(MSVC_WARNINGS "${MSVC_WARNINGS} /wd4244") # possible loss of data
-    set(MSVC_WARNINGS "${MSVC_WARNINGS} /wd4250") # 'class1': inheritcs 'class2::member' via dominance
+    set(MSVC_WARNINGS "${MSVC_WARNINGS} /wd4250") # 'class1': inherits 'class2::member' via dominance
     set(MSVC_WARNINGS "${MSVC_WARNINGS} /wd4251") # 'identifier' : class 'type' needs to have dll-interface to be used by clients of class 'type2'
     set(MSVC_WARNINGS "${MSVC_WARNINGS} /wd4267") # 'var' : conversion from 'size_t' to 'type', possible loss of data
     set(MSVC_WARNINGS "${MSVC_WARNINGS} /wd4275") # non - DLL-interface class 'class_1' used as base for DLL-interface class 'class_2'

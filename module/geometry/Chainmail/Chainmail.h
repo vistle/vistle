@@ -28,7 +28,7 @@ private:
     vistle::Port *m_circlesOut = nullptr;
     vistle::IntParameter *m_geoMode;
     vistle::FloatParameter *m_radius; //the radius of the rings in the qua
-    vistle::IntParameter *m_numXSegments; //number of segemnts in the quad/triangle plane
+    vistle::IntParameter *m_numXSegments; //number of segments in the quad/triangle plane
     vistle::IntParameter *m_numYSegments; //number of segments to crate a tube around the torus center line
 
     float m_radiusValue = 1.0;

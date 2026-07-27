@@ -43,7 +43,7 @@ constexpr VisitFreeFunction freeFunctions[static_cast<int>(HandleType::LastDummy
     HANDLE_TYPE_TO_FREE_FUNC(VariableData),
     HANDLE_TYPE_TO_FREE_FUNC(SimulationMetaData),
     dummyFreeFunc //coords are freed with their parent object. Nullptr would require a check when accessing the array.
-    //A runtime check throws a compiler warning for every other type. Constexpr if is c++17 only so this seems to be the simpliest solution
+    //A runtime check throws a compiler warning for every other type. Constexpr if is c++17 only so this seems to be the simplest solution
 };
 
 

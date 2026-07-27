@@ -15,7 +15,7 @@ os.makedirs(targetDir, exist_ok=True)
 filename = sourceDir + "/" + imageName + ".vsl"
 source(sourceDir + "/" + imageName + ".vsl")
 barrier()
-setLoadedFile(filename) #neded to reset the execution counter to prevent save dialog
+setLoadedFile(filename) #needed to reset the execution counter to prevent save dialog
 setStatus("Workflow loaded: "+filename)
 if result:
     compute()

@@ -23,7 +23,7 @@ ReadCsv::ReadCsv(const std::string &name, int moduleID, mpi::communicator comm):
     createOutputPort("points_out", "unordered points");
     m_directory = addStringParameter("directory", "directory with CSV files", "", Parameter::ExistingDirectory);
     setParameterFilters(m_directory, "CSV files (*.csv)");
-    m_filename = addIntParameter("filename", "select all files or a specif one", 0, Parameter::Choice);
+    m_filename = addIntParameter("filename", "select all files or a specify one", 0, Parameter::Choice);
     observeParameter(m_directory);
     observeParameter(m_filename);
 

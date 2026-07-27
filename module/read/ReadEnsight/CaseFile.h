@@ -130,7 +130,7 @@ public:
     int getIdx() const;
 
     // crate array of filenames to read from a givene template in ensight
-    // filename convention (asteriks)
+    // filename convention (asterisks)
     std::vector<std::string> getFileNames(const std::string &templ) const;
     std::vector<std::pair<float, std::string>> getTimesAndFileNames(const std::string &t) const;
 

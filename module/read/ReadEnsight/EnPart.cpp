@@ -311,7 +311,7 @@ size_t EnPart::getTotNumEle3d() const
 }
 
 size_t EnPart::getTotNumCorners2d()
-    const // doesnt work with nsided since that element type doesnt have a specific number of corners
+    const // does not work with nsided since that element type does not have a specific number of corners
 {
     size_t ret = 0, anz = 0, nc = 0;
     auto it(numList2d_.begin());
@@ -327,7 +327,7 @@ size_t EnPart::getTotNumCorners2d()
 }
 
 size_t EnPart::getTotNumCorners3d()
-    const // doesnt work with nfaced since that element type doesnt have a specific number of corners
+    const // does not work with nfaced since that element type does not have a specific number of corners
 {
     size_t ret = 0, anz = 0, nc = 0;
     auto it(numList3d_.begin());

@@ -71,7 +71,7 @@ private:
     size_t m_currIteration = 0;
     size_t m_generation = 0;
     Rules m_rules;
-    //the data objects that need to be procces according to the modules conneted ports
+    //the data objects that need to be process according to the modules connected ports
     std::set<std::string> m_requestedObjects;
     std::map<std::string, MeshInfo> m_meshes; // used to find the corresponding mesh for the variables
 };

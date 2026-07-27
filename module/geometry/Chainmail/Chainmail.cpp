@@ -38,9 +38,9 @@ Chainmail::Chainmail(const std::string &name, int moduleID, mpi::communicator co
     m_radius = addFloatParameter("radius", "radius of the rings in mm", 5.2);
     setParameterMinimum(m_radius, Float(0));
     m_numXSegments =
-        addIntParameter("number_of_torus_segments", "number of quads used to aproximate the torus in it's plane", 20);
+        addIntParameter("number_of_torus_segments", "number of quads used to approximate the torus in it's plane", 20);
     m_numYSegments = addIntParameter("number_of_diameter_segments",
-                                     "number of quads used to aproximate the torus around its axis", 5);
+                                     "number of quads used to approximate the torus around its axis", 5);
 }
 
 template<typename T>
@@ -74,8 +74,8 @@ std::vector<Vector3> Chainmail::toTorusCircle(const std::vector<Vector3> &points
     assert(points.size() >= 3 && "toCircle expected 3 or 4 points");
 
 
-    auto normale = (points[0] - points[1]).cross(points[0] - points[2]);
-    normale.normalize();
+    auto normal = (points[0] - points[1]).cross(points[0] - points[2]);
+    normal.normalize();
     float verticalRadius = m_radius->getValue() / 1000;
     float horizontalRadius = 0;
     for (const auto &p: points)
@@ -83,7 +83,7 @@ std::vector<Vector3> Chainmail::toTorusCircle(const std::vector<Vector3> &points
     horizontalRadius /= points.size();
     horizontalRadius += verticalRadius;
     Vector3 v1 = points[0] - points[1];
-    Vector3 v2 = v1.cross(normale);
+    Vector3 v2 = v1.cross(normal);
     v1.normalize();
     v2.normalize();
 
@@ -96,7 +96,7 @@ std::vector<Vector3> Chainmail::toTorusCircle(const std::vector<Vector3> &points
         for (Index j = 0; j < numDiameterSegments; j++) {
             auto tethaV = 2 * EIGEN_PI * j / numDiameterSegments;
 
-            auto pp = p + verticalRadius * (normale * sin(tethaV) + d * cos(tethaV));
+            auto pp = p + verticalRadius * (normal * sin(tethaV) + d * cos(tethaV));
             v.push_back(pp);
         }
     }
@@ -218,7 +218,7 @@ bool Chainmail::compute()
                 toriOut->cl()[4 * p1 + 1] = p2;
                 toriOut->cl()[4 * p1 + 2] = p3;
                 toriOut->cl()[4 * p1 + 3] = p4;
-                // std::cerr << "torus " << torus << ", circle " << circle << ", point " << point << " is connceted to:" << std::endl;
+                // std::cerr << "torus " << torus << ", circle " << circle << ", point " << point << " is connected to:" << std::endl;
                 // std::cerr << "[" << ringsOut->cl()[4 * p1] << ", " << ringsOut->cl()[4*p1 + 1] << ", " << ringsOut->cl()[4*p1 +2] << ", " << ringsOut->cl()[4*p1 +3] << std::endl;
             }
         }
@@ -238,12 +238,12 @@ bool Chainmail::compute()
             nn.normalize();
             n += nn;
         }
-        // std::cerr << "neigbors for vert " << i << " are :";
+        // std::cerr << "neighbors for vert " << i << " are :";
         // for (size_t k = 0; k < 4; k++) {
         //     std::cerr << indices[k] << ", ";
         // }
         // std::cerr << std::endl;
-        // std::cerr << "normale = " << n << std::endl << std::endl;
+        // std::cerr << "normal = " << n << std::endl << std::endl;
         normals->x()[i] = n.x();
         normals->y()[i] = n.y();
         normals->z()[i] = n.z();

@@ -708,7 +708,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
 
     if (m_readBoundary) {
         if (m_readGrid) {
-            //if grid has been read already and boundary polygons are read also -> re-use coordinate lists for the boundary-polygon
+            //if grid has been read already and boundary polygons are read also -> reuse coordinate lists for the boundary-polygon
             for (auto &poly: polyList) {
                 poly->d()->x[0] = grid->d()->x[0];
                 poly->d()->x[1] = grid->d()->x[1];

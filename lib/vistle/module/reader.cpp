@@ -272,7 +272,7 @@ bool Reader::readTimesteps(std::shared_ptr<Token> &prev, const ReaderProperties 
 }
 
 /**
- * @brief Prepares reader for reading file. Calls the read function for choosen ParallelizationMode.
+ * @brief Prepares reader for reading file. Calls the read function for chosen ParallelizationMode.
  *
  * @return True if everything went well.
  */

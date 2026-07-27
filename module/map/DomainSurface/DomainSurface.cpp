@@ -40,7 +40,7 @@ DomainSurface::DomainSurface(const std::string &name, int moduleID, mpi::communi
     addIntParameter("polyhedron", "Show polyhedron", 1, Parameter::Boolean);
     addIntParameter("triangle", "Show triangle", 0, Parameter::Boolean);
     addIntParameter("quad", "Show quad", 0, Parameter::Boolean);
-    addIntParameter("reuseCoordinates", "Re-use the unstructured grids coordinate list and data-object", 0,
+    addIntParameter("reuseCoordinates", "Reuse the unstructured grids coordinate list and data-object", 0,
                     Parameter::Boolean);
     auto algo = addIntParameter("algorithm", "algorithm to use", IterateOverElements, Parameter::Choice);
     V_ENUM_SET_CHOICES(algo, Algorithm);

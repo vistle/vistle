@@ -1,4 +1,4 @@
-# - Find libraries for Extrae intstrumentation framework
+# - Find libraries for Extrae instrumentation framework
 
 # This module defines the following variables:
 #   EXTRAE_FOUND  -  True if some libraries and include directory are found

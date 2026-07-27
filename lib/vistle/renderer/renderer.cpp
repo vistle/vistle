@@ -39,7 +39,7 @@ Renderer::Renderer(const std::string &name, const int moduleID, mpi::communicato
 
     //std::cerr << "Renderer starting: rank=" << rank << std::endl;
     m_useGeometryCaches =
-        addIntParameter("_use_geometry_cache", "whether to try to cache geometry for re-use in subsequent timesteps",
+        addIntParameter("_use_geometry_cache", "whether to try to cache geometry for reuse in subsequent timesteps",
                         true, Parameter::Boolean);
     setCurrentParameterGroup("");
 }

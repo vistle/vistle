@@ -536,7 +536,7 @@ bool ReadEnsight::createPartlists(int timestep, bool onlyGeo)
 
             if (enf->mayBeCorrupt()) {
                 if (timestep < 0) {
-                    sendInfo("Could not parse geometry file %s - retrying with changed endianess", fName.c_str());
+                    sendInfo("Could not parse geometry file %s - retrying with changed endianness", fName.c_str());
                     m_dataBigEndian = !m_dataBigEndian;
                     parts.clear();
                     enf = EnFile::createGeometryFile(this, m_case, fName);

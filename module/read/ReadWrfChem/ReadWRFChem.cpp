@@ -423,7 +423,7 @@ Object::ptr ReadWRFChem::generateGrid(Block *b) const
             lock.unlock();
 
             //geopotential height is defined on stagged grid -> one additional layer
-            //thus it is evaluated (vertically) inbetween vertices to match lat/lon grid
+            //thus it is evaluated (vertically) between vertices to match lat/lon grid
             Index n = 0;
             for (Index k = 0; k < bSizeZ; k++) {
                 for (Index j = 0; j < bSizeY; j++) {

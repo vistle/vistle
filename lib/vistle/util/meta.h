@@ -55,7 +55,7 @@ bool dispatch_by_type_impl(const T &obj, F &&f, std::index_sequence<I...>)
 } // namespace detail
 
 // call f.template operator()<T>() where T is the type of obj and is in Tuple
-// f can be a lamda: [&]<typename T>() { ... }
+// f can be a lambda: [&]<typename T>() { ... }
 // returns true if a match was found, false otherwise
 template<typename Tuple, typename T, typename F>
 bool dispatch_by_type(const T &obj, F &&f)

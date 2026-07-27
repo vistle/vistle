@@ -996,7 +996,7 @@ void RhrClient::expandBoundingSphere(osg::BoundingSphere &bs)
 
         auto dt = cover->currentTime() - start;
         if (dt > 1.) {
-            //CERR << "re-using previous bounding sphere after waiting for " << dt << " seconds" << std::endl;
+            //CERR << "reusing previous bounding sphere after waiting for " << dt << " seconds" << std::endl;
             for (auto &r: remotes)
                 bs.expandBy(r->getBounds());
             break;

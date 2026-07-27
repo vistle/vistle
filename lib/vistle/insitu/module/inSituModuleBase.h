@@ -30,7 +30,7 @@ protected:
     mpi::communicator m_simulationCommandsComm; //mpi communicator for the simulation commands
 
     //use connection information from m_filePath to connect to the simulation
-    //use m_simulationCommandsComm to synchronize the resutls from reading m_filePath
+    //use m_simulationCommandsComm to synchronize the results from reading m_filePath
     virtual std::unique_ptr<insitu::message::MessageHandler> connectToSim() = 0;
 
     bool changeParameter(const Parameter *p) override;
