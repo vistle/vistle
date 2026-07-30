@@ -675,20 +675,16 @@ bool Anari::render()
                                                  mappedDepth.data, viewport, m_timestep, false);
         } else {
             float *depth = m_renderManager.depth(i);
-            const auto lib = m_libraryParam->getValue();
-            if (lib == "viskores") {
-                glm::clampDepthBuffer(mappedDepth.data, depth, mappedDepth.width, mappedDepth.height);
-            } else {
-                auto mv = m_renderManager.getModelViewMat(i);
-                auto proj = m_renderManager.getProjMat(i);
-                glm::vec3 eye, dir, up;
-                float fovy, aspect;
-                glm::box2 imgRegion;
-                glm::offaxisStereoCameraFromTransform(proj.inverse(), mv.inverse(), eye, dir, up, fovy, aspect,
-                                                      imgRegion);
-                glm::transformDepthFromWorldToGL(mappedDepth.data, depth, eye, dir, up, fovy, aspect, imgRegion, mv,
-                                                 proj, mappedDepth.width, mappedDepth.height);
-            }
+            auto mv = m_renderManager.getModelViewMat(i);
+            auto proj = m_renderManager.getProjMat(i);
+
+            glm::vec3 eye, dir, up;
+            float fovy, aspect;
+            glm::box2 imgRegion;
+            glm::offaxisStereoCameraFromTransform(proj.inverse(), mv.inverse(), eye, dir, up, fovy, aspect, imgRegion);
+            glm::transformDepthFromWorldToGL(mappedDepth.data, depth, eye, dir, up, fovy, aspect, imgRegion, mv, proj,
+                                             mappedDepth.width, mappedDepth.height);
+
             m_renderManager.compositeCurrentView(reinterpret_cast<const unsigned char *>(mappedCol.data), depth,
                                                  viewport, m_timestep, false);
         }

@@ -51,13 +51,4 @@ void transformDepthFromWorldToGL(const float *world, float *gl, vec3 eye, vec3 d
     }
 }
 
-void clampDepthBuffer(const float *depthBufferIn, float *depthBufferOut, int width, int height)
-{
-    const auto numPixels = size_t(width) * size_t(height);
-    for (size_t index = 0; index < numPixels; ++index) {
-        const float depthIn = depthBufferIn[index];
-        depthBufferOut[index] = std::isfinite(depthIn) ? vistle::clamp<float>(depthIn, 0.f, 1.f) : 1.f;
-    }
-}
-
 } // namespace glm
