@@ -398,7 +398,7 @@ std::string EnPart::partInfoString(int ref) const
 
     // ref No.
     char nStr[32];
-    sprintf(nStr, "%6d", ref);
+    snprintf(nStr, sizeof(nStr), "%6d", ref);
     infoStr += nStr;
 
     infoStr += sepr;
@@ -406,7 +406,7 @@ std::string EnPart::partInfoString(int ref) const
     size_t nTot(0);
     for (auto j = 0; j < elementList_.size(); ++j)
         nTot += numList_[j];
-    sprintf(nStr, "%8zu", nTot);
+    snprintf(nStr, sizeof(nStr), "%8zu", nTot);
     infoStr += nStr;
 
     infoStr += sep;

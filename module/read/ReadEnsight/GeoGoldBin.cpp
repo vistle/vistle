@@ -286,8 +286,6 @@ bool GeoGoldBin::readPartConn(FILE *in, EnPart &actPart)
     CERR << "comment: " << actPart.comment() << std::endl;
 #endif
 
-    char buf[lineLen];
-
     size_t currElePtr2d = 0, currElePtr3d = 0;
     unsigned cornIn[20], cornOut[20];
 
@@ -474,8 +472,7 @@ bool GeoGoldBin::readPartConn(FILE *in, EnPart &actPart)
             std::cerr << std::endl;
         }
 
-        sprintf(buf, " -> found %d fully degenerated cells in part %d", degCells, m_actPartNum);
-        ens->sendInfo("%s", buf);
+        ens->sendInfo(" -> found %d fully degenerated cells in part %d", degCells, m_actPartNum);
     }
 
 #ifdef DEBUG

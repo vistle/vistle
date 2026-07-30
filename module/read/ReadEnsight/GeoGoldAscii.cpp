@@ -494,8 +494,7 @@ bool GeoGoldAscii::readPartConn(FILE *in, EnPart &actPart)
             std::cerr << std::endl;
         }
 
-        sprintf(buf, " -> found %d fully degenerated cells in part %d", degCells, partNo);
-        ens->sendInfo("%s", buf);
+        ens->sendInfo(" -> found %d fully degenerated cells in part %d", degCells, partNo);
     }
     return true;
 }

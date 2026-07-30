@@ -5,7 +5,7 @@
 
  * License: LGPL 2+ */
 
-/**************************************************************************\ 
+/**************************************************************************\
  **                                                           (C)1995 RUS  **
  **                                                                        **
  ** Description: Read module for Dyna3D data         	                  **
@@ -1651,7 +1651,7 @@ int Dyna3DReader<wordsize, INTEGER, REAL>::otaurusr_()
             tauio_1.nrin = 0;
             tauio_1.nrzin = 0;
             tauio_1.itrecin = 0;
-            sprintf(ctaun, "%s%s%02d", CTauin, tauio_1.adapt, tauio_1.ifilin);
+            snprintf(ctaun, sizeof(ctaun), "%s%s%02d", CTauin, tauio_1.adapt, tauio_1.ifilin);
 // infile=Covise::open(ctaun,O_RDONLY);
 #ifndef _AIRBUS
             infile = ::open(ctaun, OpenFlags);
@@ -1679,7 +1679,7 @@ int Dyna3DReader<wordsize, INTEGER, REAL>::otaurusr_()
         tauio_1.nrin = 0;
         tauio_1.nrzin = 0;
         tauio_1.itrecin = 0;
-        sprintf(ctaun, "%s%s", CTauin, tauio_1.adapt);
+        snprintf(ctaun, sizeof(ctaun), "%s%s", CTauin, tauio_1.adapt);
         // infile=Covise::open(ctaun,O_RDONLY);
         infile = ::open(ctaun, OpenFlags);
         if (infile >= 0) {

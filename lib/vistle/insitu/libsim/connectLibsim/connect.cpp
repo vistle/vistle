@@ -73,7 +73,7 @@ bool vistle::insitu::libsim::sendInitToSim(const std::vector<std::string> launch
     char tmp[bufferSize];
 
     memset(tmp, 0, sizeof(char) * bufferSize);
-    sprintf(tmp, "%s\n", key.c_str());
+    snprintf(tmp, sizeof(bufferSize), "%s\n", key.c_str());
     asio::write(*s, asio::buffer(std::string(tmp)), ec);
     if (ec) {
         std::cerr << "failed to send security key to sim" << std::endl;

@@ -112,11 +112,11 @@ ReadMPAS::ReadMPAS(const std::string &name, int moduleID, mpi::communicator comm
     std::vector<std::string> varChoices;
     varChoices.push_back(vistle::Reader::InvalidChoice);
     for (int i = 0; i < NUMPARAMS; ++i) {
-        sprintf(s_var, "Variable_%d", i);
+        snprintf(s_var, sizeof(s_var), "Variable_%d", i);
         m_variables[i] = addStringParameter(s_var, s_var, "", Parameter::Choice);
 
         setParameterChoices(m_variables[i], varChoices);
-        sprintf(s_var, "data_out_%d", i);
+        snprintf(s_var, sizeof(s_var), "data_out_%d", i);
         m_dataOut[i] = createOutputPort(s_var, "scalar data");
         linkPortAndParameter(m_dataOut[i], m_variables[i]);
     }
