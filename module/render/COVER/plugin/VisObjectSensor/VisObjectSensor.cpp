@@ -135,12 +135,12 @@ void VrmlNodeVisObjectSensor::initFields(VrmlNodeVisObjectSensor *node, vrml::Vr
     vrml::VrmlNode::initFields(node, t);
     // clang-format off
     initFieldsHelper(node, t,
-                     field("transformName", node->d_transformName, [node](auto f) {
+                     field("transformName", &VrmlNodeVisObjectSensor::d_transformName, [node](auto f) {
                          node->updateTransform();
                      }),
-                     exposedField("translation", node->d_translation),
-                     exposedField("rotation", node->d_rotation),
-                     exposedField("scale", node->d_scale));
+                     exposedField("translation", &VrmlNodeVisObjectSensor::d_translation),
+                     exposedField("rotation", &VrmlNodeVisObjectSensor::d_rotation),
+                     exposedField("scale", &VrmlNodeVisObjectSensor::d_scale));
     // clang-format on
 
     if (t) {
