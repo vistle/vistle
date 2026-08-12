@@ -4,10 +4,13 @@
 #include <vistle/util/byteswap.h>
 #include <vistle/core/unstr.h>
 #include <vistle/core/polygons.h>
+#include <vistle/core/lines.h>
+#include <vistle/core/points.h>
 
 #include "CaseFile.h"
 #include "EnFile.h"
 #include "CaseParserDriver.h"
+#include "vistle/module/reader.h"
 #include <iostream>
 
 namespace {
@@ -59,6 +62,40 @@ ReadEnsight::ReadEnsight(const std::string &name, int moduleID, mpi::communicato
                                                       "field " + std::to_string(port), NONE, Parameter::Choice);
         setParameterChoices(m_surf_elem_choice[port], std::vector<std::string>({NONE}));
         linkPortAndParameter(m_surf_elem[port], m_surf_elem_choice[port]);
+    }
+    m_curve = createOutputPort("curve_out", "curve");
+    for (int port = 0; port < NumCurveVert; ++port) {
+        m_curve_vert[port] = createOutputPort("curve_vert_field" + std::to_string(port) + "_out",
+                                              "per-vertex curve field " + std::to_string(port));
+        m_curve_vert_choice[port] = addStringParameter("curve_vert_field" + std::to_string(port),
+                                                       "field " + std::to_string(port), NONE, Parameter::Choice);
+        setParameterChoices(m_curve_vert_choice[port], std::vector<std::string>({NONE}));
+        linkPortAndParameter(m_curve_vert[port], m_curve_vert_choice[port]);
+    }
+    for (int port = 0; port < NumCurveElem; ++port) {
+        m_curve_elem[port] = createOutputPort("curve_elem_field" + std::to_string(port) + "_out",
+                                              "per-element curve field " + std::to_string(port));
+        m_curve_elem_choice[port] = addStringParameter("curve_elem_field" + std::to_string(port),
+                                                       "field " + std::to_string(port), NONE, Parameter::Choice);
+        setParameterChoices(m_curve_elem_choice[port], std::vector<std::string>({NONE}));
+        linkPortAndParameter(m_curve_elem[port], m_curve_elem_choice[port]);
+    }
+    m_points = createOutputPort("points_out", "points");
+    for (int port = 0; port < NumPointVert; ++port) {
+        m_point_vert[port] = createOutputPort("point_vert_field" + std::to_string(port) + "_out",
+                                              "per-vertex point field " + std::to_string(port));
+        m_point_vert_choice[port] = addStringParameter("point_vert_field" + std::to_string(port),
+                                                       "field " + std::to_string(port), NONE, Parameter::Choice);
+        setParameterChoices(m_point_vert_choice[port], std::vector<std::string>({NONE}));
+        linkPortAndParameter(m_point_vert[port], m_point_vert_choice[port]);
+    }
+    for (int port = 0; port < NumPointElem; ++port) {
+        m_point_elem[port] = createOutputPort("point_elem_field" + std::to_string(port) + "_out",
+                                              "per-element point field " + std::to_string(port));
+        m_point_elem_choice[port] = addStringParameter("point_elem_field" + std::to_string(port),
+                                                       "field " + std::to_string(port), NONE, Parameter::Choice);
+        setParameterChoices(m_point_elem_choice[port], std::vector<std::string>({NONE}));
+        linkPortAndParameter(m_point_elem[port], m_point_elem_choice[port]);
     }
 
     setCurrentParameterGroup("Details");
@@ -134,22 +171,14 @@ bool ReadEnsight::examine(const vistle::Parameter *param)
             }
         }
 
-        for (int i = 0; i < NumVolVert; ++i) {
-            setParameterChoices(m_vol_vert_choice[i], vert_choices);
-            setParameterReadOnly(m_vol_vert_choice[i], false);
-        }
-        for (int i = 0; i < NumVolElem; ++i) {
-            setParameterChoices(m_vol_elem_choice[i], elem_choices);
-            setParameterReadOnly(m_vol_elem_choice[i], false);
-        }
-        for (int i = 0; i < NumSurfVert; ++i) {
-            setParameterChoices(m_surf_vert_choice[i], vert_choices);
-            setParameterReadOnly(m_surf_vert_choice[i], false);
-        }
-        for (int i = 0; i < NumSurfElem; ++i) {
-            setParameterChoices(m_surf_elem_choice[i], elem_choices);
-            setParameterReadOnly(m_surf_elem_choice[i], false);
-        }
+        setFieldChoices(m_vol_vert_choice, NumVolVert, vert_choices, false);
+        setFieldChoices(m_vol_elem_choice, NumVolElem, elem_choices, false);
+        setFieldChoices(m_surf_vert_choice, NumSurfVert, vert_choices, false);
+        setFieldChoices(m_surf_elem_choice, NumSurfElem, elem_choices, false);
+        setFieldChoices(m_curve_vert_choice, NumCurveVert, vert_choices, false);
+        setFieldChoices(m_curve_elem_choice, NumCurveElem, elem_choices, false);
+        setFieldChoices(m_point_vert_choice, NumPointVert, vert_choices, false);
+        setFieldChoices(m_point_elem_choice, NumPointElem, elem_choices, false);
 
         auto times = m_case.getAllRealTimes();
         setTimesteps(times.size());
@@ -165,22 +194,23 @@ bool ReadEnsight::examine(const vistle::Parameter *param)
                 return false;
             }
             m_earlyParts = m_globalParts[0];
+            sendPartsToInfo(m_earlyParts);
 
             if (!hasPartWithDim(3)) {
-                for (int i = 0; i < NumVolVert; ++i) {
-                    setParameterReadOnly(m_vol_vert_choice[i], true);
-                }
-                for (int i = 0; i < NumVolElem; ++i) {
-                    setParameterReadOnly(m_vol_elem_choice[i], true);
-                }
+                setFieldChoices(m_vol_vert_choice, NumVolVert, vert_choices, true);
+                setFieldChoices(m_vol_elem_choice, NumVolElem, elem_choices, true);
             }
             if (!hasPartWithDim(2)) {
-                for (int i = 0; i < NumSurfVert; ++i) {
-                    setParameterReadOnly(m_surf_vert_choice[i], true);
-                }
-                for (int i = 0; i < NumSurfElem; ++i) {
-                    setParameterReadOnly(m_surf_elem_choice[i], true);
-                }
+                setFieldChoices(m_surf_vert_choice, NumSurfVert, vert_choices, true);
+                setFieldChoices(m_surf_elem_choice, NumSurfElem, elem_choices, true);
+            }
+            if (!hasPartWithDim(1)) {
+                setFieldChoices(m_curve_vert_choice, NumCurveVert, vert_choices, true);
+                setFieldChoices(m_curve_elem_choice, NumCurveElem, elem_choices, true);
+            }
+            if (!hasPartWithDim(0)) {
+                setFieldChoices(m_point_vert_choice, NumPointVert, vert_choices, true);
+                setFieldChoices(m_point_elem_choice, NumPointElem, elem_choices, true);
             }
         }
     }
@@ -188,12 +218,25 @@ bool ReadEnsight::examine(const vistle::Parameter *param)
     return true;
 }
 
+void ReadEnsight::sendPartsToInfo(const PartList &partList) const
+{
+    std::string info;
+    info += EnPart::partInfoHeader();
+
+    int block(0);
+    for (auto pos = partList.begin(); pos != partList.end(); pos++) {
+        info += pos->partInfoString(block);
+        ++block;
+    }
+    info += EnPart::partInfoFooter();
+    sendInfo(info);
+}
+
 bool ReadEnsight::makeGeoFiles()
 {
     // set filenames
     std::string geoFileName = m_case.getGeoFileNm();
-    if (geoFileName.length() < 5) {
-        // FIXME?
+    if (geoFileName.empty()) {
         return false;
     }
     std::vector<std::string> allGeoFiles(m_case.makeFileNames(geoFileName, m_case.getGeoTimeSet()));
@@ -232,36 +275,41 @@ bool ReadEnsight::prepareRead()
     if (!createPartlists(-1)) {
         return false;
     }
+    sendPartsToInfo(m_globalParts[0]);
 
     m_selectedParts.clear();
     m_selectedParts.add(m_partSelection->getValue());
 
     size_t numParts(m_globalParts[0].size());
     size_t numActiveParts = 0;
-    size_t numActive2d = 0, numActive3d = 0;
+    std::array<size_t, 4> numActive{};
     for (size_t i = 0; i < numParts; i++) {
-        bool active = m_selectedParts(i);
+        const auto &p = m_globalParts[0][i];
+        auto partNum = p.getPartNum();
+        bool active = m_selectedParts(partNum);
         if (active) {
             ++numActiveParts;
-            const auto &p = m_globalParts[0][i];
-            if (p.getTotNumEle2d() > 0)
-                ++numActive2d;
-            if (p.getTotNumEle3d() > 0)
-                ++numActive3d;
+            for (int d = 0; d < 4; ++d) {
+                if (p.getTotNumEle(d) > 0)
+                    ++numActive[d];
+            }
         }
     }
     setPartitions(numActiveParts);
 
-    if (numActive2d == 0) {
-        auto act2d = getActiveFields(EnFile::SURFACE);
-        if (!act2d.empty())
-            sendWarning("surface/2D ports connected, but no 2D parts selected");
+    std::array<std::pair<EnFile::ReadType, std::string>, 4> dims{
+        {{EnFile::POINT, "point"}, {EnFile::CURVE, "curve"}, {EnFile::SURFACE, "surface"}, {EnFile::VOLUME, "volume"}}};
+
+    for (int d = 0; d < 4; ++d) {
+        if (numActive[d] == 0) {
+            if (!getActiveFields(dims[d].first).empty()) {
+                sendWarning("%s/%dD ports connected, but no %dD parts selected", dims[d].second.c_str(), d, d);
+            }
+        }
     }
-    if (numActive3d == 0) {
-        auto act3d = getActiveFields(EnFile::VOLUME);
-        if (!act3d.empty())
-            sendWarning("volume/3D ports connected, but no 3D parts selected");
-    }
+
+    setParallelizationMode(m_case.hasChangingGeometryPerPart() ? ParallelizeBlocks
+                                                               : ParallelizeTimeAndBlocksAfterStatic);
 
     return true;
 }
@@ -280,73 +328,50 @@ std::vector<std::pair<vistle::Port *, std::string>> ReadEnsight::getActiveFields
 {
     std::vector<std::pair<vistle::Port *, std::string>> fields;
 
-    std::vector<Port *> ports;
-    std::vector<std::string> choices;
-
-    if (what == EnFile::VOLUME || what == EnFile::VOLUME_AND_SURFACE) {
-        for (int i = 0; i < NumVolVert; ++i) {
-            auto field = m_vol_vert_choice[i];
-            auto choice = field->getValue();
-            if (choice.empty() || choice == NONE) {
-                continue;
-            }
-            if (!m_vol_vert[i]->isConnected()) {
-                continue;
-            }
-            ports.push_back(m_vol_vert[i]);
-            choices.push_back(choice);
-            fields.emplace_back(m_vol_vert[i], choice);
-        }
-        for (int i = 0; i < NumVolElem; ++i) {
-            auto field = m_vol_elem_choice[i];
-            auto choice = field->getValue();
-            if (choice.empty() || choice == NONE) {
-                continue;
-            }
-            if (!m_vol_elem[i]->isConnected()) {
-                continue;
-            }
-            ports.push_back(m_vol_elem[i]);
-            choices.push_back(choice);
-            fields.emplace_back(m_vol_elem[i], choice);
-        }
+    if (what & EnFile::VOLUME) {
+        collectFields(m_vol_vert, m_vol_vert_choice, NumVolVert, fields);
+        collectFields(m_vol_elem, m_vol_elem_choice, NumVolElem, fields);
     }
-    if (what == EnFile::SURFACE || what == EnFile::VOLUME_AND_SURFACE) {
-        for (int i = 0; i < NumSurfVert; ++i) {
-            auto field = m_surf_vert_choice[i];
-            auto choice = field->getValue();
-            if (choice.empty() || choice == NONE) {
-                continue;
-            }
-            if (!m_surf_vert[i]->isConnected()) {
-                continue;
-            }
-            ports.push_back(m_surf_vert[i]);
-            choices.push_back(choice);
-            fields.emplace_back(m_surf_vert[i], choice);
-        }
-        for (int i = 0; i < NumSurfElem; ++i) {
-            auto field = m_surf_elem_choice[i];
-            auto choice = field->getValue();
-            if (choice.empty() || choice == NONE) {
-                continue;
-            }
-            if (!m_surf_elem[i]->isConnected()) {
-                continue;
-            }
-            ports.push_back(m_surf_elem[i]);
-            choices.push_back(choice);
-            fields.emplace_back(m_surf_elem[i], choice);
-        }
+    if (what & EnFile::SURFACE) {
+        collectFields(m_surf_vert, m_surf_vert_choice, NumSurfVert, fields);
+        collectFields(m_surf_elem, m_surf_elem_choice, NumSurfElem, fields);
+    }
+    if (what & EnFile::CURVE) {
+        collectFields(m_curve_vert, m_curve_vert_choice, NumCurveVert, fields);
+        collectFields(m_curve_elem, m_curve_elem_choice, NumCurveElem, fields);
+    }
+    if (what & EnFile::POINT) {
+        collectFields(m_point_vert, m_point_vert_choice, NumPointVert, fields);
+        collectFields(m_point_elem, m_point_elem_choice, NumPointElem, fields);
     }
 
-    assert(ports.size() == choices.size());
-    std::cerr << "Reading " << ports.size() << " fields (enabled dims=" << what << ")" << std::endl;
-    for (size_t i = 0; i < ports.size(); ++i) {
-        std::cerr << "  " << ports[i]->getName() << ": " << choices[i] << std::endl;
+    std::cerr << "Reading " << fields.size() << " fields (enabled dims=" << what << ")" << std::endl;
+    for (const auto &f: fields) {
+        std::cerr << "  " << f.first->getName() << ": " << f.second << std::endl;
     }
 
     return fields;
+}
+
+void ReadEnsight::collectFields(Port **ports, StringParameter **choices, int n,
+                                std::vector<std::pair<Port *, std::string>> &fields)
+{
+    for (int i = 0; i < n; ++i) {
+        auto choice = choices[i]->getValue();
+        if (choice.empty() || choice == NONE)
+            continue;
+        if (!ports[i]->isConnected())
+            continue;
+        fields.emplace_back(ports[i], choice);
+    }
+}
+
+void ReadEnsight::setFieldChoices(StringParameter **choices, int n, const std::vector<std::string> &cs, bool readOnly)
+{
+    for (int i = 0; i < n; ++i) {
+        setParameterChoices(choices[i], cs);
+        setParameterReadOnly(choices[i], readOnly);
+    }
 }
 
 bool ReadEnsight::read(Reader::Token &token, int timestep, int block)
@@ -373,26 +398,36 @@ bool ReadEnsight::read(Reader::Token &token, int timestep, int block)
         curPartList = &m_globalParts[timestep];
     }
 
-    EnPart *curPart = nullptr;
-    int curNum = 0;
-    size_t curPartIdx = 0;
-    for (curPartIdx = 0; curPartIdx < curPartList->size(); ++curPartIdx) {
-        auto &p = curPartList->at(curPartIdx);
-        std::cerr << " searching block " << block << ", time=" << timestep << ", checking part: " << p << std::endl;
-        bool active = m_selectedParts(curPartIdx);
-        if (active) {
-            if (curNum == block) {
-                curPart = &p;
-                std::cerr << " reading for part: " << curPart << std::endl;
-                break;
+    auto findBlock = [this](PartList &parts, int block) {
+        int curNum = 0;
+        for (size_t idx = 0; idx < parts.size(); ++idx) {
+            auto &p = parts[idx];
+            auto partNum = p.getPartNum();
+            bool active = m_selectedParts(partNum);
+            if (active) {
+                if (curNum == block) {
+                    return std::make_pair(&p, int(idx));
+                }
+                ++curNum;
             }
-            ++curNum;
         }
-    }
+        return std::make_pair(static_cast<EnPart *>(nullptr), -1);
+    };
 
+    auto [curPart, curPartIdx] = findBlock(*curPartList, block);
     if (!curPart) {
         sendError("part for timestep %d, block %d not found", timestep, block);
         return false;
+    }
+
+    EnPart *refPart = nullptr;
+    if (m_case.hasChangingGeometryPerPart() && timestep > 0) {
+        PartList *prevList = &m_masterParts;
+        if (timestep > 0) {
+            assert(timestep < m_globalParts.size());
+            prevList = &m_globalParts[timestep - 1];
+        }
+        refPart = findBlock(*prevList, block).first;
     }
 
     Object::const_ptr geo;
@@ -407,11 +442,12 @@ bool ReadEnsight::read(Reader::Token &token, int timestep, int block)
         m_case.setBinType(binType);
 
         file->setPartList(curPartList);
-        Object::ptr grid = file->read(timestep, block, curPart);
+        Object::ptr grid = file->read(timestep, block, curPart, refPart);
         if (!grid) {
             sendError("failed to read geometry from %s", geofile.c_str());
             return false;
         }
+        std::cerr << "read geo " << geofile << ":" << curPart->partInfoString(-1) << std::endl;
 
         token.applyMeta(grid);
         grid->addAttribute(attribute::Part, curPart->comment());
@@ -420,6 +456,10 @@ bool ReadEnsight::read(Reader::Token &token, int timestep, int block)
             token.addObject(m_grid, unstr);
         } else if (auto poly = Polygons::as(grid)) {
             token.addObject(m_surf, poly);
+        } else if (auto lines = Lines::as(grid)) {
+            token.addObject(m_curve, lines);
+        } else if (auto pts = Points::as(grid)) {
+            token.addObject(m_points, pts);
         }
 
         if (timestep < 0) {
@@ -431,11 +471,15 @@ bool ReadEnsight::read(Reader::Token &token, int timestep, int block)
         geo = m_constantGeo[block];
     }
 
-    auto what = EnFile::VOLUME_AND_SURFACE;
+    EnFile::ReadType what = EnFile::NOTHING;
     if (auto unstr = UnstructuredGrid::as(geo)) {
         what = EnFile::VOLUME;
     } else if (auto poly = Polygons::as(geo)) {
         what = EnFile::SURFACE;
+    } else if (Lines::as(geo)) {
+        what = EnFile::CURVE;
+    } else if (Points::as(geo)) {
+        what = EnFile::POINT;
     } else {
         std::cerr << "no grid for data t=" << timestep << ", block=" << block << std::endl;
         return true;
@@ -529,33 +573,29 @@ bool ReadEnsight::createPartlists(int timestep, bool onlyGeo)
             enf->setPartList(&parts);
             // this creates the table and extracts the part infos
             if (!enf->parseForParts()) {
-                sendError("Could not parse geometry file %s", fName.c_str());
                 parts.clear();
-                return false;
-            }
 
-            if (enf->mayBeCorrupt()) {
-                if (timestep < 0) {
-                    sendInfo("Could not parse geometry file %s - retrying with changed endianness", fName.c_str());
-                    m_dataBigEndian = !m_dataBigEndian;
-                    parts.clear();
-                    enf = EnFile::createGeometryFile(this, m_case, fName);
-                    if (!enf) {
-                        sendError("Could not open geometry file %s", fName.c_str());
-                        return false;
-                    }
-                    enf->setPartList(&parts);
-                    if (!enf->parseForParts()) {
-                        sendError("Could not find any parts in geometry file %s", fName.c_str());
-                        parts.clear();
-                        return false;
-                    }
-                    if (enf->mayBeCorrupt()) {
-                        m_dataBigEndian = !m_dataBigEndian;
-                    } else {
-                        setParameter(m_dataBigEndianParam, Integer(m_dataBigEndian));
-                    }
+                if (timestep >= 0 || !enf->mayBeCorrupt()) {
+                    sendError("Could not parse geometry file %s", fName.c_str());
+                    return false;
                 }
+
+                sendInfo("Could not parse geometry file %s - retrying with changed endianness", fName.c_str());
+                m_dataBigEndian = !m_dataBigEndian;
+                enf = EnFile::createGeometryFile(this, m_case, fName);
+                if (!enf) {
+                    sendError("Could not open geometry file %s", fName.c_str());
+                    m_dataBigEndian = false;
+                    return false;
+                }
+                enf->setPartList(&parts);
+                if (!enf->parseForParts()) {
+                    sendError("Could not find any parts in geometry file %s", fName.c_str());
+                    parts.clear();
+                    m_dataBigEndian = false;
+                    return false;
+                }
+                setParameter(m_dataBigEndianParam, Integer(m_dataBigEndian));
             }
             assert(m_dataBigEndian == m_dataBigEndianParam->getValue());
 
@@ -569,9 +609,6 @@ bool ReadEnsight::createPartlists(int timestep, bool onlyGeo)
             m_case.setBinType(binType);
 
             if (timestep < 0) {
-                if (onlyGeo || !earlyPartList) {
-                    enf->sendPartsToInfo();
-                }
                 m_masterParts = parts;
             }
         } else {
@@ -584,7 +621,7 @@ bool ReadEnsight::createPartlists(int timestep, bool onlyGeo)
         return true;
     }
 
-    auto fields = getActiveFields(EnFile::VOLUME_AND_SURFACE);
+    auto fields = getActiveFields(EnFile::ALL);
     std::set<std::string> processed;
     for (size_t i = 0; i < fields.size(); ++i) {
         auto &field = fields[i].second;
@@ -594,14 +631,15 @@ bool ReadEnsight::createPartlists(int timestep, bool onlyGeo)
 
         auto file = EnFile::createDataFile(this, m_case, field, timestep);
         if (!file) {
-            sendError("Could not open field file %s", field.c_str());
+            sendError("Could not open file for field %s", field.c_str());
             return false;
         }
         file->setPartList(&parts);
         if (!file->parseForParts()) {
             std::string fname = file->name();
-            sendError("Could not parse field file %s", field.c_str());
+            sendError("Could not parse field file %s for field %s", fname.c_str(), field.c_str());
             parts.clear();
+            return false;
         }
         //file->sendPartsToInfo();
 

@@ -39,109 +39,99 @@ EnElement::EnElement(): valid_(false), empty_(true)
 EnElement::EnElement(const std::string &name)
 : valid_(false)
 , empty_(false)
-, enTypeStr_(trim_copy(name).substr(0, 10)) // the max. length of an ensight cell type is 10 (pyramid13)
+, enTypeStr_(trim_copy(name).substr(0, 12)) // the longest ensight cell type is 'g_pyramid13'
 {
+    if (enTypeStr_.starts_with("g_")) {
+        ghost_ = true;
+        enTypeStr_ = enTypeStr_.substr(2);
+    }
+
     if (enTypeStr_ == "point") {
         valid_ = true;
         numCorn_ = 1;
         dim_ = D0;
         vistleType_ = cell::POINT;
         enType_ = point;
-        //CERR << "point found" << std::endl;
     } else if (enTypeStr_ == "bar2") {
         valid_ = true;
-        //CERR << "bar2 found" << std::endl;
         numCorn_ = 2;
         dim_ = D1;
         vistleType_ = cell::BAR;
         enType_ = bar2;
     } else if (enTypeStr_ == "bar3") {
         valid_ = true;
-        CERR << "bar3 found" << std::endl;
         numCorn_ = 3;
         dim_ = D1;
         vistleType_ = cell::BAR;
         enType_ = bar3;
     } else if (enTypeStr_ == "tria3") {
         valid_ = true;
-        //CERR << "tria3 found" << std::endl;
         numCorn_ = 3;
         dim_ = D2;
         vistleType_ = cell::TRIANGLE;
         enType_ = tria3;
     } else if (enTypeStr_ == "tria6") {
         valid_ = true;
-        CERR << "tria6 found" << std::endl;
         numCorn_ = 6;
         dim_ = D2;
         vistleType_ = cell::TRIANGLE;
         enType_ = tria6;
     } else if (enTypeStr_ == "quad4") {
         valid_ = true;
-        //CERR << "quad4 found" << std::endl;
         numCorn_ = 4;
         dim_ = D2;
         vistleType_ = cell::QUAD;
         enType_ = quad4;
     } else if (enTypeStr_ == "quad8") {
         valid_ = true;
-        CERR << "quad8 found" << std::endl;
         numCorn_ = 8;
         dim_ = D2;
         vistleType_ = cell::QUAD;
         enType_ = quad8;
     } else if (enTypeStr_ == "tetra4") {
         valid_ = true;
-        //CERR << "tetra4 found" << std::endl;
         numCorn_ = 4;
         dim_ = D3;
         vistleType_ = cell::TETRAHEDRON;
         enType_ = tetra4;
     } else if (enTypeStr_ == "tetra10") {
         valid_ = true;
-        CERR << "tetra10 found" << std::endl;
         numCorn_ = 10;
         dim_ = D3;
         vistleType_ = cell::TETRAHEDRON;
         enType_ = tetra10;
     } else if (enTypeStr_ == "pyramid5") {
         valid_ = true;
-        //CERR << "pyramid5 found" << std::endl;
         numCorn_ = 5;
         dim_ = D3;
         vistleType_ = cell::PYRAMID;
         enType_ = pyramid5;
     } else if (enTypeStr_ == "pyramid13") {
         valid_ = true;
-        CERR << "pyramid13 found" << std::endl;
         numCorn_ = 13;
         dim_ = D3;
         vistleType_ = cell::PYRAMID;
         enType_ = pyramid13;
     } else if (enTypeStr_ == "hexa8") {
         valid_ = true;
-        //CERR << "hexa8  found" << std::endl;
         numCorn_ = 8;
         dim_ = D3;
         vistleType_ = cell::HEXAHEDRON;
         enType_ = hexa8;
     } else if (enTypeStr_ == "hexa20") {
         valid_ = true;
-        CERR << "hexa20 found" << std::endl;
         numCorn_ = 20;
         dim_ = D3;
         vistleType_ = cell::HEXAHEDRON;
         enType_ = hexa20;
     } else if (enTypeStr_ == "penta6") {
         valid_ = true;
-        //CERR << "penta6  found" << std::endl;
         numCorn_ = 6;
         dim_ = D3;
         vistleType_ = cell::PRISM;
         enType_ = penta6;
     } else if (enTypeStr_ == "penta15") {
         valid_ = true;
-        CERR << "pyramid15 found" << std::endl;
         numCorn_ = 15;
         dim_ = D3;
         vistleType_ = cell::PRISM;
@@ -171,6 +161,7 @@ EnElement::EnElement(const std::string &name)
 EnElement::EnElement(const EnElement &e)
 : valid_(e.valid_)
 , empty_(e.empty_)
+, ghost_(e.ghost_)
 , numCorn_(e.numCorn_)
 , dim_(e.dim_)
 , vistleType_(e.vistleType_)
@@ -184,6 +175,7 @@ EnElement::EnElement(const EnElement &e)
 EnElement::EnElement(EnElement &&e)
 : valid_(e.valid_)
 , empty_(e.empty_)
+, ghost_(e.ghost_)
 , numCorn_(e.numCorn_)
 , dim_(e.dim_)
 , vistleType_(e.vistleType_)
@@ -201,6 +193,7 @@ const EnElement &EnElement::operator=(const EnElement &e)
 
     valid_ = e.valid_;
     empty_ = e.empty_;
+    ghost_ = e.ghost_;
     numCorn_ = e.numCorn_;
     dim_ = e.dim_;
     vistleType_ = e.vistleType_;
@@ -229,8 +222,7 @@ bool EnElement::check() const
     return true;
 }
 
-// extend it later to EnSight elements which are not present in Vistle, like hexa20, ...
-// EnElement::remap(int *eleIn, int *eleOut, int *newTypes, int *newElem...)
+// higher order elements like hexa20 are treated as linear elements (e.g. like hexa8)
 size_t EnElement::remap(const unsigned *cornIn, unsigned *cornOut)
 {
     // only 2D elements have to be remapped
@@ -320,37 +312,6 @@ bool EnElement::hasDistinctCorners(const unsigned *ci) const
     }
 
     return false;
-}
-
-// return number and array of distinct corners
-unsigned EnElement::distinctCorners(const unsigned *ci, unsigned *co) const
-{
-    assert(valid_);
-    if (ci == nullptr) {
-        return 0;
-    }
-
-    unsigned distinct(0);
-    for (size_t i = 0; i < numCorn_; ++i) {
-        bool found = false;
-        for (size_t j = i + 1; j < numCorn_; ++j) {
-            if (ci[i] == ci[j]) {
-                found = true;
-                break;
-            }
-        }
-        if (!found) {
-            co[distinct] = ci[i];
-            ++distinct;
-        }
-    }
-#ifdef DEBUG
-    if (distinct != numCorn_) {
-        CERR << "expected " << numCorn_ << ", but got " << distinct << " corners" << std::endl;
-    }
-#endif
-
-    return distinct;
 }
 
 void EnElement::setBlanklist(std::vector<vistle::Byte> &&bl)

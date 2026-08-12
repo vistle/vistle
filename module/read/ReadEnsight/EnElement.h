@@ -6,9 +6,6 @@
 //
 // Description: general data class for the handling of EnSight geometry elements
 //
-// CLASS    EnPart
-//
-// Description: general data class for the handling of parts of EnSight geometry
 
 //
 // Initial version: 05.06.2002
@@ -16,9 +13,6 @@
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // (C) 2002 by VirCinity IT Consulting
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-//
-// Changes:
-//
 
 #include <vector>
 #include <string>
@@ -28,10 +22,6 @@
 
 #include <vistle/core/celltypes.h>
 #include <vistle/core/scalar.h>
-
-class EnPart;
-
-typedef std::vector<EnPart> PartList;
 
 //
 // describes a EnSight element as class of elements
@@ -99,6 +89,9 @@ public:
 
     bool empty() const;
 
+    // return true if contained cells are ghost/halo cells
+    bool ghost() const;
+
     // remap: either resort element corners or make new connectivity
     size_t remap(const unsigned *cornIn, unsigned *cornOut);
 
@@ -108,9 +101,6 @@ public:
     // returns true if cell is not degenerated, i.e. a point
     bool hasDistinctCorners(const unsigned *ci) const;
 
-    // returns true if cell is fully degenerated i.e. a point
-    unsigned distinctCorners(const unsigned *ci, unsigned *co) const;
-
     void setBlanklist(std::vector<vistle::Byte> &&bl);
 
     const std::vector<vistle::Byte> &getBlanklist() const;
@@ -118,6 +108,7 @@ public:
 private:
     bool valid_ = false;
     bool empty_ = true;
+    bool ghost_ = false;
     unsigned numCorn_ = 0;
     Dimensionality dim_;
     vistle::cell::CellType vistleType_ = vistle::cell::NONE;
@@ -132,6 +123,7 @@ private:
     {
         ar &valid_;
         ar &empty_;
+        ar &ghost_;
         ar &numCorn_;
         ar &dim_;
         ar &vistleType_;

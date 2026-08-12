@@ -24,25 +24,9 @@ static const int DefaultTimeSet = 1;
 //
 // Constructor
 //
-CaseFile::CaseFile(): empty_(true), geoTsIdx_(-1)
-{}
+CaseFile::CaseFile() = default;
 
-CaseFile::CaseFile(const CaseFile &cf)
-: empty_(cf.empty_)
-, geoFileNm_(cf.geoFileNm_)
-, mgeoFileNm_(cf.mgeoFileNm_)
-, dataIts_(cf.dataIts_)
-, version_(cf.version_)
-, fullFilename_(cf.fullFilename_)
-, dir_(cf.dir_)
-, projectNm_(cf.projectNm_)
-, timeSets_(cf.timeSets_)
-, fieldMap_(cf.fieldMap_)
-, geoTsIdx_(cf.geoTsIdx_)
-, binType_(cf.binType_)
-, connectivityFileIndex_(cf.connectivityFileIndex_)
-, usedTimeSets_(cf.usedTimeSets_)
-{}
+CaseFile::CaseFile(const CaseFile &cf) = default;
 
 void CaseFile::setGeoFileNm(const std::string &fn)
 {
@@ -70,6 +54,16 @@ void CaseFile::setConnectivityFileIndex(int idx)
 int CaseFile::getConnectivityFileIndex() const
 {
     return connectivityFileIndex_;
+}
+
+void CaseFile::enableChangingGeometryPerPart(bool changing)
+{
+    changingGeometryPerPart = changing;
+}
+
+bool CaseFile::hasChangingGeometryPerPart() const
+{
+    return changingGeometryPerPart;
 }
 
 std::string CaseFile::getGeoFileNm() const

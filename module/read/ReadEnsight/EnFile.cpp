@@ -13,29 +13,37 @@
 // ++ Date: 05.06.2002                                                    ++
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#include "GeoGoldAscii.h"
-#include "GeoGoldBin.h"
-#include "DataGoldAscii.h"
-#include "DataGoldBin.h"
+#include "GeoGold.h"
+#include "DataGold.h"
 #include "EnPart.h"
 #include "EnFile.h"
-#include "EnElement.h"
 #include "ReadEnsight.h"
 
 #include "ByteSwap.h"
 
 #include <iostream>
 #include <cfloat>
+#include <cstdio>
 #include <boost/algorithm/string.hpp>
 
+#include <memory>
 #include <vistle/util/strings.h>
 #include <vistle/util/fileio.h>
+
+#include <cassert>
+#include <vector>
+
+using boost::algorithm::trim_copy;
 
 namespace file = vistle::file;
 
 //#define DEBUG
 
 #define CERR std::cerr << "EnFile::" << __func__ << ": "
+
+namespace {
+constexpr unsigned int lineLen = 250;
+}
 
 CaseFile::BinType EnFile::guessBinType(ReadEnsight *mod, const std::string &filename)
 {
@@ -44,7 +52,6 @@ CaseFile::BinType EnFile::guessBinType(ReadEnsight *mod, const std::string &file
     FILE *in = fopen(filename.c_str(), "rb");
     if (!in) {
         CERR << "fopen failed for " << filename << std::endl;
-        //return CaseFile::CBIN;
         return CaseFile::UNKNOWN;
     }
     std::vector<char> buf;
@@ -67,21 +74,7 @@ CaseFile::BinType EnFile::guessBinType(ReadEnsight *mod, const std::string &file
     } else {
         ret = CaseFile::NOBIN;
     }
-
     return ret;
-}
-
-bool strCaseEndsWith(const std::string &str, const std::string &suffix)
-{
-    if (str.length() >= suffix.length()) {
-        for (size_t i = 0; i < suffix.size(); i++) {
-            if (std::tolower(str[str.length() - suffix.length() + i]) != std::tolower(suffix[i])) {
-                return false;
-            }
-        }
-        return true;
-    }
-    return false;
 }
 
 
@@ -96,7 +89,7 @@ std::unique_ptr<EnFile> EnFile::createGeometryFile(ReadEnsight *mod, const CaseF
     // EnSight version
     int version(c.getVersion());
 
-    if (strCaseEndsWith(filename, ".mgeo")) {
+    if (boost::algorithm::ends_with(filename, ".mgeo", boost::algorithm::is_iequal())) {
         // EnSight 6
         if (version == CaseFile::v6) {
             mod->sendError("EnSight v6 is not supported");
@@ -108,20 +101,13 @@ std::unique_ptr<EnFile> EnFile::createGeometryFile(ReadEnsight *mod, const CaseF
         return nullptr;
     } else if (version == CaseFile::gold) {
         // EnSight GOLD
-        switch (binType) {
-        case CaseFile::CBIN:
-            //mod->sendInfo("reading EnSight Gold C binary");
-            return std::make_unique<GeoGoldBin>(mod, filename, binType);
-        case CaseFile::FBIN:
-            //mod->sendInfo("reading EnSight Gold Fortran binary");
-            return std::make_unique<GeoGoldBin>(mod, filename, binType);
-        case CaseFile::NOBIN:
-            //mod->sendInfo("reading EnSight Gold ASCII");
-            return std::make_unique<GeoGoldAscii>(mod, filename);
-        case CaseFile::UNKNOWN:
+        if (binType == CaseFile::UNKNOWN) {
             mod->sendError("unknown format");
-            break;
+            return nullptr;
         }
+        auto geo = std::make_unique<GeoGold>(mod, filename, binType);
+        geo->enableChangingGeometryPerPart(c.hasChangingGeometryPerPart());
+        return geo;
     }
     return nullptr;
 }
@@ -133,6 +119,11 @@ std::unique_ptr<EnFile> EnFile::createDataFile(ReadEnsight *mod, const CaseFile 
     int version(c.getVersion());
     if (version != CaseFile::gold) {
         // EnSight 6 and older not supported, only EnSight Gold
+        return nullptr;
+    }
+
+    if (c.getBinType() == CaseFile::UNKNOWN) {
+        CERR << "not reading UNKNOWN file type" << std::endl;
         return nullptr;
     }
 
@@ -180,36 +171,14 @@ std::unique_ptr<EnFile> EnFile::createDataFile(ReadEnsight *mod, const CaseFile 
     }
     std::cerr << std::endl;
 
-    // file type
     auto filename = allFieldFiles[idx];
     CERR << "opening data file " << filename << std::endl;
-    //auto binType = guessBinType(mod, filename);
 
-    switch (c.getBinType()) {
-    case CaseFile::CBIN:
-    case CaseFile::FBIN:
-        CERR << "reading CBIN/FBIN" << std::endl;
-        return std::make_unique<DataGoldBin>(mod, filename, dim, item->perVertex(), c.getBinType());
-    case CaseFile::NOBIN:
-        CERR << "reading ASCII" << std::endl;
-        return std::make_unique<DataGoldAscii>(mod, filename, dim, item->perVertex());
-    case CaseFile::UNKNOWN:
-        CERR << "not reading UNKNOWN" << std::endl;
-        break;
-    }
-
-    return nullptr;
+    return std::make_unique<DataGold>(mod, filename, dim, item->perVertex(), c.getBinType());
 }
 
-EnFile::EnFile(ReadEnsight *mod, const std::string &name, const int dim, const CaseFile::BinType binType)
+EnFile::EnFile(ReadEnsight *mod, const std::string &name, int dim, const CaseFile::BinType binType)
 : binType_(binType), fileMayBeCorrupt_(false), byteSwap_(false), dim_(dim), ens(mod), name_(name), in_(open())
-{
-    if (mod)
-        byteSwap_ = mod->byteSwap();
-}
-
-EnFile::EnFile(ReadEnsight *mod, const std::string &name, const CaseFile::BinType binType)
-: binType_(binType), fileMayBeCorrupt_(false), byteSwap_(false), dim_(1), ens(mod), name_(name), in_(open())
 {
     if (mod)
         byteSwap_ = mod->byteSwap();
@@ -222,12 +191,11 @@ EnFile::~EnFile()
 FP EnFile::open()
 {
     assert(!name_.empty());
-    FILE *fp = nullptr;
+    const char *mode = "rb";
     if (binType_ != CaseFile::FBIN && binType_ != CaseFile::CBIN) { // reopen as ASCII else leave it in binary mode
-        fp = fopen(name_.c_str(), "r");
-    } else {
-        fp = fopen(name_.c_str(), "rb");
+        mode = "r";
     }
+    FILE *fp = fopen(name_.c_str(), mode);
     if (!fp) {
         CERR << "fopen(" << name_ << ") failed" << std::endl;
     }
@@ -267,6 +235,9 @@ void EnFile::skipFloat(FILE *in, size_t n)
                  << "ERROR: wrong number of elements in block, expected" << n << " but blockstart: " << ilen
                  << " blockend: " << olen << std::endl;
         }
+    } else if (binType_ == CaseFile::NOBIN) {
+        // ASCII: skip n whitespace-delimited tokens
+        getValArrHelper<float>(in, n, nullptr);
     } else {
         // Read floats up to 4GB
         file::seek(in, n * sizeof(float), SEEK_CUR);
@@ -288,12 +259,15 @@ void EnFile::skipInt(FILE *in, size_t n)
                  << "ERROR: wrong number of elements in block, expected" << n << " but blockstart: " << ilen
                  << " blockend: " << olen << std::endl;
         }
+    } else if (binType_ == CaseFile::NOBIN) {
+        // ASCII: skip n whitespace-delimited tokens
+        getValArrHelper<int>(in, n, nullptr);
     } else {
         file::seek(in, n * sizeof(int), SEEK_CUR);
     }
 }
 
-// helper to read binary std::strings
+// helper to read strings
 std::string EnFile::getStr(FILE *in)
 {
     const int strLen(80);
@@ -309,7 +283,7 @@ std::string EnFile::getStr(FILE *in)
         if (feof(in)) {
             //end of file reached
             return ret;
-        } else if (feof(in)) {
+        } else if (ferror(in)) {
             CERR << where() << ": "
                  << "ERROR: error during read of a fortran string" << std::endl;
             return ret;
@@ -350,6 +324,25 @@ std::string EnFile::getStr(FILE *in)
                  << "ERROR: not a fortran std::string of length 80" << std::endl;
             return ret;
         }
+    } else if (binType_ == CaseFile::NOBIN) {
+        // ASCII: read one text line
+        char line[lineLen];
+        line[0] = '\0';
+        if (!fgets(line, lineLen, in)) {
+            if (feof(in)) {
+                return ret;
+            }
+            CERR << where() << ": "
+                 << "ERROR: error during read of a text line" << std::endl;
+            return ret;
+        }
+        std::string l(line);
+        size_t nl = l.find('\n');
+        if (nl != std::string::npos) {
+            l.erase(nl);
+        }
+        ret = l;
+        return ret;
     } else {
         fread(buf, strLen, 1, in);
         if (feof(in)) {
@@ -375,6 +368,17 @@ T EnFile::getValRaw(FILE *in)
 {
     static_assert(sizeof(T) == 4, "T must be 4 bytes");
     T ret = 0;
+    if (binType_ == CaseFile::NOBIN) {
+        // ASCII mode: read a text-formatted value
+        if (!readTextVal(in, ret)) {
+            if (feof(in)) {
+                CERR << where() << ": "
+                     << "ERROR: end of file during read a value of size " << sizeof(T) << std::endl;
+            }
+            return 0;
+        }
+        return ret;
+    }
     fread(&ret, sizeof(T), 1, in); // read a 4 byte integer
     if (feof(in)) {
         CERR << where() << ": "
@@ -397,9 +401,14 @@ T EnFile::getVal(FILE *in)
     filePos_ = file::tell(in);
 
     if (binType_ == CaseFile::FBIN) {
-        getSizeRaw(in);
+        size_t ilen = getSizeRaw(in);
         T ret = getValRaw<T>(in);
-        getSizeRaw(in);
+        size_t olen = getSizeRaw(in);
+        if (ilen != olen) {
+            CERR << where() << ": "
+                 << "ERROR: wrong number of elements in block, expected " << sizeof(T) << " but blockstart: " << ilen
+                 << " blockend: " << olen << std::endl;
+        }
         return ret;
     }
 
@@ -425,7 +434,31 @@ template<typename T>
 bool EnFile::getValArrHelper(FILE *in, size_t n, T *arr)
 {
     if (!arr) {
+        if (binType_ == CaseFile::NOBIN) {
+            // ASCII: read and discard n whitespace-delimited tokens
+            for (size_t i = 0; i < n; ++i) {
+                char buf[64];
+                if (fscanf(in, "%63s ", buf) != 1) {
+                    break;
+                }
+            }
+            return true;
+        }
         file::seek(in, n * sizeof(T), SEEK_CUR);
+        return true;
+    }
+
+    if (binType_ == CaseFile::NOBIN) {
+        // ASCII mode: read n text-formatted values
+        for (size_t i = 0; i < n; ++i) {
+            if (!readTextVal(in, arr[i])) {
+                if (feof(in)) {
+                    CERR << where() << ": "
+                         << "ERROR: end of file during read of an array of size " << n * sizeof(T) << std::endl;
+                }
+                return false;
+            }
+        }
         return true;
     }
 
@@ -543,6 +576,7 @@ vistle::Scalar *EnFile::getFloatArr(FILE *in, size_t n, vistle::Scalar *farr)
             if (farr != nullptr)
                 memcpy(farr, buf, n * len);
         }
+        delete[] buf;
     } else {
         if (sizeof(*farr) == sizeof(float)) {
             getValArrHelper(in, n, farr);
@@ -568,6 +602,16 @@ std::string EnFile::name() const
     return name_;
 }
 
+void EnFile::enableChangingGeometryPerPart(bool changing)
+{
+    m_changingGeometryPerPart = changing;
+}
+
+bool EnFile::hasChangingGeometryPerPart() const
+{
+    return m_changingGeometryPerPart;
+}
+
 // find a part by its part number
 EnPart *EnFile::findPart(const int partNum) const
 {
@@ -581,22 +625,6 @@ EnPart *EnFile::findPart(const int partNum) const
             return &(*partList_)[i];
     }
     return nullptr;
-}
-
-void EnFile::sendPartsToInfo()
-{
-    std::string info;
-    info += EnPart::partInfoHeader();
-
-    int cnt(0);
-    if (partList_ != nullptr) {
-        for (auto pos = partList_->begin(); pos != partList_->end(); pos++) {
-            info += pos->partInfoString(cnt);
-            cnt++;
-        }
-    }
-    info += EnPart::partInfoFooter();
-    ens->sendInfo(info);
 }
 
 bool EnFile::hasPartWithDim(int dim) const
@@ -617,4 +645,63 @@ bool EnFile::hasPartWithDim(int dim) const
 std::string EnFile::where() const
 {
     return name_ + "@" + std::to_string(filePos());
+}
+
+bool EnFile::parsePartLine(const std::string &line, EnPart::GeoMode *mode) const
+{
+    if (!line.starts_with("part")) {
+        if (mode)
+            *mode = EnPart::INVALID;
+        return false;
+    }
+
+    if (!hasChangingGeometryPerPart()) {
+        if (mode)
+            *mode = EnPart::UNSPECIFIED;
+        return true;
+    }
+
+    if (line.find("no_change") != std::string::npos) {
+        if (mode)
+            *mode = EnPart::NO_CHANGE;
+    } else if (line.find("coord_change") != std::string::npos) {
+        if (mode)
+            *mode = EnPart::COORD_CHANGE;
+    } else if (line.find("conn_change") != std::string::npos) {
+        if (mode)
+            *mode = EnPart::CONN_CHANGE;
+    } else {
+        if (mode)
+            *mode = EnPart::INVALID;
+    }
+
+    return true;
+}
+
+// parse an EnSight ID string ("off", "given", "assign", "ignore") into an IdType
+EnFile::IdType EnFile::parseIdType(const std::string &str) const
+{
+    if (str == "off")
+        return OFF;
+    if (str == "given")
+        return GIVEN;
+    if (str == "assign")
+        return ASSIGN;
+    if (str == "ignore")
+        return EN_IGNORE;
+    return UNKNOWN;
+}
+
+// read one text-formatted value from an ASCII EnSight file
+bool EnFile::readTextVal(FILE *in, int &val) const
+{
+    return fscanf(in, "%d ", &val) == 1;
+}
+bool EnFile::readTextVal(FILE *in, unsigned &val) const
+{
+    return fscanf(in, "%u ", &val) == 1;
+}
+bool EnFile::readTextVal(FILE *in, float &val) const
+{
+    return fscanf(in, "%f ", &val) == 1;
 }

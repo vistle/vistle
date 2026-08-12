@@ -21,67 +21,68 @@
 #define CERR std::cerr << "EnPart::" << __func__ << ": "
 
 EnPart::EnPart()
-{}
+{
+    clear();
+}
 
 EnPart::EnPart(int pNum, const std::string &comment): partNum_(pNum), comment_(comment)
-{}
+{
+    clear();
+}
 
 EnPart::EnPart(EnPart &&p)
 : x3d_(p.x3d_)
 , y3d_(p.y3d_)
 , z3d_(p.z3d_)
-, el2d_(p.el2d_)
-, cl2d_(p.cl2d_)
-, el3d_(p.el3d_)
-, cl3d_(p.cl3d_)
-, tl2d_(p.tl2d_)
-, tl3d_(p.tl3d_)
 , startPos_(p.startPos_)
+, geoMode_(p.geoMode_)
 , partNum_(p.partNum_)
 , empty_(p.empty_)
 , comment_(p.comment_)
 , numCoords_(p.numCoords_)
-, numEleRead2d_(p.numEleRead2d_)
-, numEleRead3d_(p.numEleRead3d_)
-, numConnRead2d_(p.numConnRead2d_)
-, numConnRead3d_(p.numConnRead3d_)
 {
     elementList_ = std::move(p.elementList_);
-    numList_ = std::move(p.numList_);
-    numList2d_ = std::move(p.numList2d_);
-    numList3d_ = std::move(p.numList3d_);
+    sumNumList_ = std::move(p.sumNumList_);
+
+    for (int d = 0; d < 4; ++d) {
+        numList_[d] = std::move(p.numList_[d]);
+        numEleRead_[d] = std::move(p.numEleRead_[d]);
+        numConnRead_[d] = std::move(p.numConnRead_[d]);
+
+        el_[d] = std::move(p.el_[d]);
+        cl_[d] = std::move(p.cl_[d]);
+        tl_[d] = std::move(p.tl_[d]);
+    }
 }
 
 EnPart::EnPart(const EnPart &p)
 : x3d_(p.x3d_)
 , y3d_(p.y3d_)
 , z3d_(p.z3d_)
-, el2d_(p.el2d_)
-, cl2d_(p.cl2d_)
-, el3d_(p.el3d_)
-, cl3d_(p.cl3d_)
-, tl2d_(p.tl2d_)
-, tl3d_(p.tl3d_)
 , startPos_(p.startPos_)
+, geoMode_(p.geoMode_)
 , partNum_(p.partNum_)
 , empty_(p.empty_)
 , comment_(p.comment_)
 , numCoords_(p.numCoords_)
-, numEleRead2d_(p.numEleRead2d_)
-, numEleRead3d_(p.numEleRead3d_)
-, numConnRead2d_(p.numConnRead2d_)
-, numConnRead3d_(p.numConnRead3d_)
 {
     elementList_ = p.elementList_;
-    numList_ = p.numList_;
-    numList2d_ = p.numList2d_;
-    numList3d_ = p.numList3d_;
+    sumNumList_ = p.sumNumList_;
+
+    for (int d = 0; d < 4; ++d) {
+        numList_[d] = p.numList_[d];
+        numEleRead_[d] = p.numEleRead_[d];
+        numConnRead_[d] = p.numConnRead_[d];
+
+        el_[d] = p.el_[d];
+        cl_[d] = p.cl_[d];
+        tl_[d] = p.tl_[d];
+    }
 }
 
 EnPart::~EnPart()
 {
-    clearElements();
-    clearFields();
+    clear();
 }
 
 const EnPart &EnPart::operator=(const EnPart &p)
@@ -90,33 +91,42 @@ const EnPart &EnPart::operator=(const EnPart &p)
         return *this;
 
     startPos_ = p.startPos_;
+    geoMode_ = p.geoMode_;
     partNum_ = p.partNum_;
     empty_ = p.empty_;
     comment_ = p.comment_;
     numCoords_ = p.numCoords_;
-    numEleRead2d_ = p.numEleRead2d_;
-    numConnRead2d_ = p.numConnRead2d_;
-    numEleRead3d_ = p.numEleRead3d_;
-    numConnRead3d_ = p.numConnRead3d_;
-
-    el2d_ = p.el2d_;
-    cl2d_ = p.cl2d_;
-    tl2d_ = p.tl2d_;
-
-    el3d_ = p.el3d_;
-    cl3d_ = p.cl3d_;
-    tl3d_ = p.tl3d_;
 
     x3d_ = p.x3d_;
     y3d_ = p.y3d_;
     z3d_ = p.z3d_;
 
     elementList_ = p.elementList_;
-    numList_ = p.numList_;
-    numList2d_ = p.numList2d_;
-    numList3d_ = p.numList3d_;
+    sumNumList_ = p.sumNumList_;
+
+    for (int d = 0; d < 4; ++d) {
+        numList_[d] = p.numList_[d];
+        numEleRead_[d] = p.numEleRead_[d];
+        numConnRead_[d] = p.numConnRead_[d];
+
+        el_[d] = p.el_[d];
+        cl_[d] = p.cl_[d];
+        tl_[d] = p.tl_[d];
+    }
 
     return *this;
+}
+
+bool EnPart::check() const
+{
+    auto numEle = getTotNumEle();
+    size_t num = 0;
+    for (auto t: {EnElement::bar2, EnElement::bar3, EnElement::tria3, EnElement::tria6, EnElement::quad4,
+                  EnElement::quad8, EnElement::hexa8, EnElement::hexa20, EnElement::pyramid5, EnElement::pyramid13,
+                  EnElement::tetra4, EnElement::tetra10, EnElement::penta6, EnElement::penta15}) {
+        num += getElementNum(t);
+    }
+    return numEle == num;
 }
 
 void EnPart::setStartPos(ssize_t pos, const std::string &name)
@@ -142,12 +152,9 @@ bool EnPart::isEmpty() const
 
 unsigned EnPart::getDim() const
 {
-    if (!numList3d_.empty()) {
-        return 3;
-    }
-
-    if (!numList2d_.empty()) {
-        return 2;
+    for (int d = 3; d >= 0; --d) {
+        if (!numList_[d].empty())
+            return d;
     }
 
     if (isEmpty()) {
@@ -159,15 +166,17 @@ unsigned EnPart::getDim() const
 
 bool EnPart::hasDim(int dim) const
 {
-    if (dim == 3 && !numList3d_.empty()) {
+    if (!numList_[dim].empty())
         return true;
+
+    // if completely empty, then it might change for later timesteps
+    for (int d = 0; d < 4; ++d) {
+        if (!numList_[d].empty()) {
+            return false;
+        }
     }
 
-    if (dim == 2 && !numList2d_.empty()) {
-        return true;
-    }
-
-    return false;
+    return true;
 }
 
 void EnPart::setComment(const std::string &c)
@@ -196,14 +205,9 @@ void EnPart::addElement(EnElement &&ele, const size_t anz, bool complete)
 
         empty_ = false;
         elementList_.emplace_back(std::move(ele));
-        numList_.push_back(anz);
+        sumNumList_.push_back(anz);
 
-        if (ele.getDim() == EnElement::D2) {
-            numList2d_.push_back(anz);
-        }
-        if (ele.getDim() == EnElement::D3) {
-            numList3d_.push_back(anz);
-        }
+        numList_[ele.getDim()].push_back(anz);
     }
 }
 
@@ -212,30 +216,61 @@ void EnPart::clearElements()
     empty_ = true;
 
     elementList_.clear();
-    numList_.clear();
-    numList2d_.clear();
-    numList3d_.clear();
+    sumNumList_.clear();
+
+    for (int d = 0; d < 4; ++d) {
+        numList_[d].clear();
+        el_[d].reset();
+        el_[d].construct();
+        el_[d]->push_back(0);
+        cl_[d].reset();
+        cl_[d].construct();
+        tl_[d].reset();
+        tl_[d].construct();
+    }
 }
 
 void EnPart::print(std::ostream &os) const
 {
     os << "PART " << partNum_ << std::endl;
+    switch (geoMode_) {
+    case UNSPECIFIED:
+        os << "   UNSPECIFIED" << std::endl;
+        break;
+    case NO_CHANGE:
+        os << "   NO CHANGE" << std::endl;
+        break;
+    case COORD_CHANGE:
+        os << "   COORD_CHANGE" << std::endl;
+        break;
+    case CONN_CHANGE:
+        os << "   CONN_CHANGE" << std::endl;
+        break;
+    default:
+        break;
+    }
     os << "   COMMENT: " << comment_ << std::endl;
 
     for (size_t i = 0; i < elementList_.size(); ++i) {
-        os << "   " << numList_[i] << " elements of type " << elementList_[i].getCovType() << "/"
+        os << "   " << sumNumList_[i] << " elements of type " << elementList_[i].getCovType() << "/"
            << elementList_[i].getEnTypeStr() << "/" << elementList_[i].getEnType() << std::endl;
     }
 
     os << "   numCoords " << numCoords_ << std::endl;
 
+    for (int d = 0; d < 4; ++d) {
+        os << "el" << d << " " << (el_[d] ? "yes" : "NO ");
+        os << "    ";
+        os << "cl" << d << " " << (cl_[d] ? "yes" : "NO ");
+        os << std::endl;
+    }
+
+    os << "   #el: 3d " << numEleRead_[3] << "  2d " << numEleRead_[2] << "  1d " << numEleRead_[1] << "  0d"
+       << numEleRead_[0] << std::endl;
+    os << "   #cl: 3d " << numConnRead_[3] << "  2d " << numConnRead_[2] << "  1d " << numConnRead_[1] << "  0d"
+       << numConnRead_[0] << std::endl;
+
 #define p(a) "  " << #a << ":" << (a##_ ? "yes" : "NO ")
-    os << p(el2d) << p(cl2d) << std::endl;
-    os << p(el3d) << p(cl3d) << std::endl;
-
-    os << "   numEleRead3d  " << numEleRead3d_ << "   numEleRead2d  " << numEleRead2d_ << std::endl;
-    os << "   numConnRead3d " << numConnRead3d_ << "   numConnRead2d " << numConnRead2d_ << std::endl;
-
     os << p(x3d) << p(y3d) << p(z3d) << std::endl;
 #undef p
 
@@ -279,7 +314,7 @@ size_t EnPart::getElementNum(EnElement::Type type) const
 {
     for (size_t i = 0; i < elementList_.size(); ++i) {
         if (elementList_[i].getEnType() == type) {
-            return numList_[i];
+            return sumNumList_[i];
         }
     }
     return 0;
@@ -289,57 +324,20 @@ size_t EnPart::getElementNum(const std::string &name) const
 {
     for (size_t i = 0; i < elementList_.size(); ++i) {
         if (elementList_[i].getEnTypeStr() == name) {
-            return numList_[i];
+            return sumNumList_[i];
         }
     }
     return 0;
 }
 
-size_t EnPart::getTotNumEle() const
+size_t EnPart::getTotNumEle(int dim) const
 {
-    return std::accumulate(numList_.begin(), numList_.end(), 0);
-}
-
-size_t EnPart::getTotNumEle2d() const
-{
-    return std::accumulate(numList2d_.begin(), numList2d_.end(), 0);
-}
-
-size_t EnPart::getTotNumEle3d() const
-{
-    return std::accumulate(numList3d_.begin(), numList3d_.end(), 0);
-}
-
-size_t EnPart::getTotNumCorners2d()
-    const // does not work with nsided since that element type does not have a specific number of corners
-{
-    size_t ret = 0, anz = 0, nc = 0;
-    auto it(numList2d_.begin());
-    auto itEle(elementList_.begin());
-    while (it != numList2d_.end()) {
-        anz = *it;
-        nc = itEle->getNumberOfCorners();
-        ret += nc * anz;
-        ++it;
-        ++itEle;
+    if (dim < 0) {
+        return std::accumulate(sumNumList_.begin(), sumNumList_.end(), 0);
+    } else {
+        assert(dim < 4);
+        return std::accumulate(numList_[dim].begin(), numList_[dim].end(), 0);
     }
-    return ret;
-}
-
-size_t EnPart::getTotNumCorners3d()
-    const // does not work with nfaced since that element type does not have a specific number of corners
-{
-    size_t ret = 0, anz = 0, nc = 0;
-    auto it(numList3d_.begin());
-    auto itEle(elementList_.begin());
-    while (it != numList3d_.end()) {
-        anz = *it;
-        nc = itEle->getNumberOfCorners();
-        ret += nc * anz;
-        ++it;
-        ++itEle;
-    }
-    return ret;
 }
 
 size_t EnPart::getNumEle() const
@@ -361,10 +359,11 @@ std::string EnPart::partInfoHeader()
     str.clear();
     str << "<th " << cellStyle << " align=\"right\">";
     auto sepr = str.str();
-    header += "<table><tr>" + sepr + "Part#" + sepr + "#Elements" + sep + "Dim" + sep + "Part Description";
+    header += "<table><tr>" + sepr + "Block#" + sepr + "Part#" + sepr + "#Elements" + sepr + "Dim" + sep + "Flags" +
+              sep + "Description</tr>";
 #else
-    header += "Part#  | Dim   | #Elements | Part Description\n";
-    header += "---------------------------------------------------------------------";
+    header += "Block#  | Part#  | #Elements | Dim | Flags | Description\n";
+    header += "---------------------------------------------------------------------\n";
 #endif
     return header;
 }
@@ -380,43 +379,82 @@ std::string EnPart::partInfoFooter()
     return footer;
 }
 
-std::string EnPart::partInfoString(int ref) const
+std::string EnPart::partInfoString(int block) const
 {
     std::string infoStr;
-#ifdef HTML
-    std::stringstream str;
-    str << "<td " << cellStyle << " align=\"left\">";
-    auto sep = str.str();
-    str.clear();
-    str << "<td " << cellStyle << " align=\"right\">";
-    auto sepr = str.str();
-    infoStr = "<tr>";
-    infoStr += sepr;
-#else
     std::string sep = " | ";
+    std::string sepr = sep;
+    bool html = true;
+    if (block < 0)
+        html = false;
+#ifdef HTML
+    if (html) {
+        std::stringstream str;
+        str << "<td " << cellStyle << " align=\"left\">";
+        sep = str.str();
+        str.clear();
+        str << "<td " << cellStyle << " align=\"right\">";
+        sepr = str.str();
+        infoStr = "<tr>";
+        infoStr += sepr;
+    }
 #endif
 
-    // ref No.
     char nStr[32];
-    snprintf(nStr, sizeof(nStr), "%6d", ref);
+    if (block >= 0) {
+        snprintf(nStr, sizeof(nStr), "%6d", block);
+        infoStr += nStr;
+        infoStr += sepr;
+    }
+
+    // part No.
+    snprintf(nStr, sizeof(nStr), "%6d", partNum_);
     infoStr += nStr;
 
     infoStr += sepr;
     // total number of elements
     size_t nTot(0);
     for (auto j = 0; j < elementList_.size(); ++j)
-        nTot += numList_[j];
+        nTot += sumNumList_[j];
     snprintf(nStr, sizeof(nStr), "%8zu", nTot);
     infoStr += nStr;
 
-    infoStr += sep;
+    infoStr += sepr;
     // dimensionality
-    if ((numEleRead2d_ > 0) && (numEleRead3d_ > 0))
-        infoStr += "2D/3D";
-    else if (numEleRead2d_ > 0)
-        infoStr += "2D   ";
-    else if (numEleRead3d_ > 0)
-        infoStr += "3D   ";
+    std::string dims;
+    for (int d = 0; d < 4; ++d) {
+        if (numEleRead_[d] > 0) {
+            if (!dims.empty())
+                dims += "/";
+            dims += std::to_string(d);
+        }
+    }
+    if (!dims.empty())
+        dims += "D";
+    infoStr += dims;
+
+    infoStr += sep;
+    // flags
+    switch (geoMode_) {
+    case INVALID:
+        //infoStr += "invalid";
+        break;
+    case UNSPECIFIED:
+        //infoStr += "unspecified";
+        break;
+    case NO_CHANGE:
+        infoStr += "no_change";
+        break;
+    case COORD_CHANGE:
+        infoStr += "coord_change";
+        break;
+    case CONN_CHANGE:
+        infoStr += "conn_change";
+        break;
+    default:
+        infoStr += "unknown";
+        break;
+    }
 
     infoStr += sep;
     // comment
@@ -426,20 +464,30 @@ std::string EnPart::partInfoString(int ref) const
     return infoStr;
 }
 
-size_t EnPart::getTotNumberOfCorners() const
-{
-    size_t numCorn(0);
-    for (size_t i = 0; i < elementList_.size(); ++i) {
-        auto nc = elementList_[i].getNumberOfCorners();
-        nc *= numList_[i];
-        numCorn += nc;
-    }
-    return numCorn;
-}
-
-void EnPart::setNumCoords(const size_t n)
+void EnPart::setNumCoords(const ssize_t n)
 {
     numCoords_ = n;
+    if (n < 0) {
+        x3d_.reset();
+        y3d_.reset();
+        z3d_.reset();
+        return;
+    }
+
+    if (x3d_.valid())
+        x3d_->resize(n);
+    else
+        x3d_.construct(n);
+
+    if (y3d_.valid())
+        y3d_->resize(n);
+    else
+        y3d_.construct(n);
+
+    if (z3d_.valid())
+        z3d_->resize(n);
+    else
+        z3d_.construct(n);
 }
 
 size_t EnPart::numCoords() const
@@ -447,57 +495,37 @@ size_t EnPart::numCoords() const
     return numCoords_;
 }
 
-size_t EnPart::numEleRead2d() const
+size_t EnPart::numEleRead(int dim) const
 {
-    return numEleRead2d_;
+    return numEleRead_[dim];
 }
 
-size_t EnPart::numEleRead3d() const
+void EnPart::setNumEleRead(int dim, size_t n)
 {
-    return numEleRead3d_;
+    numEleRead_[dim] = n;
 }
 
-void EnPart::setNumEleRead2d(size_t n)
+size_t EnPart::numConnRead(int dim) const
 {
-    numEleRead2d_ = n;
+    return numConnRead_[dim];
 }
 
-void EnPart::setNumEleRead3d(size_t n)
+void EnPart::setNumConnRead(int dim, size_t n)
 {
-    numEleRead3d_ = n;
+    numConnRead_[dim] = n;
 }
 
-size_t EnPart::numConnRead2d() const
+void EnPart::clear()
 {
-    return numConnRead2d_;
+    clearElements();
+    clearCoords();
 }
 
-size_t EnPart::numConnRead3d() const
-{
-    return numConnRead3d_;
-}
-
-void EnPart::setNumConnRead2d(size_t n)
-{
-    numConnRead2d_ = n;
-}
-
-void EnPart::setNumConnRead3d(size_t n)
-{
-    numConnRead3d_ = n;
-}
-
-void EnPart::clearFields()
+void EnPart::clearCoords()
 {
     x3d_.reset();
     y3d_.reset();
     z3d_.reset();
-    el2d_.reset();
-    cl2d_.reset();
-    tl2d_.reset();
-    el3d_.reset();
-    cl3d_.reset();
-    tl3d_.reset();
 }
 
 EnPart *findPart(const PartList &pl, const int partNum)
@@ -525,4 +553,40 @@ bool hasPartWithDim(const PartList &pl, int dim)
     }
 
     return false;
+}
+
+EnPart::GeoMode EnPart::geoMode() const
+{
+    return geoMode_;
+}
+
+void EnPart::setGeoMode(GeoMode mode)
+{
+    geoMode_ = mode;
+}
+
+void EnPart::copyConn(const EnPart &refPart)
+{
+    empty_ = refPart.empty_;
+
+    elementList_ = refPart.elementList_;
+    sumNumList_ = refPart.sumNumList_;
+
+    for (int d = 0; d < 4; ++d) {
+        numList_[d] = refPart.numList_[d];
+        numEleRead_[d] = refPart.numEleRead_[d];
+        numConnRead_[d] = refPart.numConnRead_[d];
+
+        el_[d] = refPart.el_[d];
+        cl_[d] = refPart.cl_[d];
+        tl_[d] = refPart.tl_[d];
+    }
+}
+
+void EnPart::copyCoord(const EnPart &refPart)
+{
+    numCoords_ = refPart.numCoords_;
+    x3d_ = refPart.x3d_;
+    y3d_ = refPart.y3d_;
+    z3d_ = refPart.z3d_;
 }

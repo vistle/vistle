@@ -20,10 +20,9 @@ CaseParserDriver::CaseParserDriver(const std::string &sFileName)
 {
     isOpen_ = false;
 
-    inputFile_ = new std::ifstream(sFileName.c_str());
+    inputFile_ = std::make_unique<std::ifstream>(sFileName);
     if (!inputFile_->is_open()) {
-        delete inputFile_;
-        inputFile_ = nullptr;
+        inputFile_.reset();
         std::stringstream str;
         str << "could not open " << sFileName << " for reading";
         lastError_ = str.str();
@@ -33,8 +32,7 @@ CaseParserDriver::CaseParserDriver(const std::string &sFileName)
 
     inputFile_->peek(); // try to exclude directories
     if (inputFile_->fail()) {
-        delete inputFile_;
-        inputFile_ = nullptr;
+        inputFile_.reset();
         std::stringstream str;
         str << "could not open " << sFileName << " for reading - fail";
         lastError_ = str.str();
@@ -44,19 +42,10 @@ CaseParserDriver::CaseParserDriver(const std::string &sFileName)
 
     isOpen_ = true;
 
-    lexer_ = new CaseLexer(inputFile_);
-    lexer_->set_debug(1);
-    //lexer_->set_debug( 0 );
+    lexer_ = std::make_unique<CaseLexer>(inputFile_.get());
 }
 
-CaseParserDriver::~CaseParserDriver()
-{
-    delete lexer_;
-    lexer_ = nullptr;
-
-    delete inputFile_;
-    inputFile_ = nullptr;
-}
+CaseParserDriver::~CaseParserDriver() = default;
 
 std::string CaseParserDriver::lastError() const
 {

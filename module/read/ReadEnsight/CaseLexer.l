@@ -251,6 +251,10 @@ return CaseParser::token::FORMAT_SEC;
     return CaseParser::token::QUOTED;
 }
 
+<MULTILINE_VALUES>\n[\t\r\f ]*\n {
+    BEGIN TOKENS;
+}
+
 <*>"#"[^\n]* {
     // suppress comments - from # until end of line
 }

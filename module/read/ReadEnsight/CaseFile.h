@@ -37,7 +37,7 @@ class CaseFile {
     friend std::ostream &operator<<(std::ostream &os, const CaseFile &cf);
 
 public:
-    enum { v5, v6, gold };
+    enum { unknown, v5, v6, gold };
     enum BinType { CBIN, FBIN, NOBIN, UNKNOWN };
 
     /// default CONSTRUCTOR
@@ -58,6 +58,8 @@ public:
     void setBinType(BinType bt);
     void setConnectivityFileIndex(int idx);
     int getConnectivityFileIndex() const;
+    void enableChangingGeometryPerPart(bool changing);
+    bool hasChangingGeometryPerPart() const;
     BinType getBinType() const;
 
     // set the full name of the case file
@@ -95,21 +97,22 @@ public:
     std::vector<std::string> makeFileNames(const std::string &baseName, const TimeSet *ts) const;
 
 private:
-    bool empty_;
+    bool empty_ = true;
     std::string geoFileNm_;
     std::string mgeoFileNm_;
     DataMap dataIts_;
-    int version_;
+    int version_ = unknown;
     std::string fullFilename_;
     std::string dir_;
     std::string projectNm_;
     std::map<int, TimeSet *> timeSets_;
     std::map<std::string, int> fieldMap_;
-    int geoTsIdx_; // time set index of geometry
+    int geoTsIdx_ = -1; // time set index of geometry
     BinType binType_ = UNKNOWN;
     int connectivityFileIndex_ = -1; // index of the connectivity file, -1: all time steps
     std::set<int> usedTimeSets_;
     TimeSet *lastTimeSet_ = nullptr;
+    bool changingGeometryPerPart = false;
 };
 
 // simple data class to store time step information

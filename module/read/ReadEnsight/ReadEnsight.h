@@ -12,11 +12,14 @@
 #include <vector>
 
 class ReadEnsight: public vistle::Reader {
-    static const int NumFields = 2;
-    static const int NumVolVert = NumFields;
-    static const int NumVolElem = NumFields;
+    static const int NumVolVert = 2;
+    static const int NumVolElem = 2;
     static const int NumSurfVert = 1;
     static const int NumSurfElem = 1;
+    static const int NumCurveVert = 1;
+    static const int NumCurveElem = 1;
+    static const int NumPointVert = 1;
+    static const int NumPointElem = 1;
 
 public:
     ReadEnsight(const std::string &name, int moduleID, mpi::communicator comm);
@@ -35,8 +38,15 @@ public:
     bool byteSwap() const;
 
 private:
+    // collect selected and connected fields of one port/choice group
+    void collectFields(vistle::Port **ports, vistle::StringParameter **choices, int n,
+                       std::vector<std::pair<vistle::Port *, std::string>> &fields);
+    // set choices and read-only state of one choice group
+    void setFieldChoices(vistle::StringParameter **choices, int n, const std::vector<std::string> &cs, bool readOnly);
+
     // write a list of parts to the map editor (info channel)
     bool createPartlists(int timestep, bool onlyGeo = false);
+    void sendPartsToInfo(const PartList &partList) const;
     bool makeGeoFiles();
 
     std::vector<std::pair<vistle::Port *, std::string>> getActiveFields(EnFile::ReadType what);
@@ -57,11 +67,20 @@ private:
     vistle::StringParameter *m_surf_vert_choice[NumSurfVert];
     vistle::Port *m_surf_elem[NumSurfElem];
     vistle::StringParameter *m_surf_elem_choice[NumSurfElem];
+    vistle::Port *m_curve = nullptr;
+    vistle::Port *m_curve_vert[NumCurveVert];
+    vistle::StringParameter *m_curve_vert_choice[NumCurveVert];
+    vistle::Port *m_curve_elem[NumCurveElem];
+    vistle::StringParameter *m_curve_elem_choice[NumCurveElem];
+    vistle::Port *m_points = nullptr;
+    vistle::Port *m_point_vert[NumPointVert];
+    vistle::StringParameter *m_point_vert_choice[NumPointVert];
+    vistle::Port *m_point_elem[NumPointElem];
+    vistle::StringParameter *m_point_elem_choice[NumPointElem];
     CaseFile m_case;
     vistle::coRestraint m_selectedParts;
 
     std::vector<std::string> m_geoFiles;
-    std::vector<std::string> m_fieldFiles[NumFields];
     std::map<int, vistle::Object::const_ptr> m_constantGeo;
 };
 #endif

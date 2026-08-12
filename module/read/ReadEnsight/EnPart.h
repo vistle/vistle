@@ -13,14 +13,12 @@
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // (C) 2005 by VISENSO GmbH
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-//
-// Changes:
-//
 
 #include "EnElement.h"
 
 #include <vistle/core/object.h>
 
+#include <array>
 #include <vector>
 #include <string>
 #include <ostream>
@@ -39,6 +37,8 @@ class EnPart {
     friend class boost::serialization::access;
 
 public:
+    enum GeoMode { INVALID, UNSPECIFIED, NO_CHANGE, COORD_CHANGE, CONN_CHANGE };
+
     EnPart();
     EnPart(int pNum, const std::string &comment = "");
     EnPart(const EnPart &p);
@@ -47,6 +47,9 @@ public:
 
     const EnPart &operator=(const EnPart &p);
     const EnPart &operator=(EnPart &&p);
+
+    bool check() const;
+    void clear();
 
     // add element and number of elements to part data
     void addElement(EnElement &&ele, size_t anz, bool complete = true);
@@ -63,7 +66,7 @@ public:
     static std::string partInfoHeader();
     static std::string partInfoFooter();
     // returns a string formatted according to partInfoHeader
-    std::string partInfoString(int ref = 0) const;
+    std::string partInfoString(int block = -1) const;
 
     void setPartNum(int partNum);
     // returns part number
@@ -84,19 +87,8 @@ public:
     size_t getElementNum(const std::string &name) const;
     size_t getElementNum(EnElement::Type type) const;
 
-    // return the total number of corners in *this
-    size_t getTotNumberOfCorners() const;
-    size_t getTotNumCorners2d() const;
-    size_t getTotNumCorners3d() const;
-
     // return the total number of elements contained in *this
-    size_t getTotNumEle() const;
-    size_t getTotNumEle2d() const;
-    size_t getTotNumEle3d() const;
-
-    // return the total number of elements contained in *this
-    // havig a dimensionality dim
-    size_t getTotNumEle(int dim);
+    size_t getTotNumEle(int dim = -1) const;
 
     // return the number of different element-types contained in *this
     size_t getNumEle() const;
@@ -106,62 +98,57 @@ public:
     std::string comment() const;
 
     // set number of Coords - needed for GOLD
-    void setNumCoords(const size_t n);
+    void setNumCoords(const ssize_t n);
 
     size_t numCoords() const;
 
-    size_t numEleRead2d() const;
-    size_t numEleRead3d() const;
-    void setNumEleRead2d(size_t n);
-    void setNumEleRead3d(size_t n);
-
-    size_t numConnRead2d() const;
-    size_t numConnRead3d() const;
-    void setNumConnRead2d(size_t n);
-    void setNumConnRead3d(size_t n);
+    size_t numEleRead(int dim) const;
+    void setNumEleRead(int dim, size_t n);
+    size_t numConnRead(int dim) const;
+    void setNumConnRead(int dim, size_t n);
 
     // delete all fields (see below) and reset pointers to nullptr
-    void clearFields();
+    void clearCoords();
+
+    GeoMode geoMode() const;
+    void setGeoMode(GeoMode mode);
+    void copyConn(const EnPart &refPart);
+    void copyCoord(const EnPart &refPart);
 
     // these pointers have to be used with care
     vistle::ShmVector<vistle::Scalar> x3d_, y3d_, z3d_;
-    vistle::ShmVector<vistle::Index> el2d_, cl2d_;
-    vistle::ShmVector<vistle::Index> el3d_, cl3d_;
-    vistle::ShmVector<vistle::Byte> tl2d_, tl3d_;
+    std::array<vistle::ShmVector<vistle::Index>, 4> el_;
+    std::array<vistle::ShmVector<vistle::Index>, 4> cl_;
+    std::array<vistle::ShmVector<vistle::Byte>, 4> tl_;
 
 private:
     std::map<std::string, ssize_t> startPos_;
+    GeoMode geoMode_ = INVALID;
     int partNum_ = -1;
     std::vector<EnElement> elementList_;
-    std::vector<size_t> numList_;
-    std::vector<size_t> numList2d_;
-    std::vector<size_t> numList3d_;
+    std::vector<size_t> sumNumList_;
+    std::array<std::vector<size_t>, 4> numList_;
     bool empty_ = true;
     std::string comment_;
     // if true, part will be used to build up grid and mapped data
-    size_t numCoords_ = 0;
+    ssize_t numCoords_ = 0;
 
-    size_t numEleRead2d_ = 0;
-    size_t numEleRead3d_ = 0;
-    size_t numConnRead2d_ = 0;
-    size_t numConnRead3d_ = 0;
+    std::array<size_t, 4> numEleRead_ = {};
+    std::array<size_t, 4> numConnRead_ = {};
 
     template<class Archive>
     void serialize(Archive &ar, const unsigned int version)
     {
         ar &startPos_;
+        ar &geoMode_;
         ar &partNum_;
         ar &elementList_;
         ar &numList_;
-        ar &numList2d_;
-        ar &numList3d_;
         ar &empty_;
         ar &comment_;
         ar &numCoords_;
-        ar &numEleRead2d_;
-        ar &numEleRead3d_;
-        ar &numConnRead2d_;
-        ar &numConnRead3d_;
+        ar &numEleRead_;
+        ar &numConnRead_;
     }
 };
 

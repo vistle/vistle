@@ -23,27 +23,22 @@ set(HEADERS
     CaseFile.h
     CaseLexer.h
     CaseParserDriver.h
-    DataGoldAscii.h
-    DataGoldBin.h
+    DataGold.h
     DataItem.h
     EnElement.h
     EnFile.h
     EnPart.h
-    GeoGoldAscii.h
-    GeoGoldBin.h
+    GeoGold.h
     ReadEnsight.h)
 
 set(SOURCES
     CaseFile.cpp
     CaseParserDriver.cpp
-    DataGoldAscii.cpp
-    DataGoldBin.cpp
-    DataItem.cpp
+    DataGold.cpp
     EnElement.cpp
     EnFile.cpp
     EnPart.cpp
-    GeoGoldAscii.cpp
-    GeoGoldBin.cpp
+    GeoGold.cpp
     ReadEnsight.cpp)
 
 set(EXTRASOURCES CaseParser.y CaseLexer.l)

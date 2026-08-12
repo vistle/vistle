@@ -6,14 +6,14 @@
 // VirCinity IT Consulting (C)
 // CaseLexer.l
 //
-// Header for lexographic analysis for EnSight geometry & data files
+// Header for lexographic analysis for EnSight case files
 //
 //
 // Creation date: 20.05.02
 //============================================================
 */
 
-// include standard Flex header file, but use First as prefix, not yy.
+// include standard Flex header file, but use Case as prefix, not yy.
 #ifndef yyFlexLexer
 #define yyFlexLexer CaseFlexLexer
 #include <FlexLexer.h>

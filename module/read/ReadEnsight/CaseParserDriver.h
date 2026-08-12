@@ -32,8 +32,8 @@ public:
     void setState(int state); // as controlled by lexer start conditions, for error reporting
 
 private:
-    std::ifstream *inputFile_ = nullptr;
-    CaseLexer *lexer_ = nullptr;
+    std::unique_ptr<std::ifstream> inputFile_;
+    std::unique_ptr<CaseLexer> lexer_;
     CaseFile caseFile_;
     DataItem *actIt_ = nullptr;
     TimeSet *actTs_ = nullptr;

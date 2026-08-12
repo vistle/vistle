@@ -12,7 +12,7 @@ void byteSwap(T &t)
 template<typename T>
 void byteSwap(T *t, size_t n)
 {
-    for (size_t i = 0; i < n; ++n) {
+    for (size_t i = 0; i < n; ++i) {
         *t = vistle::byte_swap<vistle::little_endian, vistle::big_endian, T>(*t);
         ++t;
     }

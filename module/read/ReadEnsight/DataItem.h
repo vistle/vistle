@@ -23,11 +23,8 @@ public:
     enum Type { scalar, vector, tensor };
     enum Mapping { PerCase, PerNode, PerElement };
 
-    // default CONSTRUCTOR
-    DataItem();
-
-    // DESTRUCTOR
-    virtual ~DataItem();
+    DataItem() = default;
+    ~DataItem() = default;
 
     void setType(Type tp) { type_ = tp; }
     void setFileName(const std::string &fn) { fileName_ = fn; }
@@ -47,11 +44,11 @@ public:
     int getTimeSet() const { return timeSet_; }
 
 private:
-    Type type_; // scalar vector tensor
+    Type type_ = scalar; // scalar vector tensor
     std::string fileName_;
     std::string desc_;
-    bool measured_;
-    Mapping mapping_;
+    bool measured_ = false;
+    Mapping mapping_ = PerCase;
     int timeSet_ = -1;
 };
 #endif

@@ -151,7 +151,7 @@ ts_fn_start: FN_ST_NUM INTEGER
 {
     int fs($2);
     driver.tsStart_ = fs;
-    std::cerr << " FILENAME START " << fs;
+    std::cerr << " FILENAME START " << fs << " ";
 }
 
 ts_fn_incr: FN_INCR INTEGER
@@ -268,6 +268,14 @@ type_spec: TYPE ENSIGHT
 
 
 coord_change_spec:
+{
+    std::cerr << "model: no geo change spec" << std::endl;
+}
+| CH_GEOM_PER_PART
+{
+std::cerr << "model: geo per part" << std::endl;
+    driver.caseFile_.enableChangingGeometryPerPart(true);
+}
 | CH_CO_ONLY
 {
     driver.caseFile_.setConnectivityFileIndex(0);
@@ -282,6 +290,10 @@ model_spec: MODEL string coord_change_spec
     std::string ensight_geofile($2);
     //std::cerr << "  ENSIGHT MODEL " << ensight_geofile << found\n";
     driver.caseFile_.setGeoFileNm( ensight_geofile );
+
+    // we may find lines like: model bla_geo.**** in this case we set the timeset to 1
+    //std::cerr << "  ENSIGHT MODEL " << ensight_geofile << " TIMESET 1 assumed\n";
+    //driver.caseFile_.setGeoTsIdx(1);
 }
 | MODEL INTEGER string coord_change_spec
 {
@@ -298,14 +310,6 @@ model_spec: MODEL string coord_change_spec
     int ts($2);
     driver.caseFile_.setGeoTsIdx(ts);
     //std::cerr << "  ENSIGHT MODEL <" << ensight_geofile << "> TIMESET <" << s << "> found\n";
-}
-// we may find lines like: model bla_geo.**** in this case we set the timeset to 1
-| MODEL string coord_change_spec
-{
-    std::string ensight_geofile($2);
-    driver.caseFile_.setGeoFileNm( ensight_geofile );
-    driver.caseFile_.setGeoTsIdx(1);
-    std::cerr << "  ENSIGHT MODEL " << ensight_geofile << " TIMESET 1 found\n";
 }
 | MEASURED string coord_change_spec
 {

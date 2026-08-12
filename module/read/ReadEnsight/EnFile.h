@@ -4,18 +4,14 @@
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // CLASS  EnFile
 //
-// Description: EnSight file representation ( base class)
+// Description: EnSight file representation (base class)
 //
 // Initial version: 01.06.2002 by RM
 //
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // (C) 2001 by VirCinity IT Consulting
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-//
-// Changes:
-//
 
-#include "EnElement.h"
 #include "EnPart.h"
 #include "CaseFile.h"
 
@@ -33,22 +29,17 @@ public:
     operator FILE *() const { return get(); }
 };
 
-const unsigned int lineLen(250);
-
 //
-// base class for EnSight geometry files
-// provide general methods for reading geometry files
+// base class for EnSight geometry and data files
+// provide general methods for reading geometry and data files
 //
 class EnFile {
 public:
-    enum DimType { DIM1D, DIM2D, DIM3D, GEOMETRY };
     enum IdType { UNKNOWN = -1, OFF, GIVEN, ASSIGN, EN_IGNORE };
-    enum ReadType { NOTHING, SURFACE, VOLUME, VOLUME_AND_SURFACE };
+    // bit flags selecting which element dimensionalities are of interest
+    enum ReadType : int { NOTHING = 0, SURFACE = 1, VOLUME = 2, CURVE = 4, POINT = 8, ALL = 0xF };
 
-    EnFile(ReadEnsight *mod, const std::string &name, const CaseFile::BinType binType = CaseFile::UNKNOWN);
-
-    EnFile(ReadEnsight *mod, const std::string &name, const int dim,
-           const CaseFile::BinType binType = CaseFile::UNKNOWN);
+    EnFile(ReadEnsight *mod, const std::string &name, int dim = 1, const CaseFile::BinType binType = CaseFile::UNKNOWN);
 
     virtual ~EnFile();
 
@@ -56,20 +47,15 @@ public:
 
     bool mayBeCorrupt() const;
 
-    // check for binary file
+    // check for file type (ASCII, C binary, Fortran binary)
     CaseFile::BinType binType();
 
     // read the file
-    virtual vistle::Object::ptr read(int timestep, int block, EnPart *part) = 0;
-
-    // Set the master part list. This is the list of all part in the geometry file
-    // or the geo. file for the first timestep. This means we must still check the
-    // length of the connection table
+    virtual vistle::Object::ptr read(int timestep, int block, EnPart *part, const EnPart *refPart = nullptr) = 0;
 
     virtual bool parseForParts() = 0;
 
     void setPartList(PartList *p);
-    void sendPartsToInfo();
 
     bool hasPartWithDim(int dim) const;
 
@@ -84,6 +70,9 @@ public:
                                                   int timestep);
 
     std::string name() const;
+
+    void enableChangingGeometryPerPart(bool changing);
+    bool hasChangingGeometryPerPart() const;
 
 protected:
     FP open();
@@ -106,6 +95,11 @@ protected:
     // skip n floats
     void skipFloat(FILE *in, size_t n);
 
+    // true, if line introduces a part - mode returns how geometry changes compared to previous timestep
+    bool parsePartLine(const std::string &line, EnPart::GeoMode *mode = nullptr) const;
+
+    // parse an EnSight ID string ("off", "given", "assign", "ignore") into an IdType
+    IdType parseIdType(const std::string &str) const;
     // find a part by its part number
     virtual EnPart *findPart(int partNum) const;
 
@@ -134,6 +128,8 @@ protected:
 
     std::string where() const;
 
+    bool m_changingGeometryPerPart = false;
+
 private:
     template<typename T>
     T getValRaw(FILE *in);
@@ -144,6 +140,11 @@ private:
     template<typename T>
     bool getValArrHelper(FILE *in, size_t n, T *uarr = nullptr);
     size_t getSizeRaw(FILE *in);
+
+    // read one text-formatted value from an ASCII file
+    bool readTextVal(FILE *in, int &val) const;
+    bool readTextVal(FILE *in, unsigned &val) const;
+    bool readTextVal(FILE *in, float &val) const;
 
     ssize_t filePos_ = 0;
 };
