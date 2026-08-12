@@ -88,7 +88,7 @@ ConduitTopology::ConduitTopology(const conduit_cpp::Node &mesh, const conduit_cp
 , isMixed(::isMixed(meshElements))
 , sub(getSubTopologyIfAvailable(mesh, "subelements"))
 {
-    assert(!isMixed && shapes);
+    assert(!isMixed && shapes.data);
 }
 
 std::unique_ptr<ConduitTopology> ConduitTopology::getSubTopologyIfAvailable(const conduit_cpp::Node &node,
