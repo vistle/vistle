@@ -33,7 +33,7 @@ Installation
 
 ### macOS with [Homebrew](https://brew.sh)
 
-  Install most of Vistle's dependencies by invoking `brew bundle` within Vistle's root source directory. You can also install Vistle with
+  You can also install Vistle with
 
       brew install hlrs-vis/tap/vistle
 
