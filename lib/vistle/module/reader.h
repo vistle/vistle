@@ -208,6 +208,8 @@ private:
     std::deque<std::shared_ptr<Token>> m_tokens;
     size_t waitForReaders(size_t maxRunning, bool &result);
 
+    bool wrapExamine(const Parameter *param = nullptr);
+
     std::set<const Parameter *> m_observedParameters;
 
     std::vector<int> m_minDomain;

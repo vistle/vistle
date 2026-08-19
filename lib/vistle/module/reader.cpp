@@ -497,6 +497,24 @@ void Reader::setPartitions(int number)
     m_numPartitions = number;
 }
 
+bool Reader::wrapExamine(const Parameter *param)
+{
+    PROF_SCOPE(PROF_CTX(param ? "examine, param=" + param->getName() : "examine, all parameters"));
+    assert(!m_inhibitExamine);
+
+    message::Busy busy;
+    busy.setDestId(message::Id::LocalManager);
+    sendMessage(busy);
+
+    m_readyForRead = examine(param);
+
+    message::Idle idle;
+    idle.setDestId(message::Id::LocalManager);
+    sendMessage(idle);
+
+    return m_readyForRead;
+}
+
 bool Reader::changeParameters(std::map<std::string, const Parameter *> params)
 {
     m_inhibitExamine = true;
@@ -506,9 +524,7 @@ bool Reader::changeParameters(std::map<std::string, const Parameter *> params)
     for (auto &p: params) {
         auto it = m_observedParameters.find(p.second);
         if (it != m_observedParameters.end()) {
-            PROF_SCOPE(PROF_CTX("examine, all parameters"));
-            m_readyForRead = examine();
-            ret &= m_readyForRead;
+            ret &= wrapExamine();
             break;
         }
     }
@@ -538,9 +554,7 @@ bool Reader::changeParameter(const Parameter *param)
     if (!m_inhibitExamine) {
         auto it = m_observedParameters.find(param);
         if (it != m_observedParameters.end()) {
-            PROF_SCOPE(PROF_CTX("examine, param=" + param->getName()));
-            m_readyForRead = examine(param);
-            ret &= m_readyForRead;
+            ret &= wrapExamine(param);
         }
     }
 
