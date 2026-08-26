@@ -449,7 +449,7 @@ void Indexed::refreshImpl() const
         m_cl = nullptr;
         m_ghost = nullptr;
     }
-    m_numEl = (d && d->el.valid()) ? d->el->size() - 1 : 0;
+    m_numEl = (d && d->el.valid() && !d->el->empty()) ? d->el->size() - 1 : 0;
     m_numCl = (d && d->cl.valid()) ? d->cl->size() : 0;
     m_celltree = nullptr;
 }
