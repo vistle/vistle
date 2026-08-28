@@ -167,7 +167,7 @@ bool MessageQueue::tryReceive(Message &msg, unsigned int minPrio, unsigned int *
     unsigned priority = 0;
     bool result = m_mq.try_receive(&msg, message::Message::MESSAGE_SIZE, recvSize, priority);
     if (result) {
-        assert(recvSize == message::Message::MESSAGE_SIZE);
+        result = recvSize == message::Message::MESSAGE_SIZE;
     }
     if (ppriority)
         *ppriority = priority;
