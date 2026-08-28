@@ -2521,6 +2521,8 @@ Module::~Module()
     vistle::message::ModuleExit m(!m_readyForQuit);
     sendMessage(m);
 
+    sendMessageQueue->signal();
+
     delete sendMessageQueue;
     sendMessageQueue = nullptr;
     delete receiveMessageQueue;
