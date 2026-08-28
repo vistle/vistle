@@ -570,7 +570,8 @@ bool ClusterManager::sendMessage(const int moduleId, const message::Message &mes
     message::Buffer buf(message);
     if (payload)
         buf.setPayloadName(payload.name());
-    if (Id::isModule(moduleId) && (hub == hubId() || hub == Id::LocalHub || hub == Id::LocalManager)) {
+    if ((Id::isModule(moduleId) || moduleId == Id::LocalManager) &&
+        (hub == hubId() || hub == Id::LocalHub || hub == Id::LocalManager)) {
         //CERR << "local send to " << moduleId << ": " << buf << std::endl;
         if (destRank == -1 || destRank == getRank()) {
             RunningMap::const_iterator it = m_runningMap.find(moduleId);
@@ -1599,7 +1600,7 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj)
             if (obj)
                 Communicator::the().dataManager().notifyTransferComplete(addObj);
         } else {
-            return sendMessage(hubId(), addObj, destRank);
+            return sendMessage(Id::LocalManager, addObj, destRank);
         }
     }
 
