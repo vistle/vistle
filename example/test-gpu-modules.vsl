@@ -1,5 +1,5 @@
 # /usr/bin/env vistle
-# this is a Python workflow from Vistle 2025.1-550c2367c
+# this is a Python workflow from Vistle 2025.1-103aa73ae
 
 MasterHub=getMasterHub()
 VistleSession=getVistleSession()
@@ -45,10 +45,11 @@ umTubeVtkm33 = spawnAsync(MasterHub, 'TubeVtkm')
 umTriangulateVtkm34 = spawnAsync(MasterHub, 'TriangulateVtkm')
 umGendat35 = spawnAsync(MasterHub, 'Gendat')
 umVertexClusteringVtkm36 = spawnAsync(MasterHub, 'VertexClusteringVtkm')
+umStreamlineVtkm37 = spawnAsync(MasterHub, 'StreamlineVtkm')
+umThicken38 = spawnAsync(MasterHub, 'Thicken')
 
 mGendat1 = waitForSpawn(umGendat1)
 setModuleDisplayName(mGendat1, 'Gendat')
-setIntParam(VistleSession, f'layer[{mGendat1}]', -1)
 setVectorParam(VistleSession, f'position[{mGendat1}]', 410.4730224609375, -740.7913818359375)
 setIntParam(mGendat1, 'size_x', 10, True)
 setIntParam(mGendat1, 'size_z', 10, True)
@@ -56,15 +57,13 @@ applyParameters(mGendat1)
 
 mIsoSurfaceVtkm2 = waitForSpawn(umIsoSurfaceVtkm2)
 setModuleDisplayName(mIsoSurfaceVtkm2, 'IsoSurfaceVtkm')
-setIntParam(VistleSession, f'layer[{mIsoSurfaceVtkm2}]', -1)
 setVectorParam(VistleSession, f'position[{mIsoSurfaceVtkm2}]', 545.3167635872334, -341.6241745748813)
 setFloatParam(mIsoSurfaceVtkm2, 'isovalue', 1.1, True)
 applyParameters(mIsoSurfaceVtkm2)
 
 mClipVtkm3 = waitForSpawn(umClipVtkm3)
 setModuleDisplayName(mClipVtkm3, 'ClipVtkm')
-setIntParam(VistleSession, f'layer[{mClipVtkm3}]', -1)
-setVectorParam(VistleSession, f'position[{mClipVtkm3}]', 400.31694669270223, -340.13851783660004)
+setVectorParam(VistleSession, f'position[{mClipVtkm3}]', 400.31695556640625, -340.1385192871094)
 setVectorParam(mClipVtkm3, 'point', -0.49548882246017456, -0.006634407211095095, 0.029549812898039818, True)
 setVectorParam(mClipVtkm3, 'vertex', 0.0, 0.7071068286895752, -0.7071068286895752, True)
 setFloatParam(mClipVtkm3, 'scalar', -0.02558610960841179, True)
@@ -83,7 +82,7 @@ setVectorParam(VistleSession, f'position[{mApplyTransformVtkm5}]', 897.220646356
 
 mColor6 = waitForSpawn(umColor6)
 setModuleDisplayName(mColor6, 'Color')
-setVectorParam(VistleSession, f'position[{mColor6}]', 389.30461759113973, -589.3545212545689)
+setVectorParam(VistleSession, f'position[{mColor6}]', 389.30462646484375, -589.3544921875)
 setStringParam(mColor6, 'species', 'scalar', True)
 setFloatParam(mColor6, 'min', 5.1619135632563484e-08, True)
 setFloatParam(mColor6, 'max', 1.7320507764816284, True)
@@ -142,7 +141,7 @@ setVectorParam(VistleSession, f'position[{mVertToCellVtkm14}]', 1369.54405225200
 mTransform15 = waitForSpawn(umTransform15)
 setModuleDisplayName(mTransform15, 'Transform')
 setIntParam(VistleSession, f'layer[{mTransform15}]', -1)
-setVectorParam(VistleSession, f'position[{mTransform15}]', 475.73638028645223, -588.8999314108189)
+setVectorParam(VistleSession, f'position[{mTransform15}]', 475.73638916015625, -588.89990234375)
 setVectorParam(mTransform15, 'translate', 3.0, 0.0, 0.0, True)
 applyParameters(mTransform15)
 
@@ -296,6 +295,24 @@ setModuleDisplayName(mVertexClusteringVtkm36, 'VertexClusteringVtkm')
 setIntParam(VistleSession, f'layer[{mVertexClusteringVtkm36}]', -1)
 setVectorParam(VistleSession, f'position[{mVertexClusteringVtkm36}]', -452.53866252916936, -166.95690713190967)
 
+mStreamlineVtkm37 = waitForSpawn(umStreamlineVtkm37)
+setModuleDisplayName(mStreamlineVtkm37, 'StreamlineVtkm')
+setIntParam(VistleSession, f'layer[{mStreamlineVtkm37}]', -1)
+setVectorParam(VistleSession, f'position[{mStreamlineVtkm37}]', 222.17410278320312, -389.0139465332031)
+setIntParam(mStreamlineVtkm37, 'no_startp', 10, True)
+setVectorParam(mStreamlineVtkm37, 'startpoint1', -0.2, -1.0, -0.8, True)
+setVectorParam(mStreamlineVtkm37, 'startpoint2', -0.1, 0.0, 0.0, True)
+applyParameters(mStreamlineVtkm37)
+
+mThicken38 = waitForSpawn(umThicken38)
+setModuleDisplayName(mThicken38, 'Thicken')
+setIntParam(VistleSession, f'layer[{mThicken38}]', -1)
+setVectorParam(VistleSession, f'position[{mThicken38}]', 221.93238830566406, -174.98995971679688)
+setFloatParam(mThicken38, 'radius', 0.05, True)
+setFloatParam(mThicken38, 'sphere_scale', 1.0, True)
+setIntParam(mThicken38, 'map_mode', 2, True)
+applyParameters(mThicken38)
+
 # all local connections
 connect(mGendat1,'grid_out', mGenNormalsVtkm29,'data_in')
 connect(mGendat1,'data_out0', mColor6,'data_in')
@@ -304,6 +321,7 @@ connect(mGendat1,'data_out0', mTransform15,'data_in')
 connect(mGendat1,'data_out1', mTransform11,'data_in')
 connect(mGendat1,'data_out1', mColor26,'data_in')
 connect(mGendat1,'data_out1', mThresholdVtkm31,'data_in')
+connect(mGendat1,'data_out1', mStreamlineVtkm37,'data_in')
 connect(mIsoSurfaceVtkm2,'data_out0', mCOVER4,'data_in')
 connect(mClipVtkm3,'data_out', mDomainSurfaceVtkm8,'data_in')
 connect(mApplyTransformVtkm5,'grid_out', mDisplaceVtkm27,'data_in')
@@ -339,6 +357,8 @@ connect(mTubeVtkm33,'data_out', mCOVER4,'data_in')
 connect(mTriangulateVtkm34,'data_out', mVertexClusteringVtkm36,'data_in')
 connect(mGendat35,'grid_out', mTriangulateVtkm34,'data_in')
 connect(mVertexClusteringVtkm36,'data_out', mCOVER4,'data_in')
+connect(mStreamlineVtkm37,'data_out', mThicken38,'grid_in')
+connect(mThicken38,'grid_out', mCOVER4,'data_in')
 
 # spawn all remote modules
 

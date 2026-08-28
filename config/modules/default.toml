@@ -38,6 +38,9 @@ _cache_mode=1
 [Switch]
 _cache_mode=1
 
+[StreamlineVtkm]
+_cache_mode=1
+
 [Tracer]
 _cache_mode=1
 
