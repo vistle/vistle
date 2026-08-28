@@ -311,6 +311,11 @@ bool DataManager::connect(boost::asio::ip::basic_resolver_results<boost::asio::i
 
 bool DataManager::addHub(const message::AddHub &hub, const message::AddHub::Payload &payload)
 {
+    if (hub.id() == Communicator::the().hubId()) {
+        // local data transfer is handled with MPI
+        return true;
+    }
+
     std::unique_lock<std::mutex> lock(m_directSocketsMutex);
     auto numRanks = payload.rankAddresses.size();
     if (m_directSockets.find(hub.id()) != m_directSockets.end()) {
