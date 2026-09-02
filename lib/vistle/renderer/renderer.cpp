@@ -44,20 +44,6 @@ Renderer::Renderer(const std::string &name, const int moduleID, mpi::communicato
     setCurrentParameterGroup("");
 }
 
-// all of those messages have to arrive in the same order an all ranks, but other messages may be interspersed
-bool Renderer::needsSync(const message::Message &m) const
-{
-    using namespace vistle::message;
-
-    switch (m.type()) {
-        return true;
-    default:
-        break;
-    }
-
-    return Module::needsSync(m);
-}
-
 std::array<Object::const_ptr, 3> splitObject(Object::const_ptr container)
 {
     std::array<Object::const_ptr, 3> geo_norm_data;
@@ -200,77 +186,28 @@ bool Renderer::handleAddObject(const message::AddObject &add)
 bool Renderer::dispatch(bool block, bool *messageReceived, unsigned int minPrio)
 {
     (void)block;
-    int quit = 0;
+
     bool wasAnyMessage = false;
-    int numSync = 0;
+    int numBatches = 0;
     int maxNumMessages = 0;
+
+    // handle the messages of at least one batch, and more if there are still messages pending,
+    // but not more than m_numObjectsPerFrame batches per frame
     do {
-        // process all messages until one needs cooperative processing
         message::Buffer buf;
-        message::Message &message = buf;
-        bool haveMessage = getNextMessage(buf, false, minPrio);
-        int needSync = 0;
-        if (haveMessage) {
-            if (needsSync(message)) {
-                needSync = message.type();
-                assert(needSync != 0);
-            }
-        }
-        int anyMessage = boost::mpi::all_reduce(comm(), haveMessage ? 1 : 0, boost::mpi::maximum<int>());
-        int anySync = 0;
-        if (anyMessage) {
-            wasAnyMessage = true;
-            anySync = boost::mpi::all_reduce(comm(), needSync, boost::mpi::maximum<int>());
-            if (needSync != 0 && anySync != needSync) {
-                std::cerr << "message types requiring collective processing do not agree (initial): local=" << needSync
-                          << ", other=" << anySync << std::endl;
-            }
-            assert(needSync == 0 || needSync == anySync);
-        }
+        // never block, we want to render regularly
+        const bool haveMessage = getNextMessage(buf, false, minPrio);
 
-        do {
-            if (haveMessage) {
-                if (messageReceived)
-                    *messageReceived = true;
-
-                if (needsSync(message)) {
-                    needSync = message.type();
-                    assert(needSync != 0);
-                    if (anySync != needSync) {
-                        std::cerr << "message types requiring collective processing do not agree (continued): local="
-                                  << needSync << ", other=" << anySync << std::endl;
-                    }
-                    assert(needSync == anySync);
-                }
-
-                MessagePayload pl;
-                if (buf.payloadSize() > 0) {
-                    pl = Shm::the().getArrayFromName<char>(buf.payloadName());
-                    pl.unref();
-                }
-                quit = handleMessage(&message, pl) ? 0 : 1;
-                if (quit) {
-                    std::cerr << "Quitting: " << message << std::endl;
-                    break;
-                }
-            }
-
-            if (anySync && !needSync) {
-                haveMessage = getNextMessage(buf, true, minPrio);
-            }
-
-        } while (anySync && !needSync);
-
-        int anyQuit = boost::mpi::all_reduce(comm(), quit, boost::mpi::maximum<int>());
-        if (anyQuit) {
-            prepareQuit();
+        // handle the messages of this batch together with the other ranks
+        bool anyMessage = false;
+        if (!processMessagesSynced(buf, haveMessage, messageReceived, minPrio, &anyMessage))
             return false;
-        }
+        wasAnyMessage = wasAnyMessage || anyMessage;
 
         int numMessages = messageBacklog.size() + receiveMessageQueue->getNumMessages();
         maxNumMessages = boost::mpi::all_reduce(comm(), numMessages, boost::mpi::maximum<int>());
-        ++numSync;
-    } while (maxNumMessages > 0 && numSync < m_numObjectsPerFrame);
+        ++numBatches;
+    } while (maxNumMessages > 0 && numBatches < m_numObjectsPerFrame);
 
     ParameterManager::applyDelayedChanges(); // normally done in Execute, but Renderer does not get executed
 

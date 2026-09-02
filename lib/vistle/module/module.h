@@ -314,6 +314,9 @@ protected:
     bool syncMessageProcessing() const;
     void setSyncMessageProcessing(bool sync);
 
+    // message has to be handled in the same order on all ranks, see processMessagesSynced()
+    virtual bool needsSync(const message::Message &m) const;
+
     virtual void connectionAdded(const Port *from, const Port *to);
     virtual void connectionRemoved(const Port *from, const Port *to);
 
@@ -334,6 +337,10 @@ protected:
     void clearStatus();
 
     bool getNextMessage(message::Buffer &buf, bool block = true, unsigned int minPrio = 0);
+
+    // handle a batch of messages in lockstep over all ranks, taking care of message that need to be processed on all ranks (cf. needsSync(...))
+    bool processMessagesSynced(message::Buffer &buf, bool haveMessage, bool *messageReceived, unsigned int minPrio,
+                               bool *anyMessage = nullptr);
 
     bool reduceWrapper(const message::Execute *exec, bool reordered = false);
     bool prepareWrapper(const message::Execute *exec);
@@ -358,8 +365,6 @@ private:
     const Port *findInputPort(const std::string &name) const;
     Port *findOutputPort(const std::string &name);
     const Port *findOutputPort(const std::string &name) const;
-
-    virtual bool needsSync(const message::Message &m) const;
 
     //! notify that a module has added a parameter
     virtual bool parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg,

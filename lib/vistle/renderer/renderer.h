@@ -60,7 +60,6 @@ public:
     }
 
 protected:
-    bool needsSync(const message::Message &m) const override;
     bool handleMessage(const message::Message *message, const MessagePayload &payload) override;
 
     virtual bool addColorMap(const vistle::message::Colormap &cm, std::vector<vistle::RGBA> &rgba);
