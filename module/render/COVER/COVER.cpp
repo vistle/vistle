@@ -955,7 +955,7 @@ bool COVER::needsSync(const vistle::message::Message &m) const
     default:
         break;
     }
-    return Renderer::needsSync(m);
+    return Module::needsSync(m);
 }
 
 bool COVER::handleMessage(const message::Message *message, const MessagePayload &payload)

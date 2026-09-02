@@ -229,6 +229,18 @@ bool Module::cleanup(bool dedicated_process)
     return true;
 }
 
+namespace {
+MessagePayload getPayloadFromShm(const message::Buffer &buf)
+{
+    if (buf.payloadSize() == 0)
+        return MessagePayload();
+
+    MessagePayload pl = Shm::the().getArrayFromName<char>(buf.payloadName());
+    pl.unref(); // we just refer to the payload, it stays owned by the sender
+    return pl;
+}
+} // namespace
+
 Module::Module(const std::string &moduleName, const int moduleId, mpi::communicator comm)
 : ParameterManager(moduleName, moduleId)
 , m_name(moduleName)
@@ -1403,6 +1415,64 @@ bool Module::needsSync(const message::Message &m) const
     return false;
 }
 
+bool Module::processMessagesSynced(message::Buffer &buf, bool haveMessage, bool *messageReceived, unsigned int minPrio,
+                                   bool *anyMessage)
+{
+    int sync = 0;
+    if (haveMessage && needsSync(buf)) {
+        sync = buf.type();
+        assert(sync != 0);
+    }
+
+    const bool anyMessageHere = mpi::all_reduce(comm(), haveMessage ? 1 : 0, mpi::maximum<int>()) != 0;
+    if (anyMessage)
+        *anyMessage = anyMessageHere;
+    if (!anyMessageHere)
+        return true;
+
+    const int allsync = mpi::all_reduce(comm(), sync, mpi::maximum<int>());
+    if (sync != 0 && allsync != sync) {
+        std::cerr << "message types requiring collective processing do not agree (initial): local=" << sync
+                  << ", other=" << allsync << std::endl;
+    }
+    assert(sync == 0 || sync == allsync);
+
+    int quit = 0;
+    while (true) {
+        if (haveMessage) {
+            if (messageReceived)
+                *messageReceived = true;
+
+            sync = needsSync(buf) ? buf.type() : 0;
+            if (sync != 0 && allsync != sync) {
+                std::cerr << "message types requiring collective processing do not agree (continued): local=" << sync
+                          << ", other=" << allsync << std::endl;
+            }
+            assert(sync == allsync);
+
+            auto pl = getPayloadFromShm(buf);
+            quit = handleMessage(&buf, pl) ? 0 : 1;
+            if (quit) {
+                CERR << "quitting after " << buf << std::endl;
+                break;
+            }
+        }
+
+        if (!allsync || sync)
+            break;
+
+        // catch up with the message the other ranks handle collectively
+        haveMessage = getNextMessage(buf, true, minPrio);
+    }
+
+    if (mpi::all_reduce(comm(), quit, mpi::maximum<int>()) != 0) {
+        prepareQuit();
+        return false;
+    }
+
+    return true;
+}
+
 bool Module::dispatch(bool block, bool *messageReceived, unsigned int minPrio)
 {
     bool again = true;
@@ -1426,43 +1496,10 @@ bool Module::dispatch(bool block, bool *messageReceived, unsigned int minPrio)
         if (messageReceived)
             *messageReceived = true;
 
-        MessagePayload pl;
-        if (buf.payloadSize() > 0) {
-            pl = Shm::the().getArrayFromName<char>(buf.payloadName());
-            pl.unref();
-        }
-
         if (syncMessageProcessing()) {
-            int sync = needsSync(buf) ? buf.type() : 0;
-            int allsync = 0;
-            mpi::all_reduce(comm(), sync, allsync, mpi::maximum<int>());
-            if (sync != 0 && allsync != sync) {
-                std::cerr << "message types requiring collective processing do not agree: local=" << sync
-                          << ", other=" << allsync << std::endl;
-            }
-            assert(sync == 0 || sync == allsync);
-
-            do {
-                sync = needsSync(buf) ? buf.type() : 0;
-
-                again &= handleMessage(&buf, pl);
-                if (!again) {
-                    CERR << "collective, quitting after " << buf << std::endl;
-                }
-
-                if (allsync && !sync) {
-                    getNextMessage(buf, true, minPrio);
-                    if (buf.payloadSize() > 0) {
-                        pl = Shm::the().getArrayFromName<char>(buf.payloadName());
-                        pl.unref();
-                    } else {
-                        pl.reset();
-                    }
-                }
-
-            } while (allsync && !sync);
+            again = processMessagesSynced(buf, true, nullptr, minPrio);
         } else {
-            again &= handleMessage(&buf, pl);
+            again = handleMessage(&buf, getPayloadFromShm(buf));
             if (!again) {
                 CERR << "quitting after " << buf << std::endl;
             }
