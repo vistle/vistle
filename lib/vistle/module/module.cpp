@@ -210,10 +210,10 @@ bool Module::setup(const std::string &shmname, const std::string &classname, std
 
 #ifndef MODULE_THREAD
     if (!Shm::isAttached()) {
-        bool perRank = shmPerRank();
-        Shm::attach(shmname, moduleID, rank, perRank);
         vistle::apply_affinity_from_environment(Shm::the().nodeRank(rank), Shm::the().numRanksOnThisNode());
         setenv("VISTLE_CLUSTER", cluster.c_str(), 1);
+        bool perRank = shmPerRank();
+        Shm::attach(shmname, moduleID, rank, perRank);
     }
 #endif
     return Shm::isAttached();
