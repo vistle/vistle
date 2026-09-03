@@ -492,7 +492,10 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
             mpi::communicator comm_world; \
             rank = comm_world.rank(); \
             size = comm_world.size(); \
-            vistle::Module::setup(shmname, #X, argv[0], moduleID, cluster, rank); \
+            if (!vistle::Module::setup(shmname, #X, argv[0], moduleID, cluster, rank)) { \
+                std::cerr << "[" << rank << "/" << size << "]: could not attach to shared memory" << std::endl; \
+                exit(1); \
+            } \
             { \
                 X module(name, moduleID, comm_world); \
                 module.eventLoop(); \

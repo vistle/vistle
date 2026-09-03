@@ -311,7 +311,7 @@ bool Shm::perRank()
 
 bool Shm::isAttached()
 {
-    return s_singleton;
+    return s_singleton != nullptr;
 }
 
 void Shm::setExternalSuffix(const std::string &suffix)
