@@ -435,8 +435,6 @@ private:
 #else
     int m_validateObjects = 1; // Quick
 #endif
-
-    static bool s_shouldDetachShm;
 };
 
 V_MODULEEXPORT int getBlock(Object::const_ptr obj);
