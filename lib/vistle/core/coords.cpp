@@ -64,7 +64,7 @@ bool Coords::checkImpl(std::ostream &os, bool quick) const
 
 void Coords::print(std::ostream &os, bool verbose) const
 {
-    Base::print(os);
+    Base::print(os, verbose);
     os << " norm(";
     if (normals()) {
         normals()->print(os, verbose);
