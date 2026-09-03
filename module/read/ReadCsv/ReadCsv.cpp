@@ -228,7 +228,7 @@ void ReadCsv::readLayer(size_t layer, vistle::Points::ptr &points,
                 dataFields[i]->x().push_back(csvData[i + NUM_COORD_FIELDS]);
             }
         }
-        std::cerr << "added pint 1 " << csvData[0] << " " << csvData[1] << " " << csvData[2] << std::endl;
+        std::cerr << "added point 1 " << csvData[0] << " " << csvData[1] << " " << csvData[2] << std::endl;
         std::cerr << "added point 2 " << points->x().back() << " " << points->y().back() << " " << points->z().back()
                   << std::endl;
     }
