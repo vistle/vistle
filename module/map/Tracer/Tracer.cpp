@@ -123,8 +123,8 @@ Tracer::Tracer(const std::string &name, int moduleID, mpi::communicator comm): M
     m_startStyle =
         addIntParameter("startStyle", "initial particle position configuration", (Integer)Line, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_startStyle, StartStyle);
-    addVectorParameter("startpoint1", "1st initial point", ParamVector(0, 0.2, 0));
-    addVectorParameter("startpoint2", "2nd initial point", ParamVector(1, 0, 0));
+    m_startpoint[0] = addVectorParameter("startpoint1", "1st initial point", ParamVector(0, 0.2, 0));
+    m_startpoint[1] = addVectorParameter("startpoint2", "2nd initial point", ParamVector(1, 0, 0));
     m_direction = addVectorParameter("direction", "direction for plane", ParamVector(1, 0, 0));
     m_maxStartpoints =
         addIntParameter("max_no_startp", "maximum number of startpoints (for parameter/slider limits)", max_no_startp);
@@ -480,8 +480,8 @@ bool Tracer::reduce(int timestep)
     //determine startpoints
     std::vector<Vector3> startpoints;
     StartStyle startStyle = (StartStyle)m_startStyle->getValue();
-    Vector3 startpoint1 = getVectorParameter("startpoint1");
-    Vector3 startpoint2 = getVectorParameter("startpoint2");
+    Vector3 startpoint1 = m_startpoint[0]->getValue();
+    Vector3 startpoint2 = m_startpoint[1]->getValue();
     Vector3 direction = m_direction->getValue();
     if (startStyle == Plane) {
         direction.normalize();

@@ -66,6 +66,7 @@ private:
     vistle::IntParameter *m_traceDirection = nullptr;
     vistle::IntParameter *m_startStyle = nullptr;
     vistle::VectorParameter *m_direction = nullptr;
+    vistle::VectorParameter *m_startpoint[2] = {};
 
     bool m_haveTimeSteps = false;
     void addDescription(int kind, const std::string &name, const std::string &description);
