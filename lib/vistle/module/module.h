@@ -20,15 +20,14 @@
 #endif
 #include <boost/config.hpp>
 
-#include <iostream>
-#include <list>
 #include <map>
-#include <exception>
 #include <deque>
+#include <exception>
 #include <mutex>
 #include <future>
 #include <memory>
 
+#include <vistle/util/exception.h>
 #include <vistle/core/paramvector.h>
 #include <vistle/core/object.h>
 #include <vistle/core/parameter.h>
