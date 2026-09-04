@@ -1,6 +1,7 @@
 vistle_category("General" "manipulate data at any pipeline stage")
 
 add_subdirectory(AddAttribute)
+add_subdirectory(AnimationFilling)
 add_subdirectory(Assemble)
 add_subdirectory(AttachGrid)
 add_subdirectory(AttachNormals)
