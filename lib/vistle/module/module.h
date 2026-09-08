@@ -51,6 +51,8 @@
 #else
 #include <boost/dll/alias.hpp>
 #endif
+#else
+#include <boost/asio/io_context.hpp>
 #endif
 
 namespace mpi = ::boost::mpi;
@@ -278,6 +280,7 @@ public:
 
     virtual void updateMeta(vistle::Object::ptr object) const;
 
+    void printMessageHistory() const; // debugging aid
 protected:
     virtual void setInputSpecies(const std::string &species); //< _species attribute on input has changed
 
@@ -439,6 +442,20 @@ private:
     int m_validateObjects = 0; // Disable
 #else
     int m_validateObjects = 1; // Quick
+#endif
+
+    void recordMessage(const message::Buffer &buf);
+    struct HistoryEntry {
+        message::Buffer message;
+        size_t num = 0;
+        size_t syncNum = 0;
+    };
+    size_t m_messageCounter = 0, m_syncMessageCounter = 0;
+    std::deque<HistoryEntry> m_messageHistory;
+
+#ifndef MODULE_THREAD
+    std::unique_ptr<boost::asio::io_context> m_signalContext;
+    std::unique_ptr<std::thread> m_signalThread;
 #endif
 };
 

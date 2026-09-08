@@ -14,6 +14,7 @@
 #endif
 
 #include <boost/asio.hpp>
+#include <boost/asio/signal_set.hpp>
 
 #include <vistle/util/enum.h>
 #include <vistle/util/sysdep.h>
@@ -277,6 +278,14 @@ Module::Module(const std::string &moduleName, const int moduleId, mpi::communica
 
 #ifndef MODULE_THREAD
     message::DefaultSender::init(m_id, m_rank);
+
+    m_signalContext = std::make_unique<boost::asio::io_context>();
+    m_signalThread = std::make_unique<std::thread>([this]() {
+        boost::asio::signal_set signals(*m_signalContext, SIGUSR1);
+        signals.async_wait(
+            [this](const boost::system::error_code &error, int signal_number) { printMessageHistory(); });
+        m_signalContext->run();
+    });
 #endif
 
     // names are swapped relative to communicator
@@ -1415,14 +1424,42 @@ bool Module::needsSync(const message::Message &m) const
     return false;
 }
 
+void Module::recordMessage(const message::Buffer &buf)
+{
+    m_messageHistory.emplace_back(buf, m_messageCounter, m_syncMessageCounter);
+    ++m_messageCounter;
+    if (needsSync(buf))
+        ++m_syncMessageCounter;
+    while (m_messageHistory.size() > 100)
+        m_messageHistory.pop_front();
+}
+
+void Module::printMessageHistory() const
+{
+    CERR << m_messageHistory.size() << " recent messages:" << std::endl;
+    for (const auto &ent: m_messageHistory) {
+        if (needsSync(ent.message)) {
+            std::cerr << "sync" << std::setw(5) << ent.syncNum;
+        } else {
+            std::cerr << "         ";
+        }
+        std::cerr << " " << std::setw(7) << ent.num << " " << ent.message << std::endl;
+    }
+}
+
 bool Module::processMessagesSynced(message::Buffer &buf, bool haveMessage, bool *messageReceived, unsigned int minPrio,
                                    bool *anyMessage)
 {
+    if (haveMessage) {
+        recordMessage(buf);
+    }
+
     int sync = 0;
     if (haveMessage && needsSync(buf)) {
         sync = buf.type();
         assert(sync != 0);
     }
+
 
     const bool anyMessageHere = mpi::all_reduce(comm(), haveMessage ? 1 : 0, mpi::maximum<int>()) != 0;
     if (anyMessage)
@@ -1463,6 +1500,10 @@ bool Module::processMessagesSynced(message::Buffer &buf, bool haveMessage, bool 
 
         // catch up with the message the other ranks handle collectively
         haveMessage = getNextMessage(buf, true, minPrio);
+
+        if (haveMessage) {
+            recordMessage(buf);
+        }
     }
 
     if (mpi::all_reduce(comm(), quit, mpi::maximum<int>()) != 0) {
@@ -2554,6 +2595,15 @@ Module::~Module()
     } else {
         CERR << "Emergency quit" << std::endl;
     }
+
+#ifndef MODULE_THREAD
+    if (m_signalContext) {
+        m_signalContext->stop();
+    }
+    if (m_signalThread) {
+        m_signalThread->join();
+    }
+#endif
 
     vistle::message::ModuleExit m(!m_readyForQuit);
     sendMessage(m);
