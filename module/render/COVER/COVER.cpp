@@ -28,7 +28,6 @@
 
 #include <VistlePluginUtil/VistleRenderObject.h>
 #include <VistlePluginUtil/VistleInteractor.h>
-#include <VistlePluginUtil/VistleMessage.h>
 #include "VistleGeometryGenerator.h"
 #include "CoverConfigBridge.h"
 #include "vistle/renderer/renderer.h"
@@ -209,7 +208,8 @@ bool COVER::parameterAdded(const int senderId, const std::string &name, const me
         if (vistle::message::Id::isModule(senderId))
             coVRPluginList::instance()->addPlugin(plugin.c_str(), coVRPluginList::Vis);
 
-        m_interactorMap[senderId] = new VistleInteractor(this, moduleName, senderId);
+        m_interactorMap[senderId] =
+            new VistleInteractor([this](const ShmEnvelope &msg) { sendMessage(msg); }, moduleName, senderId);
         m_interactorMap[senderId]->setPluginName(plugin);
         auto dn = this->state().getModuleDisplayName(senderId);
         m_interactorMap[senderId]->setDisplayName(dn);
@@ -958,27 +958,27 @@ bool COVER::needsSync(const vistle::message::Message &m) const
     return Renderer::needsSync(m);
 }
 
-bool COVER::handleMessage(const message::Message *message, const MessagePayload &payload)
+bool COVER::handleMessage(const vistle::ShmEnvelope &msg)
 {
-    switch (message->type()) {
+    const auto &message = msg.message();
+    switch (message.type()) {
     case vistle::message::REMOTERENDERING: {
-        VistleMessage wrap(*message, payload);
-        coVRPluginList::instance()->message(0, opencover::PluginMessageTypes::VistleMessageIn, sizeof(wrap), &wrap);
+        coVRPluginList::instance()->message(0, opencover::PluginMessageTypes::VistleMessageIn, sizeof(msg), &msg);
         return true;
     }
     case vistle::message::COVER: {
-        auto &cmsg = message->as<const message::Cover>();
-        covise::DataHandle dh(const_cast<char *>(payload ? payload->data() : nullptr), payload ? payload->size() : 0,
-                              false /* do not delete */);
-        covise::Message msg(cmsg.subType(), dh);
-        msg.sender = cmsg.sender();
-        msg.send_type = cmsg.senderType();
-        coVRCommunication::instance()->handleVRB(msg);
+        auto &cmsg = message.as<const message::Cover>();
+
+        covise::DataHandle dh(const_cast<char *>(msg.payloadData()), msg.payloadSize(), false /* do not delete */);
+        covise::Message coviseMsg(cmsg.subType(), dh);
+        coviseMsg.sender = cmsg.sender();
+        coviseMsg.send_type = cmsg.senderType();
+        coVRCommunication::instance()->handleVRB(coviseMsg);
         return true;
     }
     case vistle::message::SETNAME: {
-        auto ret = Renderer::handleMessage(message, payload);
-        auto &setname = message->as<const message::SetName>();
+        auto ret = Renderer::handleMessage(msg);
+        auto &setname = message.as<const message::SetName>();
         InteractorMap::iterator it = m_interactorMap.find(setname.module());
         if (it != m_interactorMap.end()) {
             auto inter = it->second;
@@ -991,5 +991,5 @@ bool COVER::handleMessage(const message::Message *message, const MessagePayload 
         break;
     }
 
-    return Renderer::handleMessage(message, payload);
+    return Renderer::handleMessage(msg);
 }

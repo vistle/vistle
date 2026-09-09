@@ -79,32 +79,36 @@ std::array<Object::const_ptr, 3> splitObject(Object::const_ptr container)
     return geo_norm_data;
 }
 
-bool Renderer::handleMessage(const message::Message *message, const MessagePayload &payload)
+bool Renderer::handleMessage(const vistle::ShmEnvelope &vistleMsg)
 {
-    switch (message->type()) {
+    const message::Buffer &buf = vistleMsg.message();
+    size_t payloadSize = buf.payloadSize();
+    const char *payload = vistleMsg.payloadData();
+
+    switch (buf.type()) {
     case vistle::message::REPLAYFINISHED: {
         m_replayFinished = true;
         break;
     }
     case vistle::message::ADDOBJECT: {
-        auto add = static_cast<const message::AddObject *>(message);
+        auto &add = buf.as<message::AddObject>();
         if (payload)
-            m_stateTracker->handle(*add, payload->data(), payload->size());
+            m_stateTracker->handle(add, payload, payloadSize);
         else
-            m_stateTracker->handle(*add, nullptr);
-        return handleAddObject(*add);
+            m_stateTracker->handle(add, nullptr);
+        return handleAddObject(add);
         break;
     }
     case vistle::message::COLORMAP: {
-        const auto &m = static_cast<const message::Colormap *>(message);
-        auto plbuf = vistle::buffer(payload->data(), payload->data() + payload->size());
+        auto &m = buf.as<message::Colormap>();
+        auto plbuf = vistle::buffer(payload, payload + payloadSize);
         auto pl = message::getPayload<message::Colormap::Payload>(plbuf);
-        addColorMap(*m, pl.rgba);
+        addColorMap(m, pl.rgba);
         break;
     }
     case vistle::message::REMOVECOLORMAP: {
-        const auto &m = static_cast<const message::RemoveColormap *>(message);
-        removeColorMap(m->species());
+        auto &m = buf.as<message::RemoveColormap>();
+        removeColorMap(m.species());
         break;
     }
     default: {
@@ -112,7 +116,7 @@ bool Renderer::handleMessage(const message::Message *message, const MessagePaylo
     }
     }
 
-    return Module::handleMessage(message, payload);
+    return Module::handleMessage(vistleMsg);
 }
 
 bool Renderer::addColorMap(const vistle::message::Colormap &cm, std::vector<vistle::RGBA> &rgba)
@@ -206,13 +210,12 @@ bool Renderer::dispatch(bool block, bool *messageReceived, unsigned int minPrio)
     int maxNumMessages = 0;
     do {
         // process all messages until one needs cooperative processing
-        message::Buffer buf;
-        message::Message &message = buf;
-        bool haveMessage = getNextMessage(buf, false, minPrio);
+        ShmEnvelope message;
+        bool haveMessage = getNextMessage(message, false, minPrio);
         int needSync = 0;
         if (haveMessage) {
-            if (needsSync(message)) {
-                needSync = message.type();
+            if (needsSync(message.message())) {
+                needSync = message.message().type();
                 assert(needSync != 0);
             }
         }
@@ -233,8 +236,8 @@ bool Renderer::dispatch(bool block, bool *messageReceived, unsigned int minPrio)
                 if (messageReceived)
                     *messageReceived = true;
 
-                if (needsSync(message)) {
-                    needSync = message.type();
+                if (needsSync(message.message())) {
+                    needSync = message.message().type();
                     assert(needSync != 0);
                     if (anySync != needSync) {
                         std::cerr << "message types requiring collective processing do not agree (continued): local="
@@ -243,20 +246,18 @@ bool Renderer::dispatch(bool block, bool *messageReceived, unsigned int minPrio)
                     assert(needSync == anySync);
                 }
 
-                MessagePayload pl;
-                if (buf.payloadSize() > 0) {
-                    pl = Shm::the().getArrayFromName<char>(buf.payloadName());
-                    pl.unref();
-                }
-                quit = handleMessage(&message, pl) ? 0 : 1;
+                message.updateMessage();
+                // message.payload().unref(); //dodo
+
+                quit = !handleMessage(message);
                 if (quit) {
-                    std::cerr << "Quitting: " << message << std::endl;
+                    std::cerr << "Quitting: " << message.message() << std::endl;
                     break;
                 }
             }
 
             if (anySync && !needSync) {
-                haveMessage = getNextMessage(buf, true, minPrio);
+                haveMessage = getNextMessage(message, true, minPrio);
             }
 
         } while (anySync && !needSync);

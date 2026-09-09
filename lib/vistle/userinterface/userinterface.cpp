@@ -161,14 +161,18 @@ bool UserInterface::dispatch()
         work = true;
 
         message::Buffer buf;
-        buffer payload;
+        std::shared_ptr<buffer> payload = std::make_shared<buffer>();
         message::error_code ec;
-        if (!message::recv(socket(), buf, ec, true /* blocking */, &payload)) {
+        if (!message::recv(socket(), buf, ec, true /* blocking */, payload.get())) {
             CERR << "receiving failed: " << ec.message() << std::endl;
             return false;
         }
-
-        if (!handleMessage(&buf, payload))
+        message::BufferEnvelope msg;
+        if (payload->empty())
+            msg = message::BufferEnvelope(buf);
+        else
+            msg = message::BufferEnvelope(buf, payload);
+        if (!handleMessage(msg))
             return false;
     }
 
@@ -178,38 +182,38 @@ bool UserInterface::dispatch()
 }
 
 
-bool UserInterface::sendMessage(const message::Message &message, const buffer *payload)
+bool UserInterface::sendMessage(const message::BufferEnvelope &msg)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-    if (m_locked && message.type() != message::IDENTIFY) {
-        m_sendQueue.emplace_back(message, payload);
+    if (m_locked && msg.message().type() != message::IDENTIFY) {
+        m_sendQueue.emplace_back(msg);
         return true;
     }
-
-    return message::send(socket(), message, payload);
+    message::error_code ec;
+    return message::send(socket(), msg.message(), ec, msg.payloadData(), msg.payloadSize());
 }
 
 
-bool UserInterface::handleMessage(const vistle::message::Message *message, const buffer &payload)
+bool UserInterface::handleMessage(const message::BufferEnvelope &msg)
 {
-    bool ret = m_stateTracker.handle(*message, payload.data(), payload.size());
+    bool ret = m_stateTracker.handle(msg.message(), msg.payloadData(), msg.payloadSize());
 
     {
         std::lock_guard<std::mutex> lock(m_messageMutex);
-        MessageMap::iterator it = m_messageMap.find(const_cast<message::uuid_t &>(message->uuid()));
+        MessageMap::iterator it = m_messageMap.find(const_cast<message::uuid_t &>(msg.message().uuid()));
         if (it != m_messageMap.end()) {
-            it->second->buf.resize(message->size());
-            memcpy(it->second->buf.data(), message, message->size());
+            it->second->buf.resize(msg.message().size());
+            memcpy(it->second->buf.data(), msg.payloadData(), msg.payloadSize());
             it->second->received = true;
             it->second->cond.notify_all();
         }
     }
 
-    switch (message->type()) {
+    switch (msg.message().type()) {
     case message::IDENTIFY: {
-        const message::Identify *id = static_cast<const message::Identify *>(message);
-        if (id->identity() == message::Identify::REQUEST) {
-            message::Identify reply(*id, message::Identify::UI);
+        auto &id = msg.as<message::Identify>();
+        if (id.identity() == message::Identify::REQUEST) {
+            message::Identify reply(id, message::Identify::UI);
             reply.computeMac();
             sendMessage(reply);
         }
@@ -218,10 +222,10 @@ bool UserInterface::handleMessage(const vistle::message::Message *message, const
     }
 
     case message::SETID: {
-        const message::SetId *id = static_cast<const message::SetId *>(message);
-        m_id = id->getId();
+        auto &id = msg.as<message::SetId>();
+        m_id = id.getId();
         assert(m_id > 0);
-        message::DefaultSender::init(id->senderId(), -m_id);
+        message::DefaultSender::init(id.senderId(), -m_id);
         std::lock_guard<std::mutex> lock(m_mutex);
         m_initialized = true;
         //CERR << "received new UI id: " << m_id << std::endl;
@@ -229,15 +233,16 @@ bool UserInterface::handleMessage(const vistle::message::Message *message, const
     }
 
     case message::LOCKUI: {
-        auto lock = static_cast<const message::LockUi *>(message);
+        auto &lock = msg.as<message::LockUi>();
         std::lock_guard<std::mutex> guard(m_mutex);
-        m_locked = lock->locked();
+        m_locked = lock.locked();
         if (m_observer) {
             m_observer->uiLockChanged(m_locked);
         }
         if (!m_locked) {
             for (auto &m: m_sendQueue) {
-                message::send(socket(), m.buf, m.payload.get());
+                message::error_code ec;
+                message::send(socket(), msg.message(), ec, m.payloadData(), m.payloadSize());
             }
             m_sendQueue.clear();
         }
@@ -245,7 +250,7 @@ bool UserInterface::handleMessage(const vistle::message::Message *message, const
     }
 
     case message::QUIT: {
-        const message::Quit *quit = static_cast<const message::Quit *>(message);
+        auto &quit = msg.as<message::Quit>();
         (void)quit;
         std::lock_guard<std::mutex> lock(m_mutex);
         m_quit = true;
@@ -254,11 +259,11 @@ bool UserInterface::handleMessage(const vistle::message::Message *message, const
     }
 
     case message::FILEQUERYRESULT: {
-        auto &fq = message->as<message::FileQueryResult>();
+        auto &fq = msg.as<message::FileQueryResult>();
         bool found = false;
         for (auto b: m_fileBrowser) {
             if (b->id() == fq.filebrowserId()) {
-                b->handleMessage(fq, payload);
+                b->handleMessage(msg);
                 found = true;
                 break;
             }
@@ -384,15 +389,16 @@ int FileBrowser::id() const
     return m_id;
 }
 
-bool FileBrowser::sendMessage(const message::Message &message, const buffer *payload)
+bool FileBrowser::sendMessage(const message::BufferEnvelope &msg)
 {
     assert(m_ui);
-    message::Buffer buf(message);
-    if (buf.type() == message::FILEQUERY) {
-        auto &fq = buf.as<message::FileQuery>();
+    if (msg.message().type() == message::FILEQUERY) {
+        auto newMsg = msg;
+        auto &fq = newMsg.as<message::FileQuery>();
         fq.setFilebrowserId(m_id);
+        return m_ui->sendMessage(newMsg);
     }
-    return m_ui->sendMessage(buf, payload);
+    return m_ui->sendMessage(msg);
 }
 
 } // namespace vistle

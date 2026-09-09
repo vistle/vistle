@@ -34,9 +34,9 @@
 #include <vistle/core/port.h>
 #include <vistle/core/grid.h>
 #include <vistle/core/message.h>
+#include <vistle/core/shmenvelope.h>
 #include <vistle/core/parametermanager.h>
 #include <vistle/core/messagesender.h>
-#include <vistle/core/messagepayload.h>
 #include <vistle/config/config.h>
 
 #include "objectcache.h"
@@ -116,7 +116,7 @@ protected:
     std::shared_future<bool> m_future;
 };
 
-class V_MODULEEXPORT Module: public ParameterManager, public MessageSender {
+class V_MODULEEXPORT Module: public ParameterManager {
     friend class Reader;
     friend class Renderer;
     friend class BlockTask;
@@ -208,9 +208,8 @@ public:
     //! remove port forwarding requested by requestPortMapping
     void removePortMapping(unsigned short forwardPort);
 
-    void sendParameterMessage(const message::Message &message, const buffer *payload) const override;
-    bool sendMessage(const message::Message &message, const buffer *payload = nullptr) const override;
-    bool sendMessage(const message::Message &message, const MessagePayload &payload) const override;
+    void sendParameterMessage(const vistle::message::Envelope &message) const override;
+    bool sendMessage(const vistle::message::Envelope &msg) const;
     template<class Payload>
     bool sendMessageWithPayload(message::Message &message, Payload &payload) const;
 
@@ -299,8 +298,8 @@ protected:
 
     message::MessageQueue *sendMessageQueue;
     message::MessageQueue *receiveMessageQueue;
-    std::deque<message::Buffer> messageBacklog;
-    virtual bool handleMessage(const message::Message *message, const vistle::MessagePayload &payload);
+    std::deque<ShmEnvelope> messageBacklog;
+    virtual bool handleMessage(const vistle::ShmEnvelope &msg);
     virtual bool handleExecute(const message::Execute *exec);
     bool cancelRequested(bool collective = false);
     bool wasCancelRequested() const;
@@ -333,7 +332,7 @@ protected:
     void setStatus(const std::string &text, message::UpdateStatus::Importance prio = message::UpdateStatus::Low);
     void clearStatus();
 
-    bool getNextMessage(message::Buffer &buf, bool block = true, unsigned int minPrio = 0);
+    bool getNextMessage(ShmEnvelope &msg, bool block = true, unsigned int minPrio = 0);
 
     bool reduceWrapper(const message::Execute *exec, bool reordered = false);
     bool prepareWrapper(const message::Execute *exec);
