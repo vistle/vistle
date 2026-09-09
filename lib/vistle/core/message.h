@@ -314,12 +314,8 @@ public:
         memset(payload.data(), 0, payload.size());
         memcpy(payload.data(), (char *)&message + sizeof(Message), message.size() - sizeof(Message));
     }
-    const Buffer &operator=(const Buffer &rhs)
-    {
-        *static_cast<Message *>(this) = rhs;
-        memcpy(payload.data(), rhs.payload.data(), payload.size());
-        return *this;
-    }
+
+    Buffer(const Buffer &message) = default;
 
     template<class SomeMessage>
     SomeMessage &as()
@@ -335,9 +331,9 @@ public:
         assert(m->type() == SomeMessage::s_type);
         return *m;
     }
-
-    size_t bufferSize() const { return Message::MESSAGE_SIZE; }
-    size_t size() const { return Message::size(); }
+    const char *addPayload(const char *data, size_t size);
+    const char *getPayload() const;
+    static size_t bufferSize() { return Message::MESSAGE_SIZE; }
     char *data() { return static_cast<char *>(static_cast<void *>(this)); }
     const char *data() const { return static_cast<const char *>(static_cast<const void *>(this)); }
 
@@ -362,6 +358,12 @@ template<class Payload>
 extern V_COREEXPORT buffer addPayload(Message &message, const Payload &payload);
 template<class Payload>
 extern V_COREEXPORT Payload getPayload(const buffer &data);
+template<class Payload>
+Payload getPayload(const char *data, size_t size)
+{
+    // todo: dont copy the data
+    return getPayload<Payload>(vistle::buffer(data, data + size));
+}
 
 V_COREEXPORT buffer compressPayload(vistle::message::CompressionMode &mode, const char *raw, size_t size,
                                     int speed = -1 /* algorithm default */);

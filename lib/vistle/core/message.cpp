@@ -126,6 +126,34 @@ codec_error::codec_error(const std::string &what): vistle::exception(what)
 
 DefaultSender DefaultSender::s_instance;
 
+const char *Buffer::addPayload(const char *data, size_t size)
+{
+    if (!data || size == 0)
+        return nullptr;
+    size_t head = this->size() - sizeof(Message); // current used bytes in payload[]
+    if (size > payload.size() - head) {
+        // std::cerr << "Buffer::addPayload: payload too large for " << message::toString(type()) << ": " << size
+        //   << " > " << (payload.size() - head) << std::endl;
+        return nullptr;
+    }
+    // std::cerr << "Buffer::addPayload: copy payload for " << message::toString(type()) << ": " << size << " < "
+    //   << (payload.size() - head) << std::endl;
+    setPayloadSize(size);
+#ifndef NDEBUG
+    setPayloadName(shm_name_t("includedPayload"));
+#endif
+    memcpy(payload.data() + head, data, size);
+    return payload.data() + head;
+}
+
+const char *Buffer::getPayload() const
+{
+    if (!payloadSize() || size() + payloadSize() > bufferSize())
+        return nullptr;
+    assert(payloadName() == shm_name_t("includedPayload"));
+    return payload.data() + size() - sizeof(Message);
+}
+
 DefaultSender::DefaultSender(): m_id(Id::Invalid), m_rank(-1)
 {
     Router::the();
