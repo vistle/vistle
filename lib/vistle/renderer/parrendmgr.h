@@ -16,6 +16,7 @@ namespace vistle {
 
 class RenderObject;
 class Renderer;
+class MessageWithPayload;
 
 class V_RENDEREREXPORT ParallelRemoteRenderManager {
 public:
@@ -30,7 +31,7 @@ public:
     void connectionAdded(const Port *to);
     void connectionRemoved(const Port *to);
 
-    bool handleMessage(const message::Message *message, const MessagePayload &payload);
+    bool handleMessage(const vistle::ShmEnvelope &msg);
 
     bool handleParam(const Parameter *p);
     bool prepareFrame(size_t numTimesteps);

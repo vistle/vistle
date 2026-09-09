@@ -10,7 +10,8 @@ using namespace vistle;
 
 #define CERR std::cerr << "VistleInteractor(" << m_moduleName << "_" << m_moduleId << "): "
 
-VistleInteractor::VistleInteractor(const MessageSender *sender, const std::string &moduleName, int moduleId)
+VistleInteractor::VistleInteractor(const std::function<void(const ShmEnvelope &)> &sender,
+                                   const std::string &moduleName, int moduleId)
 : m_sender(sender)
 , m_moduleName(moduleName)
 , m_pluginName(moduleName)
@@ -119,7 +120,7 @@ void VistleInteractor::executeModule()
     auto pl = message::addPayload(exec, message::Execute::Payload(m_changedParameters));
     m_changedParameters.clear();
 
-    sendMessage(exec, &pl);
+    sendMessage({exec, pl});
 }
 
 /// copy the Module to same host
@@ -369,9 +370,9 @@ int VistleInteractor::getFileBrowserParam(const std::string &paraName, char *&va
 
 // --- set-Functions:
 
-void VistleInteractor::sendMessage(const message::Message &msg, const buffer *pl) const
+void VistleInteractor::sendMessage(const ShmEnvelope &message) const
 {
-    m_sender->sendMessage(msg, pl);
+    m_sender(message);
 }
 
 void VistleInteractor::sendParamMessage(const std::shared_ptr<Parameter> param) const

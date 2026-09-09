@@ -8,7 +8,6 @@
 #include <cover/OpenCOVER.h>
 #include <PluginUtil/PluginMessageTypes.h>
 
-#include <VistlePluginUtil/VistleMessage.h>
 #include <VistlePluginUtil/VistleInfo.h>
 #include <VistlePluginUtil/VistleInteractor.h>
 
@@ -640,9 +639,10 @@ void VistlePlugin::requestQuit(bool killSession)
 void VistlePlugin::message(int toWhom, int type, int length, const void *data)
 {
     if (type == opencover::PluginMessageTypes::VistleMessageOut) {
-        const auto *wrap = static_cast<const VistleMessage *>(data);
+        const auto *wrap = static_cast<const ShmEnvelope *>(data);
+        assert(wrap);
         if (m_module) {
-            m_module->sendMessage(wrap->buf, wrap->payload);
+            m_module->sendMessage(*wrap);
         }
     }
 }
@@ -677,9 +677,10 @@ bool VistlePlugin::sendVisMessage(const covise::Message *msg)
 
     message::Cover cover(m_module->mirrorId(), msg->sender, msg->send_type, msg->type);
     cover.setDestId(message::Id::MasterHub);
-    MessagePayload pl(msg->data.data(), msg->data.length());
+    buffer bufData(msg->data.data(), msg->data.data() + msg->data.length());
     cover.setPayloadSize(msg->data.length());
-    return m_module->sendMessage(cover, pl);
+
+    return m_module->sendMessage(ShmEnvelope(cover, bufData));
 }
 
 std::string VistlePlugin::collaborativeSessionId() const

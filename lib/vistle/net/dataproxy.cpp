@@ -508,6 +508,10 @@ void DataProxy::msgForward(std::shared_ptr<tcp_socket> sock, EndPointType type)
 
             if (forward) {
                 auto dest = getDataSock(*msg);
+                if (auto pl = msg->getPayload()) {
+                    assert(!payload);
+                    payload = std::make_shared<buffer>(pl, pl + msg->payloadSize());
+                }
                 if (dest) {
                     async_send(*dest, *msg, payload, [type, dest, payload](error_code ec) mutable {
                         message::return_buffer(payload);
@@ -588,7 +592,8 @@ void DataProxy::msgForward(std::shared_ptr<tcp_socket> sock, EndPointType type)
             if (forward) {
                 auto dest = getDataSock(*msg);
                 if (dest) {
-                    if (msg->payloadSize() > 0) {
+                    // a payload piggybacked on the message has already been received into msg
+                    if (msg->payloadSize() > 0 && !msg->getPayload()) {
                         //std::cerr << "msg: " << *msg << ", forwarding " << toString(type) << " payload of " << msg->payloadSize() << " bytes" << std::endl;
                         async_forward(*dest, *msg, sock, [this, type, dest, sock](error_code ec) mutable {
                             if (ec) {
@@ -601,7 +606,8 @@ void DataProxy::msgForward(std::shared_ptr<tcp_socket> sock, EndPointType type)
                     } else {
                         msgForward(sock, type);
 
-                        async_send(*dest, *msg, nullptr, [type, dest](error_code ec) mutable {
+                        // an internal payload lives inside the message and has to be sent along with it
+                        async_send(*dest, message::Envelope(*msg), [type](error_code ec) {
                             if (ec) {
                                 CERR << "error in write to " << toString(type) << ": " << ec.message() << std::endl;
                                 return;

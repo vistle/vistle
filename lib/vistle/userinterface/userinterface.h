@@ -30,8 +30,8 @@ public:
     virtual ~FileBrowser();
     int id() const;
 
-    bool sendMessage(const message::Message &message, const buffer *payload = nullptr);
-    virtual bool handleMessage(const message::Message &message, const buffer &payload) = 0;
+    bool sendMessage(const message::BufferEnvelope &msg);
+    virtual bool handleMessage(const message::BufferEnvelope &msg) = 0;
 
 private:
     UserInterface *m_ui = nullptr;
@@ -50,7 +50,7 @@ public:
     void cancel();
 
     virtual bool dispatch();
-    bool sendMessage(const message::Message &message, const buffer *payload = nullptr);
+    bool sendMessage(const message::BufferEnvelope &msg);
 
     int id() const;
     const std::string &host() const;
@@ -85,7 +85,7 @@ protected:
     bool m_observerRegistered = false;
     StateTracker m_stateTracker;
 
-    bool handleMessage(const message::Message *message, const buffer &payload);
+    bool handleMessage(const message::BufferEnvelope &msg);
 
     boost::asio::io_context m_ioContext;
     boost::asio::ip::tcp::socket m_socket;
@@ -103,16 +103,7 @@ protected:
     MessageMap m_messageMap;
     std::mutex m_messageMutex; //< protect access to m_messageMap
     bool m_locked = false;
-    struct MessageWithPayload {
-        MessageWithPayload(const message::Message &msg, const buffer *payload = nullptr): buf(msg)
-        {
-            if (payload)
-                this->payload.reset(new buffer(*payload));
-        }
-        message::Buffer buf;
-        std::unique_ptr<const buffer> payload;
-    };
-    std::vector<MessageWithPayload> m_sendQueue;
+    std::vector<message::BufferEnvelope> m_sendQueue;
     mutable std::mutex m_mutex;
     bool m_initialized = false;
 

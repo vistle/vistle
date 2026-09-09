@@ -46,7 +46,7 @@ const char *ShmEnvelope::getExternalPayload() const
     return m_payload ? m_payload->data() : nullptr;
 }
 
-void ShmEnvelope::getPayloadFromHeader()
+void ShmEnvelope::constructPayloadfromShm()
 {
     assert(!m_payload);
     m_payload = Shm::the().getArrayFromName<char>(m_message.payloadName());
