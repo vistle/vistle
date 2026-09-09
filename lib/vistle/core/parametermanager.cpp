@@ -17,7 +17,7 @@ template<class Payload>
 void ParameterManager::sendParameterMessageWithPayload(message::Message &message, Payload &payload)
 {
     auto pl = addPayload(message, payload);
-    return sendParameterMessage(message, &pl);
+    return sendParameterMessage(message::BufferEnvelope{message, pl});
 }
 
 int ParameterManager::parameterTargetModule(int id, const std::string &name)

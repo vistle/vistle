@@ -244,17 +244,17 @@ bool InSituModuleBase::cacheVistleObjects()
         return false;
     std::vector<vistle::message::Buffer> vistleObjects;
     while (!m_terminateCommunication) {
-        vistle::message::Buffer buf;
+        vistle::ShmEnvelope msg;
         bool workDone = false;
-        if (m_vistleObjectsMessageQueue->tryReceive(buf)) {
+        if (m_vistleObjectsMessageQueue->tryReceive(msg)) {
             workDone = true;
-            if (isPackageComplete(buf)) {
+            if (isPackageComplete(msg.message())) {
                 vistle::insitu::barrier(m_vistleObjectsComm, m_terminateCommunication);
                 std::lock_guard<std::mutex> g{m_vistleObjectsMutex};
                 m_cachedVistleObjects.emplace(std::move(vistleObjects));
                 return true;
             }
-            vistleObjects.emplace_back(std::move(buf));
+            vistleObjects.emplace_back(std::move(msg.message()));
         }
         vistle::adaptive_wait(workDone, &m_vistleObjectsMutex);
     }

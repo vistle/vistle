@@ -44,7 +44,7 @@ public:
 
     bool render() override;
 
-    bool handleMessage(const vistle::message::Message *message, const vistle::MessagePayload &payload) override;
+    bool handleMessage(const vistle::ShmEnvelope &vistleMsg) override;
 
     bool changeParameter(const Parameter *p) override;
     void connectionAdded(const Port *from, const Port *to) override;
@@ -755,13 +755,13 @@ std::shared_ptr<RenderObject> Anari::addObject(int sender, const std::string &se
     return ro;
 }
 
-bool Anari::handleMessage(const vistle::message::Message *message, const vistle::MessagePayload &payload)
+bool Anari::handleMessage(const vistle::ShmEnvelope &msg)
 {
-    if (m_renderManager.handleMessage(message, payload)) {
+    if (m_renderManager.handleMessage(msg)) {
         return true;
     }
 
-    return Renderer::handleMessage(message, payload);
+    return Renderer::handleMessage(msg);
 }
 
 MODULE_MAIN(Anari)

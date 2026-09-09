@@ -104,10 +104,10 @@ void VistleConnection::unlock()
     m_mutex.unlock();
 }
 
-bool VistleConnection::sendMessage(const vistle::message::Message &msg, const buffer *payload) const
+bool VistleConnection::sendMessage(const message::BufferEnvelope &msg) const
 {
     mutex_lock lock(m_mutex);
-    return ui().sendMessage(msg, payload);
+    return ui().sendMessage(msg);
 }
 
 std::shared_ptr<vistle::Parameter> VistleConnection::getParameter(int id, const std::string &name) const
@@ -253,9 +253,9 @@ vistle::StateTracker &UiPythonStateAccessor::state()
     return m_vc->ui().state();
 }
 
-bool UiPythonStateAccessor::sendMessage(const vistle::message::Message &m, const vistle::buffer *payload)
+bool UiPythonStateAccessor::sendMessage(const message::BufferEnvelope &m)
 {
-    return m_vc->sendMessage(m, payload);
+    return m_vc->sendMessage(m);
 }
 
 } //namespace vistle

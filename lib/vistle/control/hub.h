@@ -37,7 +37,7 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(
 class HubParameters: public ParameterManager {
 public:
     HubParameters(Hub &hub);
-    void sendParameterMessage(const message::Message &message, const buffer *payload = nullptr) const override;
+    void sendParameterMessage(const message::Envelope &message) const override;
 
 private:
     Hub &m_hub;
@@ -47,7 +47,7 @@ private:
 class SessionParameters: public ParameterManager {
 public:
     SessionParameters(Hub &hub);
-    void sendParameterMessage(const message::Message &message, const buffer *payload = nullptr) const override;
+    void sendParameterMessage(const message::Envelope &message) const override;
 
 private:
     Hub &m_hub;
@@ -56,7 +56,7 @@ private:
 class ConfigParameters: public ParameterManager {
 public:
     ConfigParameters(Hub &hub);
-    void sendParameterMessage(const message::Message &message, const buffer *payload = nullptr) const override;
+    void sendParameterMessage(const message::Envelope &message) const override;
 
 private:
     Hub &m_hub;
@@ -79,7 +79,7 @@ public:
     bool init(int argc, char *argv[]);
     bool processScript();
     bool dispatch();
-    bool sendMessage(socket_ptr sock, const message::Message &msg, const buffer *payload = nullptr);
+    bool sendMessage(socket_ptr sock, const message::Envelope &message);
     bool isPrincipal() const;
     unsigned short port() const;
     unsigned short dataPort() const;
@@ -90,17 +90,17 @@ public:
     std::shared_ptr<process::child> launchMpiProcess(int type, const std::vector<std::string> &argv);
     const std::string &name() const;
 
-    bool handleMessage(const message::Message &msg, socket_ptr sock = socket_ptr(), const buffer *payload = nullptr,
+    bool handleMessage(const message::Envelope &recv, Hub::socket_ptr sock = socket_ptr(),
                        message::Identify::Identity senderType = message::Identify::UNKNOWN);
-    bool sendManager(const message::Message &msg, int hub = message::Id::LocalHub, const buffer *payload = nullptr);
-    bool sendMaster(const message::Message &msg, const buffer *payload = nullptr);
-    bool sendSlaves(const message::Message &msg, bool returnToSender = false, const buffer *payload = nullptr);
-    bool sendHub(int id, const message::Message &msg, const buffer *payload = nullptr);
-    bool sendUi(const message::Message &msg, int id = message::Id::Broadcast, const buffer *payload = nullptr);
-    bool sendModule(const message::Message &msg, int id, const buffer *payload = nullptr);
-    bool sendAll(const message::Message &msg, const buffer *payload = nullptr);
-    bool sendAllUi(const message::Message &msg, const buffer *payload = nullptr);
-    bool sendAllButUi(const message::Message &msg, const buffer *payload = nullptr);
+    bool sendManager(const message::Envelope &msg, int hub = message::Id::LocalHub);
+    bool sendMaster(const message::Envelope &msg);
+    bool sendSlaves(const message::Envelope &msg, bool returnToSender = false);
+    bool sendHub(int id, const message::Envelope &msg);
+    bool sendUi(const message::Envelope &msg, int id = message::Id::Broadcast);
+    bool sendModule(const message::Envelope &msg, int id);
+    bool sendAll(const message::Envelope &msg);
+    bool sendAllUi(const message::Envelope &msg);
+    bool sendAllButUi(const message::Envelope &msg);
 
     const StateTracker &stateTracker() const;
     StateTracker &stateTracker();
@@ -297,7 +297,7 @@ private:
 
     bool handlePriv(const message::Quit &quit, message::Identify::Identity senderType);
     bool handlePriv(const message::RemoveHub &rm);
-    bool handlePriv(const message::Execute &exec, const buffer *payload);
+    bool handlePriv(const message::Execute &exec, const message::Envelope &payload);
     bool handlePriv(const message::ExecutionDone &done);
     bool handlePriv(const message::CancelExecute &cancel);
     bool handlePriv(const message::Barrier &barrier);
@@ -305,19 +305,19 @@ private:
     bool handlePriv(const message::RequestTunnel &tunnel);
     bool handlePriv(const message::Connect &conn);
     bool handlePriv(const message::Disconnect &disc);
-    bool handlePriv(const message::FileQuery &query, const buffer *payload);
-    bool handlePriv(const message::FileQueryResult &result, const buffer *payload);
-    bool handlePriv(const message::Cover &cover, const buffer *payload);
+    bool handlePriv(const message::FileQuery &query, const message::Envelope &payload);
+    bool handlePriv(const message::FileQueryResult &result, const message::Envelope &payload);
+    bool handlePriv(const message::Cover &cover, const message::Envelope &payload);
     bool handlePriv(const message::ModuleExit &exit);
     bool handlePriv(const message::Kill &kill);
     bool handlePriv(const message::Spawn &spawn);
     bool handlePriv(const message::SetName &setname);
     bool handlePriv(const message::LoadWorkflow &load);
     bool handlePriv(const message::SaveWorkflow &save);
-    bool handlePriv(const message::Colormap &cm, const buffer *payload);
+    bool handlePriv(const message::Colormap &cm, const message::Envelope &payload);
     bool handlePriv(const message::RemoveColormap &rmcm);
     bool handlePriv(const message::SetParameter &param);
-    bool handlePriv(const message::SendText &st, const buffer *payload);
+    bool handlePriv(const message::SendText &st, const message::Envelope &payload);
 
     template<typename ConnMsg>
     bool handleConnectOrDisconnect(const ConnMsg &mm);

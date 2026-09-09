@@ -168,8 +168,8 @@ public:
     ParameterSet getConnectedParameters(const Parameter &param, bool onlyDirect = false) const;
     ParameterSet getDirectlyConnectedParameters(const Parameter &param) const;
 
-    bool handle(const message::Message &msg, const buffer *payload, bool track = true);
-    bool handle(const message::Message &msg, const char *payload, size_t payloadSize, bool track = true);
+    bool handle(const message::Buffer &msg, const buffer *payload, bool track = true);
+    bool handle(const message::Buffer &msg, const char *payload, size_t payloadSize, bool track = true);
 
     template<typename ConnMsg>
     bool handleConnectOrDisconnect(const ConnMsg &msg)
@@ -179,15 +179,7 @@ public:
 
     std::shared_ptr<PortTracker> portTracker() const;
 
-    struct MessageWithPayload {
-        MessageWithPayload(const message::Message &m, std::shared_ptr<const buffer> payload)
-        : message(m), payload(payload)
-        {}
-
-        message::Buffer message;
-        std::shared_ptr<const buffer> payload;
-    };
-    typedef std::vector<MessageWithPayload> VistleState;
+    typedef std::vector<message::BufferEnvelope> VistleState;
     struct VistleLockedState {
         VistleLockedState(mutex &mutex): guard(mutex) {}
 
