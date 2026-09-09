@@ -4,18 +4,19 @@
 #include <cover/coInteractor.h>
 #include <vistle/core/message.h>
 #include <vistle/core/messages.h>
-#include <vistle/core/messagesender.h>
 
 #include "export.h"
 #include "VistleRenderObject.h"
-
+#include "vistle/core/shmenvelope.h"
+#include <functional>
 namespace vistle {
 class Module;
 }
 
 class V_PLUGINUTILEXPORT VistleInteractor: public opencover::coInteractor {
 public:
-    VistleInteractor(const vistle::MessageSender *sender, const std::string &moduleName, int moduleId);
+    VistleInteractor(const std::function<void(const vistle::ShmEnvelope &)> &sender, const std::string &moduleName,
+                     int moduleId);
     ~VistleInteractor();
     void setPluginName(const std::string &plugin);
     void setDisplayName(const std::string &name);
@@ -126,7 +127,7 @@ public:
     const char *getString(unsigned int i) const override;
 
 private:
-    const vistle::MessageSender *m_sender;
+    const std::function<void(const vistle::ShmEnvelope &)> m_sender;
     std::string m_moduleName;
     std::string m_moduleDisplayName;
     std::string m_pluginName;
@@ -138,7 +139,7 @@ private:
     ParameterMap m_parameterMap;
 
     std::shared_ptr<vistle::Parameter> findParam(const std::string &name) const;
-    void sendMessage(const vistle::message::Message &msg, const vistle::buffer *pl = nullptr) const;
+    void sendMessage(const vistle::ShmEnvelope &message) const;
     void sendParamMessage(const std::shared_ptr<vistle::Parameter> param) const;
 
     // clean up arrays allocated for getVectorParam/getStringParam

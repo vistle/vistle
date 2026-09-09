@@ -371,10 +371,9 @@ std::set<int> StateTracker::getMirrors(int id) const
 
 namespace {
 
-void appendMessage(std::vector<StateTracker::MessageWithPayload> &v, const message::Message &msg,
-                   std::shared_ptr<const buffer> payload = std::shared_ptr<const buffer>())
+void appendMessage(StateTracker::VistleState &v, const message::BufferEnvelope &msg)
 {
-    v.emplace_back(msg, payload);
+    v.emplace_back(msg);
 }
 
 } // namespace
@@ -446,9 +445,7 @@ void StateTracker::appendModuleParameter(VistleState &state, const Module &m) co
             SetParameterChoices choices(name, param->choices().size());
             choices.setSenderId(id);
             SetParameterChoices::Payload pl(param->choices());
-            auto vec = addPayload(choices, pl);
-            auto shvec = std::make_shared<buffer>(vec);
-            appendMessage(state, choices, shvec);
+            appendMessage(state, {choices, addPayload(choices, pl)});
         }
 
         SetParameter setV(id, name, param, Parameter::Value);
@@ -485,9 +482,7 @@ void StateTracker::appendModuleColor(VistleState &state, const Module &m) const
         colormap.setBlendWithMaterial(cm.blendWithMaterial);
         colormap.setRange(cm.min, cm.max);
         Colormap::Payload pl(cm.rgba);
-        auto vec = addPayload(colormap, pl);
-        auto shvec = std::make_shared<buffer>(vec);
-        appendMessage(state, colormap, shvec);
+        appendMessage(state, {colormap, addPayload(colormap, pl)});
     }
 }
 
@@ -521,9 +516,7 @@ void StateTracker::appendModuleInfo(VistleState &state, const Module &mod) const
         ItemInfo info(key.type, key.port);
         info.setSenderId(mod.id);
         ItemInfo::Payload pl(value);
-        auto vec = addPayload(info, pl);
-        auto shvec = std::make_shared<buffer>(vec);
-        appendMessage(state, info, shvec);
+        appendMessage(state, {info, addPayload(info, pl)});
     }
 
     for (const auto &it: mod.currentPortState) {
@@ -536,9 +529,7 @@ void StateTracker::appendModuleInfo(VistleState &state, const Module &mod) const
         ItemInfo info(key.port, message::ItemInfo::PortState(value));
         info.setSenderId(mod.id);
         ItemInfo::Payload pl("");
-        auto vec = addPayload(info, pl);
-        auto shvec = std::make_shared<buffer>(vec);
-        appendMessage(state, info, shvec);
+        appendMessage(state, {info, addPayload(info, pl)});
     }
 }
 
@@ -593,16 +584,13 @@ StateTracker::VistleState StateTracker::getState() const
         msg.setArch(hub.arch);
         msg.setInfo(hub.info);
         msg.setVersion(hub.version);
-        auto pl = message::addPayload(msg, hub.addHubPayload);
-        auto shpl = std::make_shared<buffer>(pl);
-        appendMessage(state, msg, shpl);
+        appendMessage(state, {msg, message::addPayload(msg, hub.addHubPayload)});
     }
 
     // available modules
     for (const auto &keymod: availableModules()) {
-        keymod.second.send([&state](const message::Message &avail, const buffer *payload) {
-            auto shpl = std::make_shared<buffer>(*payload);
-            appendMessage(state, avail, shpl);
+        keymod.second.send([&state](const message::BufferEnvelope &payload) {
+            appendMessage(state, payload);
             return true;
         });
     }
@@ -634,7 +622,7 @@ StateTracker::VistleState StateTracker::getState() const
     }
 
     for (const auto &m: m_queue)
-        appendMessage(state, m.message, m.payload);
+        appendMessage(state, m);
 
     // finalize
     appendMessage(state, ReplayFinished());
@@ -705,12 +693,12 @@ const std::map<AvailableModule::Key, AvailableModule> &StateTracker::availableMo
     return m_availableModules;
 }
 
-bool StateTracker::handle(const message::Message &msg, const buffer *payload, bool track)
+bool StateTracker::handle(const message::Buffer &msg, const buffer *payload, bool track)
 {
     return handle(msg, payload ? payload->data() : nullptr, payload ? payload->size() : 0, track);
 }
 
-bool StateTracker::handle(const message::Message &msg, const char *payload, size_t payloadSize, bool track)
+bool StateTracker::handle(const message::Buffer &msg, const char *payload, size_t payloadSize, bool track)
 {
     using namespace vistle::message;
 
@@ -1022,11 +1010,11 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
     } else {
         if (msg.typeFlags() & QueueIfUnhandled) {
             if (payload) {
-                auto pl = std::make_shared<const buffer>(payload, payload + payloadSize);
+                auto pl = buffer(payload, payload + payloadSize);
                 m_queue.emplace_back(msg, pl);
 
             } else {
-                m_queue.emplace_back(msg, nullptr);
+                m_queue.emplace_back(msg);
             }
 #ifndef NDEBUG
             m_alreadySeen.erase(msg.uuid());
@@ -1047,7 +1035,7 @@ void StateTracker::processQueue()
     std::swap(m_queue, queue);
 
     for (auto &m: queue) {
-        handle(m.message, m.payload.get());
+        handle(m.message(), m.payloadData(), m.payloadSize());
     }
 
     m_processingQueue = false;
@@ -1062,7 +1050,7 @@ void StateTracker::cleanQueue(int id)
     m_queue.reserve(queue.size());
 
     for (auto &m: queue) {
-        auto &msg = m.message;
+        auto &msg = m.message();
         if (msg.destId() == id)
             continue;
         switch (msg.type()) {

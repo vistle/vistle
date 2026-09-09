@@ -260,16 +260,16 @@ bool DataManager::serveDirectSocket(std::shared_ptr<tcp_socket> sock)
 
         bool gotMsg = false;
         message::Buffer buf;
-        buffer payload;
+        auto payload = std::make_shared<buffer>();
         message::error_code ec;
-        if (message::recv(*sock, buf, ec, false, &payload)) {
+        if (message::recv(*sock, buf, ec, false, payload.get())) {
             {
                 std::lock_guard<std::mutex> guard(m_recvMutex);
                 if (m_quit)
                     break;
             }
             gotMsg = true;
-            handle(sock, buf, &payload);
+            handle(sock, payload->empty() ? buf : message::BufferEnvelope(buf, payload));
         } else if (ec) {
             CERR << "Data communication error: " << ec.message() << std::endl;
         }
@@ -502,20 +502,16 @@ bool DataManager::dispatch()
     bool work = false;
     for (bool gotMsg = true; m_dataSocket->is_open() && gotMsg;) {
         gotMsg = false;
-        message::Buffer buf;
-        buffer payload;
+        std::unique_ptr<message::Envelope> msg;
         {
             std::lock_guard<std::mutex> guard(m_recvMutex);
             if (!m_recvQueue.empty()) {
-                gotMsg = true;
-                auto &msg = m_recvQueue.front();
-                buf = msg.buf;
-                payload = std::move(msg.payload);
+                msg = std::move(m_recvQueue.front());
                 m_recvQueue.pop_front();
             }
         }
-        if (gotMsg) {
-            handle(m_dataSocket, buf, &payload);
+        if (msg) {
+            handle(m_dataSocket, *msg);
             work = true;
             continue;
         }
@@ -526,14 +522,16 @@ bool DataManager::dispatch()
         auto status = m_req.test();
         if (status && !status->cancelled()) {
             assert(status->tag() == Communicator::TagData);
+            message::Buffer buf;
+            std::shared_ptr<buffer> payload;
             m_comm.recv(status->source(), Communicator::TagData, buf.data(), m_msgSize);
             if (buf.payloadSize() > 0) {
-                payload.resize(buf.payloadSize());
-                m_comm.recv(status->source(), Communicator::TagData, payload.data(), buf.payloadSize());
+                payload = std::make_shared<buffer>(buf.payloadSize());
+                m_comm.recv(status->source(), Communicator::TagData, payload->data(), buf.payloadSize());
             }
             work = true;
             gotMsg = true;
-            handle(m_dataSocket, buf, &payload);
+            handle(m_dataSocket, payload ? message::BufferEnvelope(buf, payload) : buf);
             m_req = m_comm.irecv(mpi::any_source, Communicator::TagData, &m_msgSize, 1);
         }
     }
@@ -546,17 +544,16 @@ void DataManager::trace(message::Type type)
     m_traceMessages = type;
 }
 
-bool DataManager::send(std::shared_ptr<asio::ip::tcp::socket> &sock, const message::Message &message,
-                       std::shared_ptr<buffer> payload)
+bool DataManager::send(std::shared_ptr<asio::ip::tcp::socket> &sock, const message::Envelope &message)
 {
     if (!sock || !sock->is_open()) {
-        CERR << "ERROR: no connection to hub for sending " << message << std::endl;
+        CERR << "ERROR: no connection to hub for sending " << message.message() << std::endl;
         return false;
     }
 
     if (m_asyncSend) {
         //CERR << "async send: " << message << std::endl;
-        message::async_send(*sock, message, payload, [this, sock](boost::system::error_code ec) {
+        message::async_send(*sock, message, [this, sock](boost::system::error_code ec) {
             if (ec) {
                 CERR << "ERROR: async send to " << sock->remote_endpoint() << " failed: " << ec.message() << std::endl;
             }
@@ -564,19 +561,19 @@ bool DataManager::send(std::shared_ptr<asio::ip::tcp::socket> &sock, const messa
         return true;
     }
 
-    return message::send(*sock, message, payload.get());
+    return message::send(*sock, message);
 }
 
-bool DataManager::send(const message::Message &message, std::shared_ptr<buffer> payload)
+bool DataManager::send(const message::Envelope &message)
 {
-    auto destId = message.destId();
-    auto rank = message.destRank();
+    auto destId = message.message().destId();
+    auto rank = message.message().destRank();
     if (isLocal(destId)) {
-        const int sz = message.size();
+        const int sz = message.headerSize();
         m_comm.send(rank, Communicator::TagData, sz);
         m_comm.send(rank, Communicator::TagData, (const char *)&message, sz);
-        if (payload && payload->size() > 0) {
-            m_comm.send(rank, Communicator::TagData, payload->data(), payload->size());
+        if (message.externalPayloadSize() > 0) {
+            m_comm.send(rank, Communicator::TagData, message.payloadData(), message.externalPayloadSize());
         }
         return true;
     }
@@ -598,7 +595,7 @@ bool DataManager::send(const message::Message &message, std::shared_ptr<buffer> 
 #endif
         socket = m_dataSocket;
     }
-    return send(socket, message, payload);
+    return send(socket, message);
 }
 
 bool DataManager::requestArray(const std::string &referrer, const std::string &arrayId, int localType, int remoteType,
@@ -762,8 +759,6 @@ void DataManager::updateStatus()
 
 bool DataManager::notifyTransferComplete(const message::AddObject &addObj)
 {
-    //std::unique_lock<Communicator> guard(Communicator::the());
-
     //CERR << "sending completion notification for " << objName << std::endl;
     message::AddObjectCompleted complete(addObj);
     complete.setSenderId(Communicator::the().hubId());
@@ -771,23 +766,21 @@ bool DataManager::notifyTransferComplete(const message::AddObject &addObj)
     int hub = Communicator::the().clusterManager().idToHub(addObj.senderId());
     complete.setDestId(hub);
     complete.setDestRank(addObj.rank());
-    //return Communicator::the().clusterManager().sendMessage(hub, complete, addObj.rank());
     return Communicator::the().sendHub(complete);
-    //return send(complete);
 }
 
-bool DataManager::handle(std::shared_ptr<asio::ip::tcp::socket> &sock, const message::Message &msg, buffer *payload)
+bool DataManager::handle(std::shared_ptr<asio::ip::tcp::socket> &sock, const message::Envelope &msg)
 {
     //CERR << "handle: " << msg << std::endl;
     using namespace message;
 
-    if (m_traceMessages == message::ANY || msg.type() == m_traceMessages) {
-        CERR << "handle: " << msg << std::endl;
+    if (m_traceMessages == message::ANY || msg.message().type() == m_traceMessages) {
+        CERR << "handle: " << msg.message() << std::endl;
     }
 
-    switch (msg.type()) {
+    switch (msg.message().type()) {
     case message::IDENTIFY: {
-        auto &mm = static_cast<const Identify &>(msg);
+        auto &mm = msg.as<Identify>();
         if (mm.identity() == Identify::REQUEST) {
             if (sock == m_dataSocket) {
                 return send(sock, Identify(mm, Identify::LOCALBULKDATA, m_rank));
@@ -797,16 +790,18 @@ bool DataManager::handle(std::shared_ptr<asio::ip::tcp::socket> &sock, const mes
         return true;
     }
     case message::REQUESTOBJECT:
-        return handlePriv(static_cast<const RequestObject &>(msg));
-    case message::SENDOBJECT:
-        return handlePriv(static_cast<const SendObject &>(msg), payload);
+        return handlePriv(msg.as<RequestObject>());
+    case message::SENDOBJECT: {
+        buffer payload = msg.copyPayload();
+        return handlePriv(msg.as<SendObject>(), &payload);
+    }
     case message::ADDOBJECTCOMPLETED:
         return handlePriv(msg.as<AddObjectCompleted>());
     default:
         break;
     }
 
-    CERR << "invalid message type " << msg.type() << std::endl;
+    CERR << "invalid message type " << msg.message().type() << std::endl;
     return false;
 }
 
@@ -886,7 +881,7 @@ bool DataManager::handlePriv(const message::RequestObject &req)
         snd->setDestRank(req.rank());
         snd->setSenderId(Communicator::the().hubId());
         snd->setRank(m_rank);
-        send(*snd, compressed);
+        send(message::BufferEnvelope(*snd, compressed));
         //CERR << "sent " << snd->payloadSize() << "(" << snd->payloadRawSize() << ") bytes for " << req << " with " << *snd << std::endl;
 
         return true;
@@ -1050,12 +1045,14 @@ void DataManager::recvLoop()
         bool gotMsg = false;
         if (m_dataSocket->is_open()) {
             message::Buffer buf;
-            buffer payload;
+            auto payload = std::make_shared<buffer>();
             message::error_code ec;
-            if (message::recv(*m_dataSocket, buf, ec, false, &payload)) {
+            if (message::recv(*m_dataSocket, buf, ec, false, payload.get())) {
                 gotMsg = true;
                 std::lock_guard<std::mutex> guard(m_recvMutex);
-                m_recvQueue.emplace_back(std::move(buf), std::move(payload));
+                auto msg = payload->empty() ? std::make_unique<message::BufferEnvelope>(buf)
+                                            : std::make_unique<message::BufferEnvelope>(buf, payload);
+                m_recvQueue.emplace_back(std::move(msg));
                 //CERR << "Data received" << std::endl;
             } else if (ec) {
                 CERR << "Data communication error: " << ec.message() << std::endl;
@@ -1120,8 +1117,5 @@ void DataManager::cleanLoop()
             break;
     }
 }
-
-DataManager::Msg::Msg(message::Buffer &&buf, buffer &&payload): buf(std::move(buf)), payload(std::move(payload))
-{}
 
 } // namespace vistle

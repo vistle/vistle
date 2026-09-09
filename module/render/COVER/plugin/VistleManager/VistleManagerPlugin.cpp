@@ -10,14 +10,13 @@
 #include <cover/coVRMSController.h>
 #include <PluginUtil/PluginMessageTypes.h>
 
-#include <VistlePluginUtil/VistleMessage.h>
-
 #include <COVER.h>
 
 // vistle
 #include <vistle/util/exception.h>
 #include <vistle/util/threadname.h>
 #include <vistle/core/statetracker.h>
+#include <vistle/core/shmenvelope.h>
 #include <vistle/control/vistleurl.h>
 
 #include <vistle/manager/manager.h>
@@ -72,8 +71,8 @@ public:
 
 private:
     template<class Payload>
-    bool sendVistle(const vistle::message::Message &msg, const Payload &payload);
-    bool sendVistle(const vistle::message::Message &msg);
+    bool sendVistle(const vistle::message::Buffer &msg, const Payload &payload);
+    bool sendVistle(const vistle::message::Buffer &msg);
     boost::mpi::communicator m_comm;
 
     COVER *m_module = nullptr;
@@ -84,30 +83,17 @@ private:
     std::unique_ptr<vistle::config::Access> m_configAccess;
 };
 
-template<>
-bool VistleManagerPlugin::sendVistle(const vistle::message::Message &msg, const vistle::MessagePayload &payload)
-{
-    message::Buffer buf(msg);
-    std::cerr << "sending " << buf << std::endl;
-    //std::unique_lock<Communicator> guard(Communicator::the());
-    //return Communicator::the().sendMessage(vistle::message::Id::Broadcast, buf, -1, payload);
-    return Communicator::the().sendHub(buf, payload);
-}
-
 template<class Payload>
-bool VistleManagerPlugin::sendVistle(const vistle::message::Message &msg, const Payload &payload)
+bool VistleManagerPlugin::sendVistle(const vistle::message::Buffer &msg, const Payload &payload)
 {
-    message::Buffer buf(msg);
-    auto data = addPayload(buf, payload);
-    MessagePayload pl(data);
-    return sendVistle(buf, pl);
+    auto m = msg;
+    return Communicator::the().sendHub(message::BufferEnvelope(m, message::addPayload(m, payload)));
 }
 
-bool VistleManagerPlugin::sendVistle(const vistle::message::Message &msg)
+bool VistleManagerPlugin::sendVistle(const vistle::message::Buffer &msg)
 {
-    return sendVistle(msg, MessagePayload());
+    return Communicator::the().sendHub(msg);
 }
-
 
 class CoverVistleObserver: public vistle::StateObserver {
     VistleManagerPlugin *m_plug = nullptr;
@@ -297,8 +283,8 @@ void VistleManagerPlugin::requestQuit(bool killSession)
 void VistleManagerPlugin::message(int toWhom, int type, int length, const void *data)
 {
     if (type == opencover::PluginMessageTypes::VistleMessageOut) {
-        const auto *wrap = static_cast<const VistleMessage *>(data);
-        sendVistle(wrap->buf, wrap->payload);
+        const auto *msg = static_cast<const ShmEnvelope *>(data);
+        Communicator::the().sendHub(*msg);
     }
 }
 

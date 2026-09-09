@@ -21,7 +21,7 @@ public:
 
     void setQuitOnExit(bool quit);
 
-    bool sendMessage(const vistle::message::Message &msg, const buffer *payload = nullptr) const;
+    bool sendMessage(const message::BufferEnvelope &msg) const;
     bool requestReplyAsync(const vistle::message::Message &send) const;
     bool waitForReplyAsync(const vistle::message::uuid_t &uuid, vistle::message::Message &reply) const;
     bool waitForReply(const vistle::message::Message &send, vistle::message::Message &reply) const;
@@ -87,7 +87,7 @@ struct V_UIEXPORT UiPythonStateAccessor: public vistle::PythonStateAccessor {
     void lock() override;
     void unlock() override;
     StateTracker &state() override;
-    bool sendMessage(const vistle::message::Message &m, const buffer *payload = nullptr) override;
+    bool sendMessage(const message::BufferEnvelope &m) override;
 
     vistle::VistleConnection *m_vc = nullptr;
 };

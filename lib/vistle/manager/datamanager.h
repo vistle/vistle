@@ -25,6 +25,9 @@ namespace vistle {
 class Communicator;
 class StateTracker;
 class Object;
+namespace message {
+class Envelope;
+}
 
 class DataManager {
     typedef boost::asio::ip::tcp::acceptor acceptor;
@@ -38,7 +41,7 @@ public:
     ~DataManager();
     unsigned short port() const;
 
-    bool handle(std::shared_ptr<tcp_socket> &sock, const message::Message &msg, buffer *payload);
+    bool handle(std::shared_ptr<tcp_socket> &sock, const message::Envelope &msg);
     //! request a remote object for servicing an AddObject request
     bool requestObject(const message::AddObject &add, const std::string &objId, const ObjectCompletionHandler &handler);
     //! request a remote object for resolving a reference to a sub-object
@@ -54,15 +57,8 @@ public:
 
     void trace(message::Type type);
 
-    bool send(std::shared_ptr<tcp_socket> &sock, const message::Message &message,
-              std::shared_ptr<buffer> payload = nullptr);
-    bool send(const message::Message &message, std::shared_ptr<buffer> payload = nullptr);
-
-    struct Msg {
-        Msg(message::Buffer &&buf, buffer &&payload);
-        message::Buffer buf;
-        buffer payload;
-    };
+    bool send(std::shared_ptr<tcp_socket> &sock, const message::Envelope &message);
+    bool send(const message::Envelope &message);
 
     bool addHub(const message::AddHub &hub, const message::AddHub::Payload &payload);
     void removeHub(const message::RemoveHub &hub);
@@ -86,7 +82,7 @@ private:
     void updateStatus();
 
     std::mutex m_recvMutex;
-    std::deque<Msg> m_recvQueue;
+    std::deque<std::unique_ptr<message::Envelope>> m_recvQueue;
     bool m_quit = false;
 
     void recvLoop();
