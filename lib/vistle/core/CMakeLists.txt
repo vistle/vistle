@@ -13,7 +13,6 @@ set(core_SOURCES
     filequery.cpp
     geometry.cpp
     message.cpp
-    messagepayload.cpp
     messagequeue.cpp
     messagerouter.cpp
     messages.cpp
