@@ -2,6 +2,7 @@
 #define VISTLE_CORE_PARAMETERMANAGER_H
 
 #include "export.h"
+#include "envelope.h"
 
 #include <vistle/core/messages.h>
 #include <vistle/core/parameter.h>
@@ -110,7 +111,7 @@ public:
     bool handleMessage(const message::AddParameter &message);
     bool handleMessage(const message::RemoveParameter &message);
     bool handleMessage(const message::ConfigureParameter &message);
-    virtual void sendParameterMessage(const message::Message &message, const buffer *payload = nullptr) const = 0;
+    virtual void sendParameterMessage(const vistle::message::Envelope &message) const = 0;
     template<class Payload>
     void sendParameterMessageWithPayload(message::Message &message, Payload &payload);
     virtual bool

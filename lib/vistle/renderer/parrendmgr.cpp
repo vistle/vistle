@@ -5,6 +5,8 @@
 #include <boost/serialization/string.hpp>
 #include <boost/serialization/map.hpp>
 
+#include <vistle/core/shmenvelope.h>
+
 #ifdef VISTLE_USE_MPI
 #include <IceT.h>
 #include <IceTMPI.h>
@@ -735,11 +737,11 @@ void ParallelRemoteRenderManager::removeObject(std::shared_ptr<RenderObject> ro)
         rhr->updateModificationCount();
 }
 
-bool ParallelRemoteRenderManager::handleMessage(const message::Message *message, const MessagePayload &payload)
+bool ParallelRemoteRenderManager::handleMessage(const vistle::ShmEnvelope &msg)
 {
     auto rhr = m_rhrControl.server();
     if (rhr)
-        return rhr->handleMessage(message, payload);
+        return rhr->handleMessage(&msg.message());
 
     return false;
 }

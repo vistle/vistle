@@ -25,7 +25,7 @@ const Port *PortManager::getPort(const int moduleID, const std::string &name)
         if (parent && (parent->flags() & Port::MULTI)) {
             size_t idx = boost::lexical_cast<size_t>(name.substr(p + 1));
             const Port *port = parent->child(idx);
-            m_clusterManager->sendMessage(moduleID, message::AddPort(*port));
+            m_clusterManager->sendMessage(moduleID, ShmEnvelope(message::AddPort(*port)));
             return port;
         }
     }
@@ -38,7 +38,7 @@ std::vector<message::Buffer> PortManager::removePort(const Port &port)
 {
     std::vector<message::Buffer> msgs = PortTracker::removePort(port);
     for (const auto &msg: msgs)
-        m_clusterManager->sendAll(msg);
+        m_clusterManager->sendAll(ShmEnvelope(msg));
     return msgs;
 }
 
@@ -47,7 +47,7 @@ std::vector<message::Buffer> PortManager::removeModule(const int moduleID)
 {
     std::vector<message::Buffer> msgs = PortTracker::removeModule(moduleID);
     for (const auto &msg: msgs)
-        m_clusterManager->sendAll(msg);
+        m_clusterManager->sendAll(ShmEnvelope(msg));
     return msgs;
 }
 

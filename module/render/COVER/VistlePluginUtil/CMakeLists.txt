@@ -1,6 +1,6 @@
 set(pluginutil_SOURCES VistleInteractor.cpp VistleRenderObject.cpp VistleInfo.cpp)
 
-set(pluginutil_HEADERS export.h VistleInteractor.h VistleMessage.h VistleRenderObject.h VistleInfo.h)
+set(pluginutil_HEADERS export.h VistleInteractor.h VistleRenderObject.h VistleInfo.h)
 
 set(visibility EXPORT)
 if(NOT VISTLE_BUILD_SHARED)

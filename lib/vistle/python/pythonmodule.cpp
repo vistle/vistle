@@ -78,8 +78,9 @@ static vistle::StateTracker &state()
     return access().state();
 }
 
-static bool sendMessage(const vistle::message::Message &m, const vistle::buffer *payload = nullptr)
+static bool sendMessage(const vistle::message::BufferEnvelope &message)
 {
+    const auto &m = message.message();
     if (traceMessages == m.type() || traceMessages == message::ANY) {
         if (traceId == message::Id::Broadcast || traceId == message::Id::UI || traceId == m.destId()) {
             std::cerr << "Python: send " << m << std::endl;
@@ -89,14 +90,7 @@ static bool sendMessage(const vistle::message::Message &m, const vistle::buffer 
         std::cerr << "cannot send message: no Vistle module instance" << std::endl;
         return false;
     }
-    return pythonModuleInstance->access()->sendMessage(m, payload);
-}
-
-template<class Payload>
-static bool sendMessage(vistle::message::Message &m, Payload &payload)
-{
-    auto pl = addPayload(m, payload);
-    return sendMessage(m, &pl);
+    return pythonModuleInstance->access()->sendMessage(message);
 }
 
 static bool sendCoverMessage(int destMod, int subType, size_t len, const char *data)
@@ -106,7 +100,7 @@ static bool sendCoverMessage(int destMod, int subType, size_t len, const char *d
     message::Cover cover(subType);
     cover.setDestId(destMod);
     cover.setPayloadSize(pl.size());
-    return sendMessage(cover, &pl);
+    return sendMessage({cover, pl});
 }
 
 static bool snapshotGui(const std::string &filename, bool quit = false)
@@ -938,8 +932,9 @@ static void printInfo(const std::string &message)
 #endif
 
     message::SendText m(message::SendText::Info);
-    message::SendText::Payload pl(message);
-    sendMessage(m, pl);
+    auto pl = addPayload(m, message::SendText::Payload(message));
+
+    sendMessage({m, pl});
 }
 
 static void printWarning(const std::string &message)
@@ -950,8 +945,8 @@ static void printWarning(const std::string &message)
 #endif
 
     message::SendText m(message::SendText::Warning);
-    message::SendText::Payload pl(message);
-    sendMessage(m, pl);
+    auto pl = addPayload(m, message::SendText::Payload(message));
+    sendMessage({m, pl});
 }
 
 static void printError(const std::string &message)
@@ -962,8 +957,8 @@ static void printError(const std::string &message)
 #endif
 
     message::SendText m(message::SendText::Error);
-    message::SendText::Payload pl(message);
-    sendMessage(m, pl);
+    auto pl = addPayload(m, message::SendText::Payload(message));
+    sendMessage({m, pl});
 }
 
 static void setStatus(const std::string &text, message::UpdateStatus::Importance prio)
@@ -1127,8 +1122,7 @@ static void moduleCompoundCreate(int compoundId)
         printError("Module compound has to be allocated using \"moduleCompoundAlloc(string compoundName)\"");
         return;
     }
-    mc->module.send(
-        [](const message::Message &msg, const buffer *payload) -> bool { return sendMessage(msg, payload); });
+    mc->module.send([](const message::BufferEnvelope &message) -> bool { return sendMessage(message); });
     compounds.erase(mc);
 }
 

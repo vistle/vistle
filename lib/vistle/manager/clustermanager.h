@@ -9,7 +9,7 @@
 
 #include <vistle/core/archives_config.h>
 #include <vistle/core/message.h>
-#include <vistle/core/messagepayload.h>
+#include <vistle/core/shmenvelope.h>
 #include <vistle/core/messagequeue.h>
 #include <vistle/core/parameter.h>
 #include <vistle/core/parametermanager.h>
@@ -49,15 +49,12 @@ public:
     bool dispatch(bool &received);
     const StateTracker &state() const;
 
-    bool sendMessage(int receiver, const message::Message &message, int destRank = -1,
-                     const MessagePayload &payload = MessagePayload()) const;
-    bool sendAll(const message::Message &message, const MessagePayload &payload = MessagePayload()) const;
-    bool sendAllLocal(const message::Message &message, const MessagePayload &payload = MessagePayload()) const;
-    bool sendAllOthers(int excluded, const message::Message &message, const MessagePayload &payload,
-                       bool localOnly = false) const;
-    bool sendUi(const message::Message &message, const MessagePayload &paylod = MessagePayload()) const;
-    bool sendHub(const message::Message &message, const MessagePayload &payload = MessagePayload(),
-                 int destHub = message::Id::Broadcast) const;
+    bool sendMessage(int receiver, const message::Envelope &message, int destRank = -1) const;
+    bool sendAll(const message::Envelope &message) const;
+    bool sendAllLocal(const message::Envelope &message) const;
+    bool sendAllOthers(int excluded, const message::Envelope &message, bool localOnly = false) const;
+    bool sendUi(const message::Envelope &message) const;
+    bool sendHub(const message::Envelope &message, int destHub = message::Id::Broadcast) const;
 
     bool quit();
     bool quitOk() const;
@@ -71,7 +68,7 @@ public:
 
     PortManager &portManager() const;
 
-    bool handle(const message::Buffer &msg, const MessagePayload &payload = MessagePayload());
+    bool handle(const message::Envelope &message);
     //bool handleData(const message::Message &msg);
 
     message::CompressionMode archiveCompressionMode() const;
@@ -83,9 +80,9 @@ public:
     int hubId() const;
 
 private:
-    void queueMessage(const message::Message &msg);
+    void queueMessage(const message::Envelope &msg);
     void replayMessages();
-    std::vector<message::Buffer> m_messageQueue;
+    std::vector<std::unique_ptr<message::Envelope>> m_messageQueue;
 
     boost::mpi::communicator m_comm;
     std::shared_ptr<PortManager> m_portManager;
@@ -138,18 +135,18 @@ private:
     bool handlePriv(const message::Busy &busy);
     bool handlePriv(const message::Idle &idle);
     bool handlePriv(const message::SetParameter &setParam);
-    bool handlePriv(const message::SetParameterChoices &setChoices, const MessagePayload &payload);
+    bool handlePriv(const message::SetParameterChoices &setChoices, const message::Envelope &payload);
     bool handlePriv(const message::AddObject &addObj);
     bool handlePriv(const message::AddObjectCompleted &complete);
     bool handlePriv(const message::Barrier &barrier);
     bool handlePriv(const message::BarrierReached &barrierReached);
-    bool handlePriv(const message::SendText &text, const MessagePayload &payload);
-    bool handlePriv(const message::ItemInfo &info, const MessagePayload &payload);
+    bool handlePriv(const message::SendText &text, const message::Envelope &payload);
+    bool handlePriv(const message::ItemInfo &info, const message::Envelope &payload);
     bool handlePriv(const message::RequestTunnel &tunnel);
     bool handlePriv(const message::DataTransferState &state);
-    bool handlePriv(const message::Colormap &cm, const MessagePayload &payload);
+    bool handlePriv(const message::Colormap &cm, const message::Envelope &payload);
     bool handlePriv(const message::RemoveColormap &rcm);
-
+    bool sendHubWithMasterCheck(const message::Envelope &message) const;
     bool scanModules(const std::string &prefix, const std::string &buildtype);
 
     //! check whether objects are available for a module and compute() should be called
@@ -158,15 +155,8 @@ private:
     const int m_rank;
     const int m_size;
 
-    struct MessageWithPayload {
-        MessageWithPayload(const message::Buffer &buf, const MessagePayload &pl = MessagePayload())
-        : buf(buf), payload(pl)
-        {}
-        message::Buffer buf;
-        MessagePayload payload;
-    };
     std::mutex m_incomingMutex;
-    std::deque<MessageWithPayload> m_incomingMessages;
+    std::deque<ShmEnvelope> m_incomingMessages;
 
     struct Module {
         //#ifdef MODULE_THREAD
@@ -184,24 +174,24 @@ private:
         mutable std::mutex messageMutex; // mutex for message handling
         mutable bool blocked = false; // any message is blocking and cannot be sent right away
         mutable std::deque<message::Buffer> blockers; // queue of blocking messages
-        mutable std::deque<MessageWithPayload> blockedMessages; // again, but with payload
-        std::deque<MessageWithPayload>
-            delayedMessages; // these messages have been held up for not disturbing their order
+        mutable std::deque<ShmEnvelope> blockedMessages; // again, but with payload
+        std::deque<ShmEnvelope> delayedMessages; // these messages have been held up for not disturbing their order
         // handling of incoming messages
-        std::deque<MessageWithPayload> incomingMessages; // not yet processed, because module takes part in a barrier
+        std::deque<ShmEnvelope> incomingMessages; // not yet processed, because module takes part in a barrier
         std::vector<int> objectCount; // no. of available object tuples on each rank
 
         Module(): ranksStarted(0), ranksFinished(0), prepared(false), reduced(true), busyCount(0), blocked(false) {}
         ~Module();
 
-        void block(const message::Message &msg) const;
-        void unblock(const message::Message &msg) const;
-        bool send(const message::Message &msg, const MessagePayload &payload = MessagePayload()) const;
+        void block(const message::Buffer &msg) const;
+        void unblock(const message::Buffer &msg) const;
+        bool send(const ShmEnvelope &message) const;
         bool update() const;
-        void delay(const message::Message &msg, const MessagePayload &payload = MessagePayload());
+        void delay(const ShmEnvelope &payload);
         bool processDelayed(bool *haveExecute = nullptr);
         bool haveDelayed() const;
     };
+    void sendMessage(const Module &dest, const message::Envelope &msg) const;
     typedef std::unordered_map<int, Module> RunningMap;
     RunningMap m_runningMap, m_crashedMap;
     int numRunning() const;
