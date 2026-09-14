@@ -2,11 +2,10 @@
 #define VISTLE_CORE_ENVELOPE_H
 
 #include "export.h"
-#include <vector>
 #include "message.h"
 #include <vistle/util/buffer.h>
-namespace vistle {
 
+namespace vistle {
 namespace message {
 class V_COREEXPORT Envelope {
 public:
@@ -14,7 +13,7 @@ public:
     Envelope(const message::Message &msg); // MessagePayload without payload
     Envelope(const message::Buffer &msg); // overload for Buffer so that it can be copied with its full payload
 
-    virtual ~Envelope() = default;
+    virtual ~Envelope();
     virtual std::unique_ptr<Envelope> clone() const;
 
     message::Buffer &message();

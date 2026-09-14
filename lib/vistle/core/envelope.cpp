@@ -18,6 +18,8 @@ Envelope::Envelope(const message::Message &msg, const char *payload, size_t payl
 Envelope::Envelope(const message::Buffer &msg): m_message(msg), m_internalPayload(m_message.getPayload())
 {}
 
+Envelope::~Envelope() = default;
+
 std::unique_ptr<Envelope> Envelope::clone() const
 {
     return std::make_unique<Envelope>(this->m_message);
