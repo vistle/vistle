@@ -19,6 +19,8 @@
 #include <lz4.h>
 #endif
 
+#define NO_PIGGYBACKED_PAYLOAD
+
 
 namespace vistle {
 namespace message {
@@ -148,10 +150,14 @@ const char *Buffer::addPayload(const char *data, size_t size)
 
 const char *Buffer::getPayload() const
 {
+#ifdef NO_PIGGYBACKED_PAYLOAD
+    return nullptr;
+#else
     if (!payloadSize() || size() + payloadSize() > bufferSize())
         return nullptr;
     assert(payloadName() == shm_name_t("includedPayload"));
     return payload.data() + size() - sizeof(Message);
+#endif
 }
 
 DefaultSender::DefaultSender(): m_id(Id::Invalid), m_rank(-1)
