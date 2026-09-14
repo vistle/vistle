@@ -141,9 +141,7 @@ const char *Buffer::addPayload(const char *data, size_t size)
     // std::cerr << "Buffer::addPayload: copy payload for " << message::toString(type()) << ": " << size << " < "
     //   << (payload.size() - head) << std::endl;
     setPayloadSize(size);
-#ifndef NDEBUG
     setPayloadName(shm_name_t("includedPayload"));
-#endif
     memcpy(payload.data() + head, data, size);
     return payload.data() + head;
 }
