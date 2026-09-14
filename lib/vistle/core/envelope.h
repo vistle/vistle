@@ -43,13 +43,12 @@ public:
         return m_message.as<SomeMessage>();
     }
 
-    // save a copy if we already have a payload as buffer
-    // todo: change the archive functions so that they can work on other arrays
+    // TODO: change the archive functions so that they can work on other arrays
     template<typename Payload>
     Payload deserializePayload() const
     {
         assert(payloadSize() > 0);
-        return message::getPayload<Payload>({payloadData(), payloadData() + payloadSize()});
+        return message::getPayload<Payload>(copyPayload());
     }
 
 protected:

@@ -2,11 +2,10 @@
 #define VISTLE_CORE_MESSAGEPAYLOAD_H
 
 #include "shm.h"
-#include "export.h"
 
 namespace vistle {
 
 typedef ShmVector<char> MessagePayload;
 
-}
+} // namespace vistle
 #endif

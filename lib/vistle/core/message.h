@@ -361,7 +361,7 @@ extern V_COREEXPORT Payload getPayload(const buffer &data);
 template<class Payload>
 Payload getPayload(const char *data, size_t size)
 {
-    // todo: dont copy the data
+    // TODO dont copy the data
     return getPayload<Payload>(vistle::buffer(data, data + size));
 }
 
