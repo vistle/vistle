@@ -130,6 +130,9 @@ DefaultSender DefaultSender::s_instance;
 
 const char *Buffer::addPayload(const char *data, size_t size)
 {
+#ifdef NO_PIGGYBACKED_PAYLOAD
+    return nullptr;
+#else
     if (!data || size == 0)
         return nullptr;
     size_t head = this->size() - sizeof(Message); // current used bytes in payload[]
@@ -144,6 +147,7 @@ const char *Buffer::addPayload(const char *data, size_t size)
     setPayloadName(shm_name_t("includedPayload"));
     memcpy(payload.data() + head, data, size);
     return payload.data() + head;
+#endif
 }
 
 const char *Buffer::getPayload() const
