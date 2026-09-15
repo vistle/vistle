@@ -97,7 +97,7 @@ size_t Envelope::payloadSize() const
 
 const char *Envelope::getExternalPayload() const
 {
-    return m_internalPayload;
+    return nullptr;
 }
 
 
