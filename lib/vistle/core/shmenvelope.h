@@ -18,7 +18,7 @@ public:
     void ref() const;
     // decrease when receiving a message with a payload in shared memory, otherwise the payload will never be deleted
     void unref() const;
-    void getPayloadFromHeader();
+    void constructPayloadfromShm();
     const MessagePayload &shmPayload() const;
     MessagePayload &shmPayload();
 

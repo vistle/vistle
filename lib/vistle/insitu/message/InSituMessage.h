@@ -16,7 +16,7 @@
 #include <vistle/core/archives.h>
 #include <vistle/core/archives_config.h>
 #include <vistle/core/message.h>
-#include <vistle/core/messagepayload.h>
+#include <vistle/core/shmenvelope.h>
 #include <vistle/core/messages.h>
 #include <vistle/core/shm.h>
 #include <vistle/core/tcpmessage.h>
