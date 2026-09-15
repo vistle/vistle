@@ -135,8 +135,7 @@ const char *Buffer::addPayload(const char *data, size_t size)
 #else
     if (!data || size == 0)
         return nullptr;
-    size_t head = this->size() - sizeof(Message); // current used bytes in payload[]
-    if (size > payload.size() - head) {
+    if (this->size() + size > sizeof(*this)) {
         // std::cerr << "Buffer::addPayload: payload too large for " << message::toString(type()) << ": " << size
         //   << " > " << (payload.size() - head) << std::endl;
         return nullptr;
@@ -145,8 +144,8 @@ const char *Buffer::addPayload(const char *data, size_t size)
     //   << (payload.size() - head) << std::endl;
     setPayloadSize(size);
     setPayloadName(shm_name_t("includedPayload"));
-    memcpy(payload.data() + head, data, size);
-    return payload.data() + head;
+    memcpy(this->data() + this->size(), data, size);
+    return this->data() + this->size();
 #endif
 }
 
