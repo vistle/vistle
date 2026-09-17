@@ -165,7 +165,7 @@ template<class Payload>
 bool Module::sendMessageWithPayload(message::Message &message, Payload &payload) const
 {
     auto pl = addPayload(message, payload);
-    return this->sendMessage(message, &pl);
+    return this->sendMessage(ShmEnvelope{message, pl});
 }
 
 

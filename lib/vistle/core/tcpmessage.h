@@ -5,9 +5,9 @@
 
 #include <vistle/util/buffer.h>
 
-#include "messagepayload.h"
-
+#include "envelope.h"
 #include "export.h"
+#include "messagepayload.h"
 
 namespace vistle {
 
@@ -22,10 +22,15 @@ using boost::system::error_code;
 bool V_COREEXPORT send(socket_t &sock, const message::Message &msg, const buffer *payload = nullptr);
 bool V_COREEXPORT send(socket_t &sock, const message::Message &msg, error_code &ec, const buffer *payload = nullptr);
 bool V_COREEXPORT send(socket_t &sock, const message::Message &msg, error_code &ec, const char *payload, size_t size);
+bool V_COREEXPORT send(socket_t &sock, const message::Envelope &msg);
+
 void V_COREEXPORT async_send(socket_t &sock, const Message &msg, std::shared_ptr<buffer> payload,
                              const std::function<void(error_code ec)> handler);
 void V_COREEXPORT async_send(socket_t &sock, const Message &msg, const MessagePayload &payload,
                              const std::function<void(error_code ec)> handler);
+void V_COREEXPORT async_send(socket_t &sock, const message::Envelope &msg,
+                             const std::function<void(error_code ec)> handler);
+
 void V_COREEXPORT async_forward(socket_t &sock, const Message &msg, std::shared_ptr<socket_t> payloadSock,
                                 const std::function<void(error_code ec)> handler);
 

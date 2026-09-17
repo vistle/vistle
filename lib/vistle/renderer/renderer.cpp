@@ -1,3 +1,4 @@
+#include "renderer.h"
 #include <vistle/core/message.h>
 #include <vistle/core/message/colormap.h>
 #include <vistle/core/messagequeue.h>
@@ -11,8 +12,8 @@
 #include <vistle/core/archive_loader.h>
 #include <vistle/core/grid.h>
 #include <vistle/alg/objalg.h>
-
-#include "renderer.h"
+#include <vistle/core/shm.h>
+#include <vistle/core/shmenvelope.h>
 
 #include <vistle/util/vecstreambuf.h>
 #include <vistle/util/sleep.h>
@@ -65,32 +66,36 @@ std::array<Object::const_ptr, 3> splitObject(Object::const_ptr container)
     return geo_norm_data;
 }
 
-bool Renderer::handleMessage(const message::Message *message, const MessagePayload &payload)
+bool Renderer::handleMessage(const vistle::ShmEnvelope &vistleMsg)
 {
-    switch (message->type()) {
+    const message::Buffer &buf = vistleMsg.message();
+    size_t payloadSize = buf.payloadSize();
+    const char *payload = vistleMsg.payloadData();
+
+    switch (buf.type()) {
     case vistle::message::REPLAYFINISHED: {
         m_replayFinished = true;
         break;
     }
     case vistle::message::ADDOBJECT: {
-        auto add = static_cast<const message::AddObject *>(message);
+        auto &add = buf.as<message::AddObject>();
         if (payload)
-            m_stateTracker->handle(*add, payload->data(), payload->size());
+            m_stateTracker->handle(add, payload, payloadSize);
         else
-            m_stateTracker->handle(*add, nullptr);
-        return handleAddObject(*add);
+            m_stateTracker->handle(add, nullptr);
+        return handleAddObject(add);
         break;
     }
     case vistle::message::COLORMAP: {
-        const auto &m = static_cast<const message::Colormap *>(message);
-        auto plbuf = vistle::buffer(payload->data(), payload->data() + payload->size());
+        auto &m = buf.as<message::Colormap>();
+        auto plbuf = vistle::buffer(payload, payload + payloadSize);
         auto pl = message::getPayload<message::Colormap::Payload>(plbuf);
-        addColorMap(*m, pl.rgba);
+        addColorMap(m, pl.rgba);
         break;
     }
     case vistle::message::REMOVECOLORMAP: {
-        const auto &m = static_cast<const message::RemoveColormap *>(message);
-        removeColorMap(m->species());
+        auto &m = buf.as<message::RemoveColormap>();
+        removeColorMap(m.species());
         break;
     }
     default: {
@@ -98,7 +103,7 @@ bool Renderer::handleMessage(const message::Message *message, const MessagePaylo
     }
     }
 
-    return Module::handleMessage(message, payload);
+    return Module::handleMessage(vistleMsg);
 }
 
 bool Renderer::addColorMap(const vistle::message::Colormap &cm, std::vector<vistle::RGBA> &rgba)
@@ -194,13 +199,13 @@ bool Renderer::dispatch(bool block, bool *messageReceived, unsigned int minPrio)
     // handle the messages of at least one batch, and more if there are still messages pending,
     // but not more than m_numObjectsPerFrame batches per frame
     do {
-        message::Buffer buf;
+        ShmEnvelope message;
         // never block, we want to render regularly
-        const bool haveMessage = getNextMessage(buf, false, minPrio);
+        const bool haveMessage = getNextMessage(message, false, minPrio);
 
         // handle the messages of this batch together with the other ranks
         bool anyMessage = false;
-        if (!processMessagesSynced(buf, haveMessage, messageReceived, minPrio, &anyMessage))
+        if (!processMessagesSynced(message, haveMessage, messageReceived, minPrio, &anyMessage))
             return false;
         wasAnyMessage = wasAnyMessage || anyMessage;
 

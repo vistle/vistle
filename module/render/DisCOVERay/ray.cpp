@@ -85,7 +85,7 @@ public:
 
     bool render() override;
 
-    bool handleMessage(const vistle::message::Message *message, const vistle::MessagePayload &payload) override;
+    bool handleMessage(const vistle::ShmEnvelope &msg) override;
 
     bool changeParameter(const Parameter *p) override;
     void connectionAdded(const Port *from, const Port *to) override;
@@ -680,13 +680,13 @@ std::shared_ptr<RenderObject> DisCOVERay::addObject(int sender, const std::strin
     return ro;
 }
 
-bool DisCOVERay::handleMessage(const vistle::message::Message *message, const vistle::MessagePayload &payload)
+bool DisCOVERay::handleMessage(const vistle::ShmEnvelope &msg)
 {
-    if (m_renderManager.handleMessage(message, payload)) {
+    if (m_renderManager.handleMessage(msg)) {
         return true;
     }
 
-    return Renderer::handleMessage(message, payload);
+    return Renderer::handleMessage(msg);
 }
 
 MODULE_MAIN(DisCOVERay)

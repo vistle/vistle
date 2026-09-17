@@ -8,13 +8,13 @@
 #include "export.h"
 #include "message.h"
 #include "messages.h"
-#include "messagepayload.h"
+#include "shmenvelope.h"
 #include "object.h"
 namespace vistle {
 
 const int ModuleNameLength = 50;
-typedef std::function<bool(const message::Message &msg, const buffer *payload)> sendMessageFunction;
-typedef std::function<bool(const message::Message &msg, const MessagePayload &payload)> sendShmMessageFunction;
+typedef std::function<bool(const vistle::message::BufferEnvelope &)> sendMessageFunction;
+typedef std::function<bool(const vistle::ShmEnvelope &)> sendShmMessageFunction;
 
 class V_COREEXPORT AvailableModuleBase {
 public:
@@ -92,15 +92,15 @@ protected:
     {
         auto msg = T{*this};
         auto pl = addPayload(msg, *this);
-        return func(msg, &pl);
+        return func(vistle::message::BufferEnvelope(msg, pl));
     }
 
     template<typename T>
     bool send(const sendShmMessageFunction &func) const
     {
         auto msg = T{*this};
-        auto pl = MessagePayload{addPayload(msg, *this)};
-        return func(msg, pl);
+        auto pl = ShmVector<char>{addPayload(msg, *this)};
+        return func(vistle::ShmEnvelope(msg, pl));
     }
     template<typename T>
     void initialize(const T &msg)

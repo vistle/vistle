@@ -90,7 +90,7 @@ public:
     typedef std::map<std::string, bool> VariantVisibilityMap;
     const VariantVisibilityMap &getVariants() const;
 
-    bool handleMessage(const vistle::message::Message *message, const vistle::MessagePayload &payload);
+    bool handleMessage(const vistle::message::Message *message);
     bool handleRemoteRenderMessage(std::shared_ptr<socket> sock, const vistle::message::RemoteRenderMessage &rr);
 
     bool handleMatrices(std::shared_ptr<socket> sock, const matricesMsg &mat);
