@@ -45,6 +45,8 @@ Particle<S>::Particle(Index id, int rank, Index startId, const Vector3 &pos, boo
     if (!global.blocks[timestep].empty()) {
         m_time = global.blocks[timestep][0]->m_grid->getRealTime();
     }
+
+    m_wallclock = MPI_Wtime();
 }
 
 template<class S>
@@ -255,6 +257,11 @@ void Particle<S>::EmitData()
     }
     if (m_global.computeBlockIndex) {
         m_currentSegment->m_blockIndex.push_back(m_block->m_grid->getBlock());
+    }
+    if (m_global.computeWallclock) {
+        auto t = MPI_Wtime();
+        m_currentSegment->m_wallclock.push_back(t - m_wallclock);
+        m_wallclock = t;
     }
 }
 
@@ -548,6 +555,8 @@ void Particle<S>::addToOutput()
                         addToScalar(m_global.cellField[timestep], seg.m_cellIndex[i]);
                     if (m_global.computeBlockIndex)
                         addToScalar(m_global.blockField[timestep], seg.m_blockIndex[i]);
+                    if (m_global.computeWallclock)
+                        addToScalar(m_global.wallclockField[timestep], seg.m_wallclock[i]);
 
                     time += m_global.dt_step;
                     ++timestep;
@@ -664,9 +673,14 @@ void Particle<S>::addToOutput()
             blockIndex = &m_global.blockField[t]->x();
             blockIndex->reserve(nsz);
         }
+        shm<Scalar>::array *wallclock = nullptr;
+        if (m_global.computeWallclock) {
+            wallclock = &m_global.wallclockField[t]->x();
+            wallclock->reserve(nsz);
+        }
 
         auto addStep = [this, &x, &y, &z, &cl, vec_x, vec_y, vec_z, scalars, id, step, stepwidth, time, dist,
-                        stopReason, cellIndex, blockIndex](const Segment &seg, Index i) {
+                        stopReason, cellIndex, blockIndex, wallclock](const Segment &seg, Index i) {
             const auto &vec = seg.m_xhist[i];
             x.push_back(vec[0]);
             y.push_back(vec[1]);
@@ -699,6 +713,8 @@ void Particle<S>::addToOutput()
                 cellIndex->push_back(seg.m_cellIndex[i]);
             if (blockIndex)
                 blockIndex->push_back(seg.m_blockIndex[i]);
+            if (wallclock)
+                wallclock->push_back(seg.m_wallclock[i]);
         };
 
         for (auto &ent: m_segments) {

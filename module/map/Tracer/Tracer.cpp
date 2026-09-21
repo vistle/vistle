@@ -66,7 +66,8 @@ bool agree(const boost::mpi::communicator &comm, const Value &value)
 }
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(
-    AddDataKind, (None)(ParticleId)(Step)(Time)(StepWidth)(Distance)(TerminationReason)(CellIndex)(BlockIndex))
+    AddDataKind,
+    (None)(ParticleId)(Step)(Time)(StepWidth)(Distance)(TerminationReason)(CellIndex)(BlockIndex)(WallclockDiff))
 
 Tracer::Tracer(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
@@ -112,6 +113,7 @@ Tracer::Tracer(const std::string &name, int moduleID, mpi::communicator comm): M
     addDescription(TerminationReason, "stop_reason", "stream lines or points with reason for finishing trace");
     addDescription(CellIndex, "cell_index", "stream lines or points with cell index");
     addDescription(BlockIndex, "block_index", "stream lines or points with block index");
+    addDescription(WallclockDiff, "wallclock_diff", "time difference to when previous step was computed");
     m_verbose = addIntParameter("verbose", "verbose output", false, Parameter::Boolean);
 
     m_termPort = createOutputPort("terminal_location", "location where particles stopped");
@@ -620,6 +622,9 @@ bool Tracer::reduce(int timestep)
         case BlockIndex:
             global.computeBlockIndex = true;
             break;
+        case WallclockDiff:
+            global.computeWallclock = true;
+            break;
         }
     }
 
@@ -984,6 +989,9 @@ bool Tracer::reduce(int timestep)
         if (global.computeBlockIndex) {
             initMetaField(global.blockField, Index());
         }
+        if (global.computeWallclock) {
+            initMetaField(global.wallclockField, Scalar());
+        }
 
         int idx = timestep;
         if (idx < 0)
@@ -1072,6 +1080,8 @@ bool Tracer::reduce(int timestep)
                 field = global.cellField[i];
             } else if (m_addField[p]->getValue() == BlockIndex) {
                 field = global.blockField[i];
+            } else if (m_addField[p]->getValue() == WallclockDiff) {
+                field = global.wallclockField[i];
             }
 
             if (field) {
