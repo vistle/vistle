@@ -120,6 +120,7 @@ private:
     bool computeCellIndex = false;
     bool computeBlockIndex = false;
     bool computeTerminals = false;
+    bool computeWallclock = false;
 
     std::vector<vistle::Points::ptr> points; // points objects for each timestep (MovingPoints)
     std::vector<vistle::Lines::ptr> lines; // lines objects for each timestep (other modes)
@@ -131,6 +132,8 @@ private:
     std::vector<vistle::Vec<vistle::Scalar>::ptr> timeField, distField, stepWidthField;
     std::vector<vistle::Points::ptr> termPoints; // points where particles terminate
     std::vector<vistle::Vec<vistle::Index>::ptr> termReason; // reasons why particles terminate
+    std::vector<vistle::Vec<vistle::Scalar>::ptr>
+        wallclockField; // wallclock difference to when previous step was computed
     int numScalars = 0;
     std::mutex mutex;
 

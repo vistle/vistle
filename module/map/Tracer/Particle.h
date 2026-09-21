@@ -39,6 +39,7 @@ struct Segment {
     std::vector<vistle::Scalar> m_dists; //!< previous times
     std::vector<vistle::Index> m_cellIndex; //!< previous cell/element indices
     std::vector<vistle::Index> m_blockIndex; //!< index of current block
+    std::vector<vistle::Scalar> m_wallclock; //!< time difference to when previous step was computed
     std::vector<std::vector<vistle::Scalar>> m_scalars; //!< previous scalars
 
     Segment(int num = 0): m_rank(-1), m_num(num), m_startStep(vistle::InvalidIndex) {}
@@ -63,6 +64,7 @@ struct Segment {
         ar &m_times;
         ar &m_dists;
         ar &m_cellIndex;
+        ar &m_wallclock;
         for (auto &s: m_scalars) {
             ar &s;
         }
@@ -80,6 +82,7 @@ struct Segment {
         m_times.clear();
         m_dists.clear();
         m_cellIndex.clear();
+        m_wallclock.clear();
         for (auto &s: m_scalars) {
             s.clear();
         }
@@ -162,6 +165,7 @@ private:
     Integrator<S> m_integrator;
     StopReason m_stopReason; //! reason why particle was deactivated
     bool m_useCelltree; //! whether to use celltree for acceleration
+    double m_wallclock = 0.; //! time when previous integration step was computed
 
     // just for Boost.MPI
     template<class Archive>
@@ -178,6 +182,7 @@ private:
         ar &m_integrator.m_h;
         ar &m_stopReason;
         ar &m_segment;
+        ar &m_wallclock;
     }
 
     std::vector<boost::mpi::request> m_requests;
