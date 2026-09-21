@@ -613,6 +613,7 @@ bool Tracer::reduce(int timestep)
             break;
         case TerminationReason:
             global.computeStopReason = true;
+            break;
         case CellIndex:
             global.computeCellIndex = true;
             break;
@@ -634,7 +635,7 @@ bool Tracer::reduce(int timestep)
     for (Index i = 0; i < numconstant; ++i) {
         if (useCelltree && !celltree.empty()) {
             if (celltree[0].size() > i && celltree[0][i].valid())
-                celltree[0][i].get();
+                (void)celltree[0][i].get();
         }
     }
 
@@ -668,7 +669,7 @@ bool Tracer::reduce(int timestep)
         for (Index b = 0; b < numblocks; b++) {
             if (useCelltree && celltree.size() > size_t(t + 1)) {
                 if (celltree[t + 1].size() > b && celltree[t + 1][b].valid())
-                    celltree[t + 1][b].get();
+                    (void)celltree[t + 1][b].get();
             }
             DataBase::const_ptr din[NumPorts];
             for (int i = 0; i < NumPorts; ++i) {

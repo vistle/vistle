@@ -48,8 +48,7 @@ Particle<S>::Particle(Index id, int rank, Index startId, const Vector3 &pos, boo
 }
 
 template<class S>
-Particle<S>::~Particle()
-{}
+Particle<S>::~Particle() = default;
 
 template<class S>
 Index Particle<S>::id() const
@@ -647,8 +646,8 @@ void Particle<S>::addToOutput()
         }
         shm<Scalar>::array *dist = nullptr;
         if (m_global.computeDist) {
-            auto &dist = m_global.distField[t]->x();
-            dist.reserve(nsz);
+            dist = &m_global.distField[t]->x();
+            dist->reserve(nsz);
         }
         shm<Index>::array *stopReason = nullptr;
         if (m_global.computeStopReason) {
