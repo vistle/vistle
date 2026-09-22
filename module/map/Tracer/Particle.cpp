@@ -184,12 +184,13 @@ bool Particle<S>::findCell(double time)
         return false;
     }
 
+    const Vector3 xVV = VV(m_x);
     if (m_block) {
         auto grid = m_block->getGrid();
         if (m_global.int_mode == ConstantVelocity) {
             const auto neigh = grid->getNeighborElements(m_el);
             for (auto el: neigh) {
-                if (grid->inside(el, VV(m_x))) {
+                if (grid->inside(el, xVV)) {
                     m_el = el;
                     assert(m_currentSegment);
                     return true;
@@ -213,7 +214,7 @@ bool Particle<S>::findCell(double time)
             continue;
         }
         auto grid = block->getGrid();
-        m_el = grid->findCell(transformPoint(block->invTransform(), VV(m_x)), InvalidIndex,
+        m_el = grid->findCell(transformPoint(block->invTransform(), xVV), InvalidIndex,
                               m_useCelltree ? GridInterface::NoFlags : GridInterface::NoCelltree);
         if (m_el != InvalidIndex) {
             if (!m_currentSegment) {
@@ -286,7 +287,8 @@ template<class S>
 bool Particle<S>::Step()
 {
     const auto &grid = m_block->getGrid();
-    auto inter = grid->getInterpolator(m_el, VV(m_x), m_block->m_vecmap);
+    const Vector3 xVV = VV(m_x);
+    auto inter = grid->getInterpolator(m_el, xVV, m_block->m_vecmap);
     m_v = inter(m_block->m_vx, m_block->m_vy, m_block->m_vz);
     if (!isfinite(m_v)) {
         // corrupted field data: stop instead of integrating into NaN positions
@@ -302,7 +304,7 @@ bool Particle<S>::Step()
         } else {
             if (!haveOtherInter) {
                 haveOtherInter = true;
-                otherInter = grid->getInterpolator(m_el, VV(m_x), m_block->m_scalmap[i]);
+                otherInter = grid->getInterpolator(m_el, xVV, m_block->m_scalmap[i]);
             }
             m_scalars[i] = otherInter(m_block->m_scal[i]);
         }
