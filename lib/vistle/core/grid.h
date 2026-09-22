@@ -29,38 +29,16 @@ public:
     virtual std::vector<Index> getNeighborElements(Index elem)
         const = 0; //! return at least those elements sharing faces with elem, but might also contain those just sharing vertices
 
-    class Interpolator {
+    class V_COREEXPORT Interpolator {
         std::vector<Scalar> weights;
         std::vector<Index> indices;
 
     public:
         Interpolator() {}
-        Interpolator(std::vector<Scalar> &weights, std::vector<Index> &indices)
-        : weights(std::move(weights)), indices(std::move(indices))
-        {
-#ifndef NDEBUG
-            check();
-#endif
-        }
+        Interpolator(std::vector<Scalar> &weights, std::vector<Index> &indices);
+        Scalar operator()(const Scalar *field) const;
 
-        Scalar operator()(const Scalar *field) const
-        {
-            Scalar ret(0);
-            for (size_t i = 0; i < weights.size(); ++i)
-                ret += field[indices[i]] * weights[i];
-            return ret;
-        }
-
-        Vector3 operator()(const Scalar *f0, const Scalar *f1, const Scalar *f2) const
-        {
-            Vector3 ret(0, 0, 0);
-            for (size_t i = 0; i < weights.size(); ++i) {
-                const Index ind(indices[i]);
-                const Scalar w(weights[i]);
-                ret += Vector3(f0[ind], f1[ind], f2[ind]) * w;
-            }
-            return ret;
-        }
+        Vector3 operator()(const Scalar *f0, const Scalar *f1, const Scalar *f2) const;
 
         bool check() const;
     };
@@ -74,14 +52,7 @@ public:
     virtual Interpolator getInterpolator(Index elem, const Vector3 &point, DataBase::Mapping mapping = DataBase::Vertex,
                                          InterpolationMode mode = Linear) const = 0;
     Interpolator getInterpolator(const Vector3 &point, DataBase::Mapping mapping = DataBase::Vertex,
-                                 InterpolationMode mode = Linear) const
-    {
-        const Index elem = findCell(point);
-        if (elem == InvalidIndex) {
-            return Interpolator();
-        }
-        return getInterpolator(elem, point, mapping, mode);
-    }
+                                 InterpolationMode mode = Linear) const;
 };
 
 } // namespace vistle
