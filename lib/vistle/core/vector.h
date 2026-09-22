@@ -41,6 +41,13 @@ inline Vector3 cross(const Vector3 &a, const Vector3 &b)
                    difference_of_products(a[0], b[1], a[1], b[0]));
 }
 
+//! return true iff all coefficients are finite
+template<typename M>
+inline bool isfinite(const M &m)
+{
+    return m.array().isFinite().all();
+}
+
 } // namespace vistle
 
 EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(vistle::Vector1)
