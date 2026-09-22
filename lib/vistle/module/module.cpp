@@ -1,3 +1,5 @@
+#include "module.h"
+
 #include <cstdlib>
 #include <cstdio>
 
@@ -5,6 +7,7 @@
 
 #include <sstream>
 #include <iostream>
+#include <iomanip>
 #include <algorithm>
 #include <deque>
 #include <mutex>
@@ -42,8 +45,6 @@
 
 #include "objectcache.h"
 #include "resultcache_impl.h"
-
-#include "module.h"
 
 #include <boost/serialization/vector.hpp>
 #include <boost/lexical_cast.hpp>
