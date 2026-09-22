@@ -290,6 +290,10 @@ Index StructuredGrid::findCell(const Vector3 &point, Index hint, int flags) cons
     const bool acceptGhost = flags & AcceptGhost;
     const bool useCelltree = (flags & ForceCelltree) || (hasCelltree() && !(flags & NoCelltree));
 
+    if (std::isnan(point.x()) || std::isnan(point.y()) || std::isnan(point.z())) {
+        return InvalidIndex;
+    }
+
     if (hint != InvalidIndex && inside(hint, point)) {
         return hint;
     }

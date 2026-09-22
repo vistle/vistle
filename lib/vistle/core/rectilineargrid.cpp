@@ -192,6 +192,10 @@ Index RectilinearGrid::findCell(const Vector3 &point, Index hint, int flags) con
 {
     const bool acceptGhost = flags & AcceptGhost;
 
+    if (std::isnan(point.x()) || std::isnan(point.y()) || std::isnan(point.z())) {
+        return InvalidIndex;
+    }
+
     for (int c = 0; c < 3; ++c) {
         if (point[c] < m_coords[c][0])
             return InvalidIndex;
