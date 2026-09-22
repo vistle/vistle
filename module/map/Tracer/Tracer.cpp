@@ -501,13 +501,16 @@ bool Tracer::reduce(int timestep)
             n0 = numpoints / n1;
             if (n0 <= 1)
                 n0 = 2;
-        } else {
+        } else if (s > 0.) {
             n0 = Index(sqrt(numpoints * r / s)) + 1;
             if (n0 <= 1)
                 n0 = 2;
             n1 = numpoints / n0;
             if (n1 <= 1)
                 n1 = 2;
+        } else {
+            // r == s == 0: start points collapse to a single point
+            n0 = n1 = 2;
         }
         //setIntParameter("no_startp", numpoints);
         if (rank() == 0 && numpoints != n0 * n1 && !m_numStartpointsPrinted) {
@@ -579,7 +582,7 @@ bool Tracer::reduce(int timestep)
     if (m_haveTimeSteps && timestep >= 0) {
         timestepWidth = (m_realtimes.back() - m_realtimes.front()) / (numTimesteps() - 1);
     }
-    if (timestepWidth <= 0.) {
+    if (!std::isfinite(timestepWidth) || timestepWidth <= 0.) {
         timestepWidth = global.dt_step;
     } else {
         global.dt_step = timestepWidth;
@@ -875,7 +878,10 @@ bool Tracer::reduce(int timestep)
     maxTime = mpi::all_reduce(comm(), maxTime, mpi::maximum<Scalar>());
     unsigned numout = 1;
     if (taskType != Streamlines) {
-        numtime = maxTime / global.dt_step + 1;
+        double nt = maxTime / global.dt_step + 1;
+        if (!std::isfinite(nt) || nt > 1e6)
+            nt = numTimesteps();
+        numtime = int(nt);
         if (taskType == Pathlines && numtime < numTimesteps()) {
             // make sure that pathlines remain visible until end of simulation
             numtime = numTimesteps();
