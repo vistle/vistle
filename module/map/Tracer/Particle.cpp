@@ -1,5 +1,7 @@
 #include <limits>
+#include <cmath>
 #include <algorithm>
+#include <ostream>
 #include <boost/mpi/collectives/broadcast.hpp>
 #include <boost/serialization/vector.hpp>
 #include <vistle/core/vec.h>
@@ -175,6 +177,12 @@ bool Particle<S>::findCell(double time)
     if (!m_ingrid) {
         return false;
     }
+    if (!isfinite(m_x)) {
+        // position is corrupted (e.g., invalid start point): treat like out-of-domain
+        Deactivate(ArithmeticError);
+        std::cerr << "Particle::findCell(): position not finite: " << *this << std::endl;
+        return false;
+    }
 
     if (m_block) {
         auto grid = m_block->getGrid();
@@ -280,6 +288,12 @@ bool Particle<S>::Step()
     const auto &grid = m_block->getGrid();
     auto inter = grid->getInterpolator(m_el, VV(m_x), m_block->m_vecmap);
     m_v = inter(m_block->m_vx, m_block->m_vy, m_block->m_vz);
+    if (!isfinite(m_v)) {
+        // corrupted field data: stop instead of integrating into NaN positions
+        Deactivate(ArithmeticError);
+        std::cerr << "Particle::Step(): velocity not finite: " << *this << std::endl;
+        return false;
+    }
     GridInterface::Interpolator otherInter;
     bool haveOtherInter = false;
     for (unsigned i = 0; i < m_block->m_scal.size(); ++i) {
@@ -757,7 +771,6 @@ Scalar Particle<S>::time() const
     return m_time;
 }
 
-
 template<class S>
 void Particle<S>::broadcast(boost::mpi::communicator mpi_comm, int root)
 {
@@ -988,6 +1001,26 @@ void Segment::simplify(double relerr)
         skipVector(m_cellIndex, use);
         skipVector(m_blockIndex, use);
     }
+}
+
+template<class S>
+std::ostream &operator<<(std::ostream &os, const Particle<S> &p)
+{
+#if 0
+    os << "Particle " << p.m_id << " (start id " << p.m_startId << ")" << " rank " << p.m_rank << " step " << p.m_stp
+       << " time " << p.m_time << " dist " << p.m_dist << " segment " << p.m_segment
+       << " active " << (p.isActive() ? "true" : "false")
+       << " " << (p.m_ingrid ? "ingrid" : "out of domain")
+       << " " << (p.m_forward ? "forward" : "backward")
+       << " stopReason " << toString(p.m_stopReason)
+       << " x " << Particle<S>::VV(p.m_x) << " v " << p.m_v;
+    os << " timesteps " << p.m_segments.size();
+    for (auto &segpair: p.m_segments) {
+        const auto &seg = segpair.second;
+        os << " [" << seg->m_num << ": " << seg->m_xhist.size() << " points]";
+    }
+#endif
+    return os;
 }
 
 template class Particle<float>;

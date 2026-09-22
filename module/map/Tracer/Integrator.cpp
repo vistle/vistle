@@ -3,10 +3,10 @@
 #include "BlockData.h"
 #include "Tracer.h"
 #include <vistle/core/vec.h>
+#include <cmath>
 
 
 using namespace vistle;
-
 
 template<typename S>
 Integrator<S>::Integrator(Particle<S> *ptcl, bool forward)
@@ -189,6 +189,11 @@ bool Integrator<S>::StepRK32()
         }
 
         Vect3 k1 = sign * VI(Interpolator(m_ptcl->m_block, el1, VV(x1)));
+        if (!isfinite(k1)) {
+            m_ptcl->Deactivate(ArithmeticError);
+            std::cerr << "Integrator::StepRK32(): k1=" << k1 << " not finite" << std::endl;
+            return false;
+        }
 
         const Vect3 x2 = m_ptcl->m_x + m_h * (2 * k1 - k0);
         Vect3 x2nd = m_ptcl->m_x + m_h * 0.5 * (k0 + k1);
@@ -202,6 +207,11 @@ bool Integrator<S>::StepRK32()
         }
 
         Vect3 k2 = sign * VI(Interpolator(m_ptcl->m_block, el2, VV(x2)));
+        if (!isfinite(k2)) {
+            m_ptcl->Deactivate(ArithmeticError);
+            std::cerr << "Integrator::StepRK32(): k2=" << k2 << " not finite" << std::endl;
+            return false;
+        }
         Vect3 x3rd = m_ptcl->m_x + m_h * Third * (0.5 * k0 + 2 * k1 + 0.5 * k2);
 
         bool accept = hNew(m_ptcl->m_x, x3rd, x2nd, k0, cellSize);
@@ -232,7 +242,7 @@ bool Integrator<S>::StepConstantVelocity()
         m_ptcl->m_x += VI(dir) * cellsize * 0.001;
         t += cellsize * 0.001;
     }
-    m_hact = m_h = t / v;
+    m_hact = m_h = v > 0. ? t / v : 0.;
 
     return true;
 }

@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <future>
+#include <iosfwd>
 
 #include <boost/mpi/communicator.hpp>
 
@@ -22,7 +23,7 @@ class GlobalData;
 // clang-format off
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(
     StopReason,
-    (StillActive)(InitiallyOutOfDomain)(OutOfDomain)(NotMoving)(StepLimitReached)(DistanceLimitReached)(TimeLimitReached)
+    (StillActive)(InitiallyOutOfDomain)(OutOfDomain)(NotMoving)(StepLimitReached)(DistanceLimitReached)(TimeLimitReached)(ArithmeticError)
     (NumStopReasons) // keep last
 )
 // clang-format on
@@ -91,7 +92,6 @@ struct Segment {
 
 typedef std::map<int, std::shared_ptr<Segment>> SegmentMap;
 
-
 template<class S>
 class Particle {
     friend class Integrator<S>;
@@ -133,6 +133,8 @@ public:
     void fetchSegments(Particle &other); //! move segments from other particle to this one
     void addToOutput();
     vistle::Scalar time() const;
+
+    std::ostream &operator<<(std::ostream &os) const;
 
 private:
     bool findCell(double time);
