@@ -248,11 +248,13 @@ bool ShowCelltree::compute()
     addObject("grid_out", out);
     dataOut->setGrid(out);
     updateMeta(dataOut);
+    dataOut->describe("level", id());
     addObject("data_out", dataOut);
     if (celltreeValid) {
         vistle::Lines::ptr out(new vistle::Lines(Object::Initialized));
         out->copyAttributes(gridObj);
         vistle::Vec<Scalar>::ptr dataOut(new vistle::Vec<Scalar>(Object::Initialized));
+        dataOut->describe("invalid", id());
         dataOut->setGrid(out);
         updateMeta(dataOut);
         addObject("invalid_out", dataOut);
