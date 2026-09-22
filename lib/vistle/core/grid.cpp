@@ -44,4 +44,41 @@ bool GridInterface::Interpolator::check() const
     return true;
 }
 
+GridInterface::Interpolator::Interpolator(std::vector<Scalar> &weights, std::vector<Index> &indices)
+: weights(std::move(weights)), indices(std::move(indices))
+{
+#ifndef NDEBUG
+    check();
+#endif
+}
+
+Scalar GridInterface::Interpolator::operator()(const Scalar *field) const
+{
+    Scalar ret(0);
+    for (size_t i = 0; i < weights.size(); ++i)
+        ret += field[indices[i]] * weights[i];
+    return ret;
+}
+
+Vector3 GridInterface::Interpolator::operator()(const Scalar *f0, const Scalar *f1, const Scalar *f2) const
+{
+    Vector3 ret(0, 0, 0);
+    for (size_t i = 0; i < weights.size(); ++i) {
+        const Index ind(indices[i]);
+        const Scalar w(weights[i]);
+        ret += Vector3(f0[ind], f1[ind], f2[ind]) * w;
+    }
+    return ret;
+}
+
+GridInterface::Interpolator GridInterface::getInterpolator(const Vector3 &point, DataBase::Mapping mapping,
+                                                           InterpolationMode mode) const
+{
+    const Index elem = findCell(point);
+    if (elem == InvalidIndex) {
+        return Interpolator();
+    }
+    return getInterpolator(elem, point, mapping, mode);
+}
+
 } // namespace vistle
