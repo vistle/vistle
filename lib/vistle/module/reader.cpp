@@ -2,7 +2,7 @@
 #include <vistle/util/profile.h>
 #include <vistle/util/threadname.h>
 #include <mutex>
-#define PROF_CTX(s) (std::to_string(m_id) + ":" + m_name + ": " + s).c_str()
+#define PROF_CTX(s) (std::to_string(m_id) + ":" + m_name + ": " + (s)).c_str()
 
 namespace vistle {
 
