@@ -380,7 +380,7 @@ void StreamlineVtkm::createModuleParameters()
     m_startPoint1 = addVectorParameter("startpoint1", "1st initial point", ParamVector(0, 0.2, 0));
     m_startPoint2 = addVectorParameter("startpoint2", "2nd initial point", ParamVector(1, 0, 0));
 
-    m_direction = addVectorParameter("direction", "tracing direction", ParamVector(0, 0, 1));
+    m_direction = addVectorParameter("direction", "tracing direction", ParamVector(1, 0, 0));
 
     m_maxNumberOfSeeds =
         addIntParameter("max_no_startp", "maximum number of seeds (for parameter/slider limits)", max_no_seeds);
