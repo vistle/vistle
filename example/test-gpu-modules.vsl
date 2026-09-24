@@ -1,5 +1,5 @@
 # /usr/bin/env vistle
-# this is a Python workflow from Vistle 2025.1-103aa73ae
+# this is a Python workflow from Vistle 2025.1-d2163be90
 
 MasterHub=getMasterHub()
 VistleSession=getVistleSession()
@@ -298,7 +298,7 @@ setVectorParam(VistleSession, f'position[{mVertexClusteringVtkm36}]', -452.53866
 mStreamlineVtkm37 = waitForSpawn(umStreamlineVtkm37)
 setModuleDisplayName(mStreamlineVtkm37, 'StreamlineVtkm')
 setIntParam(VistleSession, f'layer[{mStreamlineVtkm37}]', -1)
-setVectorParam(VistleSession, f'position[{mStreamlineVtkm37}]', 222.17410278320312, -389.0139465332031)
+setVectorParam(VistleSession, f'position[{mStreamlineVtkm37}]', 221.11351824988998, -390.07453106651616)
 setIntParam(mStreamlineVtkm37, 'no_startp', 10, True)
 setVectorParam(mStreamlineVtkm37, 'startpoint1', -0.2, -1.0, -0.8, True)
 setVectorParam(mStreamlineVtkm37, 'startpoint2', -0.1, 0.0, 0.0, True)
@@ -321,7 +321,7 @@ connect(mGendat1,'data_out0', mTransform15,'data_in')
 connect(mGendat1,'data_out1', mTransform11,'data_in')
 connect(mGendat1,'data_out1', mColor26,'data_in')
 connect(mGendat1,'data_out1', mThresholdVtkm31,'data_in')
-connect(mGendat1,'data_out1', mStreamlineVtkm37,'data_in')
+connect(mGendat1,'data_out1', mStreamlineVtkm37,'data_in0')
 connect(mIsoSurfaceVtkm2,'data_out0', mCOVER4,'data_in')
 connect(mClipVtkm3,'data_out', mDomainSurfaceVtkm8,'data_in')
 connect(mApplyTransformVtkm5,'grid_out', mDisplaceVtkm27,'data_in')
@@ -357,7 +357,6 @@ connect(mTubeVtkm33,'data_out', mCOVER4,'data_in')
 connect(mTriangulateVtkm34,'data_out', mVertexClusteringVtkm36,'data_in')
 connect(mGendat35,'grid_out', mTriangulateVtkm34,'data_in')
 connect(mVertexClusteringVtkm36,'data_out', mCOVER4,'data_in')
-connect(mStreamlineVtkm37,'data_out', mThicken38,'grid_in')
 connect(mThicken38,'grid_out', mCOVER4,'data_in')
 
 # spawn all remote modules
