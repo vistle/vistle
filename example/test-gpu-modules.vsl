@@ -357,6 +357,7 @@ connect(mTubeVtkm33,'data_out', mCOVER4,'data_in')
 connect(mTriangulateVtkm34,'data_out', mVertexClusteringVtkm36,'data_in')
 connect(mGendat35,'grid_out', mTriangulateVtkm34,'data_in')
 connect(mVertexClusteringVtkm36,'data_out', mCOVER4,'data_in')
+connect(mStreamlineVtkm37,'data_out0', mThicken38,'grid_in')
 connect(mThicken38,'grid_out', mCOVER4,'data_in')
 
 # spawn all remote modules
