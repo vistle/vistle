@@ -706,11 +706,11 @@ osg::PrimitiveSet *buildTriangles(const PrimitiveBin &bin, const Index *el, cons
 {
     Index numElements = bin.prim.size();
     Index numCorners = bin.ncl.size();
-    Index numTri = numCorners - 2 * numElements;
+    Index numTriReserve = numCorners > 0 ? numCorners - 2 * numElements : numElements;
     if (options.indexedGeometry) {
         const Index *cl = bin.ncl.data();
         auto corners = new osg::DrawElementsUInt(osg::PrimitiveSet::TRIANGLES, 0);
-        corners->reserve(numTri * 3);
+        corners->reserve(numTriReserve * 3);
         Index begin = 0;
         Index idx = 0;
         for (auto elem: bin.prim) {
@@ -730,13 +730,13 @@ osg::PrimitiveSet *buildTriangles(const PrimitiveBin &bin, const Index *el, cons
         return corners;
     } else if (ghost) {
         auto corners = new osg::DrawElementsUInt(osg::PrimitiveSet::TRIANGLES, 0);
-        corners->reserve(numTri * 3);
+        corners->reserve(numTriReserve);
         Index begin = 0;
         Index idx = 0;
         for (auto elem: bin.prim) {
             const Index num = el[elem + 1] - el[elem];
             const Index end = begin + num;
-            if (ghost && ghost[elem] == cell::GHOST) {
+            if (ghost[elem] == cell::GHOST) {
                 idx += 3 * (end - begin - 2);
                 continue;
             } else {
