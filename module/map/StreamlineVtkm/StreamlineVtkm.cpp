@@ -17,7 +17,7 @@ using namespace vistle;
 
 MODULE_MAIN(StreamlineVtkm)
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(IntegrationMethod, (RK4)(Euler))
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(IntegrationMethod, (Euler)(RK4))
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(StartStyle, (Line)(Plane))
 
 void StreamlineVtkm::GlobalData::clear()
@@ -383,15 +383,15 @@ void StreamlineVtkm::createModuleParameters()
     m_direction = addVectorParameter("direction", "tracing direction", ParamVector(0, 0, 1));
 
     m_maxNumberOfSeeds =
-        addIntParameter("max_no_seeds", "maximum number of seeds (for parameter/slider limits)", max_no_seeds);
+        addIntParameter("max_no_startp", "maximum number of seeds (for parameter/slider limits)", max_no_seeds);
     setParameterRange(m_maxNumberOfSeeds, (Integer)2, (Integer)1000000);
 
     setCurrentParameterGroup("Stop Conditions");
-    m_numberOfSteps = addIntParameter("steps_max", "maximum number of integration steps", 100);
+    m_numberOfSteps = addIntParameter("steps_max", "maximum number of integration steps", 1000);
 
     setCurrentParameterGroup("Step Length Control");
     m_integrationMethod =
-        addIntParameter("integration_method", "integration method", IntegrationMethod::RK4, Parameter::Choice);
+        addIntParameter("integration", "integration method", IntegrationMethod::RK4, Parameter::Choice);
     V_ENUM_SET_CHOICES_SCOPE(m_integrationMethod, IntegrationMethod, );
 
     m_stepSize = addFloatParameter("step_size", "integration step size", 0.1f);
@@ -428,8 +428,7 @@ vistle::Meta StreamlineVtkm::getMetaForOutput(int timestep) const
 std::string StreamlineVtkm::getPortName(int index, bool output) const
 {
     std::string portName = output ? "data_out" : "data_in";
-    if (index > 0)
-        portName += std::to_string(index);
+    portName += std::to_string(index);
 
     return portName;
 }
