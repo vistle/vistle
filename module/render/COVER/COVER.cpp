@@ -202,6 +202,8 @@ bool COVER::parameterAdded(const int senderId, const std::string &name, const me
         plugin = "RhrClient";
     if (plugin == "Color" || plugin == "ColorRandom")
         plugin = "ColorBars";
+    if (plugin == "Streamline")
+        plugin = "Tracer";
     //std::cerr << "parameterAdded: sender=" << senderId << ", name=" << name << ", plugin=" << plugin << std::endl;
 
     InteractorMap::iterator it = m_interactorMap.find(senderId);
