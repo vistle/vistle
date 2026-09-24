@@ -162,6 +162,58 @@ Vector2 bilinearInverse(const Vector3 &p0, const Vector3 p[4])
     return ss;
 }
 
+bool meanValueCoordinates(const Vector3 &point, const Vector3 *corners, Index nCorners, const Vector3 &normal,
+                          std::vector<Scalar> &weights)
+{
+    weights.assign(nCorners, Scalar(0));
+    if (nCorners < 3 || normal.squaredNorm() <= Epsilon * Epsilon)
+        return false;
+
+    std::vector<Vector3> offsets(nCorners);
+    std::vector<Scalar> distances(nCorners);
+    for (Index i = 0; i < nCorners; ++i) {
+        offsets[i] = corners[i] - point;
+        distances[i] = offsets[i].norm();
+        if (distances[i] <= Epsilon) {
+            weights[i] = 1;
+            return true;
+        }
+    }
+
+    std::vector<Scalar> tanHalfAngles(nCorners);
+    for (Index i = 0; i < nCorners; ++i) {
+        const Index next = (i + 1) % nCorners;
+        const Scalar numerator = normal.dot(cross(offsets[i], offsets[next]));
+        const Scalar denominator = distances[i] * distances[next] + offsets[i].dot(offsets[next]);
+        if (std::abs(denominator) <= Epsilon) {
+            if (std::abs(numerator) > Epsilon)
+                return false;
+
+            const Scalar length = distances[i] + distances[next];
+            weights[i] = distances[next] / length;
+            weights[next] = distances[i] / length;
+            return true;
+        }
+        tanHalfAngles[i] = numerator / denominator;
+    }
+
+    Scalar sum = 0;
+    for (Index i = 0; i < nCorners; ++i) {
+        const Index previous = (i + nCorners - 1) % nCorners;
+        weights[i] = (tanHalfAngles[previous] + tanHalfAngles[i]) / distances[i];
+        sum += weights[i];
+    }
+    if (!std::isfinite(sum) || std::abs(sum) <= Epsilon)
+        return false;
+
+    for (auto &weight: weights) {
+        weight /= sum;
+        if (!std::isfinite(weight))
+            return false;
+    }
+    return true;
+}
+
 } // namespace
 
 Scalar UnstructuredGrid::cellDiameter(Index elem) const
@@ -676,16 +728,12 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
                     weights[startIndex + 2] += ss[0] * ss[1] * (1 - centerWeight);
                     weights[startIndex + 3] += (1 - ss[0]) * ss[1] * (1 - centerWeight);
                 } else if (nFaceVert > 0) {
-                    // subdivide face into triangles around faceCenter
-                    Scalar sum = 0;
-                    std::vector<Scalar> fweights(nFaceVert);
+                    std::vector<Scalar> faceWeights;
+                    const auto normal = faceNormalAndCenter(nFaceVert, &coord[startIndex]).first;
+                    if (!meanValueCoordinates(isect, &coord[startIndex], nFaceVert, normal, faceWeights))
+                        break;
                     for (Index i = 0; i < nFaceVert; ++i) {
-                        Scalar centerDist = (coord[i] - faceCenter).norm();
-                        fweights[i] = 1 / centerDist;
-                        sum += fweights[i];
-                    }
-                    for (Index i = 0; i < nFaceVert; ++i) {
-                        weights[i + startIndex] += fweights[i] / sum * (1 - centerWeight);
+                        weights[i + startIndex] += faceWeights[i] * (1 - centerWeight);
                     }
                 }
             }
