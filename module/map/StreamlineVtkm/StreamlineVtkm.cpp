@@ -368,6 +368,12 @@ void StreamlineVtkm::createModulePorts()
 
 void StreamlineVtkm::createModuleParameters()
 {
+    /*
+        Please note that the names of the module parameters need to match the parameter names
+        of the Tracer module so that the two modules can be replaced with each other by right-
+        clicking on them and that StreamlineVtkm can make use of COVER's TracerPlugin which
+        allows the user to change the parameters in COVER.
+    */
     setCurrentParameterGroup("Seed Points");
     const Integer max_no_seeds = 300;
     m_numberOfSeeds = addIntParameter("no_startp", "number of seed points", 2);
@@ -394,7 +400,8 @@ void StreamlineVtkm::createModuleParameters()
         addIntParameter("integration", "integration method", IntegrationMethod::RK4, Parameter::Choice);
     V_ENUM_SET_CHOICES_SCOPE(m_integrationMethod, IntegrationMethod, );
 
-    m_stepSize = addFloatParameter("step_size", "integration step size", 0.1f);
+    m_stepSize = addFloatParameter("h_init", "integration step size", 1e-03);
+    setParameterRange("h_init", 0.0, 1e6);
 }
 
 void StreamlineVtkm::setViskoresMPICommunicatorToCopyOf(const mpi::communicator &comm) const
