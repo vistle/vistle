@@ -28,8 +28,6 @@ void Integrator<S>::hInit()
         return;
     }
 
-    const auto h_min = global.h_min;
-
     Index el = m_ptcl->m_el;
     auto grid = m_ptcl->m_block->getGrid();
     Scalar unit = 1.;
@@ -44,7 +42,7 @@ void Integrator<S>::hInit()
         unit /= v;
     }
 
-    m_h = unit * h_min;
+    m_h = unit * global.h_init;
     m_hact = m_h;
 }
 
