@@ -425,11 +425,17 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
             }
             Matrix3 T;
             T << coord[0] - coord[3], coord[1] - coord[3], coord[2] - coord[3];
-            Vector3 w = T.inverse() * (point - coord[3]);
-            weights[3] = 1.;
-            for (int c = 0; c < 3; ++c) {
-                weights[c] = w[c];
-                weights[3] -= w[c];
+            if (std::abs(T.determinant()) < Epsilon) {
+                for (int c = 0; c < 4; ++c) {
+                    weights[c] = Scalar(0.25);
+                }
+            } else {
+                Vector3 w = T.inverse() * (point - coord[3]);
+                weights[3] = 1.;
+                for (int c = 0; c < 3; ++c) {
+                    weights[c] = w[c];
+                    weights[3] -= w[c];
+                }
             }
             break;
         }
