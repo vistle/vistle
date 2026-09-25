@@ -660,10 +660,12 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
                 // contribution of hit face,
                 // interpolate compatible with simple cells for faces with 3 or 4 vertices
                 if (nFaceVert == 3) {
+                    const Vector3 e0 = coord[startIndex + 0] - coord[startIndex + 2];
+                    const Vector3 e1 = coord[startIndex + 1] - coord[startIndex + 2];
+                    const Vector3 p = isect - coord[startIndex + 2];
                     Matrix2 T;
-                    T << (coord[startIndex + 0] - coord[startIndex + 2]).block<2, 1>(0, 0),
-                        (coord[startIndex + 1] - coord[startIndex + 2]).block<2, 1>(0, 0);
-                    Vector2 w = T.inverse() * (isect - coord[startIndex + 2]).block<2, 1>(0, 0);
+                    T << e0.dot(e0), e0.dot(e1), e0.dot(e1), e1.dot(e1);
+                    const Vector2 w = T.inverse() * Vector2(e0.dot(p), e1.dot(p));
                     weights[startIndex] += w[0] * (1 - centerWeight);
                     weights[startIndex + 1] += w[1] * (1 - centerWeight);
                     weights[startIndex + 2] += (1 - w[0] - w[1]) * (1 - centerWeight);
