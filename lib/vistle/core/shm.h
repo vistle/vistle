@@ -2,10 +2,7 @@
 #define VISTLE_CORE_SHM_H
 
 #include <memory>
-#include <array>
-#include <mutex>
 #include <atomic>
-#include <map>
 
 #ifdef NO_SHMEM
 #include <memory>
@@ -13,6 +10,7 @@
 #include <vector>
 #include <map>
 #include <iostream>
+#include <mutex>
 #else
 #include <vistle/util/boost_interprocess_config.h>
 #include <boost/interprocess/containers/vector.hpp>
@@ -26,24 +24,26 @@
 #endif
 #endif
 
-#include "archives_config.h"
+//#include "archives_config.h"
 
 #include <vistle/util/exception.h>
 #include <vistle/util/allocator.h>
 
 #include "export.h"
-#include "index.h"
-//#include "shm_array.h"
-#include "shmname.h"
 #include "shmdata.h"
 #include "shm_config.h"
 
 #if defined(BOOST_INTERPROCESS_POSIX_BARRIERS) && defined(BOOST_INTERPROCESS_POSIX_PROCESS_SHARED)
 #define SHMBARRIER
+#include <map>
 #endif
 
 //#define SHMDEBUG
 //#define SHMPUBLISH
+
+#ifdef SHMDEBUG
+#include "shmname.h"
+#endif
 
 namespace vistle {
 
