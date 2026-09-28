@@ -1119,18 +1119,28 @@ struct on_disk<unsigned long long>
 
 }
 
-// requires 
-#define expect(c) \
-    do \
-    { \
-        char paren = 0; \
-        stream.read(&paren, 1); \
-        if (paren != c) { \
-            std::cerr << __FILE__ << ":" << __LINE__ << ": expected '" << char(c) << "', got '" << char(paren) << "'" << std::endl; \
-            return false; \
-        } \
-    } \
-    while(false)
+static bool expect_char(std::istream &stream, char expect)
+{
+    if (!stream.good()) {
+        std::cerr << __FILE__ << ":" << __LINE__ << ": expected '" << char(expect) << "', but stream not good initially" << std::endl;
+        return false;
+    }
+    char paren = 0;
+    stream.read(&paren, 1);
+    if (!stream.good()) {
+        std::cerr << __FILE__ << ":" << __LINE__ << ": expected '" << char(expect) << "', but stream not good after reading" << std::endl;
+        return false;
+    }
+    if (paren != expect)
+    {
+        std::cerr << __FILE__ << ":" << __LINE__ << ": expected '" << char(expect) << "', got '" << char(paren) << "'" << std::endl;
+        return false;
+    }
+    return true;
+}
+
+// requires
+#define expect(stream, c) if (!expect_char(stream, c)) { return false; }
 
 
 template <typename T>
@@ -1192,14 +1202,14 @@ bool readVectorArrayBinary(std::istream &stream, T *x, T *y, T *z, const size_t 
 template <typename T>
 bool readVectorArrayAscii(std::istream &stream, T *x, T *y, T *z, const size_t lines)
 {
-    expect('\n');
+    expect(stream, '\n');
     for (size_t i = 0; i < lines; ++i)
     {
         stream.ignore(std::numeric_limits<std::streamsize>::max(), '(');
         stream >> x[i] >> y[i] >> z[i];
         stream.ignore(std::numeric_limits<std::streamsize>::max(), ')');
     }
-    expect('\n');
+    expect(stream, '\n');
 
     return stream.good();
 }
@@ -1207,7 +1217,7 @@ bool readVectorArrayAscii(std::istream &stream, T *x, T *y, T *z, const size_t l
 template <>
 bool readVectorArrayAscii(std::istream &stream, float *x, float *y, float *z, const size_t lines)
 {
-    expect('\n');
+    expect(stream, '\n');
     for (size_t i = 0; i < lines; ++i)
     {
         stream.ignore(std::numeric_limits<std::streamsize>::max(), '(');
@@ -1218,7 +1228,7 @@ bool readVectorArrayAscii(std::istream &stream, float *x, float *y, float *z, co
         z[i] = float(vz);
         stream.ignore(std::numeric_limits<std::streamsize>::max(), ')');
     }
-    expect('\n');
+    expect(stream, '\n');
 
     return stream.good();
 }
@@ -1227,7 +1237,7 @@ template <typename T>
 bool readVectorArray(const HeaderInfo &info, std::istream &stream, T *x, T *y, T *z, const size_t lines)
 {
     bool ok = true;
-    expect('(');
+    expect(stream, '(');
     if (info.format == "binary")
     {
         ok = readVectorArrayBinary<T, typename on_disk<T>::type>(stream, x, y, z, lines);
@@ -1236,7 +1246,7 @@ bool readVectorArray(const HeaderInfo &info, std::istream &stream, T *x, T *y, T
     {
         ok = readVectorArrayAscii<T>(stream, x, y, z, lines);
     }
-    expect(')');
+    expect(stream, ')');
 
     return ok && stream.good();
 }
@@ -1285,7 +1295,7 @@ bool readArrayAscii(std::istream &stream, T *p, const size_t lines)
     {
         stream >> p[i];
     }
-    expect('\n');
+    expect(stream, '\n');
     return stream.good();
 }
 
@@ -1298,7 +1308,7 @@ bool readArrayAscii(std::istream &stream, float *p, const size_t lines)
         stream >> val;
         p[i] = float(val);
     }
-    expect('\n');
+    expect(stream, '\n');
     return stream.good();
 }
 
@@ -1314,14 +1324,14 @@ bool readIndexListArrayBinary(std::istream &stream, std::vector<T> *p, const siz
            return false;
         }
     }
-    expect('\n');
+    expect(stream, '\n');
     return stream.good();
 }
 
 template <typename T, typename D = typename on_disk<T>::type>
 bool readArray(const HeaderInfo &info, std::istream &stream, T *p, const size_t lines)
 {
-    expect('(');
+    expect(stream, '(');
     if (info.format == "binary")
     {
         return readArrayBinary<T, D>(stream, p, lines);
@@ -1331,7 +1341,7 @@ bool readArray(const HeaderInfo &info, std::istream &stream, T *p, const size_t 
         if(!readArrayAscii(stream, p, lines))
            return false;
     }
-    expect(')');
+    expect(stream, ')');
     return true;
 }
 
@@ -1353,15 +1363,15 @@ bool readIndexArray(const HeaderInfo &info, std::istream &stream, index_t *p, co
 template <typename T, typename D = typename on_disk<T>::type>
 bool readIndexCompactListArrayBinary(std::istream &stream, std::vector<T> *p, const size_t lines)
 {
-    expect('(');
+    expect(stream, '(');
     std::vector<D> faceIndex(lines);
     if (!readArrayBinary<D, D>(stream, faceIndex.data(), lines))
     {
         std::cerr << "readIndexCompactListArrayBinary: readArrayBinary<FoamIndex> for index array failed" << std::endl;
         return false;
     }
-    expect(')');
-    expect('\n');
+    expect(stream, ')');
+    expect(stream, '\n');
 
     std::string line;
     std::getline(stream, line);
@@ -1372,7 +1382,7 @@ bool readIndexCompactListArrayBinary(std::istream &stream, std::vector<T> *p, co
         return false;
     }
 
-    expect('(');
+    expect(stream, '(');
     for (size_t i=0; i<lines-1; ++i)
     {
        size_t n = faceIndex[i+1] - faceIndex[i];
@@ -1383,7 +1393,7 @@ bool readIndexCompactListArrayBinary(std::istream &stream, std::vector<T> *p, co
            return false;
        }
     }
-    expect(')');
+    expect(stream, ')');
     p[lines-1].resize(0);
 
     return true;
@@ -1408,7 +1418,7 @@ bool readIndexListArray(const HeaderInfo &info, std::istream &stream, std::vecto
       }
       else if (info.fieldclass == "faceList")
       {
-          expect('(');
+          expect(stream, '(');
           if (info.numbits == 32) {
               if(!readIndexListArrayBinary<index_t, FoamIndex>(stream, p, lines))
                   return false;
@@ -1416,7 +1426,7 @@ bool readIndexListArray(const HeaderInfo &info, std::istream &stream, std::vecto
               if(!readIndexListArrayBinary<index_t, FoamIndex64>(stream, p, lines))
                   return false;
           }
-          expect(')');
+          expect(stream, ')');
       }
       else
       {
@@ -1426,10 +1436,10 @@ bool readIndexListArray(const HeaderInfo &info, std::istream &stream, std::vecto
    }
    else
    {
-      expect('(');
+      expect(stream, '(');
       if(!readArrayAscii<std::vector<index_t> >(stream, p, lines))
          return false;
-      expect(')');
+      expect(stream, ')');
    }
    return true;
 }
@@ -1548,7 +1558,7 @@ vertex_set getVerticesForCell(
 template <typename F, typename I>
 bool readParticleArrayAscii(std::istream &stream, F *x, F *y, F *z, I *cell, const size_t lines)
 {
-    expect('\n');
+    expect(stream, '\n');
     for (size_t i = 0; i < lines; ++i)
     {
         F vx, vy, vz;
@@ -1562,7 +1572,7 @@ bool readParticleArrayAscii(std::istream &stream, F *x, F *y, F *z, I *cell, con
         if (z) z[i] = vz;
         if (cell) cell[i] = vc;
     }
-    expect('\n');
+    expect(stream, '\n');
 
     return stream.good();
 }
@@ -1574,10 +1584,10 @@ bool readParticleArrayBinary(std::istream &stream, F *x, F *y, F *z, I *cell, co
     typedef typename on_disk<I>::type Index;
     std::vector<Float> fbuf(3);
     std::vector<Index> ibuf(4);
-    expect('\n');
+    expect(stream, '\n');
     for (size_t i=0; i<lines; ++i)
     {
-        expect('(');
+        expect(stream, '(');
         if (!readArrayChunkBinary(stream, fbuf.data(), fbuf.size()))
             return false;
         if (!readArrayChunkBinary(stream, ibuf.data(), ibuf.size()))
@@ -1586,8 +1596,8 @@ bool readParticleArrayBinary(std::istream &stream, F *x, F *y, F *z, I *cell, co
         if (y) y[i] = F(fbuf[1]);
         if (z) z[i] = F(fbuf[2]);
         if (cell) cell[i] = ibuf[0];
-        expect(')');
-        expect('\n');
+        expect(stream, ')');
+        expect(stream, '\n');
     }
 
     return stream.good();
@@ -1600,7 +1610,7 @@ bool readParticleArray(const HeaderInfo &info, std::istream &stream, scalar_t *x
         return false;
     }
     assert(stream.good());
-    expect('(');
+    expect(stream, '(');
     if (info.format == "binary")
     {
         if(!readParticleArrayBinary<scalar_t, index_t>(stream, x, y, z, cell, lines))
@@ -1611,7 +1621,7 @@ bool readParticleArray(const HeaderInfo &info, std::istream &stream, scalar_t *x
         if(!readParticleArrayAscii<scalar_t, index_t>(stream, x, y, z, cell, lines))
             return false;
     }
-    expect(')');
+    expect(stream, ')');
     return stream.good();
 }
 
