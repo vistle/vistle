@@ -259,6 +259,7 @@ bool ReadFOAM::read(Reader::Token &token, int time, int part)
 bool ReadFOAM::prepareRead()
 {
     const std::string casedir = m_casedir->getValue();
+    m_boundaryPatches.clear();
     m_boundaryPatches.add(m_patchSelection->getValue());
     if (!m_case.valid)
         m_case = getCaseInfo(casedir);
@@ -703,7 +704,10 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
     }
 
     if (m_readGrid) {
-        loadCoords(meshdir, grid);
+        if (!loadCoords(meshdir, grid)) {
+            result.clear();
+            return result;
+        }
     }
 
     if (m_readBoundary) {
@@ -719,7 +723,10 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
             bool first = true;
             for (auto &poly: polyList) {
                 if (first) {
-                    loadCoords(meshdir, poly);
+                    if (!loadCoords(meshdir, poly)) {
+                        result.clear();
+                        return result;
+                    }
                 } else {
                     poly->d()->x[0] = polyList[0]->d()->x[0];
                     poly->d()->x[1] = polyList[0]->d()->x[1];
@@ -797,6 +804,7 @@ std::vector<DataBase::ptr> ReadFOAM::loadBoundaryField(const std::string &meshdi
     std::shared_ptr<std::istream> stream = m_case.getStreamForFile(meshdir, field);
     if (!stream) {
         std::cerr << "failed to open " << meshdir << "/" << field << std::endl;
+        return {};
     }
     HeaderInfo header = readFoamHeader(*stream);
     std::vector<scalar_t> fullX(header.lines), fullY(header.lines), fullZ(header.lines);
@@ -804,6 +812,7 @@ std::vector<DataBase::ptr> ReadFOAM::loadBoundaryField(const std::string &meshdi
         fullX.resize(header.lines);
         if (!readFloatArray(header, *stream, fullX.data(), header.lines)) {
             std::cerr << "readFloatArray for " << meshdir << "/" << field << " failed" << std::endl;
+            return {};
         }
     } else if (header.fieldclass == "volVectorField") {
         fullX.resize(header.lines);
@@ -811,9 +820,11 @@ std::vector<DataBase::ptr> ReadFOAM::loadBoundaryField(const std::string &meshdi
         fullZ.resize(header.lines);
         if (!readFloatVectorArray(header, *stream, fullX.data(), fullY.data(), fullZ.data(), header.lines)) {
             std::cerr << "readFloatVectorArray for " << meshdir << "/" << field << " failed" << std::endl;
+            return {};
         }
     } else {
         std::cerr << "cannot interpret " << meshdir << "/" << field << std::endl;
+        return {};
     }
 
     std::vector<DataBase::ptr> result;
@@ -862,7 +873,7 @@ void ReadFOAM::setMeta(Reader::Token &token, Object::ptr obj, int processor, int
         if (timestep >= 0) {
             int i = 0;
             for (auto &ts: m_case.timedirs) {
-                if (i == timestep) {
+                if (i == timestep * skipfactor) {
                     obj->setRealTime(ts.first);
                     break;
                 }
@@ -1004,7 +1015,9 @@ bool ReadFOAM::readDirectory(Reader::Token &token, const std::string &casedir, i
                 nd->el = od->el;
                 nd->cl = od->cl;
             }
-            loadCoords(dir + "polyMesh", grid);
+            if (!loadCoords(dir + "polyMesh", grid)) {
+                return false;
+            }
             {
                 for (size_t j = 0; j < m_currentbound[processor].size(); ++j) {
                     Polygons::ptr poly(new Polygons(0, 0, 0));
