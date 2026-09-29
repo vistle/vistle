@@ -37,6 +37,14 @@ struct GridDataContainer {
         boundaries = b;
     }
 
+    void clear()
+    {
+        grid.reset();
+        polygon.clear();
+        owners.reset();
+        boundaries.reset();
+    }
+
     vistle::UnstructuredGrid::ptr grid;
     std::vector<vistle::Polygons::ptr> polygon;
     std::shared_ptr<std::vector<vistle::Index>> owners;
