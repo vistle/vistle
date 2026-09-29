@@ -25,6 +25,7 @@
 #include <fstream>
 #include <iostream>
 #include <iomanip>
+#include <charconv>
 #include <string>
 #include <map>
 #include <cctype>
@@ -262,7 +263,7 @@ bool checkMeshDirectory(CaseInfo &info, const Path &meshdir, bool time)
             }
         }
     }
-    // 
+    //
     if (meshfiles.size() == 4)
     {
         if (time)
@@ -400,7 +401,7 @@ bool checkCaseDataDirectory(CaseInfo &info, const Path &timedir, bool time)
 template<class Directory, class Iterator, class Path>
 bool checkPolyMeshDirContent(CaseInfo &info, const Path &basedir)
 {
-	// start out with 
+	// start out with
 	std::string fullMeshDir = info.constantdir;
 
 	for (std::map<double, std::string>::iterator it = info.timedirs.begin(); it != info.timedirs.end(); ++it)
@@ -726,7 +727,7 @@ CaseInfo getCaseInfo(const std::string &casedir, bool exact, bool verbose)
 
 std::string getFoamHeader(std::istream &stream)
 {
-    size_t internalFieldLine = MaxHeaderLines; 
+    size_t internalFieldLine = MaxHeaderLines;
     std::string header;
     for (size_t i = 0; (i < MaxHeaderLines && i< internalFieldLine+2); ++i)
     {
@@ -796,9 +797,9 @@ struct FileHeaderParser : qi::grammar<Iterator, HeaderInfo(), headerSkipper<Iter
     {
         using qi::lit;
 
-        start = '{' >> version 
+        start = '{' >> version
 	            ^ format ^ fieldclass ^ arch ^ note ^ location ^ object ^  dimensions ^ internalField ^ lines;
- 
+
         version = "version" >> +(ascii::char_ - ';') >> ';';
         format = "format" >> +(ascii::char_ - ';') >> ';';
         fieldclass = "class" >> +(ascii::char_ - ';') >> ';';
@@ -865,7 +866,7 @@ HeaderInfo readFoamHeader(std::istream &stream)
 
     HeaderInfo info;
     info.header = getFoamHeader(stream);
-    
+
     std::string fileheader = info.header;
 
     info.valid = qi::phrase_parse(fileheader.begin(), fileheader.end(),
@@ -1214,23 +1215,82 @@ bool readVectorArrayAscii(std::istream &stream, T *x, T *y, T *z, const size_t l
     return stream.good();
 }
 
+template <typename T, typename ParseT>
+bool readVectorArrayAsciiFP(std::istream &stream, T *x, T *y, T *z, const size_t lines)
+{
+    expect(stream, '\n');
+    std::string line;
+    for (size_t i = 0; i < lines; ++i)
+    {
+        if (!std::getline(stream, line))
+            return false;
+
+        const char *pos = line.data();
+        const char *const end = pos + line.size();
+        while (pos != end && std::isspace(static_cast<unsigned char>(*pos)))
+            ++pos;
+        if (pos == end || *pos++ != '(')
+        {
+            stream.setstate(std::ios::failbit);
+            return false;
+        }
+
+        std::array<ParseT,3> values;
+        for (ParseT &value: values)
+        {
+            while (pos != end && std::isspace(static_cast<unsigned char>(*pos)))
+                ++pos;
+            if (pos == end)
+            {
+                stream.setstate(std::ios::failbit);
+                return false;
+            }
+
+            if (*pos == '+')
+                ++pos;
+
+            const auto [next, ec] = std::from_chars(pos, end, value);
+            if (ec != std::errc{})
+            {
+                stream.setstate(std::ios::failbit);
+                return false;
+            }
+            pos = next;
+        }
+
+        while (pos != end && std::isspace(static_cast<unsigned char>(*pos)))
+            ++pos;
+        if (pos == end || *pos++ != ')')
+        {
+            stream.setstate(std::ios::failbit);
+            return false;
+        }
+        while (pos != end && std::isspace(static_cast<unsigned char>(*pos)))
+            ++pos;
+        if (pos != end)
+        {
+            stream.setstate(std::ios::failbit);
+            return false;
+        }
+
+        x[i] = T(values[0]);
+        y[i] = T(values[1]);
+        z[i] = T(values[2]);
+    }
+
+    return stream.good();
+}
+
 template <>
 bool readVectorArrayAscii(std::istream &stream, float *x, float *y, float *z, const size_t lines)
 {
-    expect(stream, '\n');
-    for (size_t i = 0; i < lines; ++i)
-    {
-        stream.ignore(std::numeric_limits<std::streamsize>::max(), '(');
-        double vx, vy, vz;
-        stream >> vx >> vy >> vz;
-        x[i] = float(vx);
-        y[i] = float(vy);
-        z[i] = float(vz);
-        stream.ignore(std::numeric_limits<std::streamsize>::max(), ')');
-    }
-    expect(stream, '\n');
+    return readVectorArrayAsciiFP<float, double>(stream, x, y, z, lines);
+}
 
-    return stream.good();
+template <>
+bool readVectorArrayAscii(std::istream &stream, double *x, double *y, double *z, const size_t lines)
+{
+    return readVectorArrayAsciiFP<double, double>(stream, x, y, z, lines);
 }
 
 template <typename T>
@@ -1299,17 +1359,63 @@ bool readArrayAscii(std::istream &stream, T *p, const size_t lines)
     return stream.good();
 }
 
+template <typename T, typename ParseT>
+bool readArrayAsciiFP(std::istream &stream, T *p, const size_t lines)
+{
+    std::string line;
+    for (size_t i = 0; i < lines;)
+    {
+        if (!std::getline(stream, line))
+            return false;
+
+        const char *pos = line.data();
+        const char *const end = pos + line.size();
+        while (pos != end && i < lines)
+        {
+            while (pos != end && std::isspace(static_cast<unsigned char>(*pos)))
+                ++pos;
+            if (pos == end)
+                break;
+
+            if (*pos == '+')
+                ++pos;
+
+            ParseT value;
+            const auto [next, ec] = std::from_chars(pos, end, value);
+            if (ec != std::errc{})
+            {
+                stream.setstate(std::ios::failbit);
+                return false;
+            }
+
+            p[i++] = T(value);
+            pos = next;
+        }
+
+        if (i == lines)
+        {
+            while (pos != end && std::isspace(static_cast<unsigned char>(*pos)))
+                ++pos;
+            if (pos != end)
+            {
+                stream.setstate(std::ios::failbit);
+                return false;
+            }
+        }
+    }
+    return stream.good();
+}
+
 template <>
 bool readArrayAscii(std::istream &stream, float *p, const size_t lines)
 {
-    for (size_t i = 0; i < lines; ++i)
-    {
-        double val;
-        stream >> val;
-        p[i] = float(val);
-    }
-    expect(stream, '\n');
-    return stream.good();
+    return readArrayAsciiFP<float, double>(stream, p, lines);
+}
+
+template <>
+bool readArrayAscii(std::istream &stream, double *p, const size_t lines)
+{
+    return readArrayAsciiFP<double, double>(stream, p, lines);
 }
 
 template <typename T, typename D = typename on_disk<T>::type>
@@ -1489,7 +1595,7 @@ index_t findVertexAlongEdge(const index_t point,
                 break;
         }
     }
-    
+
     if (idx < 2)
         return -1;
 
