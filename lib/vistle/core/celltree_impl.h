@@ -296,28 +296,9 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const AABB *bounds, Celltree
 
         auto Lbounds = findBounds(start, start + nleft);
         auto Rbounds = findBounds(start + nleft, start + size);
-        auto Lmax = Lbounds.second[best_dim];
-        auto Rmin = Rbounds.first[best_dim];
+        Lmax = Lbounds.second[best_dim];
+        Rmin = Rbounds.first[best_dim];
 
-#ifdef CT_PARALLEL_BUILD
-        std::unique_lock guard(data.mutex);
-#endif
-        Node *node = &(nodes()[nodeData.node]);
-        // promote to inner node
-        *node = Node(best_dim, Lmax, Rmin, nodes().size());
-        Index l = nodes().size();
-        nodes().push_back(Node(start, nleft));
-
-        Index r = nodes().size();
-        nodes().push_back(Node(start + nleft, size - nleft));
-
-        assert(nodes()[l].size < size);
-        assert(nodes()[r].size < size);
-        assert(nodes()[l].size + nodes()[r].size == size);
-
-        data.nodesToSplit.emplace_front(nodeData, l, start, nleft);
-        data.nodesToSplit.emplace_front(nodeData, r, start + nleft, size - nleft);
-        return;
     } else {
         auto mid =
             std::partition(&cells[start], &cells[start + size], [getBucket, center, best_dim, best_bucket](Index c) {
