@@ -34,6 +34,7 @@
 
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
+#include <boost/iostreams/filter/zstd.hpp>
 #include <boost/iostreams/categories.hpp>
 #include <boost/iostreams/char_traits.hpp>
 #include <boost/iostreams/operations.hpp>
@@ -66,14 +67,9 @@
 
 const size_t MaxHeaderLines = 100;
 
+namespace bf = boost::filesystem;
 namespace bi = boost::iostreams;
 namespace bs = boost::spirit;
-namespace bf = boost::filesystem;
-
-template <typename Alloc = std::allocator<char> >
-struct basic_gzip_decompressor;
-typedef basic_gzip_decompressor<> gzip_decompressor;
-
 namespace qi = boost::spirit::qi;
 namespace ascii = boost::spirit::ascii;
 
@@ -1861,6 +1857,8 @@ std::shared_ptr<std::istream> CaseInfo::getStreamForFile(const std::string &base
     if (!extension.empty()) {
         if (extension == ".gz") {
             fi->push(bi::gzip_decompressor());
+        } else if (extension == ".zst" || extension == ".zstd") {
+            fi->push(bi::zstd_decompressor());
         } else {
             std::cerr << "getStreamForFile(base=" << base << ", filename=" << filename << "): do not know how to decompress " << extension << std::endl;
             return std::shared_ptr<std::istream>();
