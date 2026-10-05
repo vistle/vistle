@@ -1,4 +1,5 @@
 
+#include <boost/interprocess/sync/named_semaphore.hpp>
 #include <vistle/util/sysdep.h>
 
 #include <iostream>
@@ -239,20 +240,30 @@ bool Shm::cleanAll(int rank)
     }
 
     std::set<std::string> removed;
-    while (!shmlist.eof() && !shmlist.fail()) {
-        std::string shmid;
-        shmlist >> shmid;
+    std::string line;
+    while (!shmlist.eof() && !shmlist.fail() && std::getline(shmlist, line)) {
+        auto space = line.find(' ');
+        if (space == std::string::npos || space == 0) {
+            std::cerr << "Ignoring line " << line << " - cannot parse" << std::endl;
+            continue;
+        }
+        auto restype = line.substr(0, space - 1);
+        auto shmid = line.substr(space + 1);
         if (shmid.empty()) {
+            std::cerr << "Ignoring line " << line << " - no resource identifier found" << std::endl;
             continue;
         }
 
         bool ok = true;
         bool log = true;
 
-        if (shmid.find("_send_") != std::string::npos || shmid.find("_recv_") != std::string::npos) {
-            //std::cerr << "removing message queue: id " << shmid << std::flush;
+        ResourceType type = Shm::Segment;
+        if (restype == "mqu") {
+            type = Shm::MessageQueue;
             ok = message::MessageQueue::message_queue::remove(shmid.c_str());
-            log = false;
+        } else if (restype == "sem") {
+            type = Shm::Semaphore;
+            ok = interprocess::named_semaphore::remove(shmid.c_str());
         } else {
             std::cerr << "removing shared memory: id " << shmid << std::flush;
             ok = interprocess::shared_memory_object::remove(shmSegName(shmid.c_str(), rank, false).c_str()) ||
@@ -266,7 +277,7 @@ bool Shm::cleanAll(int rank)
             ret = false;
             if (removed.find(shmid) == removed.end()) {
                 removed.insert(shmid);
-                record(shmid);
+                record(shmid, type);
             }
         }
     }
@@ -326,13 +337,26 @@ bool Shm::remove(const std::string &name, const int id, const int rank, bool per
     return interprocess::shared_memory_object::remove(n.c_str());
 }
 
-bool Shm::record(const std::string &segname)
+bool Shm::record(const std::string &segname, Shm::ResourceType type)
 {
+    std::string typeString = "";
+    switch (type) {
+    case Segment:
+        typeString = "seg";
+        break;
+    case MessageQueue:
+        typeString = "mqu";
+        break;
+    case Semaphore:
+        typeString = "sem";
+        break;
+    }
+
     // store name of shared memory segment for possible clean up
     std::ofstream shmlist;
     shmlist.open(shmIdFilename().c_str(), std::ios::out | std::ios::app);
     if (shmlist.is_open()) {
-        shmlist << segname << std::endl;
+        shmlist << typeString << " " << segname << std::endl;
         shmlist.close();
         return true;
     }
@@ -345,7 +369,7 @@ Shm &Shm::create(const std::string &name, const int id, const int rank, bool per
     Shm::s_perRank = perRank;
 #endif
     if (!s_singleton) {
-        record(name);
+        record(name, Segment);
         size_t memsize = memorySize<sizeof(void *)>();
         if (const char *shmsize = getenv("VISTLE_SHM_SIZE")) {
             memsize = atol(shmsize);

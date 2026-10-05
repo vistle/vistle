@@ -138,6 +138,8 @@ class V_COREEXPORT Shm {
     friend class Communicator;
 
 public:
+    enum ResourceType { Segment, MessageQueue, Semaphore };
+
     static std::string instanceName(const std::string &host, unsigned short port);
     static Shm &the();
     static bool perRank();
@@ -191,7 +193,7 @@ public:
 
     static std::string shmIdFilename();
     static bool cleanAll(int rank);
-    static bool record(const std::string &segname);
+    static bool record(const std::string &segname, ResourceType type);
 
     void markAsRemoved(const std::string &name);
     void addObject(const std::string &name, const shm_handle_t &handle);
