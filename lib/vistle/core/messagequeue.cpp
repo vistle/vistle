@@ -36,13 +36,8 @@ std::string MessageQueue::createName(const char *prefix, const int moduleID, con
 
 MessageQueue *MessageQueue::create(const std::string &n)
 {
-    {
-        std::ofstream f;
-        f.open(Shm::shmIdFilename().c_str(), std::ios::app);
-        f << n << std::endl;
-    }
-
     message_queue::remove(n.c_str());
+    Shm::record(n, vistle::Shm::MessageQueue);
     return new MessageQueue(n, interprocess::create_only);
 }
 

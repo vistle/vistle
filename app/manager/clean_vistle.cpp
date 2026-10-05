@@ -21,7 +21,11 @@ int main(int argc, char **argv)
         bool perRank = vistle::shmPerRank();
 
         if (argc == 2) {
-            vistle::Shm::remove(argv[1], 0, rank, perRank);
+            if (std::string(argv[1]) == "-l") {
+                std::cout << vistle::Shm::shmIdFilename() << std::endl;
+            } else {
+                vistle::Shm::remove(argv[1], 0, rank, perRank);
+            }
         } else {
             vistle::Shm::cleanAll(rank);
         }
