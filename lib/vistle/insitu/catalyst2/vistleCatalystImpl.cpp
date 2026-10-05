@@ -107,9 +107,6 @@ vistle::Object::ptr getMesh(const conduit_cpp::Node &mesh, float time, int times
     vistleMesh->setRealTime(time);
     vistleMesh->setTimestep(timestep);
     adapter->updateMeta(vistleMesh);
-    if (!connectionParams.dynamicGrid) {
-        cachedMeshes[mesh.name()] = vistleMesh;
-    }
     return vistleMesh;
 }
 
@@ -198,9 +195,9 @@ vistle::insitu::MetaData metaDataFromConduit(const conduit_node *cparams)
 int getTimestep(const conduit_cpp::Node &params)
 {
     auto catalystNode = params["catalyst"];
-    if (catalystNode.has_child("state/timestep"))
+    if (catalystNode.has_path("state/timestep"))
         return catalystNode["state/timestep"].to_int();
-    if (params.has_child("time/timestep/cycle"))
+    if (params.has_path("time/timestep/cycle"))
         return params["time/timestep/cycle"].to_int();
     return 0;
 }
@@ -225,11 +222,15 @@ vistle::insitu::ObjectRetriever::PortAssignedObjectList getDataFromSim(const vis
             mesh = mesh["data"];
             std::cerr << "using 'data' node for mesh " << requestedMesh.name() << std::endl;
         } // ParaView is using the "data" node to support other mesh types, maybe this is how it should be
-
         auto cachedMeshIt = cachedMeshes.find(requestedMesh.name());
-        auto vistleMesh = (connectionParams.dynamicGrid || cachedMeshIt == cachedMeshes.end())
-                              ? getMesh(mesh, time, timestep)
-                              : cachedMeshIt->second;
+        vistle::Object::ptr vistleMesh;
+        if (connectionParams.dynamicGrid || cachedMeshIt == cachedMeshes.end()) {
+            vistleMesh = getMesh(mesh, time, timestep);
+            if (!connectionParams.dynamicGrid)
+                cachedMeshes[requestedMesh.name()] = vistleMesh;
+        } else {
+            vistleMesh = cachedMeshIt->second;
+        }
 
         objects.push_back(vistle::insitu::ObjectRetriever::PortAssignedObject(requestedMesh.name(), vistleMesh));
         for (const auto &requestedField: requestedMesh) {
