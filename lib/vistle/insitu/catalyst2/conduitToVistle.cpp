@@ -125,6 +125,7 @@ UnstructuredGrid::ptr toUnstructured(const conduit_cpp::Node &coords, const cond
             numElements = topo.offsets.size;
             numCorners = topo.offsets[numElements - 1] + topo.sizes[numElements - 1];
         } else {
+            numCorners = topo.connectivity.size;
             numCornersPerElement = UnstructuredGrid::NumVertices[topo.shape];
             if (!numCornersPerElement) {
                 std::cerr << "conduitToVistle: unsupported element type " << UnstructuredGrid::toString(topo.shape)
