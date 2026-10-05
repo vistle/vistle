@@ -69,7 +69,12 @@ boost::interprocess::interprocess_recursive_mutex *Shm::s_shmdebugMutex = nullpt
 std::string Shm::instanceName(const std::string &host, unsigned short port)
 {
     std::stringstream str;
-    str << "vistle_" << host << "_u" << getuid() << "_p" << port;
+#ifdef __APPLE__
+    str << "v_";
+#else
+    str << "vistle_" << host << "_";
+#endif
+    str << "u" << getuid() << "_p" << port;
     return str.str();
 }
 
