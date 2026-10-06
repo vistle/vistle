@@ -21,6 +21,7 @@
  *\**************************************************************************/
 
 //Includes copied from vistle ReadFOAM.cpp
+#include <array>
 #include <sstream>
 #include <fstream>
 #include <iostream>
