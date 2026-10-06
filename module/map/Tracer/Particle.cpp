@@ -177,7 +177,7 @@ bool Particle<S>::findCell(double time)
     if (!m_ingrid) {
         return false;
     }
-    if (!isfinite(m_x)) {
+    if (!vistle::isfinite(m_x)) {
         // position is corrupted (e.g., invalid start point): treat like out-of-domain
         Deactivate(ArithmeticError);
         std::cerr << "Particle::findCell(): position not finite: " << *this << std::endl;
@@ -290,7 +290,7 @@ bool Particle<S>::Step()
     const Vector3 xVV = VV(m_x);
     auto inter = grid->getInterpolator(m_el, xVV, m_block->m_vecmap);
     m_v = inter(m_block->m_vx, m_block->m_vy, m_block->m_vz);
-    if (!isfinite(m_v)) {
+    if (!vistle::isfinite(m_v)) {
         // corrupted field data: stop instead of integrating into NaN positions
         Deactivate(ArithmeticError);
         std::cerr << "Particle::Step(): velocity not finite: " << *this << std::endl;

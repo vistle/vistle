@@ -187,7 +187,7 @@ bool Integrator<S>::StepRK32()
         }
 
         Vect3 k1 = sign * VI(Interpolator(m_ptcl->m_block, el1, VV(x1)));
-        if (!isfinite(k1)) {
+        if (!vistle::isfinite(k1)) {
             m_ptcl->Deactivate(ArithmeticError);
             std::cerr << "Integrator::StepRK32(): k1=" << k1 << " not finite" << std::endl;
             return false;
@@ -205,7 +205,7 @@ bool Integrator<S>::StepRK32()
         }
 
         Vect3 k2 = sign * VI(Interpolator(m_ptcl->m_block, el2, VV(x2)));
-        if (!isfinite(k2)) {
+        if (!vistle::isfinite(k2)) {
             m_ptcl->Deactivate(ArithmeticError);
             std::cerr << "Integrator::StepRK32(): k2=" << k2 << " not finite" << std::endl;
             return false;
