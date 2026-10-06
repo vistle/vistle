@@ -29,6 +29,12 @@ if(Boost_ZLIB_FOUND)
     target_link_libraries(ReadFoam PRIVATE ${Boost_ZLIB_LIBRARIES})
 endif()
 
+if(ZSTD_FOUND)
+    target_compile_definitions(ReadFoam PRIVATE HAVE_ZSTD)
+    target_include_directories(ReadFoam SYSTEM PRIVATE ${ZSTD_INCLUDE_DIRS})
+    vistle_target_link_libraries(ReadFoam PRIVATE ${ZSTD_LIBRARIES})
+endif()
+
 if(LibArchive_FOUND)
     target_link_libraries(ReadFoam PRIVATE ${LibArchive_LIBRARIES})
 endif()

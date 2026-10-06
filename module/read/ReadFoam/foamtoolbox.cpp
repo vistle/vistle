@@ -1857,8 +1857,10 @@ std::shared_ptr<std::istream> CaseInfo::getStreamForFile(const std::string &base
     if (!extension.empty()) {
         if (extension == ".gz") {
             fi->push(bi::gzip_decompressor());
+#ifdef HAVE_ZSTD
         } else if (extension == ".zst" || extension == ".zstd") {
             fi->push(bi::zstd_decompressor());
+#endif
         } else {
             std::cerr << "getStreamForFile(base=" << base << ", filename=" << filename << "): do not know how to decompress " << extension << std::endl;
             return std::shared_ptr<std::istream>();
