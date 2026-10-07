@@ -119,11 +119,13 @@ else
     Debug|Sanitize)
         if [ "${ARCHSUFFIX%opt}" != "${ARCHSUFFIX}" ]; then
             ARCHSUFFIX="${ARCHSUFFIX%opt}"
+            #echo "Adapting ARCHSUFFIX to $ARCHSUFFIX for buildtype $VISTLE_BUILD_TYPE"
         fi
         ;;
     RelWithDebInfo|Release|MinSizeRel|RelSanitize|*)
         if [ -n "${ARCHSUFFIX}" -a "${ARCHSUFFIX%opt}" = "${ARCHSUFFIX}" ]; then
             ARCHSUFFIX="${ARCHSUFFIX}opt"
+            #cho "Adapting ARCHSUFFIX to $ARCHSUFFIX for buildtype $VISTLE_BUILD_TYPE"
         fi
         ;;
     esac
@@ -148,12 +150,13 @@ else
             ;;
         esac
         path_add ${libvar} "${COVISEDIR}/${ARCHSUFFIX}/lib"
-        path_add ${libvar} "$builddir/lib/$VISTLE_BUILD_TYPE"
 
         export COVISEDESTDIR="$(pwd -P)/${builddir}"
         export COVISE_PATH="$COVISEDESTDIR:$COVISEDIR"
+
+        path_add PYTHONPATH "${COVISEDIR}/Python"
+        path_add PYTHONPATH "${COVISEDIR}/${ARCHSUFFIX}/lib"
     fi
-    export ${libvar}
 
     case "$os" in
     darwin*)
@@ -164,24 +167,24 @@ else
                 export VISTLE_DYLD_FRAMEWORK_PATH="$DYLD_FRAMEWORK_PATH"
             fi
         fi
-        export VISTLE_DYLD_LIBRARY_PATH="$DYLD_LIBRARY_PATH"
     ;;
     esac
 fi
 
+path_add ${libvar} "$builddir/lib/$VISTLE_BUILD_TYPE"
+case "$os" in
+darwin*)
+    export VISTLE_DYLD_LIBRARY_PATH="$DYLD_LIBRARY_PATH"
+;;
+esac
+
 export VMAKE_BUILD="$builddir"
-echo Build: dir="$builddir, ${ARCHSUFFIX:-no ARCHSUFFIX}, type=$VISTLE_BUILD_TYPE"
 
 path_add PYTHONPATH "${builddir}/lib/$VISTLE_BUILD_TYPE"
 path_add PYTHONPATH "${builddir}/share/vistle"
-if [ -z ${COVISEDIR+x} ]; then
-    :
-else
-    path_add PYTHONPATH "${COVISEDIR}/Python"
-    path_add PYTHONPATH "${COVISEDIR}/${ARCHSUFFIX}/lib"
-fi
 
 PATH_add "${builddir}/bin"
 PATH_add "${builddir}/bin/$VISTLE_BUILD_TYPE"
+echo Build: dir="$builddir, ${ARCHSUFFIX:-no ARCHSUFFIX}, type=$VISTLE_BUILD_TYPE"
 
 watch_file .debug .flavor .buildtype .release .covise
