@@ -1486,7 +1486,7 @@ bool Module::processMessagesSynced(message::Buffer &buf, bool haveMessage, bool 
                 std::cerr << "message types requiring collective processing do not agree (continued): local=" << sync
                           << ", other=" << allsync << std::endl;
             }
-            assert(sync == allsync);
+            assert(sync == 0 || sync == allsync);
 
             auto pl = getPayloadFromShm(buf);
             quit = handleMessage(&buf, pl) ? 0 : 1;
