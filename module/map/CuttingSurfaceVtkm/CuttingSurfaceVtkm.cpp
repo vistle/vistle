@@ -28,7 +28,7 @@ void CuttingSurfaceVtkm::setInputSpecies(const std::string &species)
 std::unique_ptr<viskores::filter::Filter> CuttingSurfaceVtkm::setUpFilter(const VtkmModule::InputData &input) const
 {
     auto filt = std::make_unique<viskores::filter::contour::Slice>();
-    filt->SetImplicitFunction(m_implFuncControl.function());
+    filt->SetImplicitFunction(m_implFuncControl.function(input.vistleGrid->getTransform()));
     filt->SetMergeDuplicatePoints(false);
     filt->SetGenerateNormals(m_computeNormals->getValue() != 0);
     return filt;

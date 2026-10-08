@@ -20,7 +20,7 @@ std::unique_ptr<viskores::filter::Filter> CellClipVtkm::setUpFilter(const VtkmMo
     bool boundary = m_boundary->getValue() != 0;
 
     auto filt = std::make_unique<viskores::filter::entity_extraction::ExtractGeometry>();
-    filt->SetImplicitFunction(m_implFuncControl.function());
+    filt->SetImplicitFunction(m_implFuncControl.function(input.vistleGrid->getTransform()));
     filt->SetExtractBoundaryCells(boundary);
     filt->SetExtractInside(flip);
     return filt;

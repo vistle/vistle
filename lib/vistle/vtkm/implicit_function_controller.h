@@ -32,9 +32,10 @@ public:
     bool changeParameter(const vistle::Parameter *param);
 
     /*
-        Returns the implicit function based on the current module parameters.
+        Returns the implicit function based on the current module parameters,
+        taking into account the object transformation.
     */
-    viskores::ImplicitFunctionGeneral function() const;
+    viskores::ImplicitFunctionGeneral function(const vistle::Matrix4 &objTransform) const;
 
 private:
     vistle::Module *m_module = nullptr;
