@@ -237,35 +237,42 @@ Extrema::~Extrema()
 namespace {
 Lines::ptr makeBox(Vector3 min, Vector3 max)
 {
-    Lines::ptr box(new Lines(4, 16, 8));
+    Lines::ptr box(new Lines(12, 24, 8));
     Scalar *x[3];
     for (int i = 0; i < 3; ++i) {
         x[i] = box->x(i).data();
     }
     auto corners = box->cl().data();
     auto elements = box->el().data();
-    for (int i = 0; i <= 4; ++i) { // include sentinel
-        elements[i] = 4 * i;
+    for (int i = 0; i <= 12; ++i) { // include sentinel
+        elements[i] = 2 * i;
     }
-    corners[0] = 0;
-    corners[1] = 1;
-    corners[2] = 3;
-    corners[3] = 2;
-
-    corners[4] = 1;
-    corners[5] = 5;
-    corners[6] = 7;
-    corners[7] = 3;
-
-    corners[8] = 5;
-    corners[9] = 4;
-    corners[10] = 6;
-    corners[11] = 7;
-
-    corners[12] = 4;
-    corners[13] = 0;
-    corners[14] = 2;
-    corners[15] = 6;
+    int i = 0;
+    corners[i++] = 0;
+    corners[i++] = 1;
+    corners[i++] = 1;
+    corners[i++] = 3;
+    corners[i++] = 3;
+    corners[i++] = 2;
+    corners[i++] = 1;
+    corners[i++] = 5;
+    corners[i++] = 5;
+    corners[i++] = 7;
+    corners[i++] = 7;
+    corners[i++] = 3;
+    corners[i++] = 5;
+    corners[i++] = 4;
+    corners[i++] = 4;
+    corners[i++] = 6;
+    corners[i++] = 6;
+    corners[i++] = 7;
+    corners[i++] = 4;
+    corners[i++] = 0;
+    corners[i++] = 0;
+    corners[i++] = 2;
+    corners[i++] = 2;
+    corners[i++] = 6;
+    assert(i == 24);
 
     for (int c = 0; c < 3; ++c) {
         int p = 1 << c;
