@@ -200,7 +200,7 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
     }
 
     if (m_mappedDataHandling != MappedDataHandling::Require || input.viskoresDataset.HasField(activeField)) {
-        if (auto filter = setUpFilter()) {
+        if (auto filter = setUpFilter(input)) {
             if (input.viskoresDataset.HasField(activeField))
                 filter->SetActiveField(activeField);
 

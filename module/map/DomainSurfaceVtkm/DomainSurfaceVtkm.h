@@ -10,7 +10,7 @@ public:
 private:
     ModuleStatusPtr prepareInputGrid(InputData &input) const override;
 
-    std::unique_ptr<viskores::filter::Filter> setUpFilter() const override;
+    std::unique_ptr<viskores::filter::Filter> setUpFilter(const VtkmModule::InputData &input) const override;
 };
 
 #endif

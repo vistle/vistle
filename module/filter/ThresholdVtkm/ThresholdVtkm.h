@@ -12,7 +12,7 @@ private:
     vistle::IntParameter *m_operation = nullptr;
     vistle::FloatParameter *m_threshold = nullptr;
 
-    std::unique_ptr<viskores::filter::Filter> setUpFilter() const override;
+    std::unique_ptr<viskores::filter::Filter> setUpFilter(const InputData &input) const override;
 
     vistle::Object::const_ptr prepareOutputGrid(const InputData &input, OutputData &output) const override;
 

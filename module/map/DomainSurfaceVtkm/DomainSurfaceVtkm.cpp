@@ -20,7 +20,7 @@ ModuleStatusPtr DomainSurfaceVtkm::prepareInputGrid(InputData &input) const
     return VtkmModule::prepareInputGrid(input);
 }
 
-std::unique_ptr<viskores::filter::Filter> DomainSurfaceVtkm::setUpFilter() const
+std::unique_ptr<viskores::filter::Filter> DomainSurfaceVtkm::setUpFilter(const VtkmModule::InputData &input) const
 {
     return std::make_unique<viskores::filter::entity_extraction::ExternalFaces>();
 }

@@ -11,7 +11,7 @@ TriangulateVtkm::TriangulateVtkm(const std::string &name, int moduleID, mpi::com
 {}
 
 
-std::unique_ptr<viskores::filter::Filter> TriangulateVtkm::setUpFilter() const
+std::unique_ptr<viskores::filter::Filter> TriangulateVtkm::setUpFilter(const VtkmModule::InputData &input) const
 {
     return std::make_unique<viskores::filter::geometry_refinement::Triangulate>();
 }

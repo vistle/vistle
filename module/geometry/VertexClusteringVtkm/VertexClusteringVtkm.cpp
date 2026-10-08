@@ -10,7 +10,7 @@ VertexClusteringVtkm::VertexClusteringVtkm(const std::string &name, int moduleID
         addIntVectorParameter("num_divisions", "number of divisions in each dimension", IntParamVector{32, 32, 32});
 }
 
-std::unique_ptr<viskores::filter::Filter> VertexClusteringVtkm::setUpFilter() const
+std::unique_ptr<viskores::filter::Filter> VertexClusteringVtkm::setUpFilter(const VtkmModule::InputData &input) const
 {
     auto filt = std::make_unique<viskores::filter::geometry_refinement::VertexClustering>();
     auto nd = m_numDivisionsParam->getValue();

@@ -25,7 +25,7 @@ void CuttingSurfaceVtkm::setInputSpecies(const std::string &species)
     setItemInfo(species);
 }
 
-std::unique_ptr<viskores::filter::Filter> CuttingSurfaceVtkm::setUpFilter() const
+std::unique_ptr<viskores::filter::Filter> CuttingSurfaceVtkm::setUpFilter(const VtkmModule::InputData &input) const
 {
     auto filt = std::make_unique<viskores::filter::contour::Slice>();
     filt->SetImplicitFunction(m_implFuncControl.function());

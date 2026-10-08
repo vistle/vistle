@@ -35,7 +35,7 @@ bool GenNormalsVtkm::changeParameter(const vistle::Parameter *p)
     return VtkmModule::changeParameter(p);
 }
 
-std::unique_ptr<viskores::filter::Filter> GenNormalsVtkm::setUpFilter() const
+std::unique_ptr<viskores::filter::Filter> GenNormalsVtkm::setUpFilter(const VtkmModule::InputData &input) const
 {
     auto filt = std::make_unique<viskores::filter::vector_analysis::SurfaceNormals>();
     filt->SetGenerateCellNormals(m_perVertex->getValue() == 0);

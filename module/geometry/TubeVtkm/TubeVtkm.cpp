@@ -22,7 +22,7 @@ TubeVtkm::TubeVtkm(const std::string &name, int moduleID, mpi::communicator comm
     m_addCaps = addIntParameter("addCaps", "add caps to the ends of the tubes", false, Parameter::Boolean);
 }
 
-std::unique_ptr<viskores::filter::Filter> TubeVtkm::setUpFilter() const
+std::unique_ptr<viskores::filter::Filter> TubeVtkm::setUpFilter(const VtkmModule::InputData &input) const
 {
     auto filter = std::make_unique<viskores::filter::geometry_refinement::Tube>();
     filter->SetRadius(static_cast<viskores::FloatDefault>(m_radius->getValue()));

@@ -8,7 +8,7 @@ PassThroughVtkm::PassThroughVtkm(const std::string &name, int moduleID, mpi::com
 : VtkmModule(name, moduleID, comm, 1, MappedDataHandling::Use)
 {}
 
-std::unique_ptr<viskores::filter::Filter> PassThroughVtkm::setUpFilter() const
+std::unique_ptr<viskores::filter::Filter> PassThroughVtkm::setUpFilter(const VtkmModule::InputData &input) const
 {
     return nullptr;
 }

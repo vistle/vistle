@@ -14,7 +14,7 @@ public:
 private:
     ModuleStatusPtr prepareInputField(const vistle::Port *port, InputData &input, int index) const override;
 
-    std::unique_ptr<viskores::filter::Filter> setUpFilter() const override;
+    std::unique_ptr<viskores::filter::Filter> setUpFilter(const InputData &input) const override;
 
     vistle::Object::const_ptr prepareOutputGrid(const InputData &input, OutputData &output) const override;
 

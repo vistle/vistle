@@ -43,7 +43,7 @@ ModuleStatusPtr CellToVertVtkm::prepareInputField(const vistle::Port *port, Inpu
     return Success();
 }
 
-std::unique_ptr<viskores::filter::Filter> CellToVertVtkm::setUpFilter() const
+std::unique_ptr<viskores::filter::Filter> CellToVertVtkm::setUpFilter(const VtkmModule::InputData &input) const
 {
 #ifdef VERTTOCELL
     auto filter = std::make_unique<viskores::filter::field_conversion::CellAverage>();

@@ -9,7 +9,7 @@ public:
     CuttingSurfaceVtkm(const std::string &name, int moduleID, mpi::communicator comm);
 
 private:
-    std::unique_ptr<viskores::filter::Filter> setUpFilter() const override;
+    std::unique_ptr<viskores::filter::Filter> setUpFilter(const VtkmModule::InputData &input) const override;
     bool changeParameter(const vistle::Parameter *param) override;
     void setInputSpecies(const std::string &species) override;
 
