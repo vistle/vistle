@@ -12,7 +12,7 @@ private:
     vistle::IntParameter *m_flip = nullptr;
     vistle::IntParameter *m_boundary = nullptr;
 
-    std::unique_ptr<viskores::filter::Filter> setUpFilter() const override;
+    std::unique_ptr<viskores::filter::Filter> setUpFilter(const InputData &input) const override;
 
     bool changeParameter(const vistle::Parameter *param) override;
 

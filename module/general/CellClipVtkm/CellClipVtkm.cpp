@@ -14,7 +14,7 @@ CellClipVtkm::CellClipVtkm(const std::string &name, int moduleID, mpi::communica
     m_flip = addIntParameter("flip", "keep cells inside clipping surface", false, Parameter::Boolean);
 }
 
-std::unique_ptr<viskores::filter::Filter> CellClipVtkm::setUpFilter() const
+std::unique_ptr<viskores::filter::Filter> CellClipVtkm::setUpFilter(const VtkmModule::InputData &input) const
 {
     bool flip = m_flip->getValue() != 0;
     bool boundary = m_boundary->getValue() != 0;

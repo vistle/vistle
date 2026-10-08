@@ -9,7 +9,7 @@ public:
     VectorFieldVtkm(const std::string &name, int moduleID, mpi::communicator comm);
 
 private:
-    std::unique_ptr<viskores::filter::Filter> setUpFilter() const override;
+    std::unique_ptr<viskores::filter::Filter> setUpFilter(const InputData &input) const override;
 
     vistle::FloatParameter *m_scale = nullptr;
     vistle::VectorParameter *m_range = nullptr;

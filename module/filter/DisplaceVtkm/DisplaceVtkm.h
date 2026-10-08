@@ -12,7 +12,7 @@ private:
     vistle::IntParameter *p_operation = nullptr;
     vistle::FloatParameter *p_scale = nullptr;
 
-    std::unique_ptr<viskores::filter::Filter> setUpFilter() const override;
+    std::unique_ptr<viskores::filter::Filter> setUpFilter(const VtkmModule::InputData &input) const override;
 };
 
 #endif // VISTLE_DISPLACEVTKM_DISPLACEVTKM_H

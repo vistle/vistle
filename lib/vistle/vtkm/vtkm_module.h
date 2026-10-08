@@ -74,7 +74,7 @@ protected:
     /*
         Implement to create and parameterize the Viskores filter to be executed.
     */
-    virtual std::unique_ptr<viskores::filter::Filter> setUpFilter() const = 0;
+    virtual std::unique_ptr<viskores::filter::Filter> setUpFilter(const InputData &input) const = 0;
 
     /*
         Transforms the input Vistle grid into a Viskores dataset.

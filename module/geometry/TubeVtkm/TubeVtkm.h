@@ -12,7 +12,7 @@ private:
     vistle::IntParameter *m_numberOfSides;
     vistle::IntParameter *m_addCaps;
 
-    std::unique_ptr<viskores::filter::Filter> setUpFilter() const override;
+    std::unique_ptr<viskores::filter::Filter> setUpFilter(const InputData &input) const override;
 };
 
 #endif // VISTLE_TUBEVTKM_TUBEVTKM_H

@@ -29,7 +29,7 @@ VectorFieldVtkm::VectorFieldVtkm(const std::string &name, int moduleID, mpi::com
     setParameterMinimum(m_range, ParamVector(0.0, 0.0));
 }
 
-std::unique_ptr<viskores::filter::Filter> VectorFieldVtkm::setUpFilter() const
+std::unique_ptr<viskores::filter::Filter> VectorFieldVtkm::setUpFilter(const VtkmModule::InputData &input) const
 {
     auto filter = std::make_unique<viskores::filter::VectorFieldFilter>();
 
