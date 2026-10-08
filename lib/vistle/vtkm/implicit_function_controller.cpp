@@ -85,13 +85,18 @@ bool ImplicitFunctionController::changeParameter(const vistle::Parameter *param)
     return false;
 }
 
-viskores::ImplicitFunctionGeneral ImplicitFunctionController::function() const
+viskores::ImplicitFunctionGeneral ImplicitFunctionController::function(const vistle::Matrix4 &objTransform) const
 {
     Vector3 pvertex = m_module->getVectorParameter("vertex");
     Vector3 ppoint = m_module->getVectorParameter("point");
     Scalar scalar = m_module->getFloatParameter("scalar");
     Vector3 direction = m_module->getVectorParameter("direction");
     direction.normalize();
+
+    auto inv = objTransform.inverse();
+    auto normalTransform = inv.block<3, 3>(0, 0).inverse().transpose();
+    pvertex = normalTransform * pvertex;
+    ppoint = transformPoint(inv, ppoint);
 
     auto vertex = viskores::make_Vec(pvertex[0], pvertex[1], pvertex[2]);
     auto point = viskores::make_Vec(ppoint[0], ppoint[1], ppoint[2]);

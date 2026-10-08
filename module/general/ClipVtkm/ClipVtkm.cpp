@@ -16,7 +16,7 @@ ClipVtkm::ClipVtkm(const std::string &name, int moduleID, mpi::communicator comm
 std::unique_ptr<viskores::filter::Filter> ClipVtkm::setUpFilter(const VtkmModule::InputData &input) const
 {
     auto filt = std::make_unique<viskores::filter::contour::ClipWithImplicitFunction>();
-    filt->SetImplicitFunction(m_implFuncControl.function());
+    filt->SetImplicitFunction(m_implFuncControl.function(input.vistleGrid->getTransform()));
     filt->SetInvertClip(m_flip->getValue() != 0);
     return filt;
 }
