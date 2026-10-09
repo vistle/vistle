@@ -48,7 +48,6 @@
 #include <vistle/core/statetracker.h>
 
 #include <VistlePluginUtil/VistleInteractor.h>
-#include <VistlePluginUtil/VistleMessage.h>
 #include <VistlePluginUtil/VistleInfo.h>
 
 
@@ -1276,9 +1275,8 @@ void RhrClient::setReprojectionMode(MultiChannelDrawer::Mode reproject)
 bool RhrClient::sendMessage(const vistle::message::Buffer &msg, const vistle::buffer *payload)
 {
     if (payload) {
-        MessagePayload shm(*payload);
         std::lock_guard<std::mutex> locker(m_sendMutex);
-        m_sendQueue.emplace_back(msg, shm);
+        m_sendQueue.emplace_back(ShmEnvelope(msg, *payload));
     } else {
         std::lock_guard<std::mutex> locker(m_sendMutex);
         m_sendQueue.emplace_back(msg);

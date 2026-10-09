@@ -661,7 +661,7 @@ void RhrServer::preFrame()
         received = false;
         message::Buffer msg;
         buffer payload;
-        MessagePayload payloadShm;
+        message::BufferEnvelope payloadShm;
         message::error_code ec;
         if (m_clientSocket) {
             size_t avail = 0;
@@ -1104,7 +1104,7 @@ RhrServer::ViewParameters RhrServer::getViewParameters(int viewNum) const
     return m_viewData[viewNum].param;
 }
 
-bool RhrServer::handleMessage(const message::Message *message, const MessagePayload &payload)
+bool RhrServer::handleMessage(const message::Message *message)
 {
     if (message->type() != message::REMOTERENDERING)
         return false;
