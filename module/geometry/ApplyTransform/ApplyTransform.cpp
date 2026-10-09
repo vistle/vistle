@@ -68,7 +68,7 @@ bool ApplyTransform::compute()
                 auto *x = coords->x().data(), *y = coords->y().data(), *z = coords->z().data();
                 auto *nx = clone->x().data(), *ny = clone->y().data(), *nz = clone->z().data();
                 for (Index i = 0; i < ncoords; ++i) {
-                    auto p = T * Vector4(x[i], y[i], z[i], Scalar(1));
+                    Vector4 p = T * Vector4(x[i], y[i], z[i], Scalar(1));
                     nx[i] = p[0] / p[3];
                     ny[i] = p[1] / p[3];
                     nz[i] = p[2] / p[3];
