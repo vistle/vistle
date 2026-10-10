@@ -1,3 +1,4 @@
+#include "vistle/core/database.h"
 #define _USE_MATH_DEFINES
 #include "VistleGeometryGenerator.h"
 
@@ -480,6 +481,12 @@ Array *applyTriangle(typename Geometry::const_ptr tri, MappedPtr mapped, const O
                       << " elements" << std::endl;
             return nullptr;
         }
+    } else if (adap.mapping == vistle::DataBase::Block) {
+        if (adap.size != 1) {
+            std::cerr << "applyTriangle: not enough data (" << adap.size << ") for per-block mapping" << std::endl;
+            return nullptr;
+        }
+        arr->setBinding(osg::Array::BIND_OVERALL);
     } else {
         std::cerr << "applyTriangle: mapping=" << adap.mapping << " not handled" << std::endl;
         return nullptr;
@@ -504,7 +511,14 @@ Array *applyTriangle(typename Geometry::const_ptr tri, MappedPtr mapped, const O
             std::cerr << "applyTriangle: primitive has only " << end - begin << " vertices" << std::endl;
             continue;
         }
-        if (adap.mapping == vistle::DataBase::Element) {
+        if (adap.mapping == vistle::DataBase::Block) {
+            auto val = adap.getValue(0);
+            arr->push_back(val);
+            if (buildConn) {
+                for (Index i = 0; i < end - begin - 2; ++i)
+                    ++bin.ntri;
+            }
+        } else if (adap.mapping == vistle::DataBase::Element) {
             auto val = adap.getValue(prim);
             for (Index i = 0; i < end - begin - 2; ++i) {
                 if (buildConn)
@@ -798,7 +812,10 @@ osg::FloatArray *buildArray(typename MappedObject::const_ptr data, Coords::const
 
     auto indexed = Indexed::as(coords);
     osg::FloatArray *tc = nullptr;
-    if (mapping == vistle::DataBase::Vertex) {
+    if (mapping == vistle::DataBase::Block) {
+        tc = new osg::FloatArray;
+        tc->push_back(getValue<MappedObject>(data, 0));
+    } else if (mapping == vistle::DataBase::Vertex) {
         tc = new osg::FloatArray;
         const Index *cl = nullptr;
         if (indexed && indexed->getNumCorners() > 0)
@@ -897,7 +914,16 @@ bool fillTexture(std::stringstream &debug, S *tex, Index sx, Index sy, typename 
         return false;
     }
 
-    if (mapping == vistle::DataBase::Vertex) {
+    if (mapping == vistle::DataBase::Block) {
+        auto val = getValue<MappedObject>(data, 0);
+        Index idx = 0;
+        for (Index y = 0; y < sy - 1; ++y) {
+            for (Index x = 0; x < sx - 1; ++x) {
+                tex[idx] = val;
+                ++idx;
+            }
+        }
+    } else if (mapping == vistle::DataBase::Vertex) {
         const Index n = nx * ny * nz;
         if (n != data->getSize()) {
             std::cerr << "VistleGeometryGenerator: fillTexture: expecting " << nx << "x" << ny << "x" << nz << " = "
@@ -1154,10 +1180,15 @@ osg::Drawable *VistleGeometryGenerator::handlePoints(NodeInfo &info)
             const vistle::Scalar *r = radius->x().data();
 
             osg::ref_ptr<osg::FloatArray> rad = new osg::FloatArray();
-            rad->reserve(numVertices);
-            for (Index v = 0; v < numVertices; v++)
-                rad->push_back(r[v]);
-            geom->setVertexAttribArray(RadiusAttrib, rad, osg::Array::BIND_PER_VERTEX);
+            if (radius->guessMapping(points) == DataBase::Block) {
+                rad->push_back(r[0]);
+                geom->setVertexAttribArray(RadiusAttrib, rad, osg::Array::BIND_OVERALL);
+            } else {
+                rad->reserve(numVertices);
+                for (Index v = 0; v < numVertices; v++)
+                    rad->push_back(r[v]);
+                geom->setVertexAttribArray(RadiusAttrib, rad, osg::Array::BIND_PER_VERTEX);
+            }
 
             geom->setUseDisplayList(false);
             geom->setSupportsDisplayList(false);
@@ -1196,6 +1227,8 @@ std::vector<osg::ref_ptr<osg::Drawable>> VistleGeometryGenerator::handleLayerGri
     if (info.mapping == DataBase::Vertex)
         dmode = HeightMap::VertexData;
     else if (info.mapping == DataBase::Element)
+        dmode = HeightMap::CellData;
+    else if (info.mapping == DataBase::Block)
         dmode = HeightMap::CellData;
 
     if (dmode == HeightMap::NoData) {
@@ -1488,6 +1521,7 @@ osg::Drawable *VistleGeometryGenerator::handleLines(NodeInfo &info)
             m_options.indexedGeometry = true;
             auto r = radius->x().data();
             bool radiusPerElement = radius->guessMapping(m_geo) == DataBase::Element;
+            bool radiusOverall = radius->guessMapping(m_geo) == DataBase::Block;
 
             int quality = 2;
             SphereGenerator gen(quality);
@@ -1581,7 +1615,7 @@ osg::Drawable *VistleGeometryGenerator::handleLines(NodeInfo &info)
                     Index idx = cl ? cl[k] : k;
                     Index nidx = (cl && k + 1 < end) ? cl[k + 1] : k + 1;
                     Index pidx = (cl && k > 0) ? cl[k - 1] : k - 1;
-                    auto curRad = radiusPerElement ? r[i] : r[idx];
+                    auto curRad = radiusOverall ? r[0] : radiusPerElement ? r[i] : r[idx];
                     Vector3 cur(x[idx], y[idx], z[idx]);
 
                     if (end == begin + 1) {
@@ -1985,7 +2019,8 @@ osg::Geode *VistleGeometryGenerator::makeNode()
             });
             if (fl && !fl->empty()) {
                 //std::cerr << "VistleGeometryGenerator: setting VertexAttribArray for " << typeid(T).name() << " of size " << fl->size() << std::endl;
-                geom->setVertexAttribArray(DataAttrib, fl, osg::Array::BIND_PER_VERTEX);
+                geom->setVertexAttribArray(DataAttrib, fl,
+                                           fl->size() > 1 ? osg::Array::BIND_PER_VERTEX : osg::Array::BIND_OVERALL);
                 info.dataValid = true;
             }
         }

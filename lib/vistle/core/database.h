@@ -14,7 +14,7 @@ class V_COREEXPORT DataBase: public Object {
     V_OBJECT(DataBase);
 
 public:
-    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Mapping, (Unspecified)(Vertex)(Element));
+    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Mapping, (Unspecified)(Vertex)(Element)(Block));
 
     typedef Object Base;
     std::set<Object::const_ptr> referencedObjects() const override;

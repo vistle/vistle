@@ -51,6 +51,7 @@ struct RenderObjectData {
     unsigned int lighted; //!< whether to use lighting
     unsigned int hasSolidColor; //!< whether object has a color different from default
     unsigned int perPrimitiveMapping; //!< whether color should be applied per primitive
+    unsigned int overallMapping; //!< whether color should be applied overall
     float solidColor[4]; //!< object color (if there is no texture)
 
 #ifdef VISTLE_SCALAR_DOUBLE
