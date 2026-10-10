@@ -7,6 +7,7 @@
 #include <viskores/cont/ArrayHandleExtractComponent.h>
 #include <viskores/cont/ArrayHandleSOA.h>
 #include <viskores/cont/ArrayHandleUniformPointCoordinates.h>
+#include <viskores/cont/ArrayHandleConstant.h>
 #include "ArrayHandleCountingModulus.h"
 
 #include <vistle/core/celltypes.h>
@@ -241,26 +242,64 @@ struct AddField {
         typedef Vec<S, 3> V3;
         //typedef Vec<S, 4> V4;
 
-        viskores::cont::UnknownArrayHandle ah;
-        if (auto in = V1::as(object)) {
-            ah = in->x().handle();
-        } else if (auto in = V2::as(object)) {
-            auto ax = in->x().handle();
-            auto ay = in->y().handle();
-            ah = viskores::cont::make_ArrayHandleSOA(ax, ay);
-        } else if (auto in = V3::as(object)) {
-            auto ax = in->x().handle();
-            auto ay = in->y().handle();
-            auto az = in->z().handle();
-            ah = viskores::cont::make_ArrayHandleSOA(ax, ay, az);
-        } else {
-            return;
-        }
-
         auto mapping = this->mapping;
         if (mapping == DataBase::Unspecified) {
             mapping = object->guessMapping();
         }
+        bool constant = mapping == DataBase::Block;
+        Index numValues = 1;
+        if (!constant) {
+            if (auto g = object->grid()) {
+                if (auto grid = g->getInterface<ElementInterface>()) {
+                    switch (mapping) {
+                    case DataBase::Element:
+                        numValues = grid->getNumElements();
+                        break;
+                    case DataBase::Vertex:
+                        numValues = grid->getNumVertices();
+                        break;
+                    default:
+                        return;
+                    }
+                } else if (auto c = Coords::as(g)) {
+                    numValues = c->getNumCoords();
+                    mapping = DataBase::Vertex;
+                } else {
+                    return;
+                }
+            }
+        }
+
+        viskores::cont::UnknownArrayHandle ah;
+        if (auto in = V1::as(object)) {
+            if (constant) {
+                ah = viskores::cont::make_ArrayHandleConstant<S>(in->x()[0], numValues);
+            } else {
+                ah = in->x().handle();
+            }
+        } else if (auto in = V2::as(object)) {
+            if (constant) {
+                auto val = viskores::Vec<S, 2>(in->x()[0], in->y()[0]);
+                ah = viskores::cont::make_ArrayHandleConstant(val, numValues);
+            } else {
+                auto ax = in->x().handle();
+                auto ay = in->y().handle();
+                ah = viskores::cont::make_ArrayHandleSOA(ax, ay);
+            }
+        } else if (auto in = V3::as(object)) {
+            if (constant) {
+                auto val = viskores::Vec<S, 3>(in->x()[0], in->y()[0], in->z()[0]);
+                ah = viskores::cont::make_ArrayHandleConstant(val, numValues);
+            } else {
+                auto ax = in->x().handle();
+                auto ay = in->y().handle();
+                auto az = in->z().handle();
+                ah = viskores::cont::make_ArrayHandleSOA(ax, ay, az);
+            }
+        } else {
+            return;
+        }
+
         if (mapping == vistle::DataBase::Vertex) {
             dataset.AddPointField(name, ah);
         } else {
@@ -454,6 +493,9 @@ vistle::DataBase::ptr vtkmGetField(const viskores::cont::DataSet &vtkmDataSet, c
     case vistle::DataBase::Element:
         assoc = viskores::cont::Field::Association::Cells;
         break;
+    case vistle::DataBase::Block:
+        // leave it at Any
+        break;
     case vistle::DataBase::Unspecified:
         // leave it at Any
         break;
@@ -478,7 +520,9 @@ vistle::DataBase::ptr vtkmGetField(const viskores::cont::DataSet &vtkmDataSet, c
         return result;
     }
 
-    if (field.IsCellField()) {
+    if (result->getSize() == 1 && assoc == viskores::cont::Field::Association::Any) {
+        result->setMapping(vistle::DataBase::Block);
+    } else if (field.IsCellField()) {
         result->setMapping(vistle::DataBase::Element);
     } else {
         result->setMapping(vistle::DataBase::Vertex);

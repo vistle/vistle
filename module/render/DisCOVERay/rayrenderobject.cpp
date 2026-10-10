@@ -62,6 +62,7 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
     data->lighted = 1;
     data->hasSolidColor = hasSolidColor;
     data->perPrimitiveMapping = 0;
+    data->overallMapping = 0;
     data->normalsPerPrimitiveMapping = 0;
     data->cmap = nullptr;
     for (int c = 0; c < 3; ++c) {
@@ -76,7 +77,9 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
         data->solidColor[c] = solidColor[c];
     }
     if (this->mapdata) {
-        if (this->mapdata->guessMapping(geometry) == DataBase::Element)
+        if (this->mapdata->guessMapping(geometry) == DataBase::Block)
+            data->overallMapping = 1;
+        else if (this->mapdata->guessMapping(geometry) == DataBase::Element)
             data->perPrimitiveMapping = 1;
     }
     if (auto s = Vec<Scalar, 1>::as(this->mapdata)) {

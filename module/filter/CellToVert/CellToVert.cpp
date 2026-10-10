@@ -80,7 +80,7 @@ bool CellToVert::compute(const std::shared_ptr<BlockTask> &task) const
         auto &data = data_vec[i];
         assert(data);
         auto mapping = data->guessMapping(grid);
-        if (mapping != DataBase::Element && mapping != DataBase::Vertex) {
+        if (mapping != DataBase::Element && mapping != DataBase::Vertex && mapping != DataBase::Block) {
             std::stringstream str;
             str << "unsupported data mapping " << data->mapping() << ", guessed=" << mapping << " on "
                 << data->getName();
@@ -105,7 +105,19 @@ bool CellToVert::compute(const std::shared_ptr<BlockTask> &task) const
             updateMeta(ndata);
             task->addObject(data_out, ndata);
         } else {
-            DataBase::ptr out = algo.interpolate(grid, data);
+            DataBase::ptr out;
+            if (mapping == DataBase::Block) {
+                if (auto g = grid->getInterface<ElementInterface>()) {
+                    out = data->cloneType();
+                    Index N = g->getNumVertices();
+                    out->setSize(N);
+                    for (Index i = 0; i < N; ++i) {
+                        out->copyEntry(i, data, 0);
+                    }
+                }
+            } else {
+                out = algo.interpolate(grid, data);
+            }
             if (out) {
                 out->copyAttributes(data);
                 out->setMapping(DataBase::Vertex);

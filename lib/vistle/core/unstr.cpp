@@ -434,7 +434,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
     }
 #endif
 
-    if (mapping == Element) {
+    if (mapping == Element || mapping == Block) {
         std::vector<Scalar> weights(1, 1.);
         std::vector<Index> indices(1, elem);
 

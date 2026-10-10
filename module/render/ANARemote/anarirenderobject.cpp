@@ -328,8 +328,12 @@ void AnariRenderObject::create(anari::Device device)
     bool useSampler = false;
     std::string attr = "vertex";
     if (this->mapdata) {
-        if (this->mapdata->guessMapping(geometry) == DataBase::Element)
+        if (this->mapdata->guessMapping(geometry) == DataBase::Block) {
+            numCorners = 1;
+            cl = nullptr;
+        } else if (this->mapdata->guessMapping(geometry) == DataBase::Element) {
             attr = "primitive";
+        }
     }
     if (auto s = Vec<Scalar, 1>::as(this->mapdata)) {
         useSampler = true;

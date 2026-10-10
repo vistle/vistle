@@ -479,7 +479,7 @@ GridInterface::Interpolator LayerGrid::getInterpolator(Index elem, const Vector3
     }
 #endif
 
-    if (mapping == Element) {
+    if (mapping == Element || mapping == Block) {
         std::vector<Scalar> weights(1, 1.);
         std::vector<Index> indices(1, elem);
 
