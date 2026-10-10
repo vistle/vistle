@@ -41,7 +41,7 @@ elseif(TBB_FOUND)
 endif()
 
 set(RAY_HEADERS common.h rayrenderobject.h)
-set(RAY_SOURCES ray.cpp rayrenderobject.cpp)
+set(RAY_SOURCES discoveray.cpp rayrenderobject.cpp)
 set(ISPC_HEADERS render.isph renderobjectdata.isph spheres_isect.isph spheres.isph tubes.isph)
 set(ISPC_SOURCES render.ispc renderobjectdata.ispc spheres.ispc tubes.ispc)
 set(description "Embree CPU ray casting remote renderer")
