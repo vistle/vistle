@@ -76,8 +76,8 @@ ClusterManager::Module::~Module()
     try {
         if (messageThread.joinable()) {
             messageThread.join();
-        } else {
-            std::cerr << "ClusterManager: ~Module: messageThread for module not joinable" << std::endl;
+        } else if (message::Id::isModule(id)) {
+            std::cerr << "ClusterManager: ~Module: messageThread for module " << id << " not joinable" << std::endl;
         }
     } catch (std::exception &e) {
         std::cerr << "ClusterManager: ~Module: joining messageThread for module failed: " << e.what() << std::endl;
@@ -955,6 +955,7 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn)
     std::string name(spawn.getName());
 
     Module &mod = m_runningMap[newId];
+    mod.id = newId;
     std::string smqName = message::MessageQueue::createName("send", newId, m_rank);
     std::string rmqName = message::MessageQueue::createName("recv", newId, m_rank);
 
@@ -970,7 +971,7 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn)
 
     mod.sendQueue->makeNonBlocking();
 
-    std::thread mt([this, newId, name, &mod]() {
+    mod.messageThread = std::thread([this, newId, name, &mod]() {
         std::string tname = std::to_string(newId) + "mq:" + name;
         setThreadName(tname);
 
@@ -995,7 +996,6 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn)
                 return;
         }
     });
-    mod.messageThread = std::move(mt);
 
     m_comm.barrier();
 

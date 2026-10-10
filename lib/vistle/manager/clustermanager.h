@@ -169,6 +169,7 @@ private:
     std::deque<MessageWithPayload> m_incomingMessages;
 
     struct Module {
+        int id = message::Id::Invalid;
         //#ifdef MODULE_THREAD
         typedef std::shared_ptr<vistle::Module>(NewModuleFunc)(const std::string &name, int id, mpi::communicator comm);
         boost::function<NewModuleFunc> newModule;
