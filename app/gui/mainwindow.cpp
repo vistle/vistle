@@ -89,7 +89,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionSelectInvert, SIGNAL(triggered()), SIGNAL(selectInvert()));
     QList<QKeySequence> deleteKeys;
     deleteKeys.push_back(QKeySequence::StandardKey::Delete);
-#ifdef Q_OS_MAC
+#ifdef Q_OS_MACOS
     deleteKeys.push_back(Qt::Key_Backspace);
 #endif
     ui->actionDelete->setShortcuts(deleteKeys);

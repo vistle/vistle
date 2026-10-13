@@ -795,7 +795,7 @@ QString RemoteFileSystemModelPrivate::size(const QModelIndex &index) const
         return QString();
     const RemoteFileSystemNode *n = node(index);
     if (n->isDir()) {
-#ifdef Q_OS_MAC
+#ifdef Q_OS_APPLE
         return QLatin1String("--");
 #else
         return QLatin1String("");
@@ -922,8 +922,8 @@ QVariant RemoteFileSystemModel::headerData(int section, Qt::Orientation orientat
         break;
     case 2:
         returnValue =
-#ifdef Q_OS_MAC
-            tr("Kind", "Match OS X Finder");
+#ifdef Q_OS_APPLE
+            tr("Kind", "Match macOS Finder");
 #else
             tr("Type", "All other platforms");
 #endif
@@ -1004,7 +1004,7 @@ public:
     {
         switch (sortColumn) {
         case 0: {
-#ifndef Q_OS_MAC
+#ifndef Q_OS_APPLE
             // place directories before files
             bool left = l->isDir();
             bool right = r->isDir();

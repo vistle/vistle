@@ -88,7 +88,7 @@ void run_on_main_thread(std::function<void()> &func)
 #endif
 #endif
 
-#if defined(Q_OS_UNIX) && !defined(Q_OS_MAC)
+#if defined(Q_OS_UNIX) && !defined(Q_OS_APPLE)
 #include <xcb/xcb.h>
 #ifdef HAVE_X11_ICE
 #include <X11/ICE/ICElib.h>
@@ -238,7 +238,7 @@ bool VistleManager::run(int argc, char *argv[])
 #if defined(HAVE_QT) && defined(MODULE_THREAD)
     if (!qApp) {
         std::cerr << "early creation of QApplication object" << std::endl;
-#if defined(Q_OS_UNIX) && !defined(Q_OS_MAC)
+#if defined(Q_OS_UNIX) && !defined(Q_OS_APPLE)
         if (xcb_connection_t *xconn = xcb_connect(nullptr, nullptr)) {
             if (!xcb_connection_has_error(xconn)) {
                 std::cerr << "X11 connection!" << std::endl;

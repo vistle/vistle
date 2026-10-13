@@ -868,7 +868,7 @@ static inline bool isCaseSensitiveFileSystem(const QString &path)
     // Return case insensitive unconditionally, even if someone has a case sensitive
     // file system mounted, wrongly capitalized drive letters will cause mismatches.
     return false;
-#elif defined(Q_OS_MACOS)
+#elif defined(Q_OS_APPLE)
     return pathconf(QFile::encodeName(path).constData(), _PC_CASE_SENSITIVE);
 #else
     return true;
@@ -2649,7 +2649,7 @@ void RemoteFileDialogPrivate::createWidgets()
     else
         model->setNameFilterDisables(false);
 #else
-#ifdef Q_OS_MACOS
+#ifdef Q_OS_APPLE
     model->setNameFilterDisables(true);
 #else
     model->setNameFilterDisables(false);
