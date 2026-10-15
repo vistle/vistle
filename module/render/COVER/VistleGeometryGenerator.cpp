@@ -615,12 +615,10 @@ NormalsWithMapping computeNormals(typename Geometry::const_ptr geometry, const O
             const Index begin = geo.getPrimitiveBegin(prim), end = geo.getPrimitiveBegin(prim + 1);
             assert(end - begin >= 3);
             osg::Vec3 normal(0, 0, 0);
-            Index v0 = cl[end - 1];
-            for (Index i = begin; i < end; ++i) {
-                Index v1 = v0;
-                v0 = cl[i];
-                osg::Vec3 u0(x[v0], y[v0], z[v0]);
-                osg::Vec3 u1(x[v1], y[v1], z[v1]);
+            for (Index c0 = begin; c0 < end; ++c0) {
+                Index c1 = c0 + 1 == end ? begin : c0 + 1;
+                osg::Vec3 u0(x[c0], y[c0], z[c0]);
+                osg::Vec3 u1(x[c1], y[c1], z[c1]);
                 normal += u0 ^ u1;
             }
             normal.normalize();
