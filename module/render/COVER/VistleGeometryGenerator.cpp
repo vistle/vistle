@@ -585,11 +585,15 @@ NormalsWithMapping computeNormals(typename Geometry::const_ptr geometry, const O
         for (Index prim = 0; prim < numPrim; ++prim) {
             const Index begin = geo.getPrimitiveBegin(prim), end = geo.getPrimitiveBegin(prim + 1);
             assert(end - begin >= 3);
-            Index v0 = cl[begin + 0], v1 = cl[begin + 1], v2 = cl[begin + 2];
-            osg::Vec3 u(x[v0], y[v0], z[v0]);
-            osg::Vec3 v(x[v1], y[v1], z[v1]);
-            osg::Vec3 w(x[v2], y[v2], z[v2]);
-            osg::Vec3 normal = (v - u) ^ (w - u);
+            osg::Vec3 normal(0, 0, 0);
+            Index v0 = cl[end - 1];
+            for (Index i = begin; i < end; ++i) {
+                Index v1 = v0;
+                v0 = cl[i];
+                osg::Vec3 u0(x[v0], y[v0], z[v0]);
+                osg::Vec3 u1(x[v1], y[v1], z[v1]);
+                normal += u0 ^ u1;
+            }
             normal.normalize();
 
             if (useVertexNormals) {
@@ -609,11 +613,16 @@ NormalsWithMapping computeNormals(typename Geometry::const_ptr geometry, const O
         result.mapping = vistle::DataBase::Vertex;
         for (Index prim = 0; prim < numPrim; ++prim) {
             const Index begin = geo.getPrimitiveBegin(prim), end = geo.getPrimitiveBegin(prim + 1);
-            const Index c = begin;
-            osg::Vec3 u(x[c + 0], y[c + 0], z[c + 0]);
-            osg::Vec3 v(x[c + 1], y[c + 1], z[c + 1]);
-            osg::Vec3 w(x[c + 2], y[c + 2], z[c + 2]);
-            osg::Vec3 normal = (w - u) ^ (v - u) * -1;
+            assert(end - begin >= 3);
+            osg::Vec3 normal(0, 0, 0);
+            Index v0 = cl[end - 1];
+            for (Index i = begin; i < end; ++i) {
+                Index v1 = v0;
+                v0 = cl[i];
+                osg::Vec3 u0(x[v0], y[v0], z[v0]);
+                osg::Vec3 u1(x[v1], y[v1], z[v1]);
+                normal += u0 ^ u1;
+            }
             normal.normalize();
 
             for (Index c = begin; c < end; ++c)
