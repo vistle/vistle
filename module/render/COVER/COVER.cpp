@@ -942,6 +942,8 @@ bool COVER::needsSync(const vistle::message::Message &m) const
     case SETNAME:
     case ADDHUB:
     case REMOVEHUB:
+    case SPAWN:
+    case QUIT:
     case CONNECT:
     case DISCONNECT:
     case ADDPARAMETER:
