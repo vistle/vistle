@@ -147,7 +147,7 @@ protected:
         int m_inc;
     };
 
-    /// control whether and how @ref read invocations are called in parallel
+    /// control whether and how @ref read invocations are called in parallel within each rank
     void setParallelizationMode(ParallelizationMode mode);
     /// control if read operations have to be called collectively
     /*! if read operations are to be called collectively, @ref Token
