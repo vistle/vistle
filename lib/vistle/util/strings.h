@@ -8,6 +8,7 @@ namespace vistle {
 
 std::string V_UTILEXPORT to_lower(const std::string &s);
 std::string V_UTILEXPORT to_upper(const std::string &s);
+std::string V_UTILEXPORT escape(const std::string &s);
 
 } // namespace vistle
 #endif

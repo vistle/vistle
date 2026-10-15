@@ -13,6 +13,7 @@
 #include "vistleconsole.h"
 #include <vistle/util/directory.h>
 #include <vistle/util/hostname.h>
+#include <vistle/util/strings.h>
 #include <vistle/util/version.h>
 #include <vistle/config/value.h>
 #include "remotefilebrowser/remotefiledialog.h"
@@ -481,7 +482,7 @@ void UiController::saveDataFlowNetwork(const QString &filename, int hubId)
     if (hubId == vistle::message::Id::UI) {
         std::cerr << "writing to " << filename.toStdString() << std::endl;
         std::string cmd = "save(\"";
-        cmd += filename.toStdString();
+        cmd += vistle::escape(filename.toStdString());
         cmd += "\")";
 #ifdef HAVE_PYTHON
         vistle::PythonInterface::the().exec(cmd);
