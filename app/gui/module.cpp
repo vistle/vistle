@@ -898,6 +898,8 @@ void Module::updateText()
     m_visibleName = m_name;
     if (!m_displayName.isEmpty()) {
         m_visibleName = m_displayName;
+    }
+    if (m_name != m_displayName) {
     } else if (m_inPorts.isEmpty()) {
     } else if (m_outPorts.size() <= 1 && !m_colormap) {
     } else {
