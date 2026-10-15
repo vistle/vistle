@@ -5,6 +5,7 @@
 #include <vistle/core/points.h>
 #include <vistle/core/triangles.h>
 #include <vistle/core/quads.h>
+#include <vistle/core/lines.h>
 #include <vistle/core/polygons.h>
 #include <vistle/core/geometry.h>
 #include <vistle/core/vec.h>
@@ -67,6 +68,7 @@ bool MetaData::compute()
     auto poly = Polygons::as(grid);
     auto quad = Quads::as(grid);
     auto points = Points::as(grid);
+    auto lines = Lines::as(grid);
     auto geoif = grid->getInterface<GeometryInterface>();
     auto elemif = grid->getInterface<ElementInterface>();
     assert(geoif);
@@ -98,6 +100,7 @@ bool MetaData::compute()
     }
     const Index kind = m_kind->getValue();
     DataBase::Mapping mapping = DataBase::Block;
+    Byte elType = UnstructuredGrid::NONE;
     switch (kind) {
     case MpiRank:
         species = "rank";
@@ -120,18 +123,23 @@ bool MetaData::compute()
         break;
     case ElementIndex:
         species = "elem_index";
-        if (indexed) {
-            mapping = DataBase::Element;
-        } else {
-            sendError("ElementIndex requires Indexed as input");
-            return true;
-        }
+        mapping = DataBase::Element;
         break;
     case ElementType:
         species = "elem_type";
+        mapping = DataBase::Element;
         if (unstr) {
-            mapping = DataBase::Element;
             tl = unstr->tl().data();
+        } else if (points) {
+            elType = UnstructuredGrid::POINT;
+        } else if (lines) {
+            elType = UnstructuredGrid::POLYLINE;
+        } else if (tri) {
+            elType = UnstructuredGrid::TRIANGLE;
+        } else if (quad) {
+            elType = UnstructuredGrid::QUAD;
+        } else if (poly) {
+            elType = UnstructuredGrid::POLYGON;
         } else {
             sendError("ElementType requires UnstructuredGrid as input");
             return true;
@@ -200,7 +208,11 @@ bool MetaData::compute()
             val[i] = i;
             break;
         case ElementType:
-            val[i] = tl[i];
+            if (tl) {
+                val[i] = tl[i];
+            } else {
+                val[i] = elType;
+            }
             break;
         case ElementSize:
             if (el) {
