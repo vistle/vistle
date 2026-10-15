@@ -29,6 +29,7 @@
 #include <vistle/util/listenv4v6.h>
 #include <vistle/util/crypto.h>
 #include <vistle/util/threadname.h>
+#include <vistle/util/strings.h>
 #include <vistle/util/url.h>
 #include <vistle/util/version.h>
 #include <vistle/core/message.h>
@@ -2870,7 +2871,7 @@ bool Hub::handlePriv(const message::SaveWorkflow &save)
 {
     std::cerr << "to save: " << save.pathname() << std::endl;
     std::string cmd = "save(\"";
-    cmd += save.pathname();
+    cmd += vistle::escape(save.pathname());
     cmd += "\")";
     std::unique_lock lock(m_uiManager);
     bool result = processCommand(cmd);
