@@ -110,7 +110,9 @@ inline void shadeRay(uniform const SceneData *uniform scene, uniform const TileD
                 const float &v = hit.v;
                 const float w = 1.f - u - v;
                 float c = 0.f;
-                if (ro->perPrimitiveMapping) {
+                if (ro->overallMapping) {
+                    c = ro->texCoords[0];
+                } else if (ro->perPrimitiveMapping) {
                     if (ro->triangles && ro->indexBuffer) {
                         c = ro->texCoords[ro->indexBuffer[hit.primID].v3];
                     } else {

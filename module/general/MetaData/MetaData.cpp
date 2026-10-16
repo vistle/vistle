@@ -97,7 +97,7 @@ bool MetaData::compute()
         el = indexed->el().data();
     }
     const Index kind = m_kind->getValue();
-    DataBase::Mapping mapping = DataBase::Vertex;
+    DataBase::Mapping mapping = DataBase::Block;
     switch (kind) {
     case MpiRank:
         species = "rank";
@@ -110,6 +110,7 @@ bool MetaData::compute()
         break;
     case VertexIndex:
         species = "vertex";
+        mapping = DataBase::Vertex;
         break;
     case NumVertices:
         species = "block_vertices";
@@ -149,6 +150,7 @@ bool MetaData::compute()
         break;
     default:
         species = "zero";
+        mapping = DataBase::Block;
         break;
     }
     if (mapping == DataBase::Element && !elemif) {
@@ -156,7 +158,12 @@ bool MetaData::compute()
         return true;
     }
 
-    Index N = mapping == DataBase::Element ? elemif->getNumElements() : geoif->getNumVertices();
+    Index N = 1;
+    if (mapping == DataBase::Element) {
+        N = elemif->getNumElements();
+    } else if (mapping == DataBase::Vertex) {
+        N = geoif->getNumVertices();
+    }
 
     Vec<Index>::ptr out(new Vec<Index>(N));
     auto val = out->x().data();

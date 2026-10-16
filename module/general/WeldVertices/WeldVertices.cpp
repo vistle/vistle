@@ -300,7 +300,7 @@ bool WeldVertices::compute(const std::shared_ptr<BlockTask> &task) const
 
     for (int i = 0; i < NumPorts; ++i) {
         if (din[i]) {
-            if (din[i]->mapping() == DataBase::Element) {
+            if (din[i]->mapping() == DataBase::Element || din[i]->mapping() == DataBase::Block) {
                 auto dout = din[i]->clone();
                 dout->setGrid(ogrid);
                 updateMeta(dout);
