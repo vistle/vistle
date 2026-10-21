@@ -60,14 +60,14 @@ def showRunning():
    for id in running:
       name = _vistle.getModuleName(id)
       hub = _vistle.getHub(id)
-      print("%s\t%s\t%s" % (id, name, hub))
+      print(f"{id}\t{name}\t{hub}")
 
 def showBusy():
    busy = getBusy()
    print("id\tname")
    for id in busy:
       name = _vistle.getModuleName(id)
-      print("%s\t%s" % (id, name))
+      print(f"{id}\t{name}")
 
 def showInputPorts(id):
    ports = _vistle.getInputPorts(id)
@@ -83,7 +83,7 @@ def showConnections(id, port):
    conns = _vistle.getConnections(id, port)
    print("id\tportname")
    for c in conns:
-      print("%s\t%s" % (c[0], c[1]))
+      print(f"{c[0]}\t{c[1]}")
 
 def showAllConnections():
    mods = _vistle.getRunning()
@@ -93,7 +93,7 @@ def showAllConnections():
       for p in ports:
          conns = _vistle.getConnections(m, p)
          for c in conns:
-            print("%s:%s -> %s:%s" % (m, p, c[0], c[1]))
+            print(f"{m}:{p} -> {c[0]}:{c[1]}")
 
 def getParameter(id, name):
    t = _vistle.getParameterType(id, name)
@@ -116,27 +116,13 @@ def getParameter(id, name):
 def getSavableParam(id, name):
    t = _vistle.getParameterType(id, name)
    if t == "String":
-      return "'"+_vistle.getEscapedStringParam(id, name)+"'"
+      return f"'{_vistle.getEscapedStringParam(id, name)}'"
    elif t == "Vector":
       v = _vistle.getVectorParam(id, name)
-      s = ''
-      first=True
-      for c in v:
-         if not first:
-            s += ', '
-         first = False
-         s += str(c)
-      return s
+      return ', '.join(str(c) for c in v)
    elif t == "IntVector":
       v = _vistle.getIntVectorParam(id, name)
-      s = ''
-      first=True
-      for c in v:
-         if not first:
-            s += ', '
-         first = False
-         s += str(c)
-      return s
+      return ', '.join(str(c) for c in v)
    else:
       return getParameter(id, name)
 
@@ -147,7 +133,7 @@ def showParameters(id):
    params = _vistle.getParameters(id)
    print("name\ttype\tvalue")
    for p in params:
-      print("%s\t%s\t%s" % (p, _vistle.getParameterType(id, p), getParameter(id, p)))
+      print(f"{p}\t{_vistle.getParameterType(id, p)}\t{getParameter(id, p)}")
 
 def showAllParameters():
    mods = _vistle.getRunning()
@@ -158,23 +144,23 @@ def showAllParameters():
       name = _vistle.getModuleName(m)
       params = _vistle.getParameters(m)
       for p in params:
-          print("%s\t%s\t%s\t%s\t%s" % (m, name, p, _vistle.getParameterType(m, p), getSavableParam(m, p)))
+          print(f"{m}\t{name}\t{p}\t{_vistle.getParameterType(m, p)}\t{getSavableParam(m, p)}")
 
 def modvar(id):
    if (id >= 0):
-      return "m" + _vistle.getModuleName(id) + str(id)
+      return f"m{_vistle.getModuleName(id)}{id}"
    if (id == _vistle.getVistleSession()):
        return "VistleSession"
    if (id == _vistle.getWorkflowConfig()):
        return "WorkflowConfig"
-   return "v"+str(-id)
+   return f"v{-id}"
 
 def hubVar(hub, numSlaves):
    if (hub == _vistle.getMasterHub()):
       return "MasterHub"
    if (numSlaves == 1):
       return "SlaveHub"
-   return "Slave"+str(-hub);
+   return f"Slave{-hub}"
 
 def hubVarForModule(id, numSlaves):
    hub = _vistle.getHub(id)
@@ -196,17 +182,17 @@ def saveParameters(f, mod):
       for p in params:
          if isModuleParameter(p) == mod:
             if not _vistle.isParameterDefault(ses, p):
-               np = adaptModuleParameter(p, mod, "{"+modvar(mod)+"}")
-               f.write("set"+getParameterType(ses,p)+"Param("+modvar(ses)+", f'"+np+"', "+str(getSavableParam(ses,p))+")\n")
+               np = adaptModuleParameter(p, mod, f"{{{modvar(mod)}}}")
+               f.write(f"set{getParameterType(ses,p)}Param({modvar(ses)}, f'{np}', {getSavableParam(ses,p)})\n")
       params = _vistle.getParameters(mod)
       paramChanges = False
       for p in params:
          if mod != ses or isModuleParameter(p) == None:
             if not _vistle.isParameterDefault(mod, p):
-               f.write("set"+getParameterType(mod,p)+"Param("+modvar(mod)+", '"+p+"', "+str(getSavableParam(mod,p))+", True)\n")
+               f.write(f"set{getParameterType(mod,p)}Param({modvar(mod)}, '{p}', {getSavableParam(mod,p)}, True)\n")
                paramChanges = True
       if paramChanges:
-         f.write("applyParameters("+modvar(mod)+")\n")
+         f.write(f"applyParameters({modvar(mod)})\n")
       f.write("\n")
 
 def saveWorkflow(f, mods, numSlaves, remote):
@@ -221,14 +207,14 @@ def saveWorkflow(f, mods, numSlaves, remote):
       if (remote and hub==_vistle.getMasterHub()) or (not remote and hub!=_vistle.getMasterHub()):
             continue
       #f.write(modvar(m)+" = spawn('"+_vistle.getModuleName(m)+"')\n")
-      f.write("u"+modvar(m)+" = spawnAsync("+hubVarForModule(m, numSlaves)+", '"+_vistle.getModuleName(m)+"')\n")
+      f.write(f"u{modvar(m)} = spawnAsync({hubVarForModule(m, numSlaves)}, '{_vistle.getModuleName(m)}')\n")
    f.write("\n")
 
    for m in mods:
       hub = _vistle.getHub(m)
       if (remote and hub==_vistle.getMasterHub()) or (not remote and hub!=_vistle.getMasterHub()):
             continue
-      f.write(modvar(m)+" = waitForSpawn(u"+modvar(m)+")\n")
+      f.write(f"{modvar(m)} = waitForSpawn(u{modvar(m)})\n")
       dm = _vistle.getModuleDisplayName(m)
       if dm != "" and dm != _vistle.getModuleName(m):
          f.write(f"setModuleDisplayName({modvar(m)}, '{dm}')\n")
@@ -255,7 +241,7 @@ def saveWorkflow(f, mods, numSlaves, remote):
             if [str(m), p] in writtenConns:
                continue
             else:
-               f.write("connect("+modvar(m)+",'"+str(p)+"', "+modvar(c[0])+",'"+str(c[1])+"')\n")
+               f.write(f"connect({modvar(m)},'{p}', {modvar(c[0])},'{c[1]}')\n")
                writtenConns.append([str(c[0]), c[1]])
                
 
@@ -284,19 +270,19 @@ def save2(file, moduleList):
    saveWorkflow(file, moduleList, numSlaves, False)
 
    if numSlaves > 1:
-      print("slave hubs: %s" % slavehubs)
-      file.write("slavehubs = waitForHubs("+str(numSlaves)+")\n")
+      print(f"slave hubs: {slavehubs}")
+      file.write(f"slavehubs = waitForHubs({numSlaves})\n")
       count = 0
       for h in slavehubs:
-          file.write(hubVar(h, numSlaves) + " = slavehubs["+str(count)+"]\n")
+          file.write(f"{hubVar(h, numSlaves)} = slavehubs[{count}]\n")
           count = count+1
    elif numSlaves > 0:
-      print("slave hubs: %s" % slavehubs)
+      print(f"slave hubs: {slavehubs}")
       file.write("print('waiting for a slave hub to connect...')\n")
       file.write("printInfo('waiting for a slave hub to connect...')\n")
       file.write("SlaveHub=waitForHub()\n")
-      file.write("print('slave hub %s connected\\n' % SlaveHub)\n")
-      file.write("printInfo('slave hub %s connected\\n' % SlaveHub)\n")
+      file.write("print(f'slave hub {SlaveHub} connected\\n')\n")
+      file.write("printInfo(f'slave hub {SlaveHub} connected\\n')\n")
 
    saveWorkflow(file, moduleList, numSlaves, True)
 
@@ -311,7 +297,7 @@ def save(filename = None):
 
    _vistle.setLoadedFile(filename)
 
-   f = open(filename+".new", 'w')
+   f = open(f"{filename}.new", 'w')
    mods = _vistle.getRunning()
 
    save2(f, mods)
@@ -319,8 +305,8 @@ def save(filename = None):
    #f.write("checkMessageQueue()\n")
 
    f.close()
-   os.replace(filename+".new", filename)
-   print("Workflow saved to "+filename)
+   os.replace(f"{filename}.new", filename)
+   print(f"Workflow saved to {filename}")
 
 def reset():
    mods = _vistle.getRunning()
@@ -343,7 +329,7 @@ def load(filename = None):
    _vistle.source(filename)
 
    _vistle.setLoadedFile(filename)
-   _vistle.setStatus("Workflow loaded: "+filename)
+   _vistle.setStatus(f"Workflow loaded: {filename}")
 
 def snapshotCover(modId, file):
     global coGRMsgLoaded
