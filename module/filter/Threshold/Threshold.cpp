@@ -15,6 +15,7 @@
 #include <vistle/core/structuredgridbase.h>
 
 #include "Threshold.h"
+#include "vistle/core/database.h"
 
 using namespace vistle;
 
@@ -63,7 +64,7 @@ public:
 
     bool operator()(Index element)
     {
-        if (m_mapping != DataBase::Vertex && m_mapping != DataBase::Element)
+        if (m_mapping != DataBase::Vertex && m_mapping != DataBase::Element && m_mapping != DataBase::Block)
             return false;
         if (!m_scalar && !m_index && !m_byte)
             return false;
@@ -88,6 +89,14 @@ public:
                 vals.push_back(m_byte[element]);
             if (m_scalar)
                 vals.push_back(m_scalar[element]);
+            break;
+        case DataBase::Block:
+            if (m_index)
+                vals.push_back(m_index[0]);
+            if (m_byte)
+                vals.push_back(m_byte[0]);
+            if (m_scalar)
+                vals.push_back(m_scalar[0]);
             break;
         default:
             return false;
@@ -230,8 +239,8 @@ bool Threshold::compute(const std::shared_ptr<BlockTask> &task) const
             sendError("only Index data supported on threshold_in");
             return true;
         }
-        if (mapped->guessMapping() != DataBase::Element) {
-            sendError("per-element mapping required on threshold_in");
+        if (mapped->guessMapping() != DataBase::Element && mapped->guessMapping() != DataBase::Block) {
+            sendError("per-element or per-block mapping required on threshold_in");
             return true;
         }
     } else {

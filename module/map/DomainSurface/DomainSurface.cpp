@@ -13,6 +13,7 @@
 #include <vistle/util/enum.h>
 
 #include "DomainSurface.h"
+#include "vistle/core/database.h"
 
 //#define USE_SET
 #ifndef USE_SET
@@ -103,7 +104,8 @@ bool DomainSurface::compute(const std::shared_ptr<BlockTask> &task) const
     assert(grid_in);
 
     bool haveElementData = false;
-    if (data && data->guessMapping(grid_in) == DataBase::Element) {
+    auto mapping = data ? data->guessMapping(grid_in) : DataBase::Unspecified;
+    if (mapping == DataBase::Element) {
         haveElementData = true;
     }
 
@@ -176,8 +178,8 @@ bool DomainSurface::compute(const std::shared_ptr<BlockTask> &task) const
         return true;
     }
 
-    if (!haveElementData && data->guessMapping(grid_in) != DataBase::Vertex) {
-        sendError("data mapping not per vertex and not per element");
+    if (!haveElementData && mapping != DataBase::Vertex && mapping != DataBase::Block) {
+        sendError("data mapping neither per vertex, nor per element, nor per block");
         return true;
     }
 
@@ -198,7 +200,7 @@ bool DomainSurface::compute(const std::shared_ptr<BlockTask> &task) const
 
         if (!haveElementData && dm.empty()) {
             DataBase::ptr dout = data->clone();
-            dout->setMapping(haveElementData ? DataBase::Element : DataBase::Vertex);
+            dout->setMapping(mapping);
             dout->setGrid(geo);
             updateMeta(dout);
             task->addObject(port, dout);
@@ -207,7 +209,7 @@ bool DomainSurface::compute(const std::shared_ptr<BlockTask> &task) const
 
         DataBase::ptr data_obj_out = remapData(data, dm, true);
         if (data_obj_out) {
-            data_obj_out->setMapping(haveElementData ? DataBase::Element : DataBase::Vertex);
+            data_obj_out->setMapping(mapping);
             data_obj_out->setGrid(geo);
             data_obj_out->setMeta(data->meta());
             data_obj_out->copyAttributes(data);

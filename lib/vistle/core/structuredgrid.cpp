@@ -428,7 +428,7 @@ GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Ve
     }
 #endif
 
-    if (mapping == Element) {
+    if (mapping == DataBase::Element || mapping == DataBase::Block) {
         std::vector<Scalar> weights(1, 1.);
         std::vector<Index> indices(1, elem);
 

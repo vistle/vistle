@@ -154,6 +154,9 @@ DataBase::Mapping DataBase::guessMapping(Object::const_ptr g) const
             if (getSize() == coords->getSize())
                 return Vertex;
         }
+        if (getSize() == 1) {
+            return Block;
+        }
     }
     return mapping();
 }

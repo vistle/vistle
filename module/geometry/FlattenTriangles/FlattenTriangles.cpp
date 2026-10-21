@@ -121,8 +121,7 @@ bool FlattenTriangles::compute()
     if (data) {
         DataBase::ptr dout = data->clone();
         auto mapping = data->guessMapping();
-        if (mapping == DataBase::Element) {
-            dout->setMapping(DataBase::Element);
+        if (mapping == DataBase::Element || mapping == DataBase::Block) {
             dout->setGrid(outgrid);
             updateMeta(dout);
             addObject("grid_out", dout);

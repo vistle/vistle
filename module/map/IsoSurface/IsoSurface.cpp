@@ -361,6 +361,10 @@ std::vector<Object::ptr> IsoSurface::work(vistle::Object::const_ptr grid, vistle
         }
         if (mapdata[i])
             m->copyAttributes(mapdata[i]);
+#ifdef ISOSURFACE
+        m->setSize(1);
+        m->setMapping(DataBase::Block);
+#endif
         m->setGrid(result);
         results.push_back(m);
     }
