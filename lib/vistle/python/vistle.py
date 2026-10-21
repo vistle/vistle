@@ -229,8 +229,9 @@ def saveWorkflow(f, mods, numSlaves, remote):
       if (remote and hub==_vistle.getMasterHub()) or (not remote and hub!=_vistle.getMasterHub()):
             continue
       f.write(modvar(m)+" = waitForSpawn(u"+modvar(m)+")\n")
-      if _vistle.getModuleDisplayName(m) != "":
-         f.write("setModuleDisplayName(" + modvar(m) + ", '" +_vistle.getModuleDisplayName(m)+"')\n")
+      dm = _vistle.getModuleDisplayName(m)
+      if dm != "" and dm != _vistle.getModuleName(m):
+         f.write(f"setModuleDisplayName({modvar(m)}, '{dm}')\n")
       saveParameters(f, m)
 
    if remote:
