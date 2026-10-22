@@ -22,7 +22,7 @@ namespace vistle {
 namespace {
 const int NumBuckets = 7;
 const unsigned MaxLeafSize = 32;
-const float FavorEqualSplits = 2.f;
+const float FavorEqualSplits = 1.f;
 } // namespace
 
 template<typename Scalar, typename Index, int NumDimensions>
@@ -237,15 +237,17 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const AABB *bounds, Celltree
             Scalar w = 0;
             float nl = float(nleft) / float(nodeSize);
             float nr = float(nright) / float(nodeSize);
-            if (FavorEqualSplits == 2.f) {
+            if (FavorEqualSplits == 1.f) {
+                w += nl * wleft;
+                w += nr * wright;
+            } else if (FavorEqualSplits == 2.f) {
                 w += nl * nl * wleft;
                 w += nr * nr * wright;
             } else {
                 w += std::pow(nl, FavorEqualSplits) * wleft;
                 w += std::pow(nr, FavorEqualSplits) * wright;
             }
-            w /= range;
-            return w;
+            return w / range;
         };
         Index nleft = 0;
         for (int split_b = 0; split_b < NumBuckets - 1; ++split_b) {
