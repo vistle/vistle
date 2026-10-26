@@ -46,10 +46,12 @@ def showHubs():
    for id in hubs:
       print(id)
 
-def showAvailable():
-   avail = _vistle.getAvailable()
+def showAvailable(hub = _vistle.Id.MasterHub):
+   avail = _vistle.getAvailable(hub)
    for name in avail:
-      print(name)
+      cat = _vistle.getModuleCategory(name, hub)
+      desc = _vistle.getModuleDescription(name, hub)
+      print(f"{name} ({cat}): {desc}")
 
 def getNumRunning():
    return len(_vistle.getRunning())
@@ -197,7 +199,7 @@ def saveParameters(f, mod):
 
 def saveWorkflow(f, mods, numSlaves, remote):
    f.write("\n")
-   
+
    if remote:
       f.write("# spawn all remote modules\n")
    else:
@@ -243,9 +245,9 @@ def saveWorkflow(f, mods, numSlaves, remote):
             else:
                f.write(f"connect({modvar(m)},'{p}', {modvar(c[0])},'{c[1]}')\n")
                writtenConns.append([str(c[0]), c[1]])
-               
 
-         
+
+
 def save2(file, moduleList):
    file.write("# /usr/bin/env vistle\n")
    file.write(f"# this is a Python workflow from Vistle {_vistle.version()}\n")
@@ -429,10 +431,11 @@ setVectorParam = _vistle.setVectorParam
 setIntVectorParam = _vistle.setIntVectorParam
 applyParameters = _vistle.applyParameters
 getAvailable = _vistle.getAvailable
+getModuleCategory = _vistle.getModuleCategory
+getModuleDescription = _vistle.getModuleDescription
 getRunning = _vistle.getRunning
 getBusy = _vistle.getBusy
 getModuleName = _vistle.getModuleName
-getModuleDescription = _vistle.getModuleDescription
 hubName = _vistle.hubName
 waitForHub = _vistle.waitForHub
 waitForHubs = _vistle.waitForHubs

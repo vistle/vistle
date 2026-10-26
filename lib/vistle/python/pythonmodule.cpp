@@ -476,7 +476,7 @@ static std::vector<int> getRunning()
     return state().getRunningList();
 }
 
-static std::vector<std::string> getAvailable()
+static std::vector<std::string> getAvailable(int hubId)
 {
     py::gil_scoped_release release;
     std::unique_lock<PythonStateAccessor> guard(access());
@@ -484,9 +484,37 @@ static std::vector<std::string> getAvailable()
     std::vector<std::string> ret;
     for (auto &a: avail) {
         auto &m = a.second;
-        ret.push_back(m.name());
+        if (m.hub() == hubId) {
+            ret.push_back(m.name());
+        }
     }
     return ret;
+}
+
+static std::string getModuleCategory(const std::string &name, int hubId)
+{
+    py::gil_scoped_release release;
+    std::unique_lock<PythonStateAccessor> guard(access());
+    const auto &avail = state().availableModules();
+    auto key = AvailableModule::Key(hubId, name);
+    std::string ret;
+    auto it = avail.find(key);
+    if (it == avail.end())
+        return std::string();
+    return it->second.category();
+}
+
+static std::string getModuleDescription(const std::string &name, int hubId)
+{
+    py::gil_scoped_release release;
+    std::unique_lock<PythonStateAccessor> guard(access());
+    const auto &avail = state().availableModules();
+    auto key = AvailableModule::Key(hubId, name);
+    std::string ret;
+    auto it = avail.find(key);
+    if (it == avail.end())
+        return std::string();
+    return it->second.description();
 }
 
 static std::vector<int> getBusy()
@@ -739,7 +767,7 @@ static int findFirstModule(const std::string &moduleName)
     return message::Id::Invalid;
 }
 
-static std::string getModuleDescription(int id)
+static std::string getModuleDescriptionById(int id)
 {
     py::gil_scoped_release release;
     std::unique_lock<PythonStateAccessor> guard(access());
@@ -1684,12 +1712,16 @@ PY_MODULE(_vistle, m)
     param4(IntVector, setIntVectorParam4);
 
     m.def("applyParameters", applyParameters, "apply delayed parameter changes");
-    m.def("getAvailable", getAvailable, "get list of names of available modules");
+    m.def("getAvailable", getAvailable, "get list of names of available modules", "hub"_a = message::Id::MasterHub);
     m.def("getRunning", getRunning, "get list of IDs of running modules");
     m.def("findFirstModule", findFirstModule, "find the first instance of a module and return its id", "moduleName"_a);
     m.def("getBusy", getBusy, "get list of IDs of busy modules");
     m.def("getModuleName", getModuleName, "get name of module with ID `arg1`");
-    m.def("getModuleDescription", getModuleDescription, "get description of module with ID `arg1`");
+    m.def("getModuleCategory", getModuleCategory, "name"_a, "hub"_a,
+          "get category of available module with name `name` on hub `hub`");
+    m.def("getModuleDescription", getModuleDescriptionById, "id"_a, "get description of running module with ID `id`");
+    m.def("getModuleDescription", getModuleDescription, "name"_a, "hub"_a,
+          "get description of available module with name `name` on hub `hub`");
     m.def("getInputPorts", getInputPorts, "get name of input ports of module with ID `arg1`");
     m.def("getOutputPorts", getOutputPorts, "get name of input ports of module with ID `arg1`");
     m.def("getPortDescription", getPortDescription,
