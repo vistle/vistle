@@ -40,6 +40,7 @@ target_link_libraries(vistle_control PRIVATE vistle_config)
 
 if(Python3_FOUND)
     target_compile_definitions(vistle_control PRIVATE HAVE_PYTHON)
+    target_compile_definitions(vistle_control PRIVATE PYTHON_EXECUTABLE=\"${Python3_EXECUTABLE}\")
     target_link_libraries(vistle_control PRIVATE Python3::Python)
     target_link_libraries(vistle_control PRIVATE vistle_python)
     target_link_libraries(vistle_control PRIVATE vistle_pythonmodule)
