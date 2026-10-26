@@ -92,8 +92,9 @@ enum Id {
     Manager = -2,
     Cleaner = -3,
     GUI = -4,
-    Debugger = -5,
-    VRB = -6,
+    TUI = -5,
+    Debugger = -6,
+    VRB = -7,
 };
 }
 
@@ -1016,6 +1017,7 @@ Hub::launchProcess(int type, const std::string &prog, const std::vector<std::str
         }
     }
 
+    bool terminal = false;
     std::string typePrefix;
     switch (type) {
     case Process::Manager:
@@ -1023,6 +1025,10 @@ Hub::launchProcess(int type, const std::string &prog, const std::vector<std::str
         break;
     case Process::Cleaner:
         typePrefix = "Cln";
+        break;
+    case Process::TUI:
+        typePrefix = "UI";
+        terminal = true;
         break;
     case Process::GUI:
         typePrefix = "UI";
@@ -1111,9 +1117,16 @@ Hub::launchProcess(int type, const std::string &prog, const std::vector<std::str
     auto out = std::make_shared<process::ipstream>();
     auto err = std::make_shared<process::ipstream>();
     try {
-        child = std::make_shared<process::child>(
-            path, process::args(args), terminate_with_parent(), process::environment(childEnv), process::std_out > *out,
-            process::std_err > *err, process::std_in < process::null, m_ioContext, process::on_exit(exit_handler));
+        if (terminal) {
+            child = std::make_shared<process::child>(path, process::args(args), terminate_with_parent(),
+                                                     process::environment(childEnv), m_ioContext,
+                                                     process::on_exit(exit_handler));
+        } else {
+            child = std::make_shared<process::child>(path, process::args(args), terminate_with_parent(),
+                                                     process::environment(childEnv), process::std_out > *out,
+                                                     process::std_err > *err, process::std_in < process::null,
+                                                     m_ioContext, process::on_exit(exit_handler));
+        }
     } catch (std::exception &ex) {
         std::stringstream info;
         info << "Failed to launch: " << path << ": " << ex.what();
@@ -1139,6 +1152,7 @@ Hub::launchProcess(int type, const std::string &prog, const std::vector<std::str
             case Process::Manager:
             case Process::Cleaner:
             case Process::GUI:
+            case Process::TUI:
             case Process::VRB:
                 prefix = typePrefix;
                 if (m_verbose >= Verbosity::Manager) {
@@ -3835,7 +3849,7 @@ bool Hub::startPythonUi()
     args.push_back("--");
     std::shared_ptr<process::child> child;
     for (const auto &shell: python_shells) {
-        auto child = launchProcess(Process::GUI, shell, args);
+        auto child = launchProcess(Process::TUI, shell, args);
         if (child) {
             return true;
         }
@@ -4712,7 +4726,7 @@ bool Hub::hasChildProcesses(bool ignoreGui)
     std::lock_guard<std::mutex> guard(m_processMutex);
     if (ignoreGui) {
         for (const auto &pk: m_processMap) {
-            if (pk.second != Process::GUI && pk.second != Process::VRB)
+            if (pk.second != Process::TUI && pk.second != Process::GUI && pk.second != Process::VRB)
                 return true;
         }
 
@@ -4761,6 +4775,9 @@ bool Hub::checkChildProcesses(bool emergency, bool onMainThread)
             break;
         case Process::Debugger:
             idstring = "Debugger";
+            break;
+        case Process::TUI:
+            idstring = "TUI";
             break;
         case Process::GUI:
             idstring = "GUI";
