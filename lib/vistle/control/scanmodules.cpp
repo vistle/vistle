@@ -77,10 +77,9 @@ bool scanModules(const std::string &prefix, const std::string &buildtype, int hu
 
         std::string name;
 #ifdef MODULE_THREAD
-        if (stem.find("lib") == 0)
-            name = stem.substr(3);
-        else
-            name = stem;
+        name = stem;
+        if (name.find("libmod_") == 0)
+            name = name.substr(7);
 #else
         name = stem;
 #endif
