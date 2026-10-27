@@ -1005,6 +1005,7 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
                 add_library(${targetname} MODULE ${ARGN})
                 set_target_properties(${targetname} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib/module)
                 set_target_properties(${targetname} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib/module)
+                set_target_properties(${targetname} PROPERTIES OUTPUT_NAME mod_${targetname})
                 install(
                     TARGETS ${targetname}
                     RUNTIME DESTINATION lib/module
