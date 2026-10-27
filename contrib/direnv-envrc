@@ -1,11 +1,11 @@
 # use with direnv: https://github.com/zimbatm/direnv
 # modify a copy of this file for your installation and symlink it to .envrc in the root of your Vistle checkout
 
-os=$(uname -s|tr A-Z a-z)
+v_os=$(uname -s|tr A-Z a-z)
 case $(uname -m) in
-   i*86) arch=32 ;;
-   x86_64|amd64) arch=64 ;;
-   *) arch=$(uname -m) ;;
+   i*86) v_arch=32 ;;
+   x86_64|amd64) v_arch=64 ;;
+   *) v_arch=$(uname -m) ;;
 esac
 
 if [ ! -z ${CMAKE_GENERATOR+x} ]; then
@@ -14,32 +14,32 @@ if [ ! -z ${CMAKE_GENERATOR+x} ]; then
     fi
 fi
 
-case "$os" in
+case "$v_os" in
 darwin*)
     PATH_add /opt/homebrew/opt/python3/bin
 ;;
 esac
 
-mpi=""
-libvar=LD_LIBRARY_PATH
-case $os in
+v_mpi=""
+v_libvar=LD_LIBRARY_PATH
+case $v_os in
     freebsd)
         PATH_add /usr/local/mpi/openmpi/bin
         ;;
     darwin)
-        libvar=DYLD_LIBRARY_PATH
+        v_libvar=DYLD_LIBRARY_PATH
         ;;
     *)
         if which mpirun >/dev/null 2>&1; then
             if mpirun -version | grep open-mpi\.org > /dev/null; then
-                 mpi="-ompi"
+                 v_mpi="-ompi"
             fi
         fi
         ;;
 esac
 
 if [ -z ${MANPATH+x} ]; then
-case $os in
+case $v_os in
     darwin|freebsd)
         export MANPATH="$(manpath)"
         ;;
@@ -63,7 +63,7 @@ if [ ! -z ${SPACK_ENV+x} ]; then
     fi
     builddir="build-spack${env%default}"
 else
-    builddir="build-$os$arch$mpi"
+    builddir="build-$v_os$v_arch$v_mpi"
 fi
 
 if [ -z ${COVISEDIR+x} ]; then
@@ -148,14 +148,14 @@ else
                 extlibs="$($COVISEDIR/bin/print_covise_env EXTERNLIBS)"
                 if [ -n "$extlibs" -a -d "$extlibs" ]; then
                     export EXTERNLIBS="$extlibs"
-                    path_add ${libvar} "${EXTERNLIBS}/ALL/lib"
+                    path_add ${v_libvar} "${EXTERNLIBS}/ALL/lib"
                     if [ -d "${EXTERNLIBS}/ALL/lib64" ]; then
-                        path_add ${libvar} "${EXTERNLIBS}/ALL/lib64"
+                        path_add ${v_libvar} "${EXTERNLIBS}/ALL/lib64"
                     fi
                 fi
             ;;
         esac
-        path_add ${libvar} "${COVISEDIR}/${ARCHSUFFIX}/lib"
+        path_add ${v_libvar} "${COVISEDIR}/${ARCHSUFFIX}/lib"
 
         export COVISEDESTDIR="$(pwd -P)/${builddir}"
         export COVISE_PATH="$COVISEDESTDIR:$COVISEDIR"
@@ -164,7 +164,7 @@ else
         path_add PYTHONPATH "${COVISEDIR}/${ARCHSUFFIX}/lib"
     fi
 
-    case "$os" in
+    case "$v_os" in
     darwin*)
         if [ ! -z ${EXTERNLIBS+x} ]; then
             if [ -d "$EXTERNLIBS"/ALL ]; then
@@ -177,8 +177,8 @@ else
     esac
 fi
 
-path_add ${libvar} "$builddir/lib/$VISTLE_BUILD_TYPE"
-case "$os" in
+path_add ${v_libvar} "$builddir/lib/$VISTLE_BUILD_TYPE"
+case "$v_os" in
 darwin*)
     export VISTLE_DYLD_LIBRARY_PATH="$DYLD_LIBRARY_PATH"
 ;;
