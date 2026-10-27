@@ -341,8 +341,7 @@ protected:
     bool getNextMessage(ShmEnvelope &msg, bool block = true, unsigned int minPrio = 0);
 
     // handle a batch of messages in lockstep over all ranks, taking care of message that need to be processed on all ranks (cf. needsSync(...))
-    bool processMessagesSynced(vistle::ShmEnvelope &msg, bool haveMessage, bool *messageReceived, unsigned int minPrio,
-                               bool *anyMessage = nullptr);
+    bool processMessagesSynced(bool block, bool *messageReceived, unsigned int minPrio, bool *anyMessage = nullptr);
 
     bool reduceWrapper(const message::Execute *exec, bool reordered = false);
     bool prepareWrapper(const message::Execute *exec);

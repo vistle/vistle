@@ -1449,9 +1449,12 @@ void Module::printMessageHistory() const
     }
 }
 
-bool Module::processMessagesSynced(ShmEnvelope &msg, bool haveMessage, bool *messageReceived, unsigned int minPrio,
-                                   bool *anyMessage)
+bool Module::processMessagesSynced(bool block, bool *messageReceived, unsigned int minPrio, bool *anyMessage)
 {
+    ShmEnvelope msg;
+    // never block, we want to render regularly
+    bool haveMessage = getNextMessage(msg, block, minPrio);
+
     auto &buf = msg.message();
     if (haveMessage) {
         recordMessage(buf);
@@ -1464,10 +1467,10 @@ bool Module::processMessagesSynced(ShmEnvelope &msg, bool haveMessage, bool *mes
     }
 
 
-    const bool anyMessageHere = mpi::all_reduce(comm(), haveMessage ? 1 : 0, mpi::maximum<int>()) != 0;
+    const bool anyMessageAtAll = mpi::all_reduce(comm(), haveMessage ? 1 : 0, mpi::maximum<int>()) != 0;
     if (anyMessage)
-        *anyMessage = anyMessageHere;
-    if (!anyMessageHere)
+        *anyMessage = anyMessageAtAll;
+    if (!anyMessageAtAll)
         return true;
 
     const int allsync = mpi::all_reduce(comm(), sync, mpi::maximum<int>());
@@ -1527,22 +1530,22 @@ bool Module::dispatch(bool block, bool *messageReceived, unsigned int minPrio)
             throw(except::parent_died());
 #endif
 
-        ShmEnvelope pl;
-        if (!getNextMessage(pl, block, minPrio)) {
-            if (messageReceived)
-                *messageReceived = false;
-            if (block) {
-                return false;
-            }
-            return true;
-        }
-
-        if (messageReceived)
-            *messageReceived = true;
-
         if (syncMessageProcessing()) {
-            again = processMessagesSynced(pl, true, nullptr, minPrio);
+            again = processMessagesSynced(block, nullptr, minPrio);
         } else {
+            ShmEnvelope pl;
+            if (!getNextMessage(pl, block, minPrio)) {
+                if (messageReceived)
+                    *messageReceived = false;
+                if (block) {
+                    return false;
+                }
+                return true;
+            }
+
+            if (messageReceived)
+                *messageReceived = true;
+
             again = handleMessage(pl);
             if (!again) {
                 CERR << "quitting after " << pl.message() << std::endl;

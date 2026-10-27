@@ -198,13 +198,9 @@ bool Renderer::dispatch(bool block, bool *messageReceived, unsigned int minPrio)
     // handle the messages of at least one batch, and more if there are still messages pending,
     // but not more than m_numObjectsPerFrame batches per frame
     do {
-        ShmEnvelope buf;
-        // never block, we want to render regularly
-        const bool haveMessage = getNextMessage(buf, false, minPrio);
-
-        // handle the messages of this batch together with the other ranks
+        // handle the messages together with the other ranks, do not block waiting for messages
         bool anyMessage = false;
-        if (!processMessagesSynced(buf, haveMessage, messageReceived, minPrio, &anyMessage))
+        if (!processMessagesSynced(false, messageReceived, minPrio, &anyMessage))
             return false;
         wasAnyMessage = wasAnyMessage || anyMessage;
 
