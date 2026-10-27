@@ -153,6 +153,8 @@ else
                         path_add ${v_libvar} "${EXTERNLIBS}/ALL/lib64"
                     fi
                 fi
+                dll="$($COVISEDIR/bin/print_covise_env $v_libvar)"
+                path_add ${v_libvar} "$dll"
             ;;
         esac
         path_add ${v_libvar} "${COVISEDIR}/${ARCHSUFFIX}/lib"
