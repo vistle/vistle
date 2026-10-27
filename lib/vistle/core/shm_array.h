@@ -17,7 +17,6 @@
 
 #include <viskores/cont/ArrayHandle.h>
 #include <viskores/cont/ArrayHandleBasic.h>
-#include <viskores/cont/UnknownArrayHandle.h>
 #include <viskores/cont/ArrayPortalToIterators.h>
 #include <viskores/cont/ArrayCopy.h>
 
@@ -229,7 +228,6 @@ private:
     mutable pointer m_data = nullptr;
     mutable std::atomic<bool> m_memoryValid = true;
     mutable std::mutex m_mutex;
-    viskores::cont::UnknownArrayHandle m_unknown;
     mutable viskores::cont::ArrayHandleBasic<handle_type>
         m_handle; // Viskores ArrayHandle that is always kept up to date
 #else
@@ -257,16 +255,13 @@ void shm_array<T, allocator>::updateFromHandle(bool invalidate)
     std::lock_guard<std::mutex> lock(m_mutex);
     if (!m_memoryValid) {
         PROF_SCOPE("shm_array::updateFromHandle()");
-        m_memoryValid = true;
 
         if (m_capacity > 0) {
             m_data = reinterpret_cast<T *>(m_handle.GetWritePointer());
         } else {
             m_data = nullptr;
         }
-    }
-    if (invalidate) {
-        m_unknown = viskores::cont::UnknownArrayHandle();
+        m_memoryValid = true;
     }
 #endif
 }
@@ -281,7 +276,6 @@ void shm_array<T, allocator>::updateFromHandle(bool invalidate) const
     std::lock_guard<std::mutex> lock(m_mutex);
     if (m_memoryValid)
         return;
-    m_memoryValid = true;
 
     PROF_SCOPE("shm_array::updateFromHandle()const");
 
@@ -290,6 +284,7 @@ void shm_array<T, allocator>::updateFromHandle(bool invalidate) const
     } else {
         m_data = nullptr;
     }
+    m_memoryValid = true;
 #endif
 }
 
