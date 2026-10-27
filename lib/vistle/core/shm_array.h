@@ -17,7 +17,6 @@
 
 #include <viskores/cont/ArrayHandle.h>
 #include <viskores/cont/ArrayHandleBasic.h>
-#include <viskores/cont/UnknownArrayHandle.h>
 #include <viskores/cont/ArrayPortalToIterators.h>
 #include <viskores/cont/ArrayCopy.h>
 
@@ -229,7 +228,6 @@ private:
     mutable pointer m_data = nullptr;
     mutable std::atomic<bool> m_memoryValid = true;
     mutable std::mutex m_mutex;
-    viskores::cont::UnknownArrayHandle m_unknown;
     mutable viskores::cont::ArrayHandleBasic<handle_type>
         m_handle; // Viskores ArrayHandle that is always kept up to date
 #else
@@ -264,9 +262,6 @@ void shm_array<T, allocator>::updateFromHandle(bool invalidate)
             m_data = nullptr;
         }
         m_memoryValid = true;
-    }
-    if (invalidate) {
-        m_unknown = viskores::cont::UnknownArrayHandle();
     }
 #endif
 }

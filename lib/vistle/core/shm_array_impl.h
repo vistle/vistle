@@ -14,6 +14,7 @@
 #include "archives_config.h"
 #include "shmdata.h"
 #include <viskores/cont/ArrayRangeCompute.h>
+#include <viskores/cont/UnknownArrayHandle.h>
 #include <boost/mpl/for_each.hpp>
 
 namespace vistle {
@@ -71,7 +72,6 @@ shm_array<T, allocator>::shm_array(shm_array &&other)
 , m_data(other.m_data)
 #ifdef NO_SHMEM
 , m_memoryValid(other.m_memoryValid.load(std::memory_order_seq_cst))
-, m_unknown(other.m_unknown)
 , m_handle(other.m_handle)
 #else
 , m_allocator(other.m_allocator)
@@ -98,13 +98,13 @@ void shm_array<T, allocator>::setHandle(const ArrayHandle &h)
     //assert(h.GetValueTypeName() == viskores::cont::TypeToString(handle_type()));
 #ifdef NO_SHMEM
     PROF_SCOPE("shm_array::setHandle()");
-    m_unknown = h;
+    viskores::cont::UnknownArrayHandle unknown(h);
     m_memoryValid = false;
     m_size = h.GetNumberOfValues();
-    if (m_unknown.CanConvert<viskores::cont::ArrayHandleBasic<handle_type>>()) {
-        m_handle = m_unknown.AsArrayHandle<viskores::cont::ArrayHandleBasic<handle_type>>();
+    if (unknown.CanConvert<viskores::cont::ArrayHandleBasic<handle_type>>()) {
+        m_handle = unknown.AsArrayHandle<viskores::cont::ArrayHandleBasic<handle_type>>();
     } else {
-        viskores::cont::ArrayCopy(m_unknown, m_handle);
+        viskores::cont::ArrayCopy(unknown, m_handle);
     }
     m_capacity = m_size;
 
