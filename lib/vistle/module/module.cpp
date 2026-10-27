@@ -721,7 +721,7 @@ Object::const_ptr Module::receiveObject(const mpi::communicator &comm, int sourc
         }
         bigmpi::recv(comm, sourceRank, 0, ent.data, ent.size);
     }
-    vecistreambuf<buffer> membuf(mem);
+    vecistreambuf<char> membuf(mem);
     vistle::iarchive memar(membuf);
     auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays, comp, rawsizes);
     memar.setFetcher(fetcher);
@@ -775,7 +775,7 @@ bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &o
             bigmpi::broadcast(comm, ent.data, ent.size, root);
         }
 
-        vecistreambuf<buffer> objstr(objbuf);
+        vecistreambuf<char> objstr(objbuf);
         vistle::iarchive objar(objstr);
         auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays, comp, rawsizes);
         objar.setFetcher(fetcher);

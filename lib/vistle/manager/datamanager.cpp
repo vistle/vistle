@@ -914,7 +914,7 @@ bool DataManager::handlePriv(const message::SendObject &snd, buffer *payload)
     auto fut = std::async(std::launch::async, [this, snd, payload2]() {
         setThreadName("dmgr:recv:" + std::string(snd.objectId()));
         buffer uncompressed = decompressPayload(snd, *payload2.get());
-        vecistreambuf<buffer> membuf(uncompressed);
+        vecistreambuf<char> membuf(uncompressed);
 
         if (snd.isArray()) {
             std::unique_lock<std::mutex> lock(m_requestArrayMutex);

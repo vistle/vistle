@@ -48,27 +48,31 @@ private:
 };
 
 
-template<typename Vector, typename TraitsT = std::char_traits<typename Vector::value_type>>
-class vecistreambuf: public std::basic_streambuf<typename Vector::value_type, TraitsT> {
+template<typename Char, typename TraitsT = std::char_traits<Char>>
+class vecistreambuf: public std::basic_streambuf<Char, TraitsT> {
 public:
-    vecistreambuf(const Vector &ve): vec(ve)
+    vecistreambuf(const Char *data, size_t size): data(data), size(size)
     {
-        auto &v = const_cast<Vector &>(vec);
-        this->setg(v.data(), v.data(), v.data() + v.size());
+        auto d = const_cast<Char *>(data);
+        this->setg(d, d, d + size);
     }
 
-    std::size_t read(void *ptr, std::size_t size)
+    template<class Span>
+    vecistreambuf(const Span &sp): vecistreambuf(sp.data(), sp.size())
+    {}
+
+    std::size_t read(void *ptr, std::size_t s)
     {
-        if (cur + size > vec.size())
-            size = vec.size() - cur;
-        memcpy(ptr, vec.data() + cur, size);
-        cur += size;
-        return size;
+        if (cur + s > size)
+            s = size - cur;
+        memcpy(ptr, data + cur, s);
+        cur += s;
+        return s;
     }
 
     bool empty() const { return cur == 0; }
-    typename Vector::value_type peekch() const { return vec[cur]; }
-    typename Vector::value_type getch() { return vec[cur++]; }
+    Char peekch() const { return *(data + cur); }
+    Char getch() { return *(data + cur++); }
     void ungetch(char)
     {
         if (cur > 0)
@@ -76,7 +80,8 @@ public:
     }
 
 private:
-    const Vector &vec;
+    const Char *data = nullptr;
+    const size_t size = 0;
     size_t cur = 0;
 };
 

@@ -21,7 +21,7 @@ buffer addPayload(Message &message, const Payload &payload)
 template<class Payload>
 void getFromPayload(const buffer &data, Payload &payload)
 {
-    vecistreambuf<buffer> buf(data);
+    vecistreambuf<char> buf(data);
     try {
         iarchive ar(buf);
         ar &payload;

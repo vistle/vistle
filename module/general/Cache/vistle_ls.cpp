@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
                 }
             }
             const auto &buf = comp == message::CompressionNone ? objbuf : raw;
-            vecistreambuf<buffer> membuf(buf);
+            vecistreambuf<char> membuf(buf);
             vistle::iarchive memar(membuf);
             memar.setFetcher(fetcher);
             //std::cerr << "output to port " << port << ", trying to load " << name0 << std::endl;
