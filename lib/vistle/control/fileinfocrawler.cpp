@@ -216,9 +216,7 @@ bool FileInfoCrawler::handle(const message::FileQuery &query, const buffer &payl
                         return s;
                     }));
             }
-            for (auto &f: queryFutures) {
-                f.get();
-            }
+            queryFutures.clear();
             auto payload = createPayload(results);
             return sendResponse(query, status, payload);
             break;
