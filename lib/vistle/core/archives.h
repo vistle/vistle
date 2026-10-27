@@ -319,8 +319,8 @@ struct yas_binary_iarchive: yas::detail::binary_istream<IS, F>, yas::detail::iar
     }
 };
 
-class V_COREEXPORT yas_iarchive: public yas_binary_iarchive<yas_iarchive, vecistreambuf<vistle::buffer>> {
-    typedef vecistreambuf<vistle::buffer> Stream;
+class V_COREEXPORT yas_iarchive: public yas_binary_iarchive<yas_iarchive, vecistreambuf<char>> {
+    typedef vecistreambuf<char> Stream;
     typedef yas_binary_iarchive<yas_iarchive, Stream> Base;
 
 public:

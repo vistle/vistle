@@ -129,7 +129,7 @@ public:
     {
         assert(SomeMessage::type == type());
         if (!m_msg) {
-            vistle::vecistreambuf<vistle::buffer> buf(m_payload);
+            vistle::vecistreambuf<char> buf(m_payload);
             m_msg.reset(new SomeMessage{});
             try {
                 vistle::iarchive ar(buf);

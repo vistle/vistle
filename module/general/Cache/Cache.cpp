@@ -313,7 +313,7 @@ bool Cache::prepare()
             }
         }
         const auto &buf = comp == message::CompressionNone ? objbuf : raw;
-        vecistreambuf<buffer> membuf(buf);
+        vecistreambuf<char> membuf(buf);
         vistle::iarchive memar(membuf);
         try {
             memar.setFetcher(fetcher);
