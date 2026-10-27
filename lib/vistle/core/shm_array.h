@@ -257,13 +257,13 @@ void shm_array<T, allocator>::updateFromHandle(bool invalidate)
     std::lock_guard<std::mutex> lock(m_mutex);
     if (!m_memoryValid) {
         PROF_SCOPE("shm_array::updateFromHandle()");
-        m_memoryValid = true;
 
         if (m_capacity > 0) {
             m_data = reinterpret_cast<T *>(m_handle.GetWritePointer());
         } else {
             m_data = nullptr;
         }
+        m_memoryValid = true;
     }
     if (invalidate) {
         m_unknown = viskores::cont::UnknownArrayHandle();
@@ -281,7 +281,6 @@ void shm_array<T, allocator>::updateFromHandle(bool invalidate) const
     std::lock_guard<std::mutex> lock(m_mutex);
     if (m_memoryValid)
         return;
-    m_memoryValid = true;
 
     PROF_SCOPE("shm_array::updateFromHandle()const");
 
@@ -290,6 +289,7 @@ void shm_array<T, allocator>::updateFromHandle(bool invalidate) const
     } else {
         m_data = nullptr;
     }
+    m_memoryValid = true;
 #endif
 }
 
