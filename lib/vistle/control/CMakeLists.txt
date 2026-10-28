@@ -27,6 +27,7 @@ target_link_libraries(
     vistle_control
     PRIVATE Boost::system
     PRIVATE Boost::program_options
+    PRIVATE Boost::filesystem
     PRIVATE vistle_util
     PRIVATE vistle_core
     PRIVATE vistle_net

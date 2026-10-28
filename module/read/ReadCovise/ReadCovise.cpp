@@ -23,7 +23,7 @@
 
 #include <boost/algorithm/string/predicate.hpp>
 
-#include <vistle/util/filesystem.h>
+#include <filesystem>
 #include <vistle/util/fileio.h>
 
 #include <file/covReadFiles.h>
@@ -111,20 +111,20 @@ bool ReadCovise::examine(const Parameter *param)
         std::vector<std::string> choices;
         choices.emplace_back(NONE);
         auto dirstr = m_directory->getValue();
-        auto dir = filesystem::path(dirstr);
+        auto dir = std::filesystem::path(dirstr);
         try {
-            if (!filesystem::is_directory(dir)) {
+            if (!std::filesystem::is_directory(dir)) {
                 sendError("not a directory: %s", dir.string().c_str());
                 return false;
             }
-        } catch (const filesystem::filesystem_error &e) {
+        } catch (const std::filesystem::filesystem_error &e) {
             if (!dirstr.empty())
                 sendError("error while opening %s", dir.string().c_str());
             return false;
         }
 
-        for (filesystem::directory_iterator it(dir); it != filesystem::directory_iterator(); ++it) {
-            filesystem::path ent(*it);
+        for (std::filesystem::directory_iterator it(dir); it != std::filesystem::directory_iterator(); ++it) {
+            std::filesystem::path ent(*it);
             if (ent.extension().string() != extension) {
                 continue;
             }
@@ -171,7 +171,7 @@ bool ReadCovise::prepareRead()
     m_transposed.clear();
     bool anythingOpen = false;
 #ifdef READ_DIRECTORY
-    auto dir = filesystem::path(m_directory->getValue());
+    auto dir = std::filesystem::path(m_directory->getValue());
 #endif
     for (unsigned port = 0; port < NumPorts; ++port) {
         m_numTime[port] = -1;
@@ -184,7 +184,7 @@ bool ReadCovise::prepareRead()
         std::string name;
         m_species[port] = m_fieldFile[port]->getValue();
         if (m_fieldFile[port]->getValue() != NONE) {
-            filesystem::path path(dir);
+            std::filesystem::path path(dir);
             path += path.preferred_separator;
             path += m_fieldFile[port]->getValue();
             path += extension;

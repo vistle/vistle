@@ -10,7 +10,7 @@
 #include <vistle/core/unstr.h>
 #include <vistle/core/vec.h>
 
-#include <vistle/util/filesystem.h>
+#include <filesystem>
 
 #include <vtkCellData.h>
 #include <vtkCompositeDataIterator.h>
@@ -91,7 +91,7 @@ VtkFile readFile(const std::string &filename, int piece = -1, const ReadOptions 
 {
     VtkFile result;
     result.filename = filename;
-    if (!vistle::filesystem::is_regular_file(filename)) {
+    if (!std::filesystem::is_regular_file(filename)) {
         result.pieces = 0;
         return result;
     }
@@ -253,8 +253,8 @@ std::map<double, std::vector<VtkFile>> ReadVtk::readXmlCollection(const std::str
     const std::array<std::string, 3> types{"Collection", "vtkMultiBlockDataSet", "PUnstructuredGrid"};
 
 #ifdef HAVE_TINYXML2
-    vistle::filesystem::path pvdpath(filename);
-    if (!vistle::filesystem::is_regular_file(pvdpath)) {
+    std::filesystem::path pvdpath(filename);
+    if (!std::filesystem::is_regular_file(pvdpath)) {
         std::cerr << "readXmlCollection: " << filename << " is not a regular file" << std::endl;
         return timesteps;
     }
@@ -305,7 +305,7 @@ std::map<double, std::vector<VtkFile>> ReadVtk::readXmlCollection(const std::str
 
             if (file) {
                 VtkFile vtkFile;
-                vistle::filesystem::path fp(file);
+                std::filesystem::path fp(file);
                 if (fp.is_relative()) {
                     auto p = pvdpath.parent_path();
                     p /= fp;
@@ -333,7 +333,7 @@ std::map<double, std::vector<VtkFile>> ReadVtk::readXmlCollection(const std::str
         do {
             if (const char *file = DataSet->Attribute("Source")) {
                 VtkFile vtkFile;
-                vistle::filesystem::path fp(file);
+                std::filesystem::path fp(file);
                 if (fp.is_relative()) {
                     auto p = pvdpath.parent_path();
                     p /= fp;

@@ -2,11 +2,11 @@
 #include <vistle/core/scalar.h>
 #include <vistle/core/points.h>
 #include <vistle/core/unstr.h>
-#include <vistle/util/filesystem.h>
+#include <filesystem>
 
 
 using namespace vistle;
-namespace fs = vistle::filesystem;
+namespace fs = std::filesystem;
 
 MODULE_MAIN(Transversalflussmaschine)
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(Format, (ScalarFile)(VectorFiles))

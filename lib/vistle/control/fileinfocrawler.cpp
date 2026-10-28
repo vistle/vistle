@@ -1,6 +1,7 @@
 #include "fileinfocrawler.h"
+#include <chrono>
+#include <filesystem>
 #include <vistle/core/filequery.h>
-#include <vistle/util/filesystem.h>
 #include <vistle/util/hostname.h>
 
 #include <future>
@@ -21,7 +22,7 @@
 
 namespace vistle {
 
-namespace fs = vistle::filesystem;
+namespace fs = std::filesystem;
 using message::FileQuery;
 using message::FileQueryResult;
 
@@ -49,42 +50,54 @@ FileQueryResult::Status readEntry(const fs::path &path, FileInfo &info)
 
         info.symlink = false;
         auto stat = fs::status(path);
-        if (stat.type() == fs::symlink_file) {
+        if (stat.type() == fs::file_type::symlink) {
             info.symlink = true;
             stat = fs::symlink_status(path);
         }
 
         switch (stat.type()) {
-        case fs::status_error:
+        case fs::file_type::none:
             info.status = false;
             info.exists = false;
             return FileQueryResult::Error;
-        case fs::file_not_found:
+        case fs::file_type::unknown:
+            info.status = false;
+            info.exists = true;
+            return FileQueryResult::Error;
+        case fs::file_type::not_found:
             info.status = true;
             info.exists = false;
             return FileQueryResult::DoesNotExist;
-        default:
+        case fs::file_type::regular:
+        case fs::file_type::directory:
+        case fs::file_type::symlink:
+        case fs::file_type::block:
+        case fs::file_type::character:
+        case fs::file_type::fifo:
+        case fs::file_type::socket:
             info.status = true;
             info.exists = true;
             break;
+        default:
+            CERR << "readEntry: unknown type for " << path.string() << std::endl;
+            info.status = false;
+            info.exists = true;
+            return FileQueryResult::Error;
         }
 
-        info.permissions = -1;
-        if (fs::permissions_present(stat)) {
-            info.permissions = stat.permissions() & fs::all_all;
-        }
+        info.permissions = (stat.permissions() & fs::perms::all) != fs::perms::none;
 
         info.size = -1;
         switch (stat.type()) {
             {
-            case fs::regular_file:
+            case fs::file_type::regular:
                 info.type = FileInfo::File;
                 info.size = fs::file_size(path);
                 break;
-            case fs::directory_file:
+            case fs::file_type::directory:
                 info.type = FileInfo::Directory;
                 break;
-            case fs::symlink_file:
+            case fs::file_type::symlink:
                 CERR << "readEntry: symlink not fully followed: " << path.string() << std::endl;
                 info.type = FileInfo::System;
                 break;
@@ -94,7 +107,9 @@ FileQueryResult::Status readEntry(const fs::path &path, FileInfo &info)
             }
         }
 
-        info.lastmod = fs::last_write_time(path);
+        auto tp = fs::last_write_time(path);
+        auto age = tp.time_since_epoch();
+        info.lastmod = std::chrono::duration_cast<std::chrono::seconds>(age).count();
 
         return FileQueryResult::Ok;
 

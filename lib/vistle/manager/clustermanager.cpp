@@ -10,6 +10,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <future>
+#include <filesystem>
 #include <iomanip>
 #include <iostream>
 #include <numeric>
@@ -38,7 +39,6 @@
 
 //#ifdef MODULE_THREAD
 #include <vistle/module/module.h>
-#include <vistle/util/filesystem.h>
 #ifdef MODULE_STATIC
 #include <vistle/module/moduleregistry.h>
 #else

@@ -3,13 +3,11 @@
 ------------------------------------------------------------------------------------ */
 #include "ReadDuisburg.h"
 #include <boost/algorithm/string.hpp>
-#include <vistle/util/filesystem.h>
 #include <vistle/core/structuredgrid.h>
 #include <vistle/core/layergrid.h>
 #include <fstream>
 
 using namespace vistle;
-namespace bf = vistle::filesystem;
 
 #include <vistle/netcdf/ncwrap.h>
 #if defined(MODULE_THREAD)

@@ -3,7 +3,7 @@
 #include <map>
 #include <string>
 #include <fstream>
-#include <vistle/util/filesystem.h>
+#include <filesystem>
 #include <vistle/util/directory.h>
 #include <vistle/module_descriptions/descriptions.h>
 
@@ -11,30 +11,30 @@ namespace vistle {
 
 bool scanModules(const std::string &prefix, const std::string &buildtype, int hub, AvailableMap &available)
 {
-    namespace bf = vistle::filesystem;
+    namespace fs = std::filesystem;
     auto dir = Directory(prefix, buildtype);
     auto share = dir.share();
 
     std::map<std::string, ModuleDescription> moduleDescriptions = getModuleDescriptions(share);
 
     auto moddir = dir.module();
-    bf::path p(moddir);
+    fs::path p(moddir);
     try {
-        if (!bf::is_directory(p)) {
+        if (!fs::is_directory(p)) {
             std::cerr << "scanModules: " << moddir << " is not a directory" << std::endl;
             return false;
         }
-    } catch (const bf::filesystem_error &e) {
+    } catch (const fs::filesystem_error &e) {
         std::cerr << "scanModules: error in" << moddir << ": " << e.what() << std::endl;
         return false;
     }
 
-    p = bf::canonical(p);
+    p = fs::canonical(p);
 
     //std::cerr << "scanModules: looking for modules in " << p << std::endl;
 
-    for (bf::directory_iterator it(p); it != bf::directory_iterator(); ++it) {
-        bf::path ent(*it);
+    for (fs::directory_iterator it(p); it != fs::directory_iterator(); ++it) {
+        fs::path ent(*it);
         std::string stem = ent.stem().string();
         if (stem.size() > ModuleNameLength) {
             std::cerr << "scanModules: skipping " << stem << " - name too long" << std::endl;
@@ -44,7 +44,7 @@ bool scanModules(const std::string &prefix, const std::string &buildtype, int hu
             continue;
         }
         boost::system::error_code ec;
-        if (bf::is_directory(ent, ec)) {
+        if (fs::is_directory(ent, ec)) {
             continue;
         }
         if (ec) {
@@ -91,7 +91,7 @@ bool scanModules(const std::string &prefix, const std::string &buildtype, int hu
             cat = descit->second.category;
             desc = descit->second.description;
         }
-        AvailableModule mod{hub, name, bf::path(*it).string(), cat, desc};
+        AvailableModule mod{hub, name, fs::path(*it).string(), cat, desc};
 
         AvailableModule::Key key(hub, name);
         auto prev = available.find(key);

@@ -1,14 +1,14 @@
 #include "ReadIagNetcdf.h"
 #include <cstddef>
 #include <vector>
-#include <vistle/util/filesystem.h>
+#include <filesystem>
 #include <vistle/core/points.h>
 #include <vistle/netcdf/ncwrap.h>
 #include <sstream>
 
 
 using namespace vistle;
-namespace fs = vistle::filesystem;
+namespace fs = std::filesystem;
 
 //#define COLLECTIVE
 

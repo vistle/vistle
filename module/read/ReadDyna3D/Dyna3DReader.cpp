@@ -32,10 +32,10 @@
 #include <vistle/core/unstr.h>
 #include <vistle/util/fileio.h>
 #include <iostream>
-#include <vistle/util/filesystem.h>
+#include <filesystem>
 #include <vistle/util/enum.h>
 
-namespace fs = vistle::filesystem;
+namespace fs = std::filesystem;
 using namespace vistle;
 
 const int OpenFlags = O_RDONLY;

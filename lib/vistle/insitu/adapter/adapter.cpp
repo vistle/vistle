@@ -9,7 +9,7 @@
 
 #include <vistle/util/directory.h>
 #include <vistle/util/enumarray.h>
-#include <vistle/util/filesystem.h>
+#include <filesystem>
 #include <vistle/util/hostname.h>
 #include <vistle/util/shmconfig.h>
 
@@ -252,8 +252,8 @@ void Adapter::dumpConnectionFile(MPI_Comm comm)
     boost::mpi::gather(boost::mpi::communicator(comm, boost::mpi::comm_attach), m_internals->messageHandler->name(),
                        names, 0);
     if (m_rank == 0) {
-        if (!vistle::filesystem::exists(vistle::directory::configHome())) {
-            vistle::filesystem::create_directory(vistle::directory::configHome());
+        if (!std::filesystem::exists(vistle::directory::configHome())) {
+            std::filesystem::create_directory(vistle::directory::configHome());
         }
         std::ofstream outfile(directory::configHome() + "/insitu.vistle");
         for (int i = 0; i < m_mpiSize; i++) {

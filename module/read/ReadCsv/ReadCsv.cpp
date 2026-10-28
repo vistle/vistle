@@ -2,7 +2,7 @@
 
 #include <vistle/core/unstr.h>
 #include <vistle/core/points.h>
-#include <vistle/util/filesystem.h>
+#include <filesystem>
 #include <vistle/util/meta.h>
 #include <vistle/util/strings.h>
 
@@ -84,8 +84,8 @@ void splitLine(std::vector<std::string> &tokensIn, const std::string &line, char
 
 std::string getFilename(const std::string &directory, vistle::Integer index)
 {
-    vistle::filesystem::path dir(directory);
-    for (auto &p: vistle::filesystem::directory_iterator(dir)) {
+    std::filesystem::path dir(directory);
+    for (auto &p: std::filesystem::directory_iterator(dir)) {
         if (p.path().extension() == ".csv" || p.path().extension() == ".CSV") {
             if (index == 0) {
                 return p.path().string();
@@ -98,16 +98,16 @@ std::string getFilename(const std::string &directory, vistle::Integer index)
 
 bool ReadCsv::examine(const Parameter *param)
 {
-    vistle::filesystem::path dir(m_directory->getValue());
+    std::filesystem::path dir(m_directory->getValue());
     if (param == m_directory || param == nullptr) {
-        if (!vistle::filesystem::exists(dir)) {
+        if (!std::filesystem::exists(dir)) {
             sendError("Directory " + m_directory->getValue() + " does not exist");
             return true;
         }
         //get all csv files in directory
         std::vector<std::string> files;
         files.push_back("all files");
-        for (auto &p: vistle::filesystem::directory_iterator(dir)) {
+        for (auto &p: std::filesystem::directory_iterator(dir)) {
             if (p.path().extension() == ".csv" || p.path().extension() == ".CSV") {
                 files.push_back(p.path().filename().string());
             }

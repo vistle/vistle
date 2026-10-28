@@ -3,7 +3,7 @@
 #include <vistle/util/hostname.h>
 #include <vistle/util/listenv4v6.h>
 #include <vistle/util/sleep.h>
-#include <vistle/util/filesystem.h>
+#include <filesystem>
 
 #include <vistle/insitu/libsim/connectLibsim/connect.h>
 
@@ -67,13 +67,13 @@ std::unique_ptr<vistle::insitu::message::MessageHandler> LibSimModule::connectTo
     auto handler = std::make_unique<vistle::insitu::message::InSituTcp>(comm());
     bool simInitSent = false;
     if (rank() == 0) {
-        using namespace vistle::filesystem;
+        using namespace std::filesystem;
         path p{m_filePath->getValue()};
         if (is_directory(p)) {
             auto simName = m_simName->getValue();
             path lastEditedFile;
-            std::time_t lastEdit{};
-            for (auto &entry: boost::make_iterator_range(vistle::filesystem::directory_iterator(p), {})) {
+            file_time_type lastEdit{};
+            for (auto &entry: boost::make_iterator_range(std::filesystem::directory_iterator(p), {})) {
                 if (simName.size() == 0 ||
                     entry.path().filename().generic_string().find(simName + ".sim2") != std::string::npos) {
                     auto editTime = last_write_time(entry.path());

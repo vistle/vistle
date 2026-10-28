@@ -1,6 +1,6 @@
 #include "scanscripts.h"
 #include <iostream>
-#include <vistle/util/filesystem.h>
+#include <filesystem>
 #include <vistle/util/directory.h>
 #include <boost/algorithm/string.hpp>
 
@@ -31,20 +31,20 @@ std::vector<std::string> scanStartupScripts()
     auto scriptsAndDirs = scanPreloadScripts();
     scriptsAndDirs.push_back(directory::configHome());
     std::vector<std::string> scripts;
-    namespace bf = vistle::filesystem;
+    namespace fs = std::filesystem;
     for (const auto &path: scriptsAndDirs) {
-        bf::path p(path);
-        if (bf::is_directory(p)) {
+        fs::path p(path);
+        if (fs::is_directory(p)) {
             std::vector<std::string> dirscripts;
-            for (bf::directory_iterator it(p); it != bf::directory_iterator(); ++it) {
-                bf::path ent(*it);
+            for (fs::directory_iterator it(p); it != fs::directory_iterator(); ++it) {
+                fs::path ent(*it);
                 if (ent.extension() == vistleScriptExt) {
                     dirscripts.push_back(ent.string());
                 }
             }
             std::sort(dirscripts.begin(), dirscripts.end());
             std::copy(dirscripts.begin(), dirscripts.end(), std::back_inserter(scripts));
-        } else if (bf::is_regular_file(p)) {
+        } else if (fs::is_regular_file(p)) {
             scripts.push_back(p.string());
         }
     }

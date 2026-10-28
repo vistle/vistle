@@ -3,7 +3,7 @@
 #include <boost/format.hpp>
 
 #include <vistle/core/points.h>
-#include <vistle/util/filesystem.h>
+#include <filesystem>
 
 #include "LoadCover.h"
 
@@ -46,7 +46,7 @@ bool LoadCover::prepare()
             return true;
         }
 
-        if (!vistle::filesystem::is_regular_file(f)) {
+        if (!std::filesystem::is_regular_file(f)) {
             sendInfo("not a regular file: %s", f.c_str());
         }
 
