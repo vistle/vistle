@@ -2059,6 +2059,7 @@ bool Hub::hubReady()
         if (!sendMaster(BufferEnvelope{hub, pl})) {
             return false;
         }
+        sendUi(BufferEnvelope{hub, pl}, message::Id::Broadcast);
         m_ready = true;
         return processStartupScripts();
     }
