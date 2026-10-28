@@ -119,8 +119,6 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
     m_pythonMod.reset(new vistle::PythonModule(*m_pythonAccess));
     m_pythonDir = dir.share();
 #endif
-    m_thread.reset(new std::thread(std::ref(*m_vistleConnection)));
-
     m_mainWindow->parameters()->setVistleConnection(m_vistleConnection.get());
     if (!m_ui->isConnected()) {
         std::cerr << "UI: not yet connected to " << host << ":" << port << std::endl;
@@ -297,6 +295,8 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
         auto mod = QString::fromStdString(m_scene->state().getModuleName(id));
         QDesktopServices::openUrl(QUrl(QString("https://vistle.io/module/%0/%1/%1.html").arg(cat, mod)));
     });
+
+    m_thread.reset(new std::thread(std::ref(*m_vistleConnection)));
 
     m_mainWindow->show();
 
