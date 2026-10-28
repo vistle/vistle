@@ -235,7 +235,7 @@ bool Transform::compute()
             for (int port = 0; port < NumPorts; ++port) {
                 if (!obj[port])
                     continue;
-                if (data) {
+                if (data[port]) {
                     auto dataOut = data[port]->clone();
                     dataOut->setGrid(outGeo);
                     updateMeta(dataOut);
