@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
-#include "filesystem.h"
+#include <filesystem>
+#include <cstring>
 #include "directory.h"
 #include "findself.h"
 
@@ -20,13 +21,13 @@ namespace {
 
 std::string prefix(const std::string &bindir, const std::string &buildtype)
 {
-    namespace bf = vistle::filesystem;
-    bf::path p(bindir);
+    namespace fs = std::filesystem;
+    fs::path p(bindir);
     p += "/..";
     if (!buildtype.empty()) {
         p += "/..";
     }
-    p = bf::canonical(p);
+    p = fs::canonical(p);
 
     return p.string();
 }
@@ -46,12 +47,12 @@ std::string covisedir(const std::string &prefix)
         return cd;
     }
 
-    namespace bf = vistle::filesystem;
+    namespace fs = std::filesystem;
 
-    auto dir = bf::path(prefix);
+    auto dir = fs::path(prefix);
     for (;;) {
         auto covisedir = dir / "covise";
-        if (bf::exists(covisedir)) {
+        if (fs::exists(covisedir)) {
             return covisedir.string();
         }
         if (!dir.has_parent_path()) {

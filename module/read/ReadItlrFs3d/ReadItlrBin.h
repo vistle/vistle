@@ -4,8 +4,8 @@
 #include <vistle/core/rectilineargrid.h>
 #include <vistle/core/vec.h>
 #include <vistle/module/reader.h>
-#include <vistle/util/filesystem.h>
 
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -51,7 +51,7 @@ private:
     bool m_haveListFile = false;
     bool m_haveFileList = false;
     std::string m_scalarFile[NumPorts];
-    vistle::filesystem::path m_directory[NumPorts];
+    std::filesystem::path m_directory[NumPorts];
     std::vector<std::string> m_fileList[NumPorts];
     std::vector<vistle::RectilinearGrid::ptr> m_grids;
 };

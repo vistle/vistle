@@ -55,7 +55,7 @@
 #include <boost/fusion/include/vector_fwd.hpp>
 #include <boost/fusion/include/std_pair.hpp>
 
-#include <boost/filesystem.hpp>
+#include <filesystem>
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/split.hpp>
@@ -68,7 +68,7 @@
 
 const size_t MaxHeaderLines = 100;
 
-namespace bf = boost::filesystem;
+namespace bf = std::filesystem;
 namespace bi = boost::iostreams;
 namespace bs = boost::spirit;
 namespace qi = boost::spirit::qi;

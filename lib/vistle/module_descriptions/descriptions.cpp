@@ -5,7 +5,7 @@
 
 #ifndef MODULE_STATIC
 #include <fstream>
-#include <vistle/util/filesystem.h>
+#include <filesystem>
 #endif
 
 CMRC_DECLARE(moduledescriptions);
@@ -109,13 +109,13 @@ std::map<std::string, ModuleDescription> getModuleDescriptions(const std::string
         std::cerr << "getModuleDescriptions: exception: " << ex.what() << std::endl;
     }
 #else
-    filesystem::path pshare(share_prefix);
+    std::filesystem::path pshare(share_prefix);
     try {
-        if (!filesystem::is_directory(pshare)) {
+        if (!std::filesystem::is_directory(pshare)) {
             std::cerr << "getModuleDescriptions: " << share_prefix << " is not a directory" << std::endl;
         } else {
         }
-    } catch (const filesystem::filesystem_error &e) {
+    } catch (const std::filesystem::filesystem_error &e) {
         std::cerr << "getModuleDescriptions: error in" << share_prefix << ": " << e.what() << std::endl;
     }
     std::string file = share_prefix + filename;

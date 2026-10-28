@@ -20,6 +20,7 @@
 //Includes copied from covise ReadFOAM.cpp
 #include <sstream>
 #include <fstream>
+#include <filesystem>
 #include <iostream>
 #include <iomanip>
 #include <string>
@@ -37,7 +38,6 @@
 
 #include "foamtoolbox.h"
 #include <vistle/util/coRestraint.h>
-#include <vistle/util/filesystem.h>
 #include <boost/serialization/vector.hpp>
 #include <boost/mpi.hpp>
 #include <unordered_set>
@@ -129,18 +129,18 @@ void ReadFOAM::setFoamRunDir(const std::string &dir)
     m_foamCaseChoices.clear();
     m_foamCaseChoices.push_back("(Select case)");
     try {
-        for (auto &p: vistle::filesystem::directory_iterator(dir)) {
+        for (auto &p: std::filesystem::directory_iterator(dir)) {
             try {
-                if (vistle::filesystem::is_directory(p)) {
+                if (std::filesystem::is_directory(p)) {
                     m_foamCaseChoices.push_back(p.path().filename().string());
                 }
-            } catch (const vistle::filesystem::filesystem_error &e) {
+            } catch (const std::filesystem::filesystem_error &e) {
                 if (e.code() == std::errc::permission_denied)
                     continue;
                 std::cerr << e.what() << '\n';
             }
         }
-    } catch (const vistle::filesystem::filesystem_error &e) {
+    } catch (const std::filesystem::filesystem_error &e) {
         std::cerr << e.what() << '\n';
     }
     setParameterChoices(m_foamRunDir, m_foamCaseChoices);
@@ -177,7 +177,7 @@ bool ReadFOAM::examine(const Parameter *p)
 {
     if (!p || p == m_casedir) {
         const std::string casedir = m_casedir->getValue();
-        setFoamRunDir(m_casedir->isDefault() ? casedir : vistle::filesystem::path(casedir).parent_path().string());
+        setFoamRunDir(m_casedir->isDefault() ? casedir : std::filesystem::path(casedir).parent_path().string());
 
         if (m_case.valid && m_case.casedir == casedir)
             return true;
@@ -234,7 +234,7 @@ bool ReadFOAM::changeParameter(const Parameter *param)
         int caseNum = m_foamRunDir->getValue();
         if (caseNum == 0)
             return Reader::changeParameter(param);
-        vistle::filesystem::path foam_run_path(m_foamRunBase);
+        std::filesystem::path foam_run_path(m_foamRunBase);
         auto foamRunDir = foam_run_path / m_foamCaseChoices[caseNum];
         setParameter(m_casedir, foamRunDir.string());
         setParameter(m_foamRunDir, vistle::Integer{0});

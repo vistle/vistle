@@ -16,7 +16,7 @@
 #include <vistle/core/triangles.h>
 #include <vistle/core/unstr.h>
 #include <vistle/util/enum.h>
-#include <vistle/util/filesystem.h>
+#include <filesystem>
 #include <fstream>
 
 #ifdef USE_NETCDF
@@ -24,7 +24,7 @@
 #endif
 
 using namespace vistle;
-namespace fs = vistle::filesystem;
+namespace fs = std::filesystem;
 
 #ifdef USE_NETCDF
 #if defined(MODULE_THREAD)

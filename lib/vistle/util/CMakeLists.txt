@@ -37,7 +37,6 @@ set(util_HEADERS
     exception.h
     export.h
     fileio.h
-    filesystem.h
     findself.h
     hostname.h
     ipaddress.h
@@ -68,8 +67,6 @@ vistle_target_link_libraries(
     vistle_util
     PRIVATE
     Boost::system
-    PUBLIC
-    Boost::filesystem
     PRIVATE
     Boost::timer
     PRIVATE

@@ -13,8 +13,8 @@
 #include <vistle/core/structuredgrid.h>
 #include <boost/mpi/communicator.hpp>
 
-#include <vistle/util/filesystem.h>
 #include <vistle/util/stopwatch.h>
+#include <filesystem>
 #include <mutex>
 #include <algorithm>
 
@@ -30,7 +30,7 @@
 
 
 using namespace vistle;
-namespace fs = vistle::filesystem;
+namespace fs = std::filesystem;
 using vistle::Scalar;
 using vistle::Vec;
 using vistle::Index;

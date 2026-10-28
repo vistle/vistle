@@ -22,11 +22,11 @@
 #include <vistle/core/structuredgrid.h>
 #include <vistle/core/uniformgrid.h>
 
-#include <vistle/util/filesystem.h>
+#include <filesystem>
 /* #include <netcdfcpp.h> */
 
 using namespace vistle;
-namespace fs = vistle::filesystem;
+namespace fs = std::filesystem;
 
 
 ReadWRFChem::ReadWRFChem(const std::string &name, int moduleID, mpi::communicator comm)

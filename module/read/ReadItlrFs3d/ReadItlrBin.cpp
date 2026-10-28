@@ -18,7 +18,7 @@
 #include <cstdlib>
 
 #include <boost/algorithm/string/predicate.hpp>
-#include <vistle/util/filesystem.h>
+#include <filesystem>
 #include <vistle/util/byteswap.h>
 #include <vistle/util/fileio.h>
 
@@ -439,7 +439,7 @@ bool ReadItlrBin::prepareRead()
             m_fileList[port] = readListFile(m_scalarFile[port]);
             haveList = true;
         }
-        filesystem::path listFilePath(m_scalarFile[port]);
+        std::filesystem::path listFilePath(m_scalarFile[port]);
         m_directory[port] = listFilePath.parent_path();
 
         if (numFiles < 0) {
@@ -536,7 +536,7 @@ bool ReadItlrBin::read(Reader::Token &token, int timestep, int block)
         if (ssize_t(m_fileList[port].size()) <= timestep)
             continue;
         auto file = m_fileList[port][timestep];
-        filesystem::path filename;
+        std::filesystem::path filename;
         if (m_haveListFile) {
             filename = m_directory[port];
             filename /= file;

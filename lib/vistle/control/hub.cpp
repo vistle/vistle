@@ -16,6 +16,7 @@
 #include <signal.h>
 #include <string>
 #include <limits>
+#include <filesystem>
 #ifdef VISTLE_USE_FMT
 #include <fmt/format.h>
 #include <fmt/args.h>
@@ -24,7 +25,6 @@
 #include <vistle/util/hostname.h>
 #include <vistle/util/userinfo.h>
 #include <vistle/util/directory.h>
-#include <vistle/util/filesystem.h>
 #include <vistle/util/sleep.h>
 #include <vistle/util/listenv4v6.h>
 #include <vistle/util/crypto.h>
@@ -737,13 +737,13 @@ bool Hub::init(int argc, char *argv[])
                 file.clear();
                 auto roots = {m_dir->prefix(), m_dir->share()};
                 for (const auto &root: roots) {
-                    for (vistle::filesystem::path dir(root); dir.has_parent_path(); dir = dir.parent_path()) {
-                        if (!vistle::filesystem::exists(dir))
+                    for (std::filesystem::path dir(root); dir.has_parent_path(); dir = dir.parent_path()) {
+                        if (!std::filesystem::exists(dir))
                             break;
                         auto exts = {"", ".vsl", ".py"};
                         for (const auto &ext: exts) {
                             auto wf_ext = wf + ext;
-                            if (vistle::filesystem::exists(dir / wf_ext)) {
+                            if (std::filesystem::exists(dir / wf_ext)) {
                                 file = (dir / wf_ext).string();
                                 break;
                             }
@@ -1001,7 +1001,7 @@ Hub::launchProcess(int type, const std::string &prog, const std::vector<std::str
     auto path = process::search_path(prog);
     if (path.empty()) {
         boost::system::error_code ec;
-        if (filesystem::exists(prog, ec)) {
+        if (std::filesystem::exists(prog, ec)) {
             path = prog;
 #ifdef _WIN32
         } else if (filesystem::exists(prog + ".exe")) {
@@ -3875,9 +3875,9 @@ bool Hub::processScript()
 
     if (!ends_with(m_scriptPath, ".vsl") && !ends_with(m_scriptPath, ".py")) {
         boost::system::error_code ec;
-        if (!filesystem::exists(m_scriptPath, ec)) {
+        if (!std::filesystem::exists(m_scriptPath, ec)) {
             for (const auto &ext: {".vsl", ".py"}) {
-                if (filesystem::exists(m_scriptPath + ext, ec)) {
+                if (std::filesystem::exists(m_scriptPath + ext, ec)) {
                     if (processScript(m_scriptPath + ext, doBarrier, m_executeModules)) {
                         setLoadedFile(m_scriptPath + ext);
                         return true;

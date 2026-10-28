@@ -15,8 +15,6 @@
 #include <vistle/core/rectilineargrid.h>
 #include <vistle/core/structuredgrid.h>
 
-#include <vistle/util/filesystem.h>
-
 MODULE_MAIN(ReadIagTecplot)
 
 //using namespace vistle;

@@ -1,6 +1,5 @@
 #include "ReadEnsight.h"
 #include <vistle/core/parameter.h>
-#include <vistle/util/filesystem.h>
 #include <vistle/util/byteswap.h>
 #include <vistle/core/unstr.h>
 #include <vistle/core/polygons.h>
@@ -12,6 +11,7 @@
 #include "CaseParserDriver.h"
 #include "vistle/module/reader.h"
 #include <iostream>
+#include <filesystem>
 
 namespace {
 const std::string NONE{vistle::Reader::InvalidChoice};
@@ -120,7 +120,7 @@ bool ReadEnsight::examine(const vistle::Parameter *param)
 
     if (!param || param == m_casefile || param == m_earlyPartList) {
         std::string file = m_casefile->getValue();
-        filesystem::path path(file);
+        std::filesystem::path path(file);
         {
             m_case = CaseFile();
             CaseParserDriver parser(file);
