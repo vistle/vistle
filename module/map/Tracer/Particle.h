@@ -29,7 +29,6 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(
 // clang-format on
 struct Segment {
     vistle::Index m_id = vistle::InvalidIndex; //! id of particle that was traced
-    int m_rank;
     int m_num; // >= 0: forward, < 0: backward
     vistle::Index m_startStep;
     std::vector<vistle::Vector3> m_xhist; //!< trajectory
@@ -43,7 +42,7 @@ struct Segment {
     std::vector<vistle::Scalar> m_wallclock; //!< time difference to when previous step was computed
     std::vector<std::vector<vistle::Scalar>> m_scalars; //!< previous scalars
 
-    Segment(int num = 0): m_rank(-1), m_num(num), m_startStep(vistle::InvalidIndex) {}
+    Segment(int num = 0): m_num(num), m_startStep(vistle::InvalidIndex) {}
 
     void simplify(double relerr);
     //! compute relative error when interpolating for index i from i0 and i1
@@ -55,7 +54,6 @@ struct Segment {
     void serialize(Archive &ar, const unsigned int version)
     {
         ar &m_id;
-        ar &m_rank;
         ar &m_num;
         ar &m_blockIndex;
         ar &m_xhist;
@@ -74,7 +72,6 @@ struct Segment {
     void clear()
     {
         m_id = vistle::InvalidIndex;
-        m_rank = -1;
         m_num = 0;
         m_xhist.clear();
         m_vhist.clear();
