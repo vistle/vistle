@@ -36,7 +36,7 @@ struct Segment {
     std::vector<vistle::Scalar> m_stepWidth; //!< previous integration stepwidths
     std::vector<vistle::Index> m_steps; //!< previous steps
     std::vector<vistle::Scalar> m_times; //!< previous times
-    std::vector<vistle::Scalar> m_dists; //!< previous times
+    std::vector<vistle::Scalar> m_dists; //!< signed distance travelled since the trace started
     std::vector<vistle::Index> m_cellIndex; //!< previous cell/element indices
     std::vector<vistle::Index> m_blockIndex; //!< index of current block
     std::vector<vistle::Scalar> m_wallclock; //!< time difference to when previous step was computed
