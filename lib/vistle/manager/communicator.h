@@ -9,7 +9,7 @@
 #include <boost/mpi.hpp>
 
 #include <vistle/core/message.h>
-#include <vistle/core/messagepayload.h>
+#include <vistle/core/shmenvelope.h>
 #include <vistle/core/availablemodule.h>
 
 #include "export.h"
@@ -41,12 +41,11 @@ public:
     bool run();
     bool dispatch(bool *work);
     void terminate();
-    bool handleMessage(const message::Buffer &message, const MessagePayload &payload = MessagePayload());
-    bool forwardToMaster(const message::Message &message, const vistle::MessagePayload &payload = MessagePayload());
-    bool broadcastAndHandleMessage(const message::Message &message, const MessagePayload &payload = MessagePayload());
-    bool sendMessage(int receiver, const message::Message &message, int rank = -1,
-                     const MessagePayload &payload = MessagePayload());
-    bool sendHub(const message::Message &message, const MessagePayload &payload = MessagePayload());
+    bool handleMessage(const message::Envelope &message);
+    bool forwardToMaster(const message::Envelope &message);
+    bool broadcastAndHandleMessage(const message::Envelope &message);
+    bool sendMessage(int moduleId, const message::Envelope &message, int destRank = -1);
+    bool sendHub(const message::Envelope &message);
 
     int hubId() const;
     int getRank() const;
@@ -84,17 +83,15 @@ private:
     message::Buffer m_recvBufToRank, m_recvBufToAny;
     MPI_Request m_reqAny, m_reqToRank;
     struct SendRequest {
-        SendRequest(const message::Message &msg): buf(msg) {}
-        SendRequest(const message::Buffer &buf): buf(buf) {}
-        message::Buffer buf;
-        MessagePayload payload;
+        SendRequest(const message::Envelope &msg): message(msg.clone()) {}
+        std::unique_ptr<message::Envelope> message;
         MPI_Request req, payload_req;
 
         bool waitComplete();
         bool testComplete();
     };
     std::set<std::shared_ptr<SendRequest>> m_ongoingSends;
-    bool startSend(int destRank, const message::Message &message, const MessagePayload &payload);
+    bool startSend(int destRank, const message::Envelope &message);
 
     static Communicator *s_singleton;
 

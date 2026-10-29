@@ -103,18 +103,18 @@ VistleFileInfoGatherer::~VistleFileInfoGatherer()
     wait();
 }
 
-bool VistleFileInfoGatherer::handleMessage(const vistle::message::Message &msg, const vistle::buffer &payload)
+bool VistleFileInfoGatherer::handleMessage(const vistle::message::BufferEnvelope &msg)
 {
     using namespace vistle::message;
 
-    if (msg.type() != vistle::message::FILEQUERYRESULT)
+    if (msg.message().type() != vistle::message::FILEQUERYRESULT)
         return false;
 
     auto &mm = msg.as<vistle::message::FileQueryResult>();
     switch (mm.command()) {
     case FileQuery::SystemInfo: {
         m_initialized = true;
-        auto info = vistle::unpackSystemInfo(payload);
+        auto info = vistle::unpackSystemInfo(msg.copyPayload());
         m_isWindows = info.iswindows;
         m_hostname = QString::fromStdString(info.hostname);
         m_homePath = QString::fromStdString(info.homepath);
@@ -125,7 +125,7 @@ bool VistleFileInfoGatherer::handleMessage(const vistle::message::Message &msg, 
     }
     case FileQuery::ReadDirectory: {
         QString path = QString::fromStdString(mm.path());
-
+        vistle::buffer payload(msg.copyPayload());
         auto files = vistle::unpackFileList(payload);
         CERR << "ReadDirectory result for " << mm.path() << ": " << files.size() << " entries" << std::endl;
 
@@ -171,7 +171,7 @@ bool VistleFileInfoGatherer::handleMessage(const vistle::message::Message &msg, 
             CERR << "LookUpFiles result for '" << mm.path() << "': status not Ok: " << mm.status() << std::endl;
             break;
         }
-
+        vistle::buffer payload(msg.copyPayload());
         auto fivec = vistle::unpackFileInfos(payload);
         CERR << "LookUpFiles result for " << mm.path() << ": " << fivec.size() << " entries" << std::endl;
         std::string path(mm.path());
@@ -327,7 +327,7 @@ void VistleFileInfoGatherer::fetchExtendedInformation(const QString &path, const
             auto payload = vistle::packFileList(filelist);
             vistle::message::FileQuery query(m_moduleId, cleanPath.toStdString(), FileQuery::LookUpFiles,
                                              payload.size());
-            sendMessage(query, &payload);
+            sendMessage({query, payload});
         }
     }
 }

@@ -18,7 +18,7 @@
 #include <vistle/core/parameter.h>
 #include <cassert>
 #include <vistle/core/shm.h>
-#include <vistle/core/messagepayload.h>
+#include <vistle/core/shmenvelope.h>
 #include <vistle/util/sleep.h>
 #include <vistle/util/tools.h>
 #include <vistle/util/hostname.h>
@@ -190,30 +190,18 @@ bool Communicator::connectData()
     return m_dataManager->connect(m_dataEndpoint);
 }
 
-bool Communicator::sendHub(const message::Message &message, const MessagePayload &payload)
+bool Communicator::sendHub(const message::Envelope &message)
 {
-    if (message.payloadSize() > 0) {
-        assert(payload);
-    }
-    if (payload) {
-        assert(payload->size() == message.payloadSize());
-    }
-
     if (getRank() == 0) {
         message::error_code ec;
-        if (payload) {
-            if (message::send(m_hubSocket, message, ec, payload->data(), payload->size()))
-                return true;
-        } else {
-            if (message::send(m_hubSocket, message, ec))
-                return true;
-        }
+        if (message::send(m_hubSocket, message.message(), ec, message.payloadData(), message.payloadSize()))
+            return true;
         if (ec) {
-            CERR << "sending " << message << " to hub failed: " << ec.message() << std::endl;
+            CERR << "sending " << message.message() << " to hub failed: " << ec.message() << std::endl;
         }
         return false;
     }
-    return forwardToMaster(message, payload);
+    return forwardToMaster(message);
 }
 
 bool Communicator::run()
@@ -227,6 +215,22 @@ bool Communicator::run()
     }
     CERR << "Comm: run done" << std::endl;
     return true;
+}
+
+
+ShmEnvelope recvPayload(const message::Buffer &msg, MPI_Status &status, boost::mpi::communicator &comm)
+{
+    if (msg.payloadSize() > 0 && !msg.getPayload()) {
+        MessagePayload payload;
+        payload.construct(msg.payloadSize());
+        MPI_Status status2;
+        MPI_Recv(payload->data(), payload->size(), MPI_BYTE, status.MPI_SOURCE, Communicator::MpiTags::TagToRank, comm,
+                 &status2);
+        ShmEnvelope envelope(msg, std::move(payload));
+        envelope.message().setPayloadName(payload.name());
+        return envelope;
+    }
+    return ShmEnvelope(msg);
 }
 
 bool Communicator::dispatch(bool *work)
@@ -245,21 +249,16 @@ bool Communicator::dispatch(bool *work)
         MPI_Test(&m_reqToRank, &flag, &status);
         if (flag && status.MPI_TAG == TagToRank) {
             received = true;
-            message::Message *message = &m_recvBufToRank;
-            MessagePayload payload;
-            if (message->payloadSize() > 0) {
-                payload.construct(message->payloadSize());
-                MPI_Status status2;
-                MPI_Recv(payload->data(), payload->size(), MPI_BYTE, status.MPI_SOURCE, TagToRank, m_comm, &status2);
-                message->setPayloadName(payload.name());
-            }
-            if (m_rank == 0 && message->isForBroadcast()) {
-                if (!broadcastAndHandleMessage(*message, payload)) {
+            // message::Message *message = &m_recvBufToRank;
+            // MessagePayload payload;
+            auto message = recvPayload(m_recvBufToRank, status, m_comm);
+            if (m_rank == 0 && message.message().isForBroadcast()) {
+                if (!broadcastAndHandleMessage(message)) {
                     CERR << "Quit reason: broadcast & handle" << std::endl;
                     done = true;
                 }
             } else {
-                if (!handleMessage(*message, payload)) {
+                if (!handleMessage(message)) {
                     CERR << "Quit reason: handle" << std::endl;
                     done = true;
                 }
@@ -281,7 +280,6 @@ bool Communicator::dispatch(bool *work)
             }
             assert(m_recvSize <= m_recvBufToAny.bufferSize());
             MPI_Bcast(m_recvBufToAny.data(), m_recvSize, MPI_BYTE, status.MPI_SOURCE, m_comm);
-
             unsigned recvSize = m_recvSize;
 
             // post new receive
@@ -289,21 +287,21 @@ bool Communicator::dispatch(bool *work)
 
             if (recvSize > 0) {
                 received = true;
+                ShmEnvelope message(m_recvBufToAny);
+                if (message.message().payloadSize() && !message.message().getPayload()) {
+                    message.shmPayload().construct(message.message().payloadSize());
+                    MPI_Bcast(message.shmPayload()->data(), message.shmPayload()->size(), MPI_BYTE, status.MPI_SOURCE,
+                              m_comm);
+                    message.message().setPayloadName(message.shmPayload().name());
+                }
 
-                message::Message *message = &m_recvBufToAny;
 #if 0
             printf("[%02d] message from [%02d] message type %d m_size %d\n",
-                  m_rank, status.MPI_SOURCE, message->getType(), mpiMessageSize);
+                  m_rank, status.MPI_SOURCE, message.buffer()getType(), mpiMessageSize);
 #endif
-                MessagePayload payload;
-                if (message->payloadSize() > 0) {
-                    payload.construct(message->payloadSize());
-                    MPI_Bcast(payload->data(), payload->size(), MPI_BYTE, status.MPI_SOURCE, m_comm);
-                    message->setPayloadName(payload.name());
-                }
                 //CERR << "handle broadcast: " << *message << std::endl;
-                if (!handleMessage(*message, payload)) {
-                    CERR << "Quit reason: handle message received via broadcast: " << *message << std::endl;
+                if (!handleMessage(message)) {
+                    CERR << "Quit reason: handle message received via broadcast: " << message.message() << std::endl;
                     done = true;
                 }
             }
@@ -330,8 +328,9 @@ bool Communicator::dispatch(bool *work)
     if (m_rank == 0) {
         message::Buffer buf;
         message::error_code ec;
-        buffer payload;
-        if (!message::recv(m_hubSocket, buf, ec, false, &payload)) {
+        std::shared_ptr<buffer> payload = std::make_shared<buffer>();
+        // todo: directly receive shm arrays, without copying to buffer
+        if (!message::recv(m_hubSocket, buf, ec, false, payload.get())) {
             if (ec) {
                 CERR << "Quit reason: hub comm interrupted: " << ec.message() << std::endl;
                 if (hubId() == Id::MasterHub)
@@ -342,12 +341,16 @@ bool Communicator::dispatch(bool *work)
             }
         } else {
             received = true;
-            MessagePayload pl(payload);
+            ShmEnvelope msg;
+            if (payload->empty())
+                msg = ShmEnvelope(buf);
+            else
+                msg = ShmEnvelope(buf, *payload);
             if (buf.destRank() == 0) {
-                handleMessage(buf, pl);
+                handleMessage(msg);
             } else if (buf.destRank() >= 0) {
-                startSend(buf.destRank(), buf, pl);
-            } else if (!broadcastAndHandleMessage(buf, pl)) {
+                startSend(buf.destRank(), msg);
+            } else if (!broadcastAndHandleMessage(msg)) {
                 CERR << "Quit reason: broadcast & handle 2: " << buf << buf << std::endl;
                 done = true;
             }
@@ -402,16 +405,14 @@ void Communicator::terminate()
     m_terminate = true;
 }
 
-bool Communicator::startSend(int destRank, const message::Message &message, const MessagePayload &payload)
+bool Communicator::startSend(int destRank, const message::Envelope &message)
 {
     std::lock_guard guard(m_mutex);
-    auto p = m_ongoingSends.emplace(new SendRequest(message));
-    auto it = p.first;
-    auto &sr = **it;
-    MPI_Isend(sr.buf.data(), sr.buf.size(), MPI_BYTE, destRank, TagToRank, m_comm, &sr.req);
-    if (sr.buf.payloadSize() > 0) {
-        sr.payload = payload;
-        MPI_Isend(sr.payload->data(), sr.payload->size(), MPI_BYTE, 0, TagToRank, m_comm, &sr.payload_req);
+    auto &sr = **m_ongoingSends.emplace(new SendRequest(message)).first;
+    MPI_Isend(sr.message->message().data(), sr.message->headerSize(), MPI_BYTE, destRank, TagToRank, m_comm, &sr.req);
+    if (sr.message->externalPayloadSize() > 0) {
+        MPI_Isend(sr.message->payloadData(), sr.message->externalPayloadSize(), MPI_BYTE, 0, TagToRank, m_comm,
+                  &sr.payload_req);
     }
     return true;
 }
@@ -420,7 +421,7 @@ bool Communicator::SendRequest::waitComplete()
 {
     MPI_Status status;
     MPI_Wait(&req, &status);
-    if (buf.payloadSize() > 0)
+    if (message->externalPayloadSize() > 0)
         MPI_Wait(&payload_req, &status);
     return true;
 }
@@ -432,65 +433,51 @@ bool Communicator::SendRequest::testComplete()
     MPI_Test(&req, &flag, &status);
     if (!flag)
         return false;
-    if (buf.payloadSize() == 0)
+    if (message->externalPayloadSize() == 0)
         return true;
     MPI_Test(&payload_req, &flag, &status);
     return flag;
 }
 
-bool Communicator::sendMessage(const int moduleId, const message::Message &message, int destRank,
-                               const MessagePayload &payload)
+bool Communicator::sendMessage(int moduleId, const message::Envelope &message, int destRank)
 {
     if (m_rank == destRank || destRank == -1) {
         return clusterManager().sendMessage(moduleId, message);
     }
 
-    return startSend(destRank, message, payload);
+    return startSend(destRank, message);
 }
 
-bool Communicator::forwardToMaster(const message::Message &message, const MessagePayload &payload)
+bool Communicator::forwardToMaster(const message::Envelope &message)
 {
-    if (message.payloadSize() > 0) {
-        assert(payload);
-    }
-    if (payload) {
-        assert(payload->size() == message.payloadSize());
-    }
-
     assert(m_rank != 0);
     if (m_rank != 0) {
-        return startSend(0, message, payload);
+        return startSend(0, message);
     }
 
     return true;
 }
 
-bool Communicator::broadcastAndHandleMessage(const message::Message &message, const MessagePayload &payload)
+bool Communicator::broadcastAndHandleMessage(const message::Envelope &message)
 {
-    assert(message.destRank() == -1);
-    if (message.payloadSize() > 0) {
-        assert(payload);
-    }
-    if (payload) {
-        assert(payload->size() == message.payloadSize());
-    }
-
+    assert(message.message().destRank() == -1);
     // message will be handled when received again from rank 0
-    message::Buffer buf(message);
+    auto forwardMessage = message.clone();
+    auto &buf = forwardMessage->message();
     if (m_rank > 0) {
         buf.setForBroadcast(true);
         buf.setWasBroadcast(false);
-        return forwardToMaster(buf, payload);
+        return forwardToMaster(*forwardMessage);
     }
 
     buf.setForBroadcast(false);
     buf.setWasBroadcast(true);
 
-    MessagePayload pl = payload;
+    // MessagePayload pl = payload;
     if (m_size > 1) {
         std::lock_guard guard(m_mutex);
         std::vector<MPI_Request> s(m_size);
-        unsigned int size = buf.size();
+        unsigned int size = forwardMessage->headerSize();
         for (int index = 0; index < m_size; ++index) {
             if (index != m_rank) {
                 MPI_Isend(&size, 1, MPI_UNSIGNED, index, TagStartBroadcast, m_comm, &s[index]);
@@ -505,27 +492,21 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message, co
             MPI_Wait(&s[index], MPI_STATUS_IGNORE);
         }
 
-        MPI_Bcast(buf.data(), buf.size(), MPI_BYTE, m_rank, m_comm);
-        if (buf.payloadSize() > 0) {
-            MPI_Bcast(pl->data(), pl->size(), MPI_BYTE, m_rank, m_comm);
+        MPI_Bcast(buf.data(), forwardMessage->headerSize(), MPI_BYTE, m_rank, m_comm);
+        if (forwardMessage->externalPayloadSize() > 0) {
+            MPI_Bcast(const_cast<char *>(forwardMessage->payloadData()), forwardMessage->externalPayloadSize(),
+                      MPI_BYTE, m_rank, m_comm);
         }
     }
 
-    if (pl)
-        buf.setPayloadName(pl.name());
-    return handleMessage(buf, pl);
+    return handleMessage(*forwardMessage);
 }
 
-bool Communicator::handleMessage(const message::Buffer &message, const MessagePayload &payload)
+bool Communicator::handleMessage(const message::Envelope &message)
 {
-    if (message.payloadSize() > 0) {
-        assert(payload);
-        assert(payload->size() == message.payloadSize());
-    }
-
     std::lock_guard guard(m_mutex);
 
-    if (message.type() == message::SETID) {
+    if (message.message().type() == message::SETID) {
         const auto &set = message.as<message::SetId>();
         m_hubId = set.getId();
         CERR << "got id " << m_hubId << std::endl;
@@ -535,7 +516,7 @@ bool Communicator::handleMessage(const message::Buffer &message, const MessagePa
         return connectData();
     }
 
-    return m_clusterManager->handle(message, payload);
+    return m_clusterManager->handle(message);
 }
 
 Communicator::~Communicator()

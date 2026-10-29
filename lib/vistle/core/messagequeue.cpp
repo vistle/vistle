@@ -126,26 +126,28 @@ void MessageQueue::signal()
     m_mq.send(nullptr, 0, 0);
 }
 
-bool MessageQueue::send(const Message &msg, unsigned int priority)
+bool MessageQueue::send(const ShmEnvelope &envelope, unsigned int priority)
 {
+    assert(envelope.externalPayloadSize() == 0 || envelope.shmPayload());
     std::unique_lock<std::mutex> guard(m_mutex);
+    envelope.ref();
     if (priority == 0) {
-        m_queue.emplace_back(msg);
+        m_queue.emplace_back(envelope.message());
     } else {
-        m_prioQueues[priority].emplace_back(msg);
+        m_prioQueues[priority].emplace_back(envelope.message());
     }
     guard.unlock();
     return progress();
 }
 
-bool MessageQueue::receive(Message &msg, unsigned int *ppriority)
+bool MessageQueue::receive(ShmEnvelope &envelope, unsigned int *ppriority)
 {
     size_t recvSize = 0;
     unsigned priority = 0;
 #ifdef NO_CHECK_FOR_DEAD_PARENT
-    m_mq.receive(&msg, message::Message::MESSAGE_SIZE, recvSize, priority);
+    m_mq.receive(&envelope.message(), message::Message::MESSAGE_SIZE, recvSize, priority);
 #else
-    while (!m_mq.timed_receive(&msg, message::Message::MESSAGE_SIZE, recvSize, priority,
+    while (!m_mq.timed_receive(&envelope.message(), message::Message::MESSAGE_SIZE, recvSize, priority,
                                boost::get_system_time() + boost::posix_time::seconds(5))) {
         if (parentProcessDied())
             throw except::parent_died();
@@ -153,10 +155,19 @@ bool MessageQueue::receive(Message &msg, unsigned int *ppriority)
 #endif
     if (ppriority)
         *ppriority = priority;
-    return recvSize == message::Message::MESSAGE_SIZE;
+    if (recvSize != message::Message::MESSAGE_SIZE)
+        return false;
+    if (envelope.message().payloadSize() > 0) {
+        envelope.updateMessage();
+        if (!envelope.hasInternalPayload()) {
+            envelope.constructPayloadfromShm();
+            envelope.unref(); // sender increased it so that it is not deleted until received
+        }
+    }
+    return true;
 }
 
-bool MessageQueue::tryReceive(Message &msg, unsigned int minPrio, unsigned int *ppriority)
+bool MessageQueue::tryReceive(ShmEnvelope &envelope, unsigned int minPrio, unsigned int *ppriority)
 {
 #ifndef NO_CHECK_FOR_DEAD_PARENT
     if (parentProcessDied())
@@ -165,9 +176,16 @@ bool MessageQueue::tryReceive(Message &msg, unsigned int minPrio, unsigned int *
 
     size_t recvSize = 0;
     unsigned priority = 0;
-    bool result = m_mq.try_receive(&msg, message::Message::MESSAGE_SIZE, recvSize, priority);
+    bool result = m_mq.try_receive(&envelope.message(), message::Message::MESSAGE_SIZE, recvSize, priority);
     if (result) {
         result = recvSize == message::Message::MESSAGE_SIZE;
+        if (envelope.message().payloadSize() > 0) {
+            envelope.updateMessage();
+            if (!envelope.hasInternalPayload()) {
+                envelope.constructPayloadfromShm();
+                envelope.unref(); // sender increased it so that it is not deleted until received
+            }
+        }
     }
     if (ppriority)
         *ppriority = priority;

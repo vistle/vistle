@@ -11,7 +11,7 @@
 #include "tcpmessage.h"
 #include "message.h"
 #include "messages.h"
-#include "messagepayload.h"
+#include "shmenvelope.h"
 #include <deque>
 
 //#define DEBUG // prefix message header with message type
@@ -48,7 +48,7 @@ void prepare_shutdown()
 #ifndef NDEBUG
 namespace {
 
-bool check(const Message &msg, const char *payload, size_t size)
+bool check(const Buffer &msg, const char *payload, size_t size)
 {
     if (msg.type() <= ANY || msg.type() >= NumMessageTypes) {
         std::cerr << "check message: invalid type " << msg.type() << std::endl;
@@ -327,7 +327,7 @@ struct RecvRequest {
             handler(ec, std::shared_ptr<buffer>());
         }
         std::shared_ptr<buffer> payload;
-        if (!no_payload && !error && msg.payloadSize() > 0) {
+        if (!no_payload && !error && msg.payloadSize() > 0 && !msg.getPayload()) {
             payload = get_buffer(msg.payloadSize());
             if (!recv_payload(sock, msg, ec, payload.get())) {
                 error = true;
@@ -485,7 +485,17 @@ bool recv_message(socket_t &sock, message::Buffer &msg, error_code &ec, bool blo
         PRINT_MESSAGE_TYPE;
         return false;
     }
-
+    if (auto pl = msg.getPayload()) {
+        auto plbuf = asio::buffer(const_cast<char *>(pl), msg.payloadSize());
+        auto readsize = asio::read(sock, plbuf, ec);
+        assert(readsize == msg.payloadSize());
+        assert(msg.payloadSize() + msg.size() <= message::Buffer::bufferSize());
+        if (ec) {
+            std::cerr << "message::recv: payload error " << ec.message() << std::endl;
+            PRINT_MESSAGE_TYPE;
+            return false;
+        }
+    }
 #ifdef DEBUG
     lastMessages[&sock] = msg;
     message::Type msgTypeEnd;
@@ -511,7 +521,8 @@ bool recv(socket_t &sock, message::Buffer &msg, error_code &ec, bool block, buff
     if (!recv_message(sock, msg, ec, block)) {
         return false;
     }
-
+    if (msg.getPayload())
+        return true;
     if (!recv_payload(sock, msg, ec, payload)) {
         return false;
     }
@@ -605,8 +616,13 @@ bool send(socket_t &sock, const Message &msg, const buffer *payload)
     return send(sock, msg, ec, payload);
 }
 
+bool send(socket_t &sock, const message::Envelope &msg)
+{
+    error_code ec;
+    return send(sock, msg.message(), ec, msg.payloadData(), msg.payloadSize());
+}
 
-void async_send(socket_t &sock, const message::Message &msg, std::shared_ptr<buffer> payload,
+void async_send(socket_t &sock, const Message &msg, std::shared_ptr<buffer> payload,
                 const std::function<void(error_code ec)> handler)
 {
     assert(check(msg, payload.get()));
@@ -622,7 +638,7 @@ void async_send(socket_t &sock, const message::Message &msg, std::shared_ptr<buf
     }
 }
 
-void async_send(socket_t &sock, const message::Message &msg, const MessagePayload &payload,
+void async_send(socket_t &sock, const Message &msg, const MessagePayload &payload,
                 const std::function<void(error_code ec)> handler)
 {
 #ifndef NDEBUG
@@ -645,6 +661,21 @@ void async_send(socket_t &sock, const message::Message &msg, const MessagePayloa
     }
 }
 
+void async_send(socket_t &sock, const message::Envelope &msg, const std::function<void(error_code ec)> handler)
+{
+    if (msg.payloadSize() == 0) {
+        async_send(sock, msg.message(), nullptr, handler);
+    } else if (msg.hasInternalPayload()) {
+        auto avoidableCopy = std::make_shared<buffer>(msg.payloadData(), msg.payloadData() + msg.payloadSize());
+        async_send(sock, msg.message(), avoidableCopy, handler);
+    } else if (auto envelope = dynamic_cast<const message::BufferEnvelope *>(&msg)) {
+        async_send(sock, envelope->message(), envelope->bufferPayload(), handler);
+    } else if (auto shmEnvelope = dynamic_cast<const vistle::ShmEnvelope *>(&msg)) {
+        async_send(sock, shmEnvelope->message(), shmEnvelope->shmPayload(), handler);
+    } else {
+        std::cerr << "async_send: unknown envelope type" << std::endl;
+    }
+}
 
 void async_forward(socket_t &sock, const message::Message &msg, std::shared_ptr<socket_t> payloadSock,
                    const std::function<void(error_code ec)> handler)

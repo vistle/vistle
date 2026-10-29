@@ -14,8 +14,7 @@
 #include <cover/coVRPlugin.h>
 #include <cover/ui/Owner.h>
 
-#include <VistlePluginUtil/VistleMessage.h>
-
+#include <vistle/core/shmenvelope.h>
 #include <vistle/rhr/rfbext.h>
 
 #include <boost/asio.hpp>
@@ -135,6 +134,6 @@ private:
     bool m_printViewSizes = true;
 
     std::mutex m_sendMutex;
-    std::deque<VistleMessage> m_sendQueue;
+    std::deque<vistle::ShmEnvelope> m_sendQueue;
 };
 #endif

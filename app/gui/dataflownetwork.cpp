@@ -897,8 +897,8 @@ void DataFlowNetwork::createModuleCompound()
         }
         ++i;
     }
-    comp.send(std::bind(&vistle::VistleConnection::sendMessage, m_vistleConnection, std::placeholders::_1,
-                        std::placeholders::_2));
+    comp.send(
+        [this](const vistle::message::BufferEnvelope &payload) { return m_vistleConnection->sendMessage(payload); });
 }
 
 

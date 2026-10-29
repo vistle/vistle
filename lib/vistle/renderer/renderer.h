@@ -60,7 +60,7 @@ public:
     }
 
 protected:
-    bool handleMessage(const message::Message *message, const MessagePayload &payload) override;
+    bool handleMessage(const vistle::ShmEnvelope &vistleMsg) override;
 
     virtual bool addColorMap(const vistle::message::Colormap &cm, std::vector<vistle::RGBA> &rgba);
     virtual bool removeColorMap(const std::string &species, int sourceModule = vistle::message::Id::Invalid);

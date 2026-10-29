@@ -508,6 +508,11 @@ void DataProxy::msgForward(std::shared_ptr<tcp_socket> sock, EndPointType type)
 
             if (forward) {
                 auto dest = getDataSock(*msg);
+                if (auto pl = msg->getPayload()) {
+                    assert(!payload);
+                    // TODO avoid copy
+                    payload = std::make_shared<buffer>(pl, pl + msg->payloadSize());
+                }
                 if (dest) {
                     async_send(*dest, *msg, payload, [type, dest, payload](error_code ec) mutable {
                         message::return_buffer(payload);
