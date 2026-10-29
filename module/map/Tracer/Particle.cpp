@@ -1002,6 +1002,7 @@ void Segment::simplify(double relerr)
         skipVector(m_dists, use);
         skipVector(m_cellIndex, use);
         skipVector(m_blockIndex, use);
+        skipVector(m_wallclock, use);
     }
 }
 
