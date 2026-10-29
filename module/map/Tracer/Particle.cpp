@@ -309,21 +309,25 @@ bool Particle<S>::Step()
             m_scalars[i] = otherInter(m_block->m_scal[i]);
         }
     }
-    Scal ddist = (m_x - m_xold).norm();
     m_xold = m_x;
 
     EmitData();
 
-    if (m_forward) {
-        m_time += m_integrator.h();
-        m_dist += ddist;
-    } else {
-        m_time -= m_integrator.h();
-        m_dist -= ddist;
-    }
-
     bool ret = m_integrator.Step();
     ++m_stp;
+
+    // rk32 repeats a rejected step with a smaller step size, so time and
+    // distance have to follow the step that was actually taken
+    const Scal moved = (m_x - m_xold).norm();
+    if (moved > 0.) {
+        if (m_forward) {
+            m_time += m_integrator.h();
+            m_dist += moved;
+        } else {
+            m_time -= m_integrator.h();
+            m_dist -= moved;
+        }
+    }
     return ret;
 }
 
