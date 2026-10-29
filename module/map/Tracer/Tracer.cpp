@@ -632,7 +632,9 @@ bool Tracer::reduce(int timestep)
     }
 
     if (m_termPort->isConnected()) {
-        global.computeTerminals = true;
+        if (global.task_type == Streamlines) {
+            global.computeTerminals = true;
+        }
     }
 
     std::vector<Index> stopReasonCount(NumStopReasons, 0);
