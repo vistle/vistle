@@ -9,6 +9,9 @@
 // ++**********************************************************************/
 
 #include "coCellToVert.h"
+
+#include <algorithm>
+#include <type_traits>
 #include <vistle/core/vec.h>
 #include <vistle/core/polygons.h>
 #include <vistle/core/lines.h>
@@ -79,103 +82,18 @@ bool coCellToVert::simpleAlgo(Index num_elem, Index num_conn, Index num_point, c
     std::vector<unsigned int> weight(num_point, 0);
     unsigned int *weight_num = weight.data();
 
-    std::vector<Scalar> tmp;
-    Scalar *tmp_out[3]{nullptr};
-
-    tmp.resize(num_point * numComp);
-    for (Index c = 0; c < numComp; ++c) {
-        tmp_out[c] = tmp.data() + c * num_point;
-    }
-
-    if (elem_list && !conn_list && !type_list) {
-        // structured grid
-        for (Index i = 0; i < num_elem; i++) {
-            auto verts = StructuredGridBase::cellVertices(i, elem_list);
-            for (const auto &v: verts) {
-                ++weight_num[v];
-                for (Index c = 0; c < numComp; ++c) {
-                    tmp_out[c][v] += in_data[c][i];
-                }
-            }
-        }
-    } else if (elem_list) {
-        std::vector<Index> seenCell;
-        for (Index i = 0; i < num_elem; i++) {
-            if (type_list && (type_list[i] == UnstructuredGrid::POLYHEDRON)) {
-                if (seenCell.empty()) {
-                    seenCell.resize(num_point, InvalidIndex);
-                }
-                const Index begin = elem_list[i], end = elem_list[i + 1];
-                for (Index j = begin; j < end; ++j) {
-                    const Index vertex = conn_list[j];
-                    if (seenCell[vertex] == i)
-                        continue;
-                    seenCell[vertex] = i;
-                    ++weight_num[vertex];
-                    for (Index c = 0; c < numComp; ++c) {
-                        tmp_out[c][vertex] += in_data[c][i];
-                    }
-                }
-            } else {
-                const Index n = elem_list[i + 1] - elem_list[i];
-                for (Index j = 0; j < n; j++) {
-                    Index vertex = conn_list[elem_list[i] + j];
-                    ++weight_num[vertex];
-                    for (Index c = 0; c < numComp; ++c) {
-                        tmp_out[c][vertex] += in_data[c][i];
-                    }
-                }
-            }
-        }
-    } else {
-        // triangles/quads
-        Index N = 0;
-        if (conn_list)
-            N = num_conn / num_elem;
-        else
-            N = num_point / num_elem;
-        assert(N == 3 || N == 4);
-        for (Index elem = 0; elem < num_elem; ++elem) {
-            for (Index j = 0; j < N; ++j) {
-                const Index vertex = conn_list ? conn_list[elem * N + j] : elem * N + j;
-                ++weight_num[vertex];
-                for (Index c = 0; c < numComp; ++c) {
-                    tmp_out[c][vertex] += in_data[c][elem];
-                }
-            }
-        }
-        if (!conn_list) {
-            // all weights are 1
-            return true;
-        }
-    }
-
-    // divide value sum by 'weight' (# adjacent cells)
-    for (Index vertex = 0; vertex < num_point; vertex++) {
-        if (weight_num[vertex] >= 1) {
-            for (Index c = 0; c < numComp; ++c) {
-                tmp_out[c][vertex] /= weight_num[vertex];
-            }
-        }
+    std::vector<Scalar> sum; // Scalar so not to overflow Byte/Index sum
+    Scalar *acc[3] = {nullptr, nullptr, nullptr};
+    if constexpr (std::is_same<S, Scalar>::value) {
         for (Index c = 0; c < numComp; ++c) {
-            out_data[c][vertex] = tmp_out[c][vertex];
+            std::fill(out_data[c], out_data[c] + num_point, Scalar(0));
+            acc[c] = out_data[c];
         }
-    }
-
-    return true;
-}
-
-template<>
-bool coCellToVert::simpleAlgo<Scalar>(Index num_elem, Index num_conn, Index num_point, const Index *elem_list,
-                                      const Index *conn_list, const Byte *type_list, Index numComp,
-                                      const Scalar *in_data[], Scalar *out_data[])
-{
-    // reset everything to 0, != 0 to prevent div/0 errors
-    std::vector<unsigned int> weight(num_point, 0);
-    unsigned int *weight_num = weight.data();
-
-    for (Index c = 0; c < numComp; ++c) {
-        memset(out_data[c], 0, sizeof(Scalar) * num_point);
+    } else {
+        sum.resize(num_point * numComp);
+        for (Index c = 0; c < numComp; ++c) {
+            acc[c] = sum.data() + c * num_point;
+        }
     }
 
     if (elem_list && !conn_list && !type_list) {
@@ -185,12 +103,11 @@ bool coCellToVert::simpleAlgo<Scalar>(Index num_elem, Index num_conn, Index num_
             for (const auto &v: verts) {
                 ++weight_num[v];
                 for (Index c = 0; c < numComp; ++c) {
-                    out_data[c][v] += in_data[c][i];
+                    acc[c][v] += in_data[c][i];
                 }
             }
         }
     } else if (elem_list) {
-        // unstructured grid
         std::vector<Index> seenCell;
         for (Index i = 0; i < num_elem; i++) {
             if (type_list && (type_list[i] == UnstructuredGrid::POLYHEDRON)) {
@@ -205,7 +122,7 @@ bool coCellToVert::simpleAlgo<Scalar>(Index num_elem, Index num_conn, Index num_
                     seenCell[vertex] = i;
                     ++weight_num[vertex];
                     for (Index c = 0; c < numComp; ++c) {
-                        out_data[c][vertex] += in_data[c][i];
+                        acc[c][vertex] += in_data[c][i];
                     }
                 }
             } else {
@@ -214,7 +131,7 @@ bool coCellToVert::simpleAlgo<Scalar>(Index num_elem, Index num_conn, Index num_
                     Index vertex = conn_list[elem_list[i] + j];
                     ++weight_num[vertex];
                     for (Index c = 0; c < numComp; ++c) {
-                        out_data[c][vertex] += in_data[c][i];
+                        acc[c][vertex] += in_data[c][i];
                     }
                 }
             }
@@ -232,13 +149,14 @@ bool coCellToVert::simpleAlgo<Scalar>(Index num_elem, Index num_conn, Index num_
                 const Index vertex = conn_list ? conn_list[elem * N + j] : elem * N + j;
                 ++weight_num[vertex];
                 for (Index c = 0; c < numComp; ++c) {
-                    out_data[c][vertex] += in_data[c][elem];
+                    acc[c][vertex] += in_data[c][elem];
                 }
             }
         }
         if (!conn_list) {
-            // all weights are 1
-            return true;
+            // all weights are 1, the narrower types still need the copy
+            if constexpr (std::is_same<S, Scalar>::value)
+                return true;
         }
     }
 
@@ -246,14 +164,18 @@ bool coCellToVert::simpleAlgo<Scalar>(Index num_elem, Index num_conn, Index num_
     for (Index vertex = 0; vertex < num_point; vertex++) {
         if (weight_num[vertex] >= 1) {
             for (Index c = 0; c < numComp; ++c) {
-                out_data[c][vertex] /= (double)weight_num[vertex];
+                acc[c][vertex] /= weight_num[vertex];
+            }
+        }
+        if constexpr (!std::is_same<S, Scalar>::value) {
+            for (Index c = 0; c < numComp; ++c) {
+                out_data[c][vertex] = static_cast<S>(acc[c][vertex]);
             }
         }
     }
 
     return true;
 }
-
 
 DataBase::ptr coCellToVert::interpolate(Object::const_ptr geo_in, DataBase::const_ptr data_in)
 {
