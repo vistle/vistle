@@ -33,9 +33,8 @@ using namespace vistle;
 ////// workin' routines
 template<typename S>
 bool coCellToVert::interpolate(bool unstructured, Index num_elem, Index num_conn, Index num_point,
-                               const Index *elem_list, const Index *conn_list, const Byte *type_list,
-                               const Index *neighbour_cells, const Index *neighbour_idx, Index numComp, Index dataSize,
-                               const S *in_data[], S *out_data[])
+                               const Index *elem_list, const Index *conn_list, const Byte *type_list, Index numComp,
+                               Index dataSize, const S *in_data[], S *out_data[])
 {
     // check for errors
     if (unstructured && !elem_list) {
@@ -193,8 +192,6 @@ DataBase::ptr coCellToVert::interpolate(Object::const_ptr geo_in, DataBase::cons
     const Byte *type_list = nullptr;
     Index strSize[3] = {0, 0, 0};
 
-    Index *neighbour_cells = nullptr;
-    Index *neighbour_idx = nullptr;
 
     bool unstructured = false;
     if (auto sgrid_in = StructuredGridBase::as(geo_in)) {
@@ -308,18 +305,18 @@ DataBase::ptr coCellToVert::interpolate(Object::const_ptr geo_in, DataBase::cons
     }
 
     if (in_data[0]) {
-        if (interpolate(unstructured, num_elem, num_conn, num_point, elem_list, conn_list, type_list, neighbour_cells,
-                        neighbour_idx, numComp, dataSize, in_data, out_data)) {
+        if (interpolate(unstructured, num_elem, num_conn, num_point, elem_list, conn_list, type_list, numComp, dataSize,
+                        in_data, out_data)) {
             return data_return;
         }
     } else if (in_data_i[0]) {
-        if (interpolate(unstructured, num_elem, num_conn, num_point, elem_list, conn_list, type_list, neighbour_cells,
-                        neighbour_idx, numComp, dataSize, in_data_i, out_data_i)) {
+        if (interpolate(unstructured, num_elem, num_conn, num_point, elem_list, conn_list, type_list, numComp, dataSize,
+                        in_data_i, out_data_i)) {
             return data_return;
         }
     } else if (in_data_b[0]) {
-        if (interpolate(unstructured, num_elem, num_conn, num_point, elem_list, conn_list, type_list, neighbour_cells,
-                        neighbour_idx, numComp, dataSize, in_data_b, out_data_b)) {
+        if (interpolate(unstructured, num_elem, num_conn, num_point, elem_list, conn_list, type_list, numComp, dataSize,
+                        in_data_b, out_data_b)) {
             return data_return;
         }
     } else {
