@@ -76,8 +76,8 @@ bool coCellToVert::simpleAlgo(Index num_elem, Index num_conn, Index num_point, c
                               const Index *conn_list, const Byte *type_list, Index numComp, const S *in_data[],
                               S *out_data[])
 {
-    std::vector<Byte> weight(num_point);
-    Byte *weight_num = weight.data();
+    std::vector<unsigned int> weight(num_point, 0);
+    unsigned int *weight_num = weight.data();
 
     std::vector<Scalar> tmp;
     Scalar *tmp_out[3]{nullptr};
@@ -171,8 +171,8 @@ bool coCellToVert::simpleAlgo<Scalar>(Index num_elem, Index num_conn, Index num_
                                       const Scalar *in_data[], Scalar *out_data[])
 {
     // reset everything to 0, != 0 to prevent div/0 errors
-    std::vector<unsigned char> weight(num_point);
-    unsigned char *weight_num = weight.data();
+    std::vector<unsigned int> weight(num_point, 0);
+    unsigned int *weight_num = weight.data();
 
     for (Index c = 0; c < numComp; ++c) {
         memset(out_data[c], 0, sizeof(Scalar) * num_point);
