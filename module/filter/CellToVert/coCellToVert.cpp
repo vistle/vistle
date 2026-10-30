@@ -36,14 +36,24 @@ bool coCellToVert::interpolate(bool unstructured, Index num_elem, Index num_conn
 {
     // check for errors
     if (unstructured && !elem_list) {
+        std::cerr << "interpolate: missing element list" << std::endl;
         return false;
     }
 
     for (Index c = 0; c < numComp; ++c) {
-        if (!in_data[c])
+        if (!in_data[c]) {
+            std::cerr << "interpolate: missing input data for component " << c << std::endl;
             return false;
-        if (!out_data[c])
+        }
+        if (!out_data[c]) {
+            std::cerr << "interpolate: missing output data for component " << c << std::endl;
             return false;
+        }
+    }
+
+    if (dataSize == 0 && num_elem == 0) {
+        // nothing to do
+        return true;
     }
 
     // copy original data if already vertex based
@@ -297,6 +307,9 @@ DataBase::ptr coCellToVert::interpolate(Object::const_ptr geo_in, DataBase::cons
         num_elem = num_conn > 0 ? num_conn / 4 : num_point / 4;
         if (num_conn > 0)
             conn_list = qua->cl().data();
+    } else {
+        std::cerr << "unsupported geometry: " << *geo_in << std::endl;
+        return DataBase::ptr();
     }
 
     const Index dataSize = data_in->getSize();
@@ -306,7 +319,7 @@ DataBase::ptr coCellToVert::interpolate(Object::const_ptr geo_in, DataBase::cons
         return DataBase::ptr();
     }
 
-    Index numComp = 0;
+    Index numComp = data_in->dimension();
     DataBase::ptr data_return;
     const Scalar *in_data[3] = {nullptr, nullptr, nullptr};
     Scalar *out_data[3] = {nullptr, nullptr, nullptr};
@@ -316,14 +329,12 @@ DataBase::ptr coCellToVert::interpolate(Object::const_ptr geo_in, DataBase::cons
     Byte *out_data_b[3] = {nullptr, nullptr, nullptr};
 
     if (auto s_data_in = Vec<Scalar>::as(data_in)) {
-        numComp = 1;
         in_data[0] = s_data_in->x().data();
 
         Vec<Scalar>::ptr sdata(new Vec<Scalar>(num_point));
         out_data[0] = sdata->x().data();
         data_return = sdata;
     } else if (auto v_data_in = Vec<Scalar, 3>::as(data_in)) {
-        numComp = 3;
         in_data[0] = v_data_in->x().data();
         in_data[1] = v_data_in->y().data();
         in_data[2] = v_data_in->z().data();
@@ -334,14 +345,12 @@ DataBase::ptr coCellToVert::interpolate(Object::const_ptr geo_in, DataBase::cons
         out_data[2] = vdata->z().data();
         data_return = vdata;
     } else if (auto s_data_in = Vec<Index>::as(data_in)) {
-        numComp = 1;
         in_data_i[0] = s_data_in->x().data();
 
         Vec<Index>::ptr sdata(new Vec<Index>(num_point));
         out_data_i[0] = sdata->x().data();
         data_return = sdata;
     } else if (auto v_data_in = Vec<Index, 3>::as(data_in)) {
-        numComp = 3;
         in_data_i[0] = v_data_in->x().data();
         in_data_i[1] = v_data_in->y().data();
         in_data_i[2] = v_data_in->z().data();
@@ -352,14 +361,12 @@ DataBase::ptr coCellToVert::interpolate(Object::const_ptr geo_in, DataBase::cons
         out_data_i[2] = vdata->z().data();
         data_return = vdata;
     } else if (auto s_data_in = Vec<Byte>::as(data_in)) {
-        numComp = 1;
         in_data_b[0] = s_data_in->x().data();
 
         Vec<Byte>::ptr sdata(new Vec<Byte>(num_point));
         out_data_b[0] = sdata->x().data();
         data_return = sdata;
-    } else if (auto v_data_in = Vec<Byte>::as(data_in)) {
-        numComp = 3;
+    } else if (auto v_data_in = Vec<Byte, 3>::as(data_in)) {
         in_data_b[0] = v_data_in->x().data();
         in_data_b[1] = v_data_in->y().data();
         in_data_b[2] = v_data_in->z().data();
@@ -369,6 +376,13 @@ DataBase::ptr coCellToVert::interpolate(Object::const_ptr geo_in, DataBase::cons
         out_data_b[1] = vdata->y().data();
         out_data_b[2] = vdata->z().data();
         data_return = vdata;
+    } else {
+        numComp = 0;
+        std::cerr << "format not supported: need Scalar, Index, or Byte, got " << *data_in << std::endl;
+    }
+
+    if (data_return && data_return->getSize() == 0 && dataSize == 0) {
+        return data_return;
     }
 
     if (in_data[0]) {
@@ -386,8 +400,11 @@ DataBase::ptr coCellToVert::interpolate(Object::const_ptr geo_in, DataBase::cons
                         neighbour_idx, numComp, dataSize, in_data_b, out_data_b)) {
             return data_return;
         }
+    } else {
+        std::cerr << "interpolate: no implementation for " << *data_in << std::endl;
+        return DataBase::ptr();
     }
 
-    std::cerr << "format not supported: need Scalar, Index, or Byte" << std::endl;
+    std::cerr << "interpolate: failed for " << *data_in << std::endl;
     return DataBase::ptr();
 }
