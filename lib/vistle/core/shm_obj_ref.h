@@ -43,7 +43,7 @@ public:
 private:
     shm_name_t m_name;
 #ifdef NO_SHMEM
-    const ObjData *m_d;
+    const ObjData *m_d = nullptr;
 #else
     boost::interprocess::offset_ptr<const ObjData> m_d;
 #endif

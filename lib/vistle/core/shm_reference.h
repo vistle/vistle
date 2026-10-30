@@ -147,7 +147,7 @@ public:
 private:
     shm_name_t m_name;
 #ifdef NO_SHMEM
-    T *m_p;
+    T *m_p = nullptr;
 #else
     boost::interprocess::offset_ptr<T> m_p;
 #endif
