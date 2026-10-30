@@ -99,18 +99,18 @@ bool coCellToVert::simpleAlgo(Index num_elem, Index num_conn, Index num_point, c
             }
         }
     } else if (elem_list) {
+        std::vector<Index> seenCell;
         for (Index i = 0; i < num_elem; i++) {
             if (type_list && (type_list[i] == UnstructuredGrid::POLYHEDRON)) {
-                Index begin = elem_list[i], end = elem_list[i + 1];
-                std::vector<Index> verts;
-                verts.reserve(end - begin);
-                for (Index j = begin; j < end; ++j) {
-                    verts.push_back(conn_list[j]);
+                if (seenCell.empty()) {
+                    seenCell.resize(num_point, InvalidIndex);
                 }
-                std::sort(verts.begin(), verts.end());
-                auto last = std::unique(verts.begin(), verts.end());
-                for (auto it = verts.begin(); it != last; ++it) {
-                    Index vertex = *it;
+                const Index begin = elem_list[i], end = elem_list[i + 1];
+                for (Index j = begin; j < end; ++j) {
+                    const Index vertex = conn_list[j];
+                    if (seenCell[vertex] == i)
+                        continue;
+                    seenCell[vertex] = i;
                     ++weight_num[vertex];
                     for (Index c = 0; c < numComp; ++c) {
                         tmp_out[c][vertex] += in_data[c][i];
@@ -191,18 +191,18 @@ bool coCellToVert::simpleAlgo<Scalar>(Index num_elem, Index num_conn, Index num_
         }
     } else if (elem_list) {
         // unstructured grid
+        std::vector<Index> seenCell;
         for (Index i = 0; i < num_elem; i++) {
             if (type_list && (type_list[i] == UnstructuredGrid::POLYHEDRON)) {
-                Index begin = elem_list[i], end = elem_list[i + 1];
-                std::vector<Index> verts;
-                verts.reserve(end - begin);
-                for (Index j = begin; j < end; ++j) {
-                    verts.push_back(conn_list[j]);
+                if (seenCell.empty()) {
+                    seenCell.resize(num_point, InvalidIndex);
                 }
-                std::sort(verts.begin(), verts.end());
-                auto last = std::unique(verts.begin(), verts.end());
-                for (auto it = verts.begin(); it != last; ++it) {
-                    Index vertex = *it;
+                const Index begin = elem_list[i], end = elem_list[i + 1];
+                for (Index j = begin; j < end; ++j) {
+                    const Index vertex = conn_list[j];
+                    if (seenCell[vertex] == i)
+                        continue;
+                    seenCell[vertex] = i;
                     ++weight_num[vertex];
                     for (Index c = 0; c < numComp; ++c) {
                         out_data[c][vertex] += in_data[c][i];
