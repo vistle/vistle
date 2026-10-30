@@ -78,6 +78,41 @@ bool coCellToVert::simpleAlgo(Index num_elem, Index num_conn, Index num_point, c
                               const Index *conn_list, const Byte *type_list, Index numComp, const S *in_data[],
                               S *out_data[])
 {
+    // take advantage of implicit neighbor relationship
+    if (elem_list && !conn_list && !type_list) {
+        const Index dims[3] = {elem_list[0], elem_list[1], elem_list[2]};
+        Index numCells[3];
+        for (int d = 0; d < 3; ++d) {
+            numCells[d] = dims[d] > 1 ? dims[d] - 1 : 1;
+        }
+        for (Index iz = 0; iz < dims[2]; ++iz) {
+            const Index z0 = iz > 0 ? iz - 1 : 0;
+            const Index z1 = std::min(iz, numCells[2] - 1);
+            for (Index iy = 0; iy < dims[1]; ++iy) {
+                const Index y0 = iy > 0 ? iy - 1 : 0;
+                const Index y1 = std::min(iy, numCells[1] - 1);
+                for (Index ix = 0; ix < dims[0]; ++ix) {
+                    const Index x0 = ix > 0 ? ix - 1 : 0;
+                    const Index x1 = std::min(ix, numCells[0] - 1);
+                    const Index count = (x1 - x0 + 1) * (y1 - y0 + 1) * (z1 - z0 + 1);
+                    const Index vertex = (iz * dims[1] + iy) * dims[0] + ix;
+                    for (Index c = 0; c < numComp; ++c) {
+                        Scalar total = 0;
+                        for (Index cz = z0; cz <= z1; ++cz) {
+                            for (Index cy = y0; cy <= y1; ++cy) {
+                                for (Index cx = x0; cx <= x1; ++cx) {
+                                    total += in_data[c][(cz * numCells[1] + cy) * numCells[0] + cx];
+                                }
+                            }
+                        }
+                        out_data[c][vertex] = static_cast<S>(total / count);
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
     std::vector<unsigned int> weight(num_point, 0);
     unsigned int *weight_num = weight.data();
 
@@ -95,18 +130,7 @@ bool coCellToVert::simpleAlgo(Index num_elem, Index num_conn, Index num_point, c
         }
     }
 
-    if (elem_list && !conn_list && !type_list) {
-        // structured grid
-        for (Index i = 0; i < num_elem; i++) {
-            auto verts = StructuredGridBase::cellVertices(i, elem_list);
-            for (const auto &v: verts) {
-                ++weight_num[v];
-                for (Index c = 0; c < numComp; ++c) {
-                    acc[c][v] += in_data[c][i];
-                }
-            }
-        }
-    } else if (elem_list) {
+    if (elem_list) {
         std::vector<Index> seenCell;
         for (Index i = 0; i < num_elem; i++) {
             if (type_list && (type_list[i] == UnstructuredGrid::POLYHEDRON)) {
