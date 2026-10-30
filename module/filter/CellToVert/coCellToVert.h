@@ -43,8 +43,7 @@ public:
     //
     template<typename S>
     static bool interpolate(bool unstructured, Index num_elem, Index num_conn, Index num_point, const Index *elem_list,
-                            const Index *conn_list, const Byte *type_list, const Index *neighbour_cells,
-                            const Index *neighbour_idx, Index numComp, Index dataSize, const S *in_data[],
-                            S *out_data[]);
+                            const Index *conn_list, const Byte *type_list, Index numComp, Index dataSize,
+                            const S *in_data[], S *out_data[]);
 };
 #endif
