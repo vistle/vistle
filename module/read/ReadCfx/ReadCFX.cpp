@@ -7,6 +7,7 @@
 #include <vector>
 #include <algorithm>
 #include <mutex>
+#include <filesystem>
 
 
 #include <vistle/core/object.h>
@@ -34,7 +35,6 @@
 #include <boost/cstdint.hpp>
 
 #include <vistle/util/stopwatch.h>
-#include <vistle/util/filesystem.h>
 
 
 #include "ReadCFX.h"
@@ -43,7 +43,7 @@
 #define PARALLEL_ZONES
 
 
-namespace fs = vistle::filesystem;
+namespace fs = std::filesystem;
 
 MODULE_MAIN(ReadCFX)
 
@@ -232,7 +232,7 @@ bool CaseInfo::checkFile(const char *filename)
     char magicBuf[MACIC_LEN];
 
     boost::uintmax_t fileSize;
-    boost::system::error_code ec;
+    std::error_code ec;
 
     FILE *fi = fopen(filename, "rb");
 
@@ -678,7 +678,7 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int area3d)
         ptrOnZcoords[i] = nodes[i].z;
     }
 #else
-    //boost::shared_ptr<std::double_t> x_coord(new double), y_coord(new double), z_coord(new double);
+    //std::shared_ptr<std::double_t> x_coord(new double), y_coord(new double), z_coord(new double);
     int *nodeListOfVolume =
         cfxExportVolumeList(m_3dAreasSelected[area3d].ID, cfxVOL_NODES); //query the nodes that define the volume
     index_t nnodesInZone = cfxExportNodeCount();
@@ -773,7 +773,7 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int area3d)
         }
     }
 #else
-    //boost::shared_ptr<std::int32_t> nodesOfElm(new int[8]), elemtype(new int);
+    //std::shared_ptr<std::int32_t> nodesOfElm(new int[8]), elemtype(new int);
     std::int32_t nodesOfElm[8], elemtype[1];
     int *elmListOfVolume =
         cfxExportVolumeList(m_3dAreasSelected[area3d].ID, cfxVOL_ELEMS); //query the elements that define the volume
@@ -946,7 +946,7 @@ Polygons::ptr ReadCFX::loadPolygon(int area2d)
 
     //load face types, element list and connectivity list into polygon
     int elemListCounter = 0;
-    //boost::shared_ptr<std::int32_t> nodesOfFace(new int[4]);
+    //std::shared_ptr<std::int32_t> nodesOfFace(new int[4]);
     std::int32_t nodesOfFace[4];
     auto ptrOnEl = polygon->el().data();
     auto ptrOnCl = polygon->cl().data();
