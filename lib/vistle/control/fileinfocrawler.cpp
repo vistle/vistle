@@ -145,11 +145,11 @@ std::vector<std::string> readDirectory(const std::string &path, message::FileQue
     status = readEntry(path, fi);
     if (status == FileQueryResult::Ok) {
         fs::path p(path);
-        boost::system::error_code ec;
+        std::error_code ec;
         auto it = fs::directory_iterator(p, ec);
         if (ec) {
             status = FileQueryResult::Error;
-            if (ec == boost::system::errc::permission_denied)
+            if (ec == std::errc::permission_denied)
                 status = FileQueryResult::NoPermission;
             return results;
         }

@@ -1000,7 +1000,7 @@ Hub::launchProcess(int type, const std::string &prog, const std::vector<std::str
 
     auto path = process::search_path(prog);
     if (path.empty()) {
-        boost::system::error_code ec;
+        std::error_code ec;
         if (std::filesystem::exists(prog, ec)) {
             path = prog;
 #ifdef _WIN32
@@ -3874,7 +3874,7 @@ bool Hub::processScript()
     bool doBarrier = m_barrierAfterLoad;
 
     if (!ends_with(m_scriptPath, ".vsl") && !ends_with(m_scriptPath, ".py")) {
-        boost::system::error_code ec;
+        std::error_code ec;
         if (!std::filesystem::exists(m_scriptPath, ec)) {
             for (const auto &ext: {".vsl", ".py"}) {
                 if (std::filesystem::exists(m_scriptPath + ext, ec)) {

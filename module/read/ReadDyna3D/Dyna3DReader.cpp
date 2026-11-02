@@ -2930,7 +2930,7 @@ bool Dyna3DReaderBase::examine(bool rescan)
             for (int count = 0; count < 1000; ++count) {
                 fs::path curfile = rootfile;
                 curfile += adapt + suffixForCount(count);
-                boost::system::error_code ec;
+                std::error_code ec;
                 if (!exists(curfile, ec) || ec) {
                     //std::cerr << "filesystem error while checking for existence of " << curfile.string() << ":" << ec << std::endl;
                     break;

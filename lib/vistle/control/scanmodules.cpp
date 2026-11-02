@@ -43,7 +43,7 @@ bool scanModules(const std::string &prefix, const std::string &buildtype, int hu
         if (stem.empty()) {
             continue;
         }
-        boost::system::error_code ec;
+        std::error_code ec;
         if (fs::is_directory(ent, ec)) {
             continue;
         }
