@@ -87,6 +87,16 @@ private:
     bool tryToExecuteFilter(viskores::filter::Filter &filter, const viskores::cont::PartitionedDataSet &inputDataset,
                             viskores::cont::PartitionedDataSet &outputDataset) const;
 
+    /*
+        Samples the data fields in `input` onto `geometry` and stores the result
+        in `probeOutput`. Only the partitions which overlap `geometry` are probed.
+        If no partition is suitable for probing, the method returns `false` and
+        `probeOutput` is not modified.
+    */
+    bool probeSuitablePartitions(const viskores::cont::DataSet &geometry,
+                                 const viskores::cont::PartitionedDataSet &input,
+                                 viskores::cont::DataSet &probeOutput) const;
+
     bool checkAndNotify(const ModuleStatusPtr &status) const;
 
     void createModulePorts();
