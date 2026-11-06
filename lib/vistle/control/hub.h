@@ -328,7 +328,7 @@ private:
 
     bool checkChildProcesses(bool emergency = false, bool onMainThread = true);
     bool hasChildProcesses(bool ignoreGui = false);
-    void emergencyQuit();
+    void emergencyQuit(const std::string &reason);
     const AvailableModule *findModule(const AvailableModule::Key &key);
     void spawnModule(const std::string &path, const std::string &name, int spawnId);
     bool spawnMirror(int hubId, const std::string &name, int mirroredId, int blueprintId);
