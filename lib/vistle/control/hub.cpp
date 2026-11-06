@@ -1572,11 +1572,11 @@ bool Hub::dispatch()
             sendSlaves(make.message<message::CloseConnection>("user interrupt"));
             handleMessage(quit);
         }
-        emergencyQuit();
+        emergencyQuit("interrupt");
     }
 
     if (!m_isMaster && !m_masterSocket) {
-        emergencyQuit();
+        emergencyQuit("no connection to primary hub");
     }
 
     if (m_quitting) {
@@ -1660,8 +1660,7 @@ bool Hub::checkOutstandingDataConnections()
                 sendManager(rm);
                 removeSlave(add.id());
             } else if (add.id() == Id::MasterHub) {
-                CERR << "terminating: cannot continue without master data connection" << std::endl;
-                emergencyQuit();
+                emergencyQuit("no master data connection");
             }
         }
         m_outstandingDataConnections.erase(it);
@@ -2106,7 +2105,7 @@ bool Hub::handleMessage(const message::Envelope &recv, Hub::socket_ptr sock, mes
             removeSocket(sock);
             if (senderType == Identify::HUB || senderType == Identify::MANAGER) {
                 CERR << "terminating." << std::endl;
-                emergencyQuit();
+                emergencyQuit(std::string("remote socket closed (") + mm.reason() + ")");
                 initiateQuit();
                 return false;
             }
@@ -4887,13 +4886,13 @@ bool Hub::checkChildProcesses(bool emergency, bool onMainThread)
     }
 
     if (hasToQuit) {
-        emergencyQuit();
+        emergencyQuit("manager died");
     }
 
     return oneDead;
 }
 
-void Hub::emergencyQuit()
+void Hub::emergencyQuit(const std::string &reason)
 {
     if (s_interrupt) {
         s_interrupt = false;
@@ -4901,7 +4900,7 @@ void Hub::emergencyQuit()
         return;
     }
 
-    CERR << "forced to quit" << std::endl;
+    CERR << "forced to quit, reason: " << reason << std::endl;
     m_emergency = true;
 
     for (auto lock = std::unique_lock(m_outstandingDataConnectionMutex); !m_outstandingDataConnections.empty();) {
