@@ -8,6 +8,7 @@
 #include <cmath>
 #include <boost/mpi/collectives/all_reduce.hpp>
 #include <boost/mpi/collectives/all_gather.hpp>
+#include <boost/mpi/collectives/all_gatherv.hpp>
 #include <boost/mpi/collectives/broadcast.hpp>
 #include <boost/mpi/operations.hpp>
 #include <boost/serialization/vector.hpp>
@@ -754,49 +755,39 @@ bool Tracer::reduce(int timestep)
         }
 
         // communicate
-        Index num_send = sendlist.size();
-        std::vector<Index> num_transmit(mpisize);
-        std::vector<std::vector<Index>> recvlist(mpisize);
-        mpi::all_gather(comm(), num_send, num_transmit);
+        std::vector<int> num_transmit(mpisize);
+        mpi::all_gather(comm(), int(sendlist.size()), num_transmit);
+        std::vector<Index> transmitlist;
+        mpi::all_gatherv(comm(), sendlist, transmitlist, num_transmit);
+
+        // take over the trajectory state of the particles which changed their owner
+        Index offset = 0;
         for (int mpirank = 0; mpirank < mpisize; mpirank++) {
             Index num_recv = num_transmit[mpirank];
-            if (num_recv == 0)
-                continue;
-
-            auto &curlist = rank() == mpirank ? sendlist : recvlist[mpirank];
-            mpi::broadcast(comm(), curlist, mpirank);
-            assert(curlist.size() == num_recv);
             for (Index i = 0; i < num_recv; i++) {
-                Index p_index = curlist[i];
-                auto p = allParticles[p_index];
+                auto p = allParticles[transmitlist[offset + i]];
                 assert(!p->isTracing(false));
                 p->broadcast(comm(), mpirank);
                 if (p->rank() == rank() && rank() != mpirank) {
                     datarecvlist.emplace_back(p->id(), mpirank);
                 }
             }
+            offset += num_recv;
         }
 
-        // start searching for rank of particles
-        std::vector<Index> transferred;
-        for (int mpirank = 0; mpirank < mpisize; mpirank++) {
-            Index num_recv = num_transmit[mpirank];
-
-            auto &curlist = rank() == mpirank ? sendlist : recvlist[mpirank];
-            assert(curlist.size() == num_recv);
-            for (Index i = 0; i < num_recv; i++) {
-                Index p_index = curlist[i];
-                transferred.push_back(p_index);
-                auto p = allParticles[p_index];
-                p->initiateRankSearch(rank() == mpirank);
-            }
-        }
+        // start searching for rank of particles, this rank knows the ones it hands over itself
+        Index ownFirst = 0;
+        for (int mpirank = 0; mpirank < rank(); mpirank++)
+            ownFirst += num_transmit[mpirank];
+        Index ownLast = ownFirst + num_transmit[rank()];
+        for (Index i = 0; i < transmitlist.size(); i++)
+            allParticles[transmitlist[i]]->initiateRankSearch(i >= ownFirst && i < ownLast);
 
         // agree on responsible rank and update local and active particle lists
         std::vector<int> ranks;
-        batchFinishRankSearch(comm(), allParticles, transferred, ranks);
-        for (Index i = 0; i < transferred.size(); ++i) {
-            auto p = allParticles[transferred[i]];
+        batchFinishRankSearch(comm(), allParticles, transmitlist, ranks);
+        for (Index i = 0; i < transmitlist.size(); ++i) {
+            auto p = allParticles[transmitlist[i]];
             int r = ranks[i];
             if (r < 0) {
                 p->Deactivate(OutOfDomain);
