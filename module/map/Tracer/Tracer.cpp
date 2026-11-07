@@ -36,35 +36,6 @@ typedef Particle<double> ParticleT;
 
 static_assert(Tracer::NumPorts == BlockData::NumFields);
 
-template<class Value>
-bool agree(const boost::mpi::communicator &comm, const Value &value)
-{
-    int mismatch = 0;
-
-    std::vector<Value> vals(comm.size());
-    boost::mpi::all_gather(comm, value, vals);
-    for (int i = 0; i < comm.size(); ++i) {
-        if (value != vals[i])
-            ++mismatch;
-    }
-
-    const int minmismatch = boost::mpi::all_reduce(comm, mismatch, boost::mpi::minimum<int>());
-    int rank = comm.size();
-    if (mismatch > 0 && mismatch == minmismatch)
-        rank = comm.rank();
-    const int minrank = boost::mpi::all_reduce(comm, rank, boost::mpi::minimum<int>());
-    if (comm.rank() == minrank) {
-        std::cerr << "agree on rank " << comm.rank() << ": common value " << value << std::endl;
-        for (int i = 0; i < comm.size(); ++i) {
-            if (vals[i] != value)
-                std::cerr << "\t"
-                          << "agree on rank " << comm.rank() << ": common value " << value << std::endl;
-        }
-    }
-
-    return mismatch == 0;
-}
-
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(
     AddDataKind,
     (None)(ParticleId)(Step)(Time)(StepWidth)(Distance)(TerminationReason)(CellIndex)(BlockIndex)(WallclockDiff))
@@ -579,13 +550,19 @@ bool Tracer::reduce(int timestep)
 
     global.dt_step = m_dtStep->getValue();
     double timestepWidth = 0.;
-    if (m_haveTimeSteps && timestep >= 0) {
+    if (m_haveTimeSteps && timestep >= 0 && m_realtimes.size() > 1) {
         timestepWidth = (m_realtimes.back() - m_realtimes.front()) / (numTimesteps() - 1);
+        if (!std::isfinite(timestepWidth) || timestepWidth <= 0.) {
+            timestepWidth = 0.;
+        }
     }
-    if (!std::isfinite(timestepWidth) || timestepWidth <= 0.) {
-        timestepWidth = global.dt_step;
-    } else {
-        global.dt_step = timestepWidth;
+    std::vector<double> widths;
+    mpi::all_gather(comm(), timestepWidth, widths);
+    for (double width: widths) {
+        if (width > 0.) {
+            global.dt_step = width;
+            break;
+        }
     }
 
     global.computeVector = isConnected(*m_outPort[0]);
