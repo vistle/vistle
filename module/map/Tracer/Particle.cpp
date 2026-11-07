@@ -94,24 +94,18 @@ void Particle<S>::initiateRankSearch(bool skipSearch)
 }
 
 template<class S>
-int Particle<S>::finishRankSearch(boost::mpi::communicator mpi_comm)
+bool Particle<S>::rankSearchHit() const
 {
-    int rank = m_el == InvalidIndex ? -1 : mpi_comm.rank();
-    rank = boost::mpi::all_reduce(mpi_comm, rank, boost::mpi::maximum<int>());
+    return m_el != InvalidIndex;
+}
 
+template<class S>
+int Particle<S>::applyRankSearch(int rank)
+{
     if (m_rank == -1) {
         m_rank = rank;
     }
-
     return rank;
-}
-
-
-template<class S>
-int Particle<S>::searchRank(boost::mpi::communicator mpi_comm)
-{
-    initiateRankSearch();
-    return finishRankSearch(mpi_comm);
 }
 
 template<class S>
