@@ -826,15 +826,15 @@ bool Tracer::reduce(int timestep)
         for (int i = 1; i < mpisize; ++i) {
             // receive locally owned particles
             int src = (rank() - i + size()) % size();
+            Index expected = 0;
             for (const auto &part: datarecvlist) {
-                auto id = part.first;
-                auto rank = part.second;
-                auto p = allParticles[id];
-                assert(p->rank() == this->rank());
-                if (rank == src) {
-                    //std::cerr << "receiving " << p->id() << " from " << src << std::endl;
-                    p->receiveData(comm(), src);
-                }
+                assert(allParticles[part.first]->rank() == this->rank());
+                if (part.second == src)
+                    ++expected;
+            }
+            while (expected > 0) {
+                receiveSegmentTransfer(comm(), src, allParticles);
+                --expected;
             }
         }
         for (int i = 1; i < mpisize; ++i) {

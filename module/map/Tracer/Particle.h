@@ -118,7 +118,7 @@ public:
     void broadcast(boost::mpi::communicator mpi_comm, int root);
     void startSendData(boost::mpi::communicator mpi_comm);
     void finishSendData();
-    void receiveData(boost::mpi::communicator mpi_comm, int rank);
+    void addSegments(SegmentMap &segments); //!< adds trajectory data received from another rank
     void UpdateBlock(BlockData *block);
     StopReason stopReason() const;
     void applyStopReason(int reason); //!< takes over a reason recorded elsewhere, keeping an own one
@@ -238,6 +238,13 @@ void batchFinishRankSearch(const boost::mpi::communicator &mpi_comm,
     batchFinishRankSearchImpl(
         mpi_comm, indices.size(), [&](vistle::Index i) { return particles[indices[i]].get(); }, ranks);
 }
+
+template<class S>
+void receiveSegmentTransfer(const boost::mpi::communicator &mpi_comm, int src,
+                            const std::vector<std::shared_ptr<Particle<S>>> &particles);
+
+extern template void receiveSegmentTransfer<double>(const boost::mpi::communicator &mpi_comm, int src,
+                                                    const std::vector<std::shared_ptr<Particle<double>>> &particles);
 
 extern template class Particle<double>;
 extern template class Particle<float>;

@@ -817,11 +817,35 @@ void load(Archive &ar, SegmentMap &segments, const unsigned int version)
 
 BOOST_SERIALIZATION_SPLIT_FREE(SegmentMap)
 
+namespace {
+
+// trajectory data of a particle, to be sent to the rank which assembles the complete trajectory
+struct SegmentTransfer {
+    vistle::Index m_id = vistle::InvalidIndex;
+    SegmentMap m_segments;
+
+    // just for Boost.MPI
+    template<class Archive>
+    void serialize(Archive &ar, const unsigned int version)
+    {
+        ar &m_id;
+        ar &m_segments;
+    }
+};
+
+//! tag of the trajectory transfers, clear of the small tags of the framework and of MPI_TAG_UB
+const int SegmentTransferTag = 30000;
+
+} // namespace
+
 template<class S>
 void Particle<S>::startSendData(boost::mpi::communicator mpi_comm)
 {
     assert(rank() != mpi_comm.rank());
-    m_requests.emplace_back(mpi_comm.isend(rank(), id(), m_segments));
+    SegmentTransfer transfer;
+    transfer.m_id = id();
+    transfer.m_segments = m_segments;
+    m_requests.emplace_back(mpi_comm.isend(rank(), SegmentTransferTag, transfer));
 }
 
 template<class S>
@@ -833,10 +857,8 @@ void Particle<S>::finishSendData()
 }
 
 template<class S>
-void Particle<S>::receiveData(boost::mpi::communicator mpi_comm, int rank)
+void Particle<S>::addSegments(SegmentMap &segments)
 {
-    SegmentMap segments;
-    mpi_comm.recv(rank, id(), segments);
     for (auto &segpair: segments) {
         auto &seg = segpair.second;
         m_segments[seg->m_num] = seg;
@@ -846,7 +868,25 @@ void Particle<S>::receiveData(boost::mpi::communicator mpi_comm, int rank)
         }
         assert(seg->m_id == id());
     }
+    segments.clear();
 }
+
+template<class S>
+void receiveSegmentTransfer(const boost::mpi::communicator &mpi_comm, int src,
+                            const std::vector<std::shared_ptr<Particle<S>>> &particles)
+{
+    SegmentTransfer transfer;
+    mpi_comm.recv(src, SegmentTransferTag, transfer);
+    if (transfer.m_id >= particles.size()) {
+        std::cerr << "rank " << mpi_comm.rank() << ": rank " << src << " sent the trajectory of particle "
+                  << transfer.m_id << ", but there are only " << particles.size() << " particles" << std::endl;
+        return;
+    }
+    particles[transfer.m_id]->addSegments(transfer.m_segments);
+}
+
+template void receiveSegmentTransfer<double>(const boost::mpi::communicator &mpi_comm, int src,
+                                             const std::vector<std::shared_ptr<Particle<double>>> &particles);
 
 template<class S>
 void Particle<S>::UpdateBlock(BlockData *block)
