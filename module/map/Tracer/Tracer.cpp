@@ -694,10 +694,13 @@ bool Tracer::reduce(int timestep)
         auto particle = allParticles[idx];
         particle->initiateRankSearch();
     }
+    // batch search in order to avoid per-particle latency
+    std::vector<int> launchRanks;
+    batchFinishRankSearch(comm(), allParticles, launchRanks);
     for (Index idx = 0; idx < allParticles.size(); ++idx) {
         auto particle = allParticles[idx];
 
-        int r = particle->finishRankSearch(comm());
+        int r = launchRanks[idx];
         if (r < 0) {
             particle->Deactivate(InitiallyOutOfDomain);
         } else if (rank() == r) {
@@ -775,6 +778,7 @@ bool Tracer::reduce(int timestep)
         }
 
         // start searching for rank of particles
+        std::vector<Index> transferred;
         for (int mpirank = 0; mpirank < mpisize; mpirank++) {
             Index num_recv = num_transmit[mpirank];
 
@@ -782,26 +786,22 @@ bool Tracer::reduce(int timestep)
             assert(curlist.size() == num_recv);
             for (Index i = 0; i < num_recv; i++) {
                 Index p_index = curlist[i];
+                transferred.push_back(p_index);
                 auto p = allParticles[p_index];
                 p->initiateRankSearch(rank() == mpirank);
             }
         }
 
         // agree on responsible rank and update local and active particle lists
-        for (int mpirank = 0; mpirank < mpisize; mpirank++) {
-            Index num_recv = num_transmit[mpirank];
-
-            auto &curlist = rank() == mpirank ? sendlist : recvlist[mpirank];
-            assert(curlist.size() == num_recv);
-            for (Index i = 0; i < num_recv; i++) {
-                Index p_index = curlist[i];
-                auto p = allParticles[p_index];
-                int r = p->finishRankSearch(comm());
-                if (r < 0) {
-                    p->Deactivate(OutOfDomain);
-                } else if (r == rank()) {
-                    localParticles.emplace(p);
-                }
+        std::vector<int> ranks;
+        batchFinishRankSearch(comm(), allParticles, transferred, ranks);
+        for (Index i = 0; i < transferred.size(); ++i) {
+            auto p = allParticles[transferred[i]];
+            int r = ranks[i];
+            if (r < 0) {
+                p->Deactivate(OutOfDomain);
+            } else if (r == rank()) {
+                localParticles.emplace(p);
             }
         }
 

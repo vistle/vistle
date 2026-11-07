@@ -1,11 +1,14 @@
 #ifndef VISTLE_TRACER_PARTICLE_H
 #define VISTLE_TRACER_PARTICLE_H
 
+#include <algorithm>
 #include <vector>
 #include <future>
 #include <iosfwd>
 
 #include <boost/mpi/communicator.hpp>
+#include <boost/mpi/collectives/all_reduce.hpp>
+#include <boost/mpi/inplace.hpp>
 
 #include <boost/serialization/split_free.hpp>
 
@@ -119,9 +122,9 @@ public:
     void UpdateBlock(BlockData *block);
     StopReason stopReason() const;
     void enableCelltree(bool value);
-    int searchRank(boost::mpi::communicator mpi_comm); //< returns MPI rank of node where tracing occurs
     void initiateRankSearch(bool skipSearch = false);
-    int finishRankSearch(boost::mpi::communicator mpi_comm); //< returns MPI rank of node where tracing occurs
+    bool rankSearchHit() const; //!< position lies in a cell of a block local to this rank
+    int applyRankSearch(int rank); //!< takes over unresolved owning rank, returns rank where tracing continues
     void startTracing();
     bool isTracing(bool wait);
     bool madeProgress() const;
@@ -186,6 +189,45 @@ private:
 
     std::vector<boost::mpi::request> m_requests;
 };
+
+// agree in one batch on which rank tracing a particle shall continue
+template<class GetParticle>
+void batchFinishRankSearchImpl(const boost::mpi::communicator &mpi_comm, vistle::Index count, GetParticle getParticle,
+                               std::vector<int> &ranks)
+{
+    const vistle::Index batch = 65536; // keeps a single collective from growing too large
+
+    ranks.resize(count);
+    std::vector<int> votes;
+    for (vistle::Index begin = 0; begin < count; begin += batch) {
+        const int n = int(std::min(batch, count - begin));
+        votes.resize(n);
+        for (int i = 0; i < n; ++i)
+            votes[i] = getParticle(begin + i)->rankSearchHit() ? mpi_comm.rank() : -1;
+
+        boost::mpi::all_reduce(mpi_comm, boost::mpi::inplace(votes.data()), n, boost::mpi::maximum<int>());
+
+        for (int i = 0; i < n; ++i)
+            ranks[begin + i] = getParticle(begin + i)->applyRankSearch(votes[i]);
+    }
+}
+
+template<class S>
+void batchFinishRankSearch(const boost::mpi::communicator &mpi_comm,
+                           const std::vector<std::shared_ptr<Particle<S>>> &particles, std::vector<int> &ranks)
+{
+    batchFinishRankSearchImpl(
+        mpi_comm, particles.size(), [&](vistle::Index i) { return particles[i].get(); }, ranks);
+}
+
+template<class S>
+void batchFinishRankSearch(const boost::mpi::communicator &mpi_comm,
+                           const std::vector<std::shared_ptr<Particle<S>>> &particles,
+                           const std::vector<vistle::Index> &indices, std::vector<int> &ranks)
+{
+    batchFinishRankSearchImpl(
+        mpi_comm, indices.size(), [&](vistle::Index i) { return particles[indices[i]].get(); }, ranks);
+}
 
 extern template class Particle<double>;
 extern template class Particle<float>;
