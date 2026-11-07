@@ -9,6 +9,7 @@
 #include <boost/mpi/collectives/all_reduce.hpp>
 #include <boost/mpi/collectives/all_gather.hpp>
 #include <boost/mpi/collectives/all_gatherv.hpp>
+#include <boost/mpi/collectives/all_to_all.hpp>
 #include <boost/mpi/collectives/broadcast.hpp>
 #include <boost/mpi/operations.hpp>
 #include <boost/serialization/vector.hpp>
@@ -714,9 +715,16 @@ bool Tracer::reduce(int timestep)
         }
     }
 
-    std::vector<Index> datasendlist;
-    std::vector<std::pair<Index, int>> datarecvlist; // particle id, source mpi rank
     const int mpisize = comm().size();
+    // the segments traced on this rank go to the rank assembling the geometry of their
+    // particle as soon as they are finished
+    SegmentRouter router(comm(), this);
+    Index receivedBatches = 0;
+    router.setDrain([&]() {
+        const Index num = pollSegmentBatches(comm(), allParticles);
+        receivedBatches += num;
+        return num;
+    });
     Index numActiveMax = 0;
     do {
         std::vector<Index> sendlist;
@@ -738,7 +746,7 @@ bool Tracer::reduce(int timestep)
                     sendlist.push_back(particle->id());
                 }
                 activeParticles.erase(it);
-                particle->finishSegment();
+                particle->finishSegment(router);
             }
         }
 
@@ -768,9 +776,6 @@ bool Tracer::reduce(int timestep)
                 auto p = allParticles[transmitlist[offset + i]];
                 assert(!p->isTracing(false));
                 p->broadcast(comm(), mpirank);
-                if (p->rank() == rank() && rank() != mpirank) {
-                    datarecvlist.emplace_back(p->id(), mpirank);
-                }
             }
             offset += num_recv;
         }
@@ -796,49 +801,30 @@ bool Tracer::reduce(int timestep)
             }
         }
 
+        receivedBatches += pollSegmentBatches(comm(), allParticles);
+        router.flush(true);
+
         numActiveMax = mpi::all_reduce(comm(), activeParticles.size() + localParticles.size(), mpi::maximum<Index>());
 
-        std::copy(sendlist.begin(), sendlist.end(), std::back_inserter(datasendlist));
     } while (numActiveMax > 0);
 
     if (mpisize > 1) {
-        // iterate over all other ranks
-        for (int i = 1; i < mpisize; ++i) {
-            // start sending particles to owning rank
-            int dst = (rank() + i) % size();
-            for (auto id: datasendlist) {
-                auto p = allParticles[id];
-                if (p->rank() == dst) {
-                    //std::cerr << "initiate sending " << p->id() << " to " << dst << std::endl;
-                    p->startSendData(comm());
-                }
-            }
+        // exchange everything still buffered
+        router.sendAll();
+        std::vector<int> expected;
+        mpi::all_to_all(comm(), router.numSent(), expected);
+
+        Index missing = 0;
+        for (int num: expected)
+            missing += num;
+        if (receivedBatches > missing) {
+            sendError("took %lu trajectory batches, but the ranks put only %lu on the wire",
+                      (unsigned long)receivedBatches, (unsigned long)missing);
+            receivedBatches = missing;
         }
-        for (int i = 1; i < mpisize; ++i) {
-            // receive locally owned particles
-            int src = (rank() - i + size()) % size();
-            Index expected = 0;
-            for (const auto &part: datarecvlist) {
-                assert(allParticles[part.first]->rank() == this->rank());
-                if (part.second == src)
-                    ++expected;
-            }
-            while (expected > 0) {
-                receiveSegmentTransfer(comm(), src, allParticles);
-                --expected;
-            }
-        }
-        for (int i = 1; i < mpisize; ++i) {
-            // finish sending particles to owning rank
-            int dst = (rank() + i) % size();
-            for (auto id: datasendlist) {
-                auto p = allParticles[id];
-                if (p->rank() == dst) {
-                    //std::cerr << "finish sending " << p->id() << " to " << dst << std::endl;
-                    p->finishSendData();
-                }
-            }
-        }
+        if (missing > receivedBatches)
+            receiveSegmentBatches(comm(), allParticles, missing - receivedBatches);
+        router.finish();
     }
 
     Scalar maxTime = 0;
