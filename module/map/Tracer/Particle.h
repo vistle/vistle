@@ -121,6 +121,7 @@ public:
     void receiveData(boost::mpi::communicator mpi_comm, int rank);
     void UpdateBlock(BlockData *block);
     StopReason stopReason() const;
+    void applyStopReason(int reason); //!< takes over a reason recorded elsewhere, keeping an own one
     void enableCelltree(bool value);
     void initiateRankSearch(bool skipSearch = false);
     bool rankSearchHit() const; //!< position lies in a cell of a block local to this rank
@@ -190,26 +191,35 @@ private:
     std::vector<boost::mpi::request> m_requests;
 };
 
+// reduce one value per particle with a single collective per batch
+template<class GetValue, class Op>
+void batchReduceValues(const boost::mpi::communicator &mpi_comm, vistle::Index count, GetValue getValue, Op op,
+                       std::vector<int> &values)
+{
+    const vistle::Index batch = 65536; // keeps a single collective from growing too large
+
+    values.resize(count);
+    for (vistle::Index begin = 0; begin < count; begin += batch) {
+        const int n = int(std::min(batch, count - begin));
+        int *value = values.data() + begin;
+        for (int i = 0; i < n; ++i)
+            value[i] = getValue(begin + i);
+
+        boost::mpi::all_reduce(mpi_comm, boost::mpi::inplace(value), n, op);
+    }
+}
+
 // agree in one batch on which rank tracing a particle shall continue
 template<class GetParticle>
 void batchFinishRankSearchImpl(const boost::mpi::communicator &mpi_comm, vistle::Index count, GetParticle getParticle,
                                std::vector<int> &ranks)
 {
-    const vistle::Index batch = 65536; // keeps a single collective from growing too large
+    batchReduceValues(
+        mpi_comm, count, [&](vistle::Index i) { return getParticle(i)->rankSearchHit() ? mpi_comm.rank() : -1; },
+        boost::mpi::maximum<int>(), ranks);
 
-    ranks.resize(count);
-    std::vector<int> votes;
-    for (vistle::Index begin = 0; begin < count; begin += batch) {
-        const int n = int(std::min(batch, count - begin));
-        votes.resize(n);
-        for (int i = 0; i < n; ++i)
-            votes[i] = getParticle(begin + i)->rankSearchHit() ? mpi_comm.rank() : -1;
-
-        boost::mpi::all_reduce(mpi_comm, boost::mpi::inplace(votes.data()), n, boost::mpi::maximum<int>());
-
-        for (int i = 0; i < n; ++i)
-            ranks[begin + i] = getParticle(begin + i)->applyRankSearch(votes[i]);
-    }
+    for (vistle::Index i = 0; i < count; ++i)
+        getParticle(i)->applyRankSearch(ranks[i]);
 }
 
 template<class S>
