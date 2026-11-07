@@ -5,12 +5,14 @@
 #include <vector>
 #include <future>
 #include <iosfwd>
+#include <cstddef>
+#include <deque>
+#include <functional>
+#include <map>
 
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi/collectives/all_reduce.hpp>
 #include <boost/mpi/inplace.hpp>
-
-#include <boost/serialization/split_free.hpp>
 
 #include <vistle/core/index.h>
 #include <vistle/core/lines.h>
@@ -46,6 +48,9 @@ struct Segment {
     std::vector<std::vector<vistle::Scalar>> m_scalars; //!< previous scalars
 
     Segment(int num = 0): m_num(num), m_startStep(vistle::InvalidIndex) {}
+
+    // the number of bytes to transmit for this segment, for estimating how many segments tobatch
+    size_t numBytes() const;
 
     void simplify(double relerr);
     //! compute relative error when interpolating for index i from i0 and i1
@@ -92,6 +97,56 @@ struct Segment {
 
 typedef std::map<int, std::shared_ptr<Segment>> SegmentMap;
 
+// collect a batch of segments for transmission to one rank
+struct SegmentBatch {
+    std::vector<vistle::Index> m_id; //!< particle the segment at the same index belongs to
+    std::vector<Segment> m_segments;
+    size_t m_bytes = 0; //!< the total size of the data segments to be sent
+
+    void add(vistle::Index id, Segment &&segment);
+
+    // just for Boost.MPI
+    template<class Archive>
+    void serialize(Archive &ar, const unsigned int version)
+    {
+        ar &m_id;
+        ar &m_segments;
+        ar &m_bytes;
+    }
+};
+
+// collect segments and send them to the rank assembling the trajectory of a particle
+class SegmentRouter {
+public:
+    SegmentRouter(const boost::mpi::communicator &comm, const void *client);
+
+    //! called to take the batches which arrived, while no batch of ours can go out
+    void setDrain(std::function<vistle::Index()> drain);
+    void add(vistle::Index id, int dst, Segment &&segment);
+    void flush(bool force = false); //!< send the batches which grew big enough, all of them when forced
+    void sendAll(); //!< get every remaining batch out, once the tracing is over
+    void finish(); //!< wait for the transfers to be taken
+    const std::vector<int> &numSent() const; //!< batches put on the wire per destination
+
+private:
+    struct Pending {
+        boost::mpi::request m_request;
+        size_t m_bytes = 0;
+    };
+
+    void sendBatch(int dst);
+    void reap();
+    void waitPending();
+
+    const boost::mpi::communicator &m_comm;
+    const void *m_client; //!< stable key for the waiting between two batches
+    std::map<int, SegmentBatch> m_batches; //!< segments per destination not sent yet
+    std::deque<Pending> m_pending; //!< batches in flight, oldest first
+    size_t m_bytes = 0; //!< bytes of the batches in flight
+    std::vector<int> m_sent; //!< batches already sent per destination
+    std::function<vistle::Index()> m_drain; //!< takes the batches which arrived
+};
+
 template<class S>
 class Particle {
     friend class Integrator<S>;
@@ -116,9 +171,7 @@ public:
     void EmitData();
     bool Step();
     void broadcast(boost::mpi::communicator mpi_comm, int root);
-    void startSendData(boost::mpi::communicator mpi_comm);
-    void finishSendData();
-    void addSegments(SegmentMap &segments); //!< adds trajectory data received from another rank
+    void addSegment(Segment &&segment); //!< adds trajectory data received from another rank
     void UpdateBlock(BlockData *block);
     StopReason stopReason() const;
     void applyStopReason(int reason); //!< takes over a reason recorded elsewhere, keeping an own one
@@ -130,7 +183,7 @@ public:
     bool isTracing(bool wait);
     bool madeProgress() const;
     bool trace();
-    void finishSegment();
+    void finishSegment(SegmentRouter &router);
     void fetchSegments(Particle &other); //! move segments from other particle to this one
     void addToOutput();
     vistle::Scalar time() const;
@@ -160,7 +213,7 @@ private:
     vistle::Index m_segmentStart; //! number of step where this segment started
 
     std::shared_ptr<Segment> m_currentSegment;
-    SegmentMap m_segments;
+    SegmentMap m_segments; //!< finished segments, written only by the main thread
 
     BlockData *m_block; //!< current block for current particle position
     vistle::Index m_el; //!< index of cell for current particle position
@@ -187,8 +240,6 @@ private:
         ar &m_segment;
         ar &m_wallclock;
     }
-
-    std::vector<boost::mpi::request> m_requests;
 };
 
 // reduce one value per particle with a single collective per batch
@@ -240,11 +291,20 @@ void batchFinishRankSearch(const boost::mpi::communicator &mpi_comm,
 }
 
 template<class S>
-void receiveSegmentTransfer(const boost::mpi::communicator &mpi_comm, int src,
-                            const std::vector<std::shared_ptr<Particle<S>>> &particles);
+vistle::Index pollSegmentBatches(const boost::mpi::communicator &mpi_comm,
+                                 const std::vector<std::shared_ptr<Particle<S>>> &particles);
 
-extern template void receiveSegmentTransfer<double>(const boost::mpi::communicator &mpi_comm, int src,
-                                                    const std::vector<std::shared_ptr<Particle<double>>> &particles);
+template<class S>
+void receiveSegmentBatches(const boost::mpi::communicator &mpi_comm,
+                           const std::vector<std::shared_ptr<Particle<S>>> &particles, vistle::Index num);
+
+extern template vistle::Index
+pollSegmentBatches<double>(const boost::mpi::communicator &mpi_comm,
+                           const std::vector<std::shared_ptr<Particle<double>>> &particles);
+
+extern template void receiveSegmentBatches<double>(const boost::mpi::communicator &mpi_comm,
+                                                   const std::vector<std::shared_ptr<Particle<double>>> &particles,
+                                                   vistle::Index num);
 
 extern template class Particle<double>;
 extern template class Particle<float>;

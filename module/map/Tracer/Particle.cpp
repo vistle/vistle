@@ -6,6 +6,7 @@
 #include <boost/serialization/vector.hpp>
 #include <vistle/core/vec.h>
 #include <vistle/util/math.h>
+#include <vistle/util/sleep.h>
 #include <vistle/util/threadname.h>
 #include "Tracer.h"
 #include "Integrator.h"
@@ -384,10 +385,14 @@ bool Particle<S>::trace()
 }
 
 template<class S>
-void Particle<S>::finishSegment()
+void Particle<S>::finishSegment(SegmentRouter &router)
 {
     if (m_currentSegment) {
-        m_segments[m_currentSegment->m_num] = m_currentSegment;
+        // immediately send it to the assembling the trajectory for this particle
+        if (m_rank >= 0 && m_rank != m_global.module->rank())
+            router.add(m_id, m_rank, std::move(*m_currentSegment));
+        else
+            m_segments[m_currentSegment->m_num] = m_currentSegment;
         m_currentSegment.reset();
     }
     UpdateBlock(nullptr);
@@ -788,105 +793,181 @@ void Particle<S>::broadcast(boost::mpi::communicator mpi_comm, int root)
     m_progress = false;
 }
 
-namespace boost {
-namespace serialization {
-
-template<class Archive>
-void save(Archive &ar, const SegmentMap &segments, const unsigned int version)
-{
-    int numsegs = segments.size();
-    ar &numsegs;
-    for (auto &seg: segments)
-        ar &*seg.second;
-}
-
-template<class Archive>
-void load(Archive &ar, SegmentMap &segments, const unsigned int version)
-{
-    int numsegs = 0;
-    ar &numsegs;
-    for (int i = 0; i < numsegs; ++i) {
-        Segment seg;
-        ar &seg;
-        segments.emplace(seg.m_num, std::make_shared<Segment>(std::move(seg)));
-    }
-}
-
-} // namespace serialization
-} // namespace boost
-
-BOOST_SERIALIZATION_SPLIT_FREE(SegmentMap)
-
 namespace {
 
-// trajectory data of a particle, to be sent to the rank which assembles the complete trajectory
-struct SegmentTransfer {
-    vistle::Index m_id = vistle::InvalidIndex;
-    SegmentMap m_segments;
+//! how large a batch should grow before being sent
+const size_t SegmentBatchBytes = 1 << 20;
 
-    // just for Boost.MPI
-    template<class Archive>
-    void serialize(Archive &ar, const unsigned int version)
-    {
-        ar &m_id;
-        ar &m_segments;
-    }
-};
+//! bytes a rank keeps on the wire before it takes what comes in instead of putting more out
+const size_t SegmentPendingBytes = 8 << 20;
 
 //! tag of the trajectory transfers, clear of the small tags of the framework and of MPI_TAG_UB
 const int SegmentTransferTag = 30000;
 
+template<class S>
+void addSegmentBatch(SegmentBatch &batch, const std::vector<std::shared_ptr<Particle<S>>> &particles)
+{
+    for (size_t s = 0; s < batch.m_segments.size(); ++s) {
+        const Index id = batch.m_id[s];
+        if (id >= particles.size()) {
+            std::cerr << "a segment batch names particle " << id << ", but there are only " << particles.size()
+                      << " particles" << std::endl;
+            continue;
+        }
+        particles[id]->addSegment(std::move(batch.m_segments[s]));
+    }
+}
+
 } // namespace
 
-template<class S>
-void Particle<S>::startSendData(boost::mpi::communicator mpi_comm)
+void SegmentBatch::add(Index id, Segment &&segment)
 {
-    assert(rank() != mpi_comm.rank());
-    SegmentTransfer transfer;
-    transfer.m_id = id();
-    transfer.m_segments = m_segments;
-    m_requests.emplace_back(mpi_comm.isend(rank(), SegmentTransferTag, transfer));
+    m_bytes += segment.numBytes();
+    m_id.push_back(id);
+    m_segments.push_back(std::move(segment));
 }
 
-template<class S>
-void Particle<S>::finishSendData()
+SegmentRouter::SegmentRouter(const boost::mpi::communicator &comm, const void *client)
+: m_comm(comm), m_client(client), m_sent(comm.size(), 0)
+{}
+
+void SegmentRouter::setDrain(std::function<Index()> drain)
 {
-    mpi::wait_all(m_requests.begin(), m_requests.end());
-    m_requests.clear();
-    m_segments.clear();
+    m_drain = std::move(drain);
 }
 
-template<class S>
-void Particle<S>::addSegments(SegmentMap &segments)
+void SegmentRouter::add(Index id, int dst, Segment &&segment)
 {
-    for (auto &segpair: segments) {
-        auto &seg = segpair.second;
-        m_segments[seg->m_num] = seg;
-        if (seg->m_id != id()) {
-            std::cerr << "Particle " << id() << ": added segment " << seg->m_num << " with " << seg->m_xhist.size()
-                      << " points for particle " << seg->m_id << std::endl;
-        }
-        assert(seg->m_id == id());
-    }
-    segments.clear();
+    SegmentBatch &batch = m_batches[dst];
+    batch.add(id, std::move(segment));
+    if (batch.m_bytes >= SegmentBatchBytes)
+        flush();
 }
 
-template<class S>
-void receiveSegmentTransfer(const boost::mpi::communicator &mpi_comm, int src,
-                            const std::vector<std::shared_ptr<Particle<S>>> &particles)
+void SegmentRouter::flush(bool force)
 {
-    SegmentTransfer transfer;
-    mpi_comm.recv(src, SegmentTransferTag, transfer);
-    if (transfer.m_id >= particles.size()) {
-        std::cerr << "rank " << mpi_comm.rank() << ": rank " << src << " sent the trajectory of particle "
-                  << transfer.m_id << ", but there are only " << particles.size() << " particles" << std::endl;
+    reap();
+    // don't send if receiver is not ready - avoids deadlock in collective communication
+    if (m_bytes > SegmentPendingBytes)
         return;
+
+    std::vector<int> destinations;
+    for (auto &entry: m_batches) {
+        if (entry.second.m_bytes >= SegmentBatchBytes || force)
+            destinations.push_back(entry.first);
     }
-    particles[transfer.m_id]->addSegments(transfer.m_segments);
+    for (int dst: destinations)
+        sendBatch(dst);
 }
 
-template void receiveSegmentTransfer<double>(const boost::mpi::communicator &mpi_comm, int src,
-                                             const std::vector<std::shared_ptr<Particle<double>>> &particles);
+void SegmentRouter::sendAll()
+{
+    // every rank gets here once its tracing is over, and takes the batches of its peers
+    // while its own cannot go out, so no rank ends up waiting for one which waits for it
+    while (!m_batches.empty()) {
+        reap();
+        if (m_bytes < SegmentPendingBytes || !m_drain) {
+            sendBatch(m_batches.begin()->first);
+            continue;
+        }
+        const Index taken = m_drain ? m_drain() : 0;
+        adaptive_wait(taken > 0, m_client);
+    }
+}
+
+void SegmentRouter::finish()
+{
+    waitPending();
+}
+
+const std::vector<int> &SegmentRouter::numSent() const
+{
+    return m_sent;
+}
+
+void SegmentRouter::sendBatch(int dst)
+{
+    auto entry = m_batches.find(dst);
+    if (entry == m_batches.end() || entry->second.m_segments.empty())
+        return;
+
+    // the batch is serialized right away and lives on in the request, so it leaves here
+    SegmentBatch batch;
+    std::swap(entry->second, batch);
+    m_batches.erase(entry);
+
+    m_bytes += batch.m_bytes;
+    ++m_sent[dst];
+    m_pending.push_back(Pending{m_comm.isend(dst, SegmentTransferTag, batch), batch.m_bytes});
+}
+
+void SegmentRouter::reap()
+{
+    // the batches are not taken in the order in which they went out, so all of them are
+    // tested rather than only the oldest one
+    for (auto it = m_pending.begin(); it != m_pending.end();) {
+        if (auto stat = it->m_request.test()) {
+            m_bytes -= it->m_bytes;
+            it = m_pending.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+
+void SegmentRouter::waitPending()
+{
+    while (!m_pending.empty()) {
+        m_pending.front().m_request.wait();
+        m_pending.pop_front();
+    }
+    m_bytes = 0;
+}
+
+template<class S>
+void Particle<S>::addSegment(Segment &&segment)
+{
+    if (segment.m_id != id()) {
+        std::cerr << "Particle " << id() << ": received segment " << segment.m_num << " with " << segment.m_xhist.size()
+                  << " points for particle " << segment.m_id << std::endl;
+    }
+    assert(segment.m_id == id());
+    m_segments[segment.m_num] = std::make_shared<Segment>(std::move(segment));
+}
+
+template<class S>
+Index pollSegmentBatches(const boost::mpi::communicator &mpi_comm,
+                         const std::vector<std::shared_ptr<Particle<S>>> &particles)
+{
+    Index num = 0;
+    while (auto stat = mpi_comm.iprobe(boost::mpi::any_source, SegmentTransferTag)) {
+        SegmentBatch batch;
+        mpi_comm.recv(stat->source(), SegmentTransferTag, batch);
+        addSegmentBatch(batch, particles);
+        ++num;
+    }
+    return num;
+}
+
+template<class S>
+void receiveSegmentBatches(const boost::mpi::communicator &mpi_comm,
+                           const std::vector<std::shared_ptr<Particle<S>>> &particles, Index num)
+{
+    while (num > 0) {
+        // it does not matter who sent a batch, its ids say which particles it belongs to
+        const boost::mpi::status stat = mpi_comm.probe(boost::mpi::any_source, SegmentTransferTag);
+        SegmentBatch batch;
+        mpi_comm.recv(stat.source(), SegmentTransferTag, batch);
+        addSegmentBatch(batch, particles);
+        --num;
+    }
+}
+
+template Index pollSegmentBatches<double>(const boost::mpi::communicator &mpi_comm,
+                                          const std::vector<std::shared_ptr<Particle<double>>> &particles);
+
+template void receiveSegmentBatches<double>(const boost::mpi::communicator &mpi_comm,
+                                            const std::vector<std::shared_ptr<Particle<double>>> &particles, Index num);
 
 template<class S>
 void Particle<S>::UpdateBlock(BlockData *block)
@@ -991,6 +1072,23 @@ double Segment::interpolationError(Index i0, Index i1, Index i) const
     }
 
     return err;
+}
+
+size_t Segment::numBytes() const
+{
+    // what every recorded field weighs, the ones left out simply count nothing
+    size_t bytes = m_xhist.size() * sizeof(vistle::Vector3);
+    bytes += m_vhist.size() * sizeof(vistle::Vector3);
+    bytes += m_stepWidth.size() * sizeof(vistle::Scalar);
+    bytes += m_steps.size() * sizeof(vistle::Index);
+    bytes += m_times.size() * sizeof(vistle::Scalar);
+    bytes += m_dists.size() * sizeof(vistle::Scalar);
+    bytes += m_cellIndex.size() * sizeof(vistle::Index);
+    bytes += m_blockIndex.size() * sizeof(vistle::Index);
+    bytes += m_wallclock.size() * sizeof(vistle::Scalar);
+    for (auto &s: m_scalars)
+        bytes += s.size() * sizeof(vistle::Scalar);
+    return bytes;
 }
 
 void Segment::simplify(double relerr)
