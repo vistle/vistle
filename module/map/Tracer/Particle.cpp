@@ -73,6 +73,15 @@ StopReason Particle<S>::stopReason() const
 }
 
 template<class S>
+void Particle<S>::applyStopReason(int reason)
+{
+    // if the particle is stopped, we receive a reason other than StillActive
+    if (m_stopReason == StillActive) {
+        m_stopReason = (StopReason)reason;
+    }
+}
+
+template<class S>
 void Particle<S>::enableCelltree(bool value)
 {
     m_useCelltree = value;

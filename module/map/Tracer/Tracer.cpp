@@ -1003,6 +1003,15 @@ bool Tracer::reduce(int timestep)
         }
     }
 
+    // only the rank which stopped a particle knows why, and the reason is output and counted by
+    // another one, so the ranks settle on the reason each particle stopped with
+    std::vector<int> stopReasons;
+    batchReduceValues(
+        comm(), allParticles.size(), [&](Index i) { return (int)allParticles[i]->stopReason(); }, mpi::maximum<int>(),
+        stopReasons);
+    for (Index idx = 0; idx < allParticles.size(); ++idx)
+        allParticles[idx]->applyStopReason(stopReasons[idx]);
+
     for (auto &p: allParticles) {
         if (rank() == 0)
             ++stopReasonCount[p->stopReason()];
