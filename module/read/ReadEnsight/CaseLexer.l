@@ -43,6 +43,12 @@ CaseLexer::~CaseLexer() = default;
 
 #define CERR std::cerr << "CaseLexer: "
 
+// flex 2.6.5 calls yypanic() for the internal jam rule but only defines it for
+// C scanners, so route it through the fatal error hook the C++ skeleton provides
+#ifndef yypanic
+#define yypanic(msg) YY_FATAL_ERROR(msg)
+#endif
+
 #ifdef NDEBUG
 #define YY_USER_ACTION \
 driver.setLineNumber(yylineno); \
