@@ -77,7 +77,7 @@ jobs:
         libqt5scripttools5
         libqt5svg5-dev
         libqt5opengl5-dev
-        libqt5webkit5-dev
+        libqt6webenginecore6
         libpng-dev
         libopenscenegraph-dev
         libtbb-dev
@@ -107,7 +107,7 @@ jobs:
         libzstd-dev
         libzip-dev
         libarchive-dev
-        libbotan-2-dev
+        libbotan-3-dev
         libvtk9-dev
         libnetcdf-mpi-dev
         libembree-dev
