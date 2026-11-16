@@ -6,6 +6,8 @@
 #include <vistle/config/access.h>
 #include <vistle/config/value.h>
 #include <cassert>
+#include <tuple>
+#include <utility>
 
 #include "renderobject.h"
 
@@ -192,6 +194,99 @@ void RenderObject::updateBounds()
     computeBounds();
 }
 
+namespace {
+
+std::pair<Vector3, Vector3> computeTransformedUnitCubeBounds(const Matrix4 &T, bool identity)
+{
+    const Scalar smax = std::numeric_limits<Scalar>::max();
+    Vector3 rMin(smax, smax, smax), rMax(-smax, -smax, -smax);
+    for (int i = 0; i < 8; ++i) {
+        Vector3 v(0, 0, 0);
+        if (i % 2) {
+            v += Vector3(1, 0, 0);
+        } else {
+            v -= Vector3(1, 0, 0);
+        }
+        if ((i / 2) % 2) {
+            v += Vector3(0, 1, 0);
+        } else {
+            v -= Vector3(0, 1, 0);
+        }
+        if ((i / 4) % 2) {
+            v += Vector3(0, 0, 1);
+        } else {
+            v -= Vector3(0, 0, 1);
+        }
+        if (!identity)
+            v = transformPoint(T, v);
+        for (int c = 0; c < 3; ++c) {
+            rMin[c] = std::min(rMin[c], v[c]);
+            rMax[c] = std::max(rMax[c], v[c]);
+        }
+    }
+    return {rMin, rMax};
+}
+
+std::pair<Vector3, Vector3> computeBoundsForElementBasedRadii(Indexed::const_ptr indexed, Coords::const_ptr coords,
+                                                              const Scalar *radii, const Vector3 &rMin,
+                                                              const Vector3 &rMax)
+{
+    const Scalar smax = std::numeric_limits<Scalar>::max();
+    Vector3 bMin(smax, smax, smax), bMax(-smax, -smax, -smax);
+
+    Matrix4 T = indexed->getTransform();
+    bool identity = T.isIdentity();
+
+    auto el = indexed->el().data();
+    auto cl = indexed->cl().data();
+    const Scalar *x = coords->x(0), *y = coords->x(1), *z = coords->x(2);
+    for (Index i = 0; i < indexed->getNumElements(); ++i) {
+        Scalar r = radii[i];
+
+        for (Index j = el[i]; j < el[i + 1]; ++j) {
+            // if cl is empty, it implicitly becomes [0,1,2,...]), so in that case
+            // we can simply use j as the index into the coords array
+            Index coordIdx = (indexed->cl().size() > 0) ? cl[j] : j;
+            Vector3 p(x[coordIdx], y[coordIdx], z[coordIdx]);
+            if (!identity)
+                p = transformPoint(T, p);
+            for (int c = 0; c < 3; ++c) {
+                bMin[c] = std::min(bMin[c], p[c] + r * rMin[c]);
+                bMax[c] = std::max(bMax[c], p[c] + r * rMax[c]);
+            }
+        }
+    }
+    return {bMin, bMax};
+}
+
+std::pair<Vector3, Vector3> computeBoundsForVertexBasedRadii(Object::const_ptr geometry, Coords::const_ptr coords,
+                                                             const Scalar *radii, const Vector3 &rMin,
+                                                             const Vector3 &rMax)
+{
+    const Scalar smax = std::numeric_limits<Scalar>::max();
+    Vector3 bMin(smax, smax, smax), bMax(-smax, -smax, -smax);
+
+    Matrix4 T = geometry->getTransform();
+    bool identity = T.isIdentity();
+
+    const auto nc = coords->getNumCoords();
+    const Scalar *x = coords->x(0), *y = coords->x(1), *z = coords->x(2);
+
+    for (Index i = 0; i < nc; ++i) {
+        Scalar r = radii[i];
+        Vector3 p(x[i], y[i], z[i]);
+        if (!identity)
+            p = transformPoint(T, p);
+        for (int c = 0; c < 3; ++c) {
+            bMin[c] = std::min(bMin[c], p[c] + r * rMin[c]);
+            bMax[c] = std::max(bMax[c], p[c] + r * rMax[c]);
+        }
+    }
+    return {bMin, bMax};
+}
+
+} // namespace
+
 void RenderObject::computeBounds()
 {
     if (!geometry)
@@ -204,51 +299,26 @@ void RenderObject::computeBounds()
     Matrix4 T = geometry->getTransform();
     bool identity = T.isIdentity();
     if (auto coords = Coords::as(geometry)) {
-        const Scalar *radii = nullptr;
+        Vec<Scalar>::const_ptr radiiPtr;
         if (auto lines = Lines::as(geometry)) {
-            if (lines->radius())
-                radii = lines->radius()->x().data();
-        } else if (auto points = Points::as(geometry)) {
-            if (points->radius())
-                radii = points->radius()->x().data();
-        }
-        if (radii) {
-            Vector3 rMin(smax, smax, smax), rMax(-smax, -smax, -smax);
-            for (int i = 0; i < 8; ++i) {
-                Vector3 v(0, 0, 0);
-                if (i % 2) {
-                    v += Vector3(1, 0, 0);
-                } else {
-                    v -= Vector3(1, 0, 0);
-                }
-                if ((i / 2) % 2) {
-                    v += Vector3(0, 1, 0);
-                } else {
-                    v -= Vector3(0, 1, 0);
-                }
-                if ((i / 4) % 2) {
-                    v += Vector3(0, 0, 1);
-                } else {
-                    v -= Vector3(0, 0, 1);
-                }
-                if (!identity)
-                    v = transformPoint(T, v);
-                for (int c = 0; c < 3; ++c) {
-                    rMin[c] = std::min(rMin[c], v[c]);
-                    rMax[c] = std::max(rMax[c], v[c]);
-                }
+            if (lines->radius()) {
+                radiiPtr = lines->radius();
             }
-            const auto nc = coords->getNumCoords();
-            const Scalar *x = coords->x(0), *y = coords->x(1), *z = coords->x(2);
-            for (Index i = 0; i < nc; ++i) {
-                Scalar r = radii[i];
-                Vector3 p(x[i], y[i], z[i]);
-                if (!identity)
-                    p = transformPoint(T, p);
-                for (int c = 0; c < 3; ++c) {
-                    bMin[c] = std::min(bMin[c], p[c] + r * rMin[c]);
-                    bMax[c] = std::max(bMax[c], p[c] + r * rMax[c]);
-                }
+        } else if (auto points = Points::as(geometry)) {
+            if (points->radius()) {
+                radiiPtr = points->radius();
+            }
+        }
+
+        if (auto radii = radiiPtr->x().data()) {
+            Vector3 rMin, rMax;
+            std::tie(rMin, rMax) = computeTransformedUnitCubeBounds(T, identity);
+            if (auto lines = Lines::as(geometry); lines && radiiPtr->guessMapping(geometry) == DataBase::Element) {
+                assert(radiiPtr->getSize() == lines->getNumElements());
+                std::tie(bMin, bMax) = computeBoundsForElementBasedRadii(lines, coords, radii, rMin, rMax);
+            } else {
+                assert(radiiPtr->getSize() == coords->getNumCoords());
+                std::tie(bMin, bMax) = computeBoundsForVertexBasedRadii(geometry, coords, radii, rMin, rMax);
             }
 
         } else {
