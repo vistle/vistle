@@ -40,7 +40,7 @@ private:
 };
 #else
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(Operation, (AnyLess)(AllLess)(Contains)(AnyGreater)(AllGreater))
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(Operation, (AnyLess)(AllLess)(AnyGreater)(AllGreater)(Contains))
 class CellSelector {
 public:
     CellSelector(Operation op, Float threshold, DataBase::const_ptr &data)
@@ -164,8 +164,8 @@ Threshold::Threshold(const std::string &name, int moduleID, mpi::communicator co
     p_in[0] = createInputPort("data_in", "input data");
     p_out[0] = createOutputPort("data_out", "output data");
 #else
-    p_in[0] = createInputPort("threshold_in", "scalar data deciding over elements rejection");
-    p_out[0] = createOutputPort("threshold_out", "threshold input filtered to remaining elements");
+    p_in[0] = createInputPort("data_in", "scalar data deciding over elements rejection");
+    p_out[0] = createOutputPort("data_out", "threshold input filtered to remaining elements");
 #endif
     linkPorts(p_in[0], p_out[0]);
     for (unsigned i = 1; i < NUMPORTS; ++i) {
