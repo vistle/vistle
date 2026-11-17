@@ -170,7 +170,7 @@ setVectorParam(VistleSession, f'position[{mFlattenTriangles21}]', -460.728235319
 
 mReadVtk22 = waitForSpawn(umReadVtk22)
 setVectorParam(VistleSession, f'position[{mReadVtk22}]', 273.3315271092212, -1312.2627665602317)
-setStringParam(mReadVtk22, 'filename', '/Users/ma/covise/share/covise/example-data/ReadVTK/unstructuredGrid.pvd', True)
+setStringParam(mReadVtk22, 'filename', covisedir + '/share/covise/example-data/ReadVTK/unstructuredGrid.pvd', True)
 setStringParam(mReadVtk22, 'point_field_0', 'pointData', True)
 setStringParam(mReadVtk22, 'point_field_1', '(NONE)', True)
 setStringParam(mReadVtk22, 'point_field_2', '(NONE)', True)
