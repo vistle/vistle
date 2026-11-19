@@ -310,7 +310,9 @@ void RenderObject::computeBounds()
             }
         }
 
-        if (auto radii = radiiPtr->x().data()) {
+        if (radiiPtr) {
+            auto radii = radiiPtr->x().data();
+
             Vector3 rMin, rMax;
             std::tie(rMin, rMax) = computeTransformedUnitCubeBounds(T, identity);
             if (auto lines = Lines::as(geometry); lines && radiiPtr->guessMapping(geometry) == DataBase::Element) {
