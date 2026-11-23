@@ -70,7 +70,7 @@ VISKORES_CONT viskores::cont::DataSet VectorFieldFilter::DoExecute(const viskore
 {
     using namespace viskores::cont;
 
-    Field inField = inDataSet.GetField(0);
+    Field inField = inDataSet.GetField(this->GetActiveFieldName());
     const auto association = inField.GetAssociation();
 
     // Only point- or cell-associated 3D vector fields; otherwise just pass through.
