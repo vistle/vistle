@@ -17,12 +17,11 @@ private:
     vistle::FloatParameter *m_radiusCoefficient;
     vistle::IntParameter *m_thicknessDeterminer;
 
-    // TODO: delete this
-    vistle::IntParameter *m_useVtkm;
-
     bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
 
+#ifdef SPHERESOVERLAPVTKM
     bool checkAndNotify(const ModuleStatusPtr &status) const;
+#endif
 };
 
 #endif
