@@ -8,14 +8,7 @@
 #include <vistle/core/uniformgrid.h>
 
 #include "algo/CellListsAlgorithm.h"
-#include "algo/ThicknessDeterminer.h"
-
-#ifdef SPHERESOVERLAPVTKM
-#include <vistle/vtkm/convert.h>
-#include <vistle/vtkm/vtkm_module_utils.h>
-
-#include "algo/VtkmSpheresOverlap.h"
-#endif
+#include "algo/CalculateThickness.h"
 
 #include "SpheresOverlap.h"
 
@@ -63,28 +56,6 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
     Lines::ptr lines;
     Vec<Scalar, 1>::ptr lineThicknesses;
 
-#ifdef SPHERESOVERLAPVTKM
-    // create Viskores dataset from vistle data
-    viskores::cont::DataSet vtkmSpheres;
-    auto status = vtkmSetGrid(vtkmSpheres, spheres);
-
-    if (!checkAndNotify(status))
-        return true;
-
-
-    vtkmSpheres.AddPointField("radius", radii.handle());
-
-    VtkmSpheresOverlap overlapFilter;
-    overlapFilter.SetRadiusFactor(m_radiusCoefficient->getValue());
-    overlapFilter.SetThicknessDeterminer((ThicknessDeterminer)m_thicknessDeterminer->getValue());
-    viskores::cont::DataSet vtkmLines;
-    if (!vistle::vtkm::tryToExecuteFilter(*this, overlapFilter, vtkmSpheres, vtkmLines))
-        return true;
-
-    lines = Lines::as(vtkmGetGeometry(vtkmLines));
-    lineThicknesses = Vec<Scalar, 1>::as(vtkmGetField(vtkmLines, "lineThickness"));
-
-#else
     auto maxRadius = std::numeric_limits<std::remove_reference<decltype(radii[0])>::type>::min();
     for (Index i = 0; i < radii.size(); i++) {
         if (radii[i] > maxRadius)
@@ -101,7 +72,6 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
 
     lines = result.first;
     lineThicknesses = result.second;
-#endif
 
     if (lines->getNumCoords()) {
         lines->copyAttributes(geo);
@@ -123,10 +93,3 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
 
     return true;
 }
-
-#ifdef SPHERESOVERLAPVTKM
-bool SpheresOverlap::checkAndNotify(const ModuleStatusPtr &status) const
-{
-    return vistle::vtkm::checkAndNotify(*this, status);
-}
-#endif

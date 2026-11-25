@@ -1,12 +1,12 @@
-#ifndef VISTLE_SPHERESOVERLAP_ALGO_WORKLET_POINTLOCATORCELLLISTS_H
-#define VISTLE_SPHERESOVERLAP_ALGO_WORKLET_POINTLOCATORCELLLISTS_H
+#ifndef VISTLE_SPHERESOVERLAPVTKM_ALGO_WORKLET_POINTLOCATORCELLLISTS_H
+#define VISTLE_SPHERESOVERLAPVTKM_ALGO_WORKLET_POINTLOCATORCELLLISTS_H
 
 #include <viskores/cont/PointLocatorBase.h>
 
 #include <vistle/core/scalar.h>
 
 #include "OverlapDetector.h"
-#include "../ThicknessDeterminer.h"
+#include "../CalculateThicknessVtkm.h"
 
 class PointLocatorCellLists: public viskores::cont::PointLocatorBase {
     using Superclass = viskores::cont::PointLocatorBase;

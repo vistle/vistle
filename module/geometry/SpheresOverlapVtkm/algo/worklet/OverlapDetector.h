@@ -1,10 +1,10 @@
-#ifndef VISTLE_SPHERESOVERLAP_ALGO_WORKLET_OVERLAPDETECTOR_H
-#define VISTLE_SPHERESOVERLAP_ALGO_WORKLET_OVERLAPDETECTOR_H
+#ifndef VISTLE_SPHERESOVERLAPVTKM_ALGO_WORKLET_OVERLAPDETECTOR_H
+#define VISTLE_SPHERESOVERLAPVTKM_ALGO_WORKLET_OVERLAPDETECTOR_H
 
 #include <viskores/cont/ArrayHandle.h>
 #include <viskores/cont/CoordinateSystem.h>
 
-#include "../ThicknessDeterminer.h"
+#include "../CalculateThicknessVtkm.h"
 
 /*
     Counts overlaps between spheres and creates connection lines between overlapping spheres.

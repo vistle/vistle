@@ -18,10 +18,6 @@ private:
     vistle::IntParameter *m_thicknessDeterminer;
 
     bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
-
-#ifdef SPHERESOVERLAPVTKM
-    bool checkAndNotify(const ModuleStatusPtr &status) const;
-#endif
 };
 
 #endif
