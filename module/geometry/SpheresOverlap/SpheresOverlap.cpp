@@ -48,17 +48,7 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
     }
 
     auto spheres = Points::as(geo);
-    auto radii = spheres->radius()->x();
-
-
-    Lines::ptr lines;
-    Vec<Scalar, 1>::ptr lineThicknesses;
-
-    auto maxRadius = std::numeric_limits<std::remove_reference<decltype(radii[0])>::type>::min();
-    for (Index i = 0; i < radii.size(); i++) {
-        if (radii[i] > maxRadius)
-            maxRadius = radii[i];
-    }
+    auto maxRadius = (spheres->radius()->getMinMax().second)[0];
 
     // We want to ensure that no pair of overlapping spheres is missed. As two spheres overlap when
     // the Euclidean distance between them is less than the sum of their radii, the minimum search
@@ -68,8 +58,8 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
 
     auto result = CreateConnectionLines(overlaps, spheres);
 
-    lines = result.first;
-    lineThicknesses = result.second;
+    Lines::ptr lines = result.first;
+    Vec<Scalar, 1>::ptr lineThicknesses = result.second;
 
     if (lines->getNumCoords()) {
         lines->copyAttributes(geo);
