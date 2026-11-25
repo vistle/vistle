@@ -6,7 +6,7 @@
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(ThicknessDeterminer, (Overlap)(OverlapRatio)(Distance));
 
-VISKORES_EXEC_CONT
+VISKORES_EXEC
 vistle::Scalar CalculateThicknessVtkm(ThicknessDeterminer determiner, vistle::Scalar distance, vistle::Scalar radius1,
                                       vistle::Scalar radius2);
 
