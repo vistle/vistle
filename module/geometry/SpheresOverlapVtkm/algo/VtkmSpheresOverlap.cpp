@@ -1,7 +1,4 @@
-#include <vistle/core/uniformgrid.h>
-
 #include <viskores/cont/ArrayHandle.h>
-#include <viskores/cont/ArrayHandleCounting.h>
 #include <viskores/cont/ArrayHandleGroupVec.h>
 #include <viskores/cont/CellSetSingleType.h>
 

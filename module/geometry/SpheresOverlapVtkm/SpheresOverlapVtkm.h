@@ -1,8 +1,6 @@
 #ifndef VISTLE_SPHERESOVERLAPVTKM_SPHERESOVERLAPVTKM_H
 #define VISTLE_SPHERESOVERLAPVTKM_SPHERESOVERLAPVTKM_H
 
-#include <string>
-
 #include <vistle/vtkm/vtkm_module.h>
 
 /*

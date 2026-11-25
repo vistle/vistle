@@ -1,17 +1,7 @@
-#include <math.h>
-#include <type_traits>
-#include <utility>
-
-#include <vistle/alg/objalg.h>
-#include <vistle/core/lines.h>
 #include <vistle/core/points.h>
-#include <vistle/core/uniformgrid.h>
 
-#include <vistle/vtkm/convert.h>
-#include <vistle/vtkm/vtkm_module_utils.h>
-
-#include "algo/VtkmSpheresOverlap.h"
 #include "algo/CalculateThicknessVtkm.h"
+#include "algo/VtkmSpheresOverlap.h"
 
 #include "SpheresOverlapVtkm.h"
 

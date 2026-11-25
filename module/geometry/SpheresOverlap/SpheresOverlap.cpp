@@ -1,14 +1,12 @@
-#include <math.h>
+#include <limits>
 #include <type_traits>
-#include <utility>
 
 #include <vistle/alg/objalg.h>
 #include <vistle/core/lines.h>
 #include <vistle/core/points.h>
-#include <vistle/core/uniformgrid.h>
 
-#include "algo/CellListsAlgorithm.h"
 #include "algo/CalculateThickness.h"
+#include "algo/CellListsAlgorithm.h"
 
 #include "SpheresOverlap.h"
 

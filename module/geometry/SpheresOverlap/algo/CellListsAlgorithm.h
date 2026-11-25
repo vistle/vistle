@@ -1,6 +1,9 @@
 #ifndef VISTLE_SPHERESOVERLAP_ALGO_CELLLISTSALGORITHM_H
 #define VISTLE_SPHERESOVERLAP_ALGO_CELLLISTSALGORITHM_H
 
+#include <array>
+#include <utility>
+
 #include <vistle/core/lines.h>
 #include <vistle/core/points.h>
 #include <vistle/core/uniformgrid.h>

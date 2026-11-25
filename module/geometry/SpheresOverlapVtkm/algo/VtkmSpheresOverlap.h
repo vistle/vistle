@@ -1,13 +1,11 @@
 #ifndef VISTLE_SPHERESOVERLAPVTKM_ALGO_VTKMSPHERESOVERLAP_H
 #define VISTLE_SPHERESOVERLAPVTKM_ALGO_VTKMSPHERESOVERLAP_H
 
-#include <string>
-
 #include <viskores/filter/Filter.h>
 
-#include "CalculateThicknessVtkm.h"
-
 #include "worklet/PointLocatorCellLists.h"
+
+#include "CalculateThicknessVtkm.h"
 
 /*
     Detects overlapping spheres and creates connections lines between them.

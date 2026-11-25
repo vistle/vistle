@@ -3,10 +3,9 @@
 
 #include <viskores/cont/PointLocatorBase.h>
 
-#include <vistle/core/scalar.h>
+#include "../CalculateThicknessVtkm.h"
 
 #include "OverlapDetector.h"
-#include "../CalculateThicknessVtkm.h"
 
 class PointLocatorCellLists: public viskores::cont::PointLocatorBase {
     using Superclass = viskores::cont::PointLocatorBase;

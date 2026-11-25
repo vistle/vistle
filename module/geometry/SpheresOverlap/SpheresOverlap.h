@@ -1,8 +1,6 @@
 #ifndef VISTLE_SPHERESOVERLAP_SPHERESOVERLAP_H
 #define VISTLE_SPHERESOVERLAP_SPHERESOVERLAP_H
 
-#include <string>
-
 #include <vistle/module/module.h>
 
 /*
