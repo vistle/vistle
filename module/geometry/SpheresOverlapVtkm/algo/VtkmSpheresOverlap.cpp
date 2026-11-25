@@ -11,7 +11,7 @@
 #include "VtkmSpheresOverlap.h"
 
 #ifdef NONSEPARABLE_COMPILATION
-#include "ThicknessDeterminer.cpp"
+#include "CalculateThicknessVtkm.cpp"
 #include "worklet/PointLocatorCellLists.cpp"
 #include "worklet/OverlapDetector.cpp"
 #endif
