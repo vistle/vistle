@@ -21,7 +21,7 @@ MODULE_MAIN(SpheresOverlap)
 SpheresOverlap::SpheresOverlap(const std::string &name, int moduleID, mpi::communicator comm)
 : Module(name, moduleID, comm)
 {
-    m_spheresIn = createInputPort("spheres_in", "spheres or data mapped to spheres");
+    m_spheresIn = createInputPort("data_in", "spheres or data mapped to spheres");
     m_linesOut = createOutputPort("lines_out", "lines between all overlapping spheres");
     m_dataOut = createOutputPort("data_out", "data mapped onto the output lines");
 
@@ -38,7 +38,7 @@ SpheresOverlap::SpheresOverlap(const std::string &name, int moduleID, mpi::commu
 
 bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
 {
-    auto dataIn = task->expect<Object>("spheres_in");
+    auto dataIn = task->expect<Object>("data_in");
     auto container = splitContainerObject(dataIn);
 
     auto geo = container.geometry;
