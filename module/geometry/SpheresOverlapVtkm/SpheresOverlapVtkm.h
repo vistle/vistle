@@ -3,23 +3,27 @@
 
 #include <string>
 
-#include <vistle/module/module.h>
+#include <vistle/vtkm/vtkm_module.h>
 
 /*
     Detects which spheres overlap and creates a line between them.
 */
-class SpheresOverlapVtkm: public vistle::Module {
+class SpheresOverlapVtkm: public vistle::VtkmModule {
 public:
     SpheresOverlapVtkm(const std::string &name, int moduleID, mpi::communicator comm);
 
 private:
-    vistle::Port *m_spheresIn, *m_linesOut, *m_dataOut;
     vistle::FloatParameter *m_radiusCoefficient;
     vistle::IntParameter *m_thicknessDeterminer;
 
-    bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
+    std::string getFieldName(int index, bool output = false) const override;
 
-    bool checkAndNotify(const ModuleStatusPtr &status) const;
+    ModuleStatusPtr prepareInputGrid(InputData &input) const override;
+
+    std::unique_ptr<viskores::filter::Filter> setUpFilter(const InputData &input) const override;
+
+    vistle::DataBase::ptr prepareOutputField(const InputData &input, OutputData &output, int index,
+                                             const std::string &fieldName) const override;
 };
 
 #endif

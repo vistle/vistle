@@ -114,7 +114,7 @@ VISKORES_CONT viskores::cont::DataSet VtkmSpheresOverlap::DoExecute(const viskor
 {
     auto sphereCenters = spheres.GetCoordinateSystem();
 
-    auto pointLocator = CreateSearchGrid(sphereCenters, spheres.GetPointField("radius"));
+    auto pointLocator = CreateSearchGrid(sphereCenters, spheres.GetField(GetActiveFieldName()));
     auto overlapsPerPoint = CountOverlapsPerPoint(pointLocator);
 
     viskores::cont::ArrayHandle<viskores::Id> linesConnectivity;
