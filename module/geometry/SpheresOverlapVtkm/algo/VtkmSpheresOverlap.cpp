@@ -1,7 +1,4 @@
-#include <vistle/core/uniformgrid.h>
-
 #include <viskores/cont/ArrayHandle.h>
-#include <viskores/cont/ArrayHandleCounting.h>
 #include <viskores/cont/ArrayHandleGroupVec.h>
 #include <viskores/cont/CellSetSingleType.h>
 
@@ -11,7 +8,7 @@
 #include "VtkmSpheresOverlap.h"
 
 #ifdef NONSEPARABLE_COMPILATION
-#include "ThicknessDeterminer.cpp"
+#include "CalculateThicknessVtkm.cpp"
 #include "worklet/PointLocatorCellLists.cpp"
 #include "worklet/OverlapDetector.cpp"
 #endif
@@ -114,7 +111,7 @@ VISKORES_CONT viskores::cont::DataSet VtkmSpheresOverlap::DoExecute(const viskor
 {
     auto sphereCenters = spheres.GetCoordinateSystem();
 
-    auto pointLocator = CreateSearchGrid(sphereCenters, spheres.GetPointField("radius"));
+    auto pointLocator = CreateSearchGrid(sphereCenters, spheres.GetField(GetActiveFieldName()));
     auto overlapsPerPoint = CountOverlapsPerPoint(pointLocator);
 
     viskores::cont::ArrayHandle<viskores::Id> linesConnectivity;

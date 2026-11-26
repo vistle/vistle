@@ -1,8 +1,6 @@
 #ifndef VISTLE_SPHERESOVERLAP_SPHERESOVERLAP_H
 #define VISTLE_SPHERESOVERLAP_SPHERESOVERLAP_H
 
-#include <string>
-
 #include <vistle/module/module.h>
 
 /*
@@ -17,12 +15,7 @@ private:
     vistle::FloatParameter *m_radiusCoefficient;
     vistle::IntParameter *m_thicknessDeterminer;
 
-    // TODO: delete this
-    vistle::IntParameter *m_useVtkm;
-
     bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
-
-    bool checkAndNotify(const ModuleStatusPtr &status) const;
 };
 
 #endif

@@ -1,11 +1,11 @@
 #include <viskores/Math.h>
 #include <viskores/Types.h>
 
-#include "ThicknessDeterminer.h"
+#include "CalculateThicknessVtkm.h"
 
-VISKORES_EXEC_CONT
-vistle::Scalar CalculateThickness(ThicknessDeterminer determiner, vistle::Scalar distance, vistle::Scalar radius1,
-                                  vistle::Scalar radius2)
+VISKORES_EXEC
+vistle::Scalar CalculateThicknessVtkm(ThicknessDeterminer determiner, vistle::Scalar distance, vistle::Scalar radius1,
+                                      vistle::Scalar radius2)
 {
     switch (determiner) {
     case Overlap:

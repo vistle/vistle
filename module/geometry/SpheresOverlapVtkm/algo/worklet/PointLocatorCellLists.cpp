@@ -1,10 +1,6 @@
-#include <algorithm> // for std::max
-
 #include <viskores/cont/Algorithm.h>
-
 #include <viskores/cont/ArrayCopy.h>
 #include <viskores/cont/ArrayHandleIndex.h>
-#include <viskores/cont/PointLocatorSparseGrid.h>
 
 #include <viskores/worklet/WorkletMapField.h>
 

@@ -102,7 +102,7 @@ VISKORES_EXEC void OverlapDetector::CreateConnectionLines(const viskores::Id poi
                         if (nrOverlaps == visitId) {
                             connectivity[0] = pointId;
                             connectivity[1] = idToCheck;
-                            thickness = CalculateThickness(this->Determiner, distance, radius1, radius2);
+                            thickness = CalculateThicknessVtkm(this->Determiner, distance, radius1, radius2);
                             foundOverlap = true;
                             break;
                         }
